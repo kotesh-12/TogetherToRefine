@@ -1,0 +1,191 @@
+attendance.html
+ <!-- Enhanced Attendance Module (Institution Dashboard View) --><!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>welcome to TTR</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(to right, #f8f9fa, #e0f7fa);
+    }
+    h2 {
+      text-align: center;
+      color: #2c3e50;
+    }
+    .section {
+      margin-top: 20px;
+      padding: 20px;
+      background: #ffffff;
+      border-radius: 15px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+    .dropdown {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      gap: 10px;
+    }
+    select, button {
+      padding: 10px 15px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+      background-color: #fff;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #3498db;
+      color: white;
+    }
+    .list-header, .user-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      align-items: center;
+      padding: 10px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .list-header {
+      font-weight: bold;
+      background-color: #ecf0f1;
+      border-top-left-radius: 10px;
+      border-top-right-radius: 10px;
+    }
+    .user-info {
+      display: flex;
+      align-items: center;
+    }
+    .user-info img {
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      margin-right: 12px;
+      border: 2px solid #ccc;
+    }
+    .percentage {
+      font-weight: bold;
+      color: #27ae60;
+    }
+    .suspended {
+      color: #e74c3c;
+      font-weight: bold;
+    }
+    .submit-container {
+      text-align: center;
+      margin-top: 20px;
+    }
+    .submit-container button {
+      padding: 10px 25px;
+      font-size: 16px;
+      background-color: #2ecc71;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .submit-container button:hover {
+      background-color: #27ae60;
+    }
+  </style>
+</head>
+<body>
+  <h2>Institution Attendance Dashboard</h2>
+  <div class="section">
+    <div class="dropdown">
+      <label for="classSelect">Select Class:</label>
+      <select id="classSelect">
+        <option value="">-- Select Class --</option>
+        <option value="Nursery">Nursery</option>
+        <option value="LKG">LKG</option>
+        <option value="UKG">UKG</option>
+        <option value="1st">1st</option>
+        <option value="2nd">2nd</option>
+        <option value="3rd">3rd</option>
+        <option value="4th">4th</option>
+        <option value="5th">5th</option>
+        <option value="6th">6th</option>
+        <option value="7th">7th</option>
+        <option value="8th">8th</option>
+        <option value="9th">9th</option>
+        <option value="10-A">10-A</option>
+        <option value="10-B">10-B</option>
+      </select>
+      <button onclick="toggleStudents()">Toggle Students</button>
+      <button onclick="toggleTeachers()">Toggle Teachers</button>
+    </div><div id="attendanceList"></div>
+
+<div class="submit-container">
+  <button onclick="submitAttendance()">Submit Attendance</button>
+</div>
+
+  </div>  <script>
+    const today = new Date().toISOString().split('T')[0];
+    let showStudents = false;
+    let showTeachers = false;
+
+    const students = {
+      "10-A": [
+        { id: "S1", name: "Arjun", suspended: false, presentPeriods: 20, totalPeriods: 24 },
+        { id: "S2", name: "Kiran", suspended: true, presentPeriods: 0, totalPeriods: 0 }
+      ],
+      "10-B": [
+        { id: "S3", name: "Nandini", suspended: false, presentPeriods: 22, totalPeriods: 25 }
+      ]
+    };
+
+    const teachers = [
+      { id: "T1", name: "Mr. Ravi", subject: "Math", img: "https://via.placeholder.com/40", presentDays: 25, totalDays: 26 },
+      { id: "T2", name: "Ms. Priya", subject: "English", img: "https://via.placeholder.com/40", presentDays: 24, totalDays: 26 },
+      { id: "T3", name: "Mr. John", subject: "Science", img: "https://via.placeholder.com/40", presentDays: 26, totalDays: 26 }
+    ];
+
+    function toggleStudents() {
+      showStudents = !showStudents;
+      if (showStudents) loadStudents();
+      else document.getElementById('attendanceList').innerHTML = '';
+    }
+
+    function toggleTeachers() {
+      showTeachers = !showTeachers;
+      if (showTeachers) loadTeachers();
+      else document.getElementById('attendanceList').innerHTML = '';
+    }
+
+    function loadStudents() {
+      const classKey = document.getElementById('classSelect').value;
+      if (!classKey) return;
+      const data = students[classKey] || [];
+
+      let html = `<div class='list-header'><span>Student</span><span>Status</span><span>Attendance %</span></div>`;
+      data.forEach(s => {
+        let status = s.suspended ? '<span class="suspended">Suspended</span>' : '<span>View Only</span>';
+        let percent = s.totalPeriods > 0 ? ((s.presentPeriods / s.totalPeriods) * 100).toFixed(1) : '0';
+        html += `<div class='user-row'><div class='user-info'><img src='https://via.placeholder.com/40' /><span>${s.name}</span></div><div>${status}</div><div class='percentage'>${percent}%</div></div>`;
+      });
+      document.getElementById('attendanceList').innerHTML = html;
+    }
+
+    function loadTeachers() {
+      let html = `<div class='list-header'><span>Teacher</span><span>Attendance</span><span>Attendance %</span></div>`;
+      teachers.forEach(t => {
+        let percent = ((t.presentDays / t.totalDays) * 100).toFixed(1);
+        html += `<div class='user-row'><div class='user-info'><img src='${t.img}' /><span>${t.name} (${t.subject})</span></div><div><input type='checkbox' onchange='markTeacherAttendance("${t.id}")' /></div><div class='percentage'>${percent}%</div></div>`;
+      });
+      document.getElementById('attendanceList').innerHTML = html;
+    }
+
+    function markTeacherAttendance(id) {
+      const date = today;
+      console.log(`Marked attendance for teacher ${id} on ${date}`);
+      // Firebase write logic here with date restriction for today only
+    }
+
+    function submitAttendance() {
+      alert("Attendance submitted successfully!");
+      // Add Firebase integration or processing logic here
+    }
+  </script></body>
+</html>

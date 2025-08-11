@@ -1,0 +1,222 @@
+student.html
+<!-- ✅ Use this updated HTML code -->
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Together to Refine</title>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to right, #e6f7ff, #ffffff);
+    }
+    header {
+      background-color: #0099cc;
+      color: white;
+      padding: 20px;
+      text-align: center;
+      position: relative;
+    }
+    .home-icon {
+      position: absolute;
+      left: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 24px;
+      cursor: pointer;
+    }
+    .profile-pic {
+      position: absolute;
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: #ddd;
+      cursor: pointer;
+    }
+    .announcement-bar {
+      background-color: #ffeb3b;
+      color: black;
+      padding: 10px;
+      overflow: hidden;
+      white-space: nowrap;
+      animation: scroll 10s linear infinite;
+    }
+    @keyframes scroll {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+    .dropdown-container {
+      margin: 20px;
+      position: relative;
+    }
+    .dropdown-toggle {
+      padding: 10px;
+      background-color: white;
+      border: 1px solid #ccc;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .dropdown-list {
+      display: none;
+      border: 1px solid #ccc;
+      background: white;
+      position: absolute;
+      z-index: 1000;
+      width: 100%;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .dropdown-list.show {
+      display: block;
+    }
+    .dropdown-item {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .dropdown-item img {
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      margin-right: 10px;
+    }
+    .selected-person {
+      text-align: center;
+      margin: 30px auto;
+      background: #fff;
+      padding: 20px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .proceed-button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background-color: #0099cc;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+    .group-btn {
+      background-color: green;
+      border: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="home-icon" onclick="window.location.href='student.html'">🏠</div>
+    <h1>Welcome to Together to Refine</h1>
+    <div class="profile-pic" onclick="window.location.href='profile.html'"></div>
+  </header>
+
+  <div class="announcement-bar">
+    🔔 TTR is a game changer in Indian education system 🇮🇳
+  </div>
+
+  <div class="dropdown-container">
+    <div class="dropdown-toggle" onclick="toggleDropdown()">Select Person 🤠</div>
+    <div class="dropdown-list" id="dropdownList">
+      <!-- Teachers will be injected here -->
+    </div>
+  </div>
+
+  <div class="selected-person" id="selectedPerson" style="display: none;">
+    <h2 id="personName"></h2>
+    <button class="proceed-button" onclick="goToProfile()">Proceed</button>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+  apiKey: "AIzaSyDWHnST2fHu2xgtL3tu7WQ0bJZ6AMzfPbY",
+  authDomain: "together-to-refine.firebaseapp.com", // ✅ Correct
+  projectId: "together-to-refine",
+  storageBucket: "together-to-refine.appspot.com",   // ✅ Fix this line
+  messagingSenderId: "360106072129",
+  appId: "1:360106072129:web:eb706cf7d7a299ebabcec0",
+  measurementId: "G-2HKGEJSKHR"
+};
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const dropdownList = document.getElementById("dropdownList");
+    const selectedPersonDiv = document.getElementById("selectedPerson");
+    const personName = document.getElementById("personName");
+
+    const teachers = [
+      { name: "Teacher A", subject: "Math", img: "https://randomuser.me/api/portraits/men/10.jpg" },
+      { name: "Teacher B", subject: "Science", img: "https://randomuser.me/api/portraits/women/11.jpg" },
+      { name: "Teacher C", subject: "History", img: "https://randomuser.me/api/portraits/men/12.jpg" }
+    ];
+
+    function toggleDropdown() {
+      dropdownList.classList.toggle("show");
+    }
+
+    function loadTeachers() {
+      teachers.forEach(async teacher => {
+        const groupId = `${teacher.name}-${teacher.subject}`.replace(/\s+/g, "_");
+
+        const div = document.createElement("div");
+        div.className = "dropdown-item";
+
+        const infoDiv = document.createElement("div");
+        infoDiv.innerHTML = `<img src="${teacher.img}" alt=""> ${teacher.name} - ${teacher.subject}`;
+        infoDiv.style.flex = "1";
+        infoDiv.style.cursor = "pointer";
+        infoDiv.onclick = () => {
+          localStorage.setItem("selectedPerson", `${teacher.name} - ${teacher.subject}`);
+          personName.textContent = `${teacher.name} - ${teacher.subject}`;
+          selectedPersonDiv.style.display = "block";
+          dropdownList.classList.remove("show");
+        };
+
+        div.appendChild(infoDiv);
+
+        // Check if group exists in Firestore
+        try {
+          const doc = await db.collection("groups").doc(groupId).get();
+          if (doc.exists) {
+            const btn = document.createElement("button");
+            btn.className = "group-btn";
+            btn.title = "Open Group";
+            btn.onclick = (e) => {
+              e.stopPropagation();
+              localStorage.setItem("activeGroupId", groupId);
+              window.location.href = "group.html";
+            };
+            div.appendChild(btn);
+          }
+        } catch (error) {
+          console.error("Group check error:", error);
+        }
+
+        dropdownList.appendChild(div);
+      });
+    }
+
+    function goToProfile() {
+      window.location.href = "profileview.html";
+    }
+
+    loadTeachers();
+  </script>
+</body>
+</html>
