@@ -4,7 +4,7 @@ import { collection, query, where, getDocs, addDoc, deleteDoc, doc, orderBy } fr
 import AnnouncementBar from '../components/AnnouncementBar';
 import AIBadge from '../components/AIBadge';
 import { useUser } from '../context/UserContext';
-import ReactPlayer from 'react-player/youtube'; // Using lightweight YouTube-only import
+import ReactPlayer from 'react-player'; // Using standard import for better compatibility
 
 export default function VideoLibrary() {
     const { userData } = useUser();

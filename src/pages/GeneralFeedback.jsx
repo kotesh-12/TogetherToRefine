@@ -169,7 +169,7 @@ export default function GeneralFeedback() {
                 </div>
 
                 <div style={{ marginTop: '30px' }}>
-                    <label style={{ fontWeight: '700', color: '#2d3748', display: 'block', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <label style={{ fontWeight: '700', color: '#2d3748', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <span>📝</span> Additional Comments
                     </label>
                     <textarea
