@@ -78,6 +78,7 @@
       <label>Gender</label>
       <select><option>Male</option><option>Female</option><option>Other</option></select>
       <label>Age (Date of Birth)</label><input type="date" required />
+      
       <label class="optional">Experience</label>
       <select><option>0 Years</option><option>1 Year</option><option>2 Years</option><option>3 Years</option></select>
       <select><option>0 Months</option><option>6 Months</option><option>11 Months</option></select>
@@ -110,14 +111,14 @@
       <label>Establishment Year</label><input type="date" required />
       <label class="optional">Chairman Profile Link</label><input type="url" />
       <label class="optional">Principal Profile Link</label><input type="url" />
-      <button type="button" onclick="alert('Show recognitions modal or page')">Recognitions</button>
+      <button type="button" onclick="alert('Show recognitions model or page')">Recognitions</button>
     </div>
 </div>
     <!-- Buttons -->
     <div class="buttons">
       <button type="button" id="backBtn">Back</button>
       <button type="button" id="proceedBtn">Proceed</button>
-      <button type="submit">Submit</button>
+      <button type="button" id="submitBtn">submit</button>
     </div>
   </form>
 </div>
@@ -144,11 +145,11 @@
   window.addEventListener("DOMContentLoaded", () => {
     const role = localStorage.getItem("userRole");
     if (!role) {
-      alert("No role found. Redirecting to login.");
-      window.location.href = "login.html";
+  
+      window.location.href = "login1.html";
       return;
     }
-
+  
     document.getElementById("studentFields").classList.toggle("hidden", role !== "student");
     document.getElementById("teacherFields").classList.toggle("hidden", role !== "teacher");
     document.getElementById("institutionFields").classList.toggle("hidden", role !== "institution");
@@ -157,9 +158,23 @@
       loadInstitutions();
     }
 
+
     // Handle buttons
     document.getElementById("backBtn").onclick = () => window.history.back();
-    document.getElementById("proceedBtn").onclick = () => alert("Proceeding to next section..."); // Customize
+    document.getElementById("proceedBtn").onclick = () => alert("Proceeding to next section...");
+    document.getElementById("submitBtn").onclick = () => {
+      //const role = docSnap.data().role; // change this to teacher/institution dynamically 
+      if (role == "student") {
+      window.location.href = "student.html";
+      
+      } else if (role == "teacher") {
+      window.location.href = "teacher.html";
+      } else if (role == "institution") {
+      window.location.href = "institution.html";
+      } else {
+      alert("Role not recognized.");
+    }
+  }
   });
 
   // Fetch institutions from Firebase Firestore
@@ -198,17 +213,42 @@
     }
   }
 
-  // Submit form and redirect to profile if logged in
-  document.getElementById("detailsForm").addEventListener("submit", function (e) {
-    e.preventDefault();
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        window.location.href = "profile.html";
+// Submit form and redirect based on role
+document.getElementById("submitBtn").addEventListener("submit", async function (e) {
+//document.getElementById("submitBtn").addEventListener("click", function (e) {  
+e.preventDefault();
+
+  const user = auth.currentUser;  // ✅ safer than adding new listener
+  if (user) {
+    try {
+      // Fetch role from Firestore (users collection assumed)
+      const docRef = doc(db, "users", user.uid);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const role = docSnap.data().role;
+        if (role === "student") {
+          window.location.href = "student.html";
+        } else if (role ==="teacher") {
+          window.location.href = "teacher.html";
+        } else if (role ==="institution") {
+          window.location.href = "institution.html";
+        } else {
+          alert("Role not recognized.");
+        }
       } else {
-        alert("You must be logged in to submit.");
+        alert("No user details found in database.");
       }
-    });
-  });
+    } catch (error) {
+      console.error("Error fetching user role:", error);
+      alert("Error occurred while fetching role.");
+    }
+  } else {
+    alert("You must be logged in to submit.");
+  }
+});
+
+
 </script>
 </body>
 </html>

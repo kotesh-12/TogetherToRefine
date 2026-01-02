@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TTR Auth Page</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #6dd5ed, #2193b0);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      background-color: #ffffff;
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      width: 360px;
+      padding: 30px 25px;
+      text-align: center;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+      color: #1565c0;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 12px 10px;
+      margin: 8px 0;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    button {
+      background-color: #1565c0;
+      color: white;
+      padding: 12px;
+      margin-top: 10px;
+      border: none;
+      width: 100%;
+      font-size: 16px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #0d47a1;
+    }
+
+    .toggle-link {
+      color: #1565c0;
+      cursor: pointer;
+      font-size: 14px;
+      margin-top: 10px;
+      display: inline-block;
+    }
+
+    .error {
+      color: red;
+      font-size: 14px;
+    }
+
+    .role-select {
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2 id="form-title">Sign Up</h2>
+    <input type="text" id="name" placeholder="Full Name" />
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <select id="role" class="role-select">
+      <option value="" disabled selected>Select Role</option>
+      <option value="student">Student</option>
+      <option value="teacher">Teacher</option>
+      <option value="institution">Institution</option>
+    </select>
+    <div class="error" id="error-msg"></div>
+    <button onclick="handleAuth()">Sign Up</button>
+    <div class="toggle-link" onclick="toggleForm()">Already have an account? Login</div>
+  </div>
+<div id="studentForm" style="display: none;">
+  <!-- Student form goes here -->
+</div>
+
+<div id="teacherForm" style="display: none;">
+  <!-- Teacher form goes here -->
+</div>
+
+<div id="institutionForm" style="display: none;">
+  <!-- Institution form goes here -->
+</div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDWHnST2fHu2xgtL3tu7WQ0bJZ6AMzfPbY",
+  authDomain: "together-to-refine.firebaseapp.com",
+  projectId: "together-to-refine",
+  storageBucket: "together-to-refine.appspot.com",
+  messagingSenderId: "360106072129",
+  appId: "1:360106072129:web:eb706cf7d7a299ebabcec0",
+  measurementId: "G-2HKGEJSKHR"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth();
+const db = getFirestore();
+
+let isLogin = false;
+
+function toggleForm() {
+  isLogin = !isLogin;
+  document.getElementById("form-title").innerText = isLogin ? "Login" : "Sign Up";
+  document.querySelector("button").innerText = isLogin ? "Login" : "Sign Up";
+  document.getElementById("name").style.display = isLogin ? "none" : "block";
+  document.getElementById("role").style.display = isLogin ? "none" : "block";
+  document.querySelector(".toggle-link").innerText = isLogin
+    ? "Don't have an account? Sign Up"
+    : "Already have an account? Login";
+  document.getElementById("error-msg").innerText = "";
+}
+
+window.toggleForm = toggleForm;
+
+async function handleAuth() {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value.trim();
+  const name = document.getElementById("name").value.trim();
+  const role = document.getElementById("role").value.trim();
+  const errorDiv = document.getElementById("error-msg");
+
+  if (!email || !password || (!isLogin && (!name || !role))) {
+    errorDiv.innerText = "Please fill in all required fields.";
+    return;
+  }
+
+  try {
+    if (isLogin) {
+      // LOGIN
+      const userCred = await signInWithEmailAndPassword(auth, email, password);
+      const uid = userCred.user.uid;
+
+      // Check in all role collections
+      let roleFound = null;
+      const collections = ["users", "teachers", "Institution"];
+      for (let col of collections) {
+        const docSnap = await getDoc(doc(db, col, uid));
+        if (docSnap.exists()) {
+          roleFound = { role: col, data: docSnap.data() };
+          break;
+        }
+      }
+
+      if (!roleFound) {
+        errorDiv.innerText = "Account role not found. Contact support.";
+        return;
+      }
+
+      // Save role in localStorage and redirect
+      localStorage.setItem("userRole", roleFound.role);
+      window.location.href = "details.html";
+
+    } else {
+      // SIGN UP
+      const userCred = await createUserWithEmailAndPassword(auth, email, password);
+      const uid = userCred.user.uid;
+
+      let targetCollection = "";
+      if (role.toLowerCase() === "student") targetCollection = "users";
+      else if (role.toLowerCase() === "teacher") targetCollection = "teachers";
+      else if (role.toLowerCase() === "institution") targetCollection = "Institution";
+      else {
+        errorDiv.innerText = "Invalid role selected.";
+        return;
+      }
+
+      await setDoc(doc(db, targetCollection, uid), {
+        name: name,
+        email: email,
+        role: role,
+        schoolName: name,
+      });
+
+      alert("Account created successfully!");
+      toggleForm();
+    }
+
+    errorDiv.innerText = "";
+  } catch (error) {
+    errorDiv.innerText = error.message;
+  }
+}
+
+window.handleAuth = handleAuth;
+</script>
+</body>
+</html>

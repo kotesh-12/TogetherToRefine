@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sample Page</title>
+    </head> 
+    <body>
+        <h1>user validation</h1>
+        <input type="text" id="username" placeholder="Enter username"><br>
+        <input type="password" id="password" placeholder="Enter password"><br>
+        <button onclick="submitForm()">Submit</button>
+        <script>
+            function submitForm() {
+                var username = document.getElementById('username').value;
+                var password = document.getElementById('password').value;
+                if(username === "admin" && password === "password123") {
+                    alert("Login successful!");
+                } else {
+                    alert("Invalid credentials.");
+                }
+            }   
+        </script>
+</body>
+</html>        

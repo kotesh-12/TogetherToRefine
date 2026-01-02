@@ -1,0 +1,178 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { db } from '../firebase';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import AIBadge from '../components/AIBadge';
+import AnnouncementBar from '../components/AnnouncementBar';
+import BottomNav from '../components/BottomNav';
+
+import { useUser } from '../context/UserContext';
+
+// Cache object outside component to persist across unmounts/remounts (Back button navigation)
+const GROUP_CACHE = {
+    data: {},
+    timestamp: 0
+};
+
+export default function Student() {
+    const navigate = useNavigate();
+    const { userData } = useUser(); // Global context
+    const [showDropdown, setShowDropdown] = useState(false);
+    const [selectedPerson, setSelectedPerson] = useState(null);
+    const [teacherGroups, setTeacherGroups] = useState({});
+
+    const [myGroups, setMyGroups] = useState([]);
+    const [loadingGroups, setLoadingGroups] = useState(false);
+
+    useEffect(() => {
+        const fetchRealGroups = async () => {
+            // If user hasn't set class yet, we can't show specific groups
+            // We fallback to showing 'Public' groups or nothing
+            const userClass = userData?.class || userData?.assignedClass;
+            const userSection = userData?.section || userData?.assignedSection;
+
+            if (!userClass) return;
+
+            try {
+                setLoadingGroups(true);
+                // Query Groups matching this Class & Section
+                const q = query(
+                    collection(db, "groups"),
+                    where("className", "==", userClass)
+                    // We can add section filter if groups are section-specific, usually yes
+                );
+
+                const snap = await getDocs(q);
+                const list = [];
+                snap.forEach(d => {
+                    const data = d.data();
+                    // Optional: Filter by section client-side if needed or add compound index
+                    // Show group if:
+                    // 1. Group is not section-specific (data.section is null)
+                    // 2. Group matches user's section
+                    // 3. User has NO section assigned (show all class groups)
+                    if (!data.section || data.section === userSection || !userSection) {
+                        list.push({ id: d.id, ...data });
+                    }
+                });
+                setMyGroups(list);
+            } catch (e) {
+                console.error("Error fetching groups:", e);
+            } finally {
+                setLoadingGroups(false);
+            }
+        };
+
+        if (userData) {
+            fetchRealGroups();
+        }
+    }, [userData]);
+
+    const handleSelect = (group) => {
+        const val = group.groupName;
+        setSelectedPerson(val);
+        localStorage.setItem("selectedPerson", val);
+        setShowDropdown(false);
+    };
+
+    const goToGroup = (e, group) => {
+        e.stopPropagation();
+        localStorage.setItem("activeGroupId", group.id);
+        navigate('/group');
+    };
+
+    return (
+        <div className="page-wrapper">
+            <AIBadge />
+            <AIBadge />
+
+            <AnnouncementBar title={`Welcome, ${userData?.name || "Student"}!`} />
+
+            <div className="container">
+                <div className="dropdown-container">
+                    <div className="dropdown-toggle card" onClick={() => setShowDropdown(!showDropdown)}>
+                        {selectedPerson || "Select Person 🤠"}
+                    </div>
+                    {showDropdown && (
+                        <div className="dropdown-list card">
+                            {myGroups.length === 0 ? <div style={{ padding: '10px', color: '#777' }}>No classes found for {userData?.assignedClass || userData?.class || "your class"}.</div> :
+                                myGroups.map((g, i) => {
+                                    return (
+                                        <div key={i} className="dropdown-item" onClick={() => handleSelect(g)}>
+                                            <div className="t-info">
+                                                {/* Use a generic avatar or teacher's photo if we stored it */}
+                                                <div className="avatar-small" style={{ background: '#6c5ce7', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                    {g.subject?.[0] || "C"}
+                                                </div>
+                                                <span>{g.subject} - {g.teacherName || "No Teacher"}</span>
+                                            </div>
+                                            <button className="group-indicator" onClick={(e) => goToGroup(e, g)} title="Open Class Group"></button>
+                                        </div>
+                                    );
+                                })}
+                        </div>
+                    )}
+                </div>
+
+                {selectedPerson && (
+                    <div className="card text-center mt-4">
+                        <h2>{selectedPerson}</h2>
+                        <button className="btn mt-2" onClick={() => navigate('/profileview')}>Proceed</button>
+                    </div>
+                )}
+
+                {/* AI Learning Tools */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginTop: '20px' }}>
+                    <div className="card" onClick={() => navigate('/ttr-ai')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)', color: 'white' }}>
+                        <h3>🤖 TTR AI Chat</h3>
+                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>Chat with your personal AI assistant.</p>
+                    </div>
+                    <div className="card" onClick={() => navigate('/4-way-learning')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #fd79a8, #e84393)', color: 'white' }}>
+                        <h3>🧠 4-Way Learning</h3>
+                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>Concept, Fiction, Story, & Teaching.</p>
+                    </div>
+                    <div className="card" onClick={() => navigate('/video-library')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #0984e3, #74b9ff)', color: 'white' }}>
+                        <h3>🎬 Video Library</h3>
+                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>Watch class recordings & tutorials.</p>
+                    </div>
+                </div>
+
+                {/* Exam Results Section (New) */}
+                <div className="card" style={{ marginTop: '20px' }}>
+                    <h3>📝 Recent Exam Results</h3>
+                    <div style={{ overflowX: 'auto', marginTop: '10px' }}>
+                        <table style={{ width: '100%', fontSize: '14px', borderCollapse: 'collapse' }}>
+                            <thead>
+                                <tr style={{ background: '#f5f6fa', textAlign: 'left' }}>
+                                    <th style={{ padding: '8px' }}>Exam</th>
+                                    <th style={{ padding: '8px' }}>Subject</th>
+                                    <th style={{ padding: '8px' }}>Marks</th>
+                                    <th style={{ padding: '8px' }}>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {/* Dummy Data for Demo */}
+                                <tr style={{ borderBottom: '1px solid #eee' }}>
+                                    <td style={{ padding: '8px' }}>Mid-Term</td>
+                                    <td style={{ padding: '8px' }}>Mathematics</td>
+                                    <td style={{ padding: '8px' }}>85/100</td>
+                                    <td style={{ padding: '8px', color: 'green', fontWeight: 'bold' }}>Pass</td>
+                                </tr>
+                                <tr style={{ borderBottom: '1px solid #eee' }}>
+                                    <td style={{ padding: '8px' }}>Unit Test 1</td>
+                                    <td style={{ padding: '8px' }}>Science</td>
+                                    <td style={{ padding: '8px' }}>42/50</td>
+                                    <td style={{ padding: '8px', color: 'green', fontWeight: 'bold' }}>Pass</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p className="text-muted" style={{ fontSize: '12px', marginTop: '10px', textAlign: 'center' }}>
+                            (These are demo results. Real results will appear here after your institution publishes them.)
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <BottomNav />
+        </div>
+    );
+}
