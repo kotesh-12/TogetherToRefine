@@ -4,7 +4,9 @@ import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     GoogleAuthProvider,
-    signInWithPopup
+    signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
@@ -18,7 +20,7 @@ export default function Login() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    // New Fields
+    // New Fields (Legacy for Email/Pass signup)
     const [name, setName] = useState('');
     const [gender, setGender] = useState('');
     const [grade, setGrade] = useState('');
@@ -30,65 +32,75 @@ export default function Login() {
         setError('');
     };
 
+    // -------------------------------------------------------------
+    // REDIRECT AUTH HANDLER (Mobile Friendly)
+    // -------------------------------------------------------------
+    useEffect(() => {
+        const checkRedirect = async () => {
+            try {
+                const result = await getRedirectResult(auth);
+                if (result) {
+                    setLoading(true);
+                    const user = result.user;
+                    console.log("Redirect result user:", user.email);
+
+                    // Check existing user role
+                    const { role, isNew } = await checkUserExists(user.uid);
+
+                    if (role && !isNew) {
+                        // User exists and has profile -> Dashboard
+                        redirectToRolePage(role);
+                    } else {
+                        // New user or incomplete profile -> Details page
+                        // We can't prefill state here easily without context, but Google Auth provider 
+                        // is authoritative. The user will select role in Details.
+                        navigate('/details');
+                    }
+                    setLoading(false);
+                }
+            } catch (err) {
+                console.error("Redirect Error:", err);
+                setError(err.message);
+                setLoading(false);
+            }
+        };
+        checkRedirect();
+    }, [navigate]);
+
+    const checkUserExists = async (uid) => {
+        // 1. Check 'users' (Student)
+        let docSnap = await getDoc(doc(db, "users", uid));
+        if (docSnap.exists()) return { role: docSnap.data().role, isNew: !docSnap.data().profileCompleted };
+
+        // 2. Check 'teachers'
+        docSnap = await getDoc(doc(db, "teachers", uid));
+        if (docSnap.exists()) return { role: 'teacher', isNew: !docSnap.data().profileCompleted };
+
+        // 3. Check 'institutions'
+        docSnap = await getDoc(doc(db, "institutions", uid));
+        if (docSnap.exists()) return { role: 'institution', isNew: false };
+
+        return { role: null, isNew: true };
+    };
+
     const handleGoogleSignIn = async () => {
         setLoading(true);
         setError('');
         const provider = new GoogleAuthProvider();
         try {
-            const result = await signInWithPopup(auth, provider);
-            const user = result.user;
-
-            // 1. Check if user exists in any collection
-            let userRole = null;
-            let profileCompleted = false;
-
-            const userDoc = await getDoc(doc(db, "users", user.uid));
-            if (userDoc.exists()) {
-                userRole = userDoc.data().role;
-                profileCompleted = userDoc.data().profileCompleted;
-            } else {
-                const instDoc = await getDoc(doc(db, "institutions", user.uid));
-                if (instDoc.exists()) {
-                    userRole = "institution";
-                    profileCompleted = true; // Institutions usually created manually or differently? Assuming true for now.
-                } else {
-                    const teacherDoc = await getDoc(doc(db, "teachers", user.uid));
-                    if (teacherDoc.exists()) {
-                        userRole = "teacher";
-                        profileCompleted = teacherDoc.data().profileCompleted;
-                    }
-                }
-            }
-
-            // 2. Existing User Routing
-            if (userRole) {
-                if (profileCompleted) {
-                    redirectToRolePage(userRole);
-                } else {
-                    navigate('/details');
-                }
-                return;
-            }
-
-            // 3. New User Flow -> Switch to Sign Up Mode to collect Role/Details
-            // User is Auth'd but has no Firestore Doc.
-            // We flip the UI to Sign Up, prefill info, and let them finish.
-            setIsLogin(false); // Switch to Sign Up
-            setEmail(user.email);
-            setName(user.displayName);
-            // We need to ensure handleAuth handles this "Post-Google-Auth" setup.
-            // For now, let's assume valid state makes handleAuth work or we explicitly handle saving.
-            // Actually, if they are legally signed in, we shouldn't ask for password necessarily, but the user asked for it.
-            // If we are strictly following "Sign Up Auto Fill", let's just fill and let them edit/submit.
-
+            // Use Redirect instead of Popup for 100% Mobile Compatibility
+            await signInWithRedirect(auth, provider);
+            // Code here won't execute due to redirect
         } catch (err) {
             console.error(err);
             setError(err.message.replace('Firebase: ', ''));
-        } finally {
             setLoading(false);
         }
     };
 
+    // -------------------------------------------------------------
+    // EMAIL / PASSWORD AUTH
+    // -------------------------------------------------------------
     const handleAuth = async (e) => {
         e.preventDefault();
         setError('');
@@ -99,8 +111,6 @@ export default function Login() {
                 return;
             }
         } else {
-            // Signup validation
-            // Fields required depend on role
             if (!email || !password || !role || !name) {
                 setError('Please fill in all required fields.');
                 return;
@@ -119,54 +129,25 @@ export default function Login() {
                 const userCredential = await signInWithEmailAndPassword(auth, email, password);
                 const uid = userCredential.user.uid;
 
-                // Check user role in 'users'
-                const userDoc = await getDoc(doc(db, "users", uid));
-                if (userDoc.exists()) {
-                    const data = userDoc.data();
-                    if (data.profileCompleted) {
-                        redirectToRolePage(data.role);
-                    } else {
-                        navigate('/details');
-                    }
-                    return;
+                // Reuse check logic
+                const { role: dbRole, isNew } = await checkUserExists(uid);
+
+                if (dbRole) {
+                    if (isNew) navigate('/details');
+                    else redirectToRolePage(dbRole);
+                } else {
+                    // Fallback if role selected in dropdown doesn't match DB? 
+                    // Actually checkUserExists ignores dropdown. 
+                    // If user selects 'Student' but is 'Teacher' in DB, we route to Teacher. Correct.
+                    // If absolutely no record, route to Details.
+                    navigate('/details');
                 }
 
-                // Check in 'institutions'
-                const instDoc = await getDoc(doc(db, "institutions", uid));
-                if (instDoc.exists()) {
-                    redirectToRolePage("institution");
-                    return;
-                }
-
-                // Check in 'teachers'
-                const teacherDoc = await getDoc(doc(db, "teachers", uid));
-                if (teacherDoc.exists()) {
-                    // Profile completeness check for teacher? Default to true or check fields
-                    const tData = teacherDoc.data();
-                    if (tData.profileCompleted) {
-                        redirectToRolePage("teacher");
-                    } else {
-                        navigate('/details');
-                    }
-                    return;
-                }
-
-                // Fallback
-                navigate('/admission');
             } else {
                 // Signup Logic
                 let uid;
-
-                // If user is already authenticated (e.g. via Google but new to DB), use their UID.
                 if (auth.currentUser) {
                     uid = auth.currentUser.uid;
-                    // Note: If they set a password here, we might want to update it, but usually Google Users manage pass via Google.
-                    // The user specifically asked to "set a password". 
-                    // To add a password to a Google Provider account, we'd need to linkCredential. 
-                    // For simplicity and to avoid errors (and since Google accounts don't strictly *need* a separate pass), 
-                    // we will skip password update unless strictly required. 
-                    // If the user *typed* a password and we are just setting up DB, we ignore it for Auth purposes 
-                    // unless we want to link Email/Pass provider. Let's just create the doc.
                 } else {
                     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                     uid = userCredential.user.uid;
@@ -189,7 +170,6 @@ export default function Login() {
                     await setDoc(doc(db, "users", uid), userData);
                 }
 
-                // New users go to Details page first
                 navigate('/details');
             }
         } catch (err) {
