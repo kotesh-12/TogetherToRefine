@@ -187,24 +187,12 @@ export default function Login() {
         setError('');
         const provider = new GoogleAuthProvider();
         try {
-            // Using Popup for better Desktop experience and debugging
-            const result = await signInWithPopup(auth, provider);
-            const user = result.user;
-
-            // Check existing user role
-            const { role, isNew } = await checkUserExists(user.uid);
-            console.log("Google Auth Success: ", role, isNew);
-
-            if (role && !isNew) {
-                redirectToRolePage(role);
-            } else {
-                navigate('/details');
-            }
+            // Reverting to Redirect strategy as Popup may be blocked or hanging
+            await signInWithRedirect(auth, provider);
+            // Note: execution stops here as page redirects
         } catch (err) {
             console.error("Google Sign In Error:", err);
             setError(err.message.replace('Firebase: ', ''));
-        } finally {
-            // Only stop loading if we didn't navigate (though navigation might unmount, it's safer)
             setLoading(false);
         }
     };
