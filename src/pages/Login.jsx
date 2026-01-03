@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     GoogleAuthProvider,
-    signInWithPopup,
     signInWithRedirect,
+    signInWithPopup,
     getRedirectResult
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -32,71 +32,74 @@ export default function Login() {
         setError('');
     };
 
+    const checkUserExists = async (uid) => {
+        try {
+            // 1. Check 'users' (Student)
+            let docSnap = await getDoc(doc(db, "users", uid));
+            if (docSnap.exists()) return { role: docSnap.data().role, isNew: !docSnap.data().profileCompleted };
+
+            // 2. Check 'teachers'
+            docSnap = await getDoc(doc(db, "teachers", uid));
+            if (docSnap.exists()) return { role: 'teacher', isNew: !docSnap.data().profileCompleted };
+
+            // 3. Check 'institutions'
+            docSnap = await getDoc(doc(db, "institutions", uid));
+            if (docSnap.exists()) return { role: 'institution', isNew: false };
+
+            return { role: null, isNew: true };
+        } catch (e) {
+            console.error("Error checking user existence:", e);
+            throw e;
+        }
+    };
+
+    const redirectToRolePage = (role) => {
+        switch (role) {
+            case 'student': navigate('/student'); break;
+            case 'teacher': navigate('/teacher'); break;
+            case 'institution': navigate('/institution'); break;
+            default: navigate('/admission');
+        }
+    };
+
     // -------------------------------------------------------------
-    // REDIRECT AUTH HANDLER (Mobile Friendly)
+    // REDIRECT AUTH HANDLER
     // -------------------------------------------------------------
     useEffect(() => {
+        let isMounted = true;
         const checkRedirect = async () => {
+            if (!auth) return;
             try {
                 const result = await getRedirectResult(auth);
-                if (result) {
+                if (result && isMounted) {
                     setLoading(true);
                     const user = result.user;
                     console.log("Redirect result user:", user.email);
 
                     // Check existing user role
                     const { role, isNew } = await checkUserExists(user.uid);
+                    console.log("Redirect Auth Checked: ", role, isNew);
 
                     if (role && !isNew) {
                         // User exists and has profile -> Dashboard
                         redirectToRolePage(role);
                     } else {
                         // New user or incomplete profile -> Details page
-                        // We can't prefill state here easily without context, but Google Auth provider 
-                        // is authoritative. The user will select role in Details.
                         navigate('/details');
                     }
-                    setLoading(false);
+                    if (isMounted) setLoading(false);
                 }
             } catch (err) {
                 console.error("Redirect Error:", err);
-                setError(err.message);
-                setLoading(false);
+                if (isMounted) {
+                    setError(err.message);
+                    setLoading(false);
+                }
             }
         };
         checkRedirect();
+        return () => { isMounted = false; };
     }, [navigate]);
-
-    const checkUserExists = async (uid) => {
-        // 1. Check 'users' (Student)
-        let docSnap = await getDoc(doc(db, "users", uid));
-        if (docSnap.exists()) return { role: docSnap.data().role, isNew: !docSnap.data().profileCompleted };
-
-        // 2. Check 'teachers'
-        docSnap = await getDoc(doc(db, "teachers", uid));
-        if (docSnap.exists()) return { role: 'teacher', isNew: !docSnap.data().profileCompleted };
-
-        // 3. Check 'institutions'
-        docSnap = await getDoc(doc(db, "institutions", uid));
-        if (docSnap.exists()) return { role: 'institution', isNew: false };
-
-        return { role: null, isNew: true };
-    };
-
-    const handleGoogleSignIn = async () => {
-        setLoading(true);
-        setError('');
-        const provider = new GoogleAuthProvider();
-        try {
-            // Use Redirect instead of Popup for 100% Mobile Compatibility
-            await signInWithRedirect(auth, provider);
-            // Code here won't execute due to redirect
-        } catch (err) {
-            console.error(err);
-            setError(err.message.replace('Firebase: ', ''));
-            setLoading(false);
-        }
-    };
 
     // -------------------------------------------------------------
     // EMAIL / PASSWORD AUTH
@@ -126,20 +129,24 @@ export default function Login() {
         try {
             if (isLogin) {
                 // Login Logic
+                console.log("Attempting SignInWithEmailAndPassword...", email);
                 const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                console.log("User Logged In:", userCredential.user.uid);
                 const uid = userCredential.user.uid;
 
-                // Reuse check logic
                 const { role: dbRole, isNew } = await checkUserExists(uid);
+                console.log("Checked Role:", dbRole, "IsNew:", isNew);
 
                 if (dbRole) {
-                    if (isNew) navigate('/details');
-                    else redirectToRolePage(dbRole);
+                    if (isNew) {
+                        console.log("Redirecting to Details...");
+                        navigate('/details');
+                    } else {
+                        console.log("Redirecting to Role Page:", dbRole);
+                        redirectToRolePage(dbRole);
+                    }
                 } else {
-                    // Fallback if role selected in dropdown doesn't match DB? 
-                    // Actually checkUserExists ignores dropdown. 
-                    // If user selects 'Student' but is 'Teacher' in DB, we route to Teacher. Correct.
-                    // If absolutely no record, route to Details.
+                    console.log("Role not found in DB. Navigate to details for setup.");
                     navigate('/details');
                 }
 
@@ -162,13 +169,8 @@ export default function Login() {
                     profileCompleted: false
                 };
 
-                if (role === 'institution') {
-                    await setDoc(doc(db, "institutions", uid), userData);
-                } else if (role === 'teacher') {
-                    await setDoc(doc(db, "teachers", uid), userData);
-                } else {
-                    await setDoc(doc(db, "users", uid), userData);
-                }
+                const collectionName = role === 'institution' ? "institutions" : (role === 'teacher' ? "teachers" : "users");
+                await setDoc(doc(db, collectionName, uid), userData);
 
                 navigate('/details');
             }
@@ -180,21 +182,34 @@ export default function Login() {
         }
     };
 
-    const redirectToRolePage = (role) => {
-        switch (role) {
-            case 'student':
-                navigate('/student');
-                break;
-            case 'teacher':
-                navigate('/teacher');
-                break;
-            case 'institution':
-                navigate('/institution');
-                break;
-            default:
-                navigate('/admission');
+    const handleGoogleSignIn = async () => {
+        setLoading(true);
+        setError('');
+        const provider = new GoogleAuthProvider();
+        try {
+            // Using Popup for better Desktop experience and debugging
+            const result = await signInWithPopup(auth, provider);
+            const user = result.user;
+
+            // Check existing user role
+            const { role, isNew } = await checkUserExists(user.uid);
+            console.log("Google Auth Success: ", role, isNew);
+
+            if (role && !isNew) {
+                redirectToRolePage(role);
+            } else {
+                navigate('/details');
+            }
+        } catch (err) {
+            console.error("Google Sign In Error:", err);
+            setError(err.message.replace('Firebase: ', ''));
+        } finally {
+            // Only stop loading if we didn't navigate (though navigation might unmount, it's safer)
+            setLoading(false);
         }
     };
+
+    if (!auth) return <div className="login-container"><div className="card">Error: Firebase Auth not initialized.</div></div>;
 
     return (
         <div className="login-container">
