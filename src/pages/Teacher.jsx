@@ -1,7 +1,6 @@
 import React from 'react';
 import AIBadge from '../components/AIBadge';
 import AnnouncementBar from '../components/AnnouncementBar';
-import BottomNav from '../components/BottomNav';
 import { useNavigate } from 'react-router-dom';
 
 export default function Teacher() {
@@ -23,8 +22,6 @@ export default function Teacher() {
                     </div>
                 </div>
             </div>
-
-            <BottomNav />
         </div>
     );
 }

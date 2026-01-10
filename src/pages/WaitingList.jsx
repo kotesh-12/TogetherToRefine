@@ -109,6 +109,39 @@ export default function WaitingList() {
                     </div>
                 )}
             </div>
+
+            {/* Manual Approval Tool */}
+            <div className="card" style={{ marginTop: '30px', borderTop: '4px solid #fab1a0' }}>
+                <h3>🛠️ Admin Troubleshooting</h3>
+                <p className="text-muted">If a user is stuck in "Pending" even after allotment, enter their UID below to force-approve them.</p>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    <input
+                        id="manualUid"
+                        className="input-field"
+                        placeholder="Paste User UID (from Firebase Auth)..."
+                        style={{ flex: 1 }}
+                    />
+                    <button className="btn" style={{ backgroundColor: '#2d3436' }} onClick={async () => {
+                        const uid = document.getElementById('manualUid').value.trim();
+                        if (!uid) return alert("Enter a UID");
+
+                        try {
+                            // Try both collections
+                            await updateDoc(doc(db, "users", uid), { approved: true, updatedAt: new Date() });
+                            alert(`✅ Validated student ${uid}. They should now be able to login.`);
+                        } catch (e) {
+                            try {
+                                await updateDoc(doc(db, "teachers", uid), { approved: true, updatedAt: new Date() });
+                                alert(`✅ Validated teacher ${uid}. They should now be able to login.`);
+                            } catch (e2) {
+                                alert("❌ Failed. Ensure UID is correct and user exists in Firestore 'users' or 'teachers'. " + e2.message);
+                            }
+                        }
+                    }}>
+                        Force Approve
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }

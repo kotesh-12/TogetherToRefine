@@ -26,46 +26,88 @@ export function UserProvider({ children }) {
             if (currentUser) {
                 setLoading(true);
 
-                // 1. Try 'users' collection with real-time listener
-                unsubscribeSnapshot = onSnapshot(doc(db, "users", currentUser.uid), async (docSnap) => {
-                    if (docSnap.exists()) {
-                        console.log("User data found in 'users'");
-                        setUserData({ ...docSnap.data(), uid: currentUser.uid, collection: 'users' });
-                        setLoading(false);
-                    } else {
-                        // 2. Fallback: Check 'institutions' or 'teachers' (One-time fetch for simplicity, or could chain listeners)
-                        console.log("User not in 'users', checking others...");
-
-                        try {
-                            const instSnap = await getDoc(doc(db, "institutions", currentUser.uid));
-                            if (instSnap.exists()) {
-                                console.log("User found in 'institutions'");
-                                setUserData({ ...instSnap.data(), uid: currentUser.uid, collection: 'institutions' });
-                                setLoading(false);
-                                return;
-                            }
-
-                            const teachSnap = await getDoc(doc(db, "teachers", currentUser.uid));
-                            if (teachSnap.exists()) {
-                                console.log("User found in 'teachers'");
-                                setUserData({ ...teachSnap.data(), uid: currentUser.uid, collection: 'teachers' });
-                                setLoading(false);
-                                return;
-                            }
-
-                            // No profile found
-                            console.log("No profile found for user.");
-                            setUserData(null);
-                        } catch (e) {
-                            console.error("Error checking user roles:", e);
-                        } finally {
+                const detectFull = async () => {
+                    // 1. Check Institution
+                    const instRef = doc(db, "institutions", currentUser.uid);
+                    const instSnap = await getDoc(instRef);
+                    if (instSnap.exists()) {
+                        unsubscribeSnapshot = onSnapshot(instRef, (d) => {
+                            setUserData({ ...d.data(), uid: currentUser.uid, collection: 'institutions', role: 'institution' });
+                            localStorage.setItem('user_collection_cache', 'institutions');
                             setLoading(false);
-                        }
+                        });
+                        return;
                     }
-                }, (error) => {
-                    console.error("Firestore Snapshot Error:", error);
-                    setLoading(false);
-                });
+
+                    // 2. Check Teacher
+                    const teachRef = doc(db, "teachers", currentUser.uid);
+                    const teachSnap = await getDoc(teachRef);
+                    if (teachSnap.exists()) {
+                        unsubscribeSnapshot = onSnapshot(teachRef, (d) => {
+                            setUserData({ ...d.data(), uid: currentUser.uid, collection: 'teachers', role: 'teacher' });
+                            localStorage.setItem('user_collection_cache', 'teachers');
+                            setLoading(false);
+                        });
+                        return;
+                    }
+
+                    // 3. Fallback to Student ('users')
+                    const userRef = doc(db, "users", currentUser.uid);
+                    unsubscribeSnapshot = onSnapshot(userRef, (d) => {
+                        if (d.exists()) {
+                            console.log("Found in 'users'");
+                            setUserData({ ...d.data(), uid: currentUser.uid, collection: 'users', role: d.data().role || 'student' });
+                            localStorage.setItem('user_collection_cache', 'users');
+                        } else {
+                            console.log("User document not found in any collection.");
+                            setUserData(null);
+                        }
+                        setLoading(false);
+                    });
+                };
+
+                // Strategy: Check cached collection first, then priority sequence
+                const detectAndSubscribe = async () => {
+                    try {
+                        const cachedCollection = localStorage.getItem('user_collection_cache');
+
+                        // Helper to subscribe
+                        const subscribe = (col, roleName) => {
+                            return onSnapshot(doc(db, col, currentUser.uid), (d) => {
+                                if (d.exists()) {
+                                    setUserData({ ...d.data(), uid: currentUser.uid, collection: col, role: d.data().role || roleName });
+                                    localStorage.setItem('user_collection_cache', col); // Cache it!
+                                    setLoading(false);
+                                } else {
+                                    // If cached lookup failed (doc deleted?), retry full detection
+                                    if (col === cachedCollection) {
+                                        localStorage.removeItem('user_collection_cache');
+                                        detectFull();
+                                    } else {
+                                        setUserData(null);
+                                        setLoading(false);
+                                    }
+                                }
+                            });
+                        };
+
+                        // Fast Path: Use Cache
+                        if (cachedCollection) {
+                            console.log("Using cached collection:", cachedCollection);
+                            unsubscribeSnapshot = subscribe(cachedCollection, cachedCollection === 'users' ? 'student' : (cachedCollection === 'institutions' ? 'institution' : 'teacher'));
+                            return;
+                        }
+
+                        // Slow Path: Full Detection
+                        await detectFull();
+
+                    } catch (err) {
+                        console.error("Error detecting user role:", err);
+                        setLoading(false);
+                    }
+                };
+
+                detectAndSubscribe();
 
             } else {
                 setUserData(null);

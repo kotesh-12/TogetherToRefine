@@ -1,55 +1,81 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
+import './App.css';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Login from './pages/Login';
-import Student from './pages/Student';
-import Teacher from './pages/Teacher';
-import Institution from './pages/Institution';
-import Admission from './pages/Admission';
-import Profile from './pages/Profile';
-import ProfileView from './pages/ProfileView';
-import Group from './pages/Group';
-import Allotment from './pages/Allotment';
-import Details from './pages/Details';
-import TTRAI from './pages/TTRAI';
-import WaitingList from './pages/WaitingList';
-import Attendance from './pages/Attendance';
-import GeneralFeedback from './pages/GeneralFeedback';
-import Exam from './pages/Exam';
-import Health from './pages/Health';
-import FeedbackOverview from './pages/FeedbackOverview';
-import Report from './pages/Report';
-import FourWayLearning from './pages/FourWayLearning.jsx';
-import VideoLibrary from './pages/VideoLibrary';
-
 import { UserProvider } from './context/UserContext';
 
+// Lazy loading components for better optimization
+const Login = lazy(() => import('./pages/Login'));
+const Student = lazy(() => import('./pages/Student'));
+const Teacher = lazy(() => import('./pages/Teacher'));
+const Institution = lazy(() => import('./pages/Institution'));
+const Admission = lazy(() => import('./pages/Admission'));
+const Profile = lazy(() => import('./pages/Profile'));
+const ProfileView = lazy(() => import('./pages/ProfileView'));
+const Group = lazy(() => import('./pages/Group'));
+const Allotment = lazy(() => import('./pages/Allotment'));
+const Details = lazy(() => import('./pages/Details'));
+const TTRAI = lazy(() => import('./pages/TTRAI'));
+const WaitingList = lazy(() => import('./pages/WaitingList'));
+const Attendance = lazy(() => import('./pages/Attendance'));
+const GeneralFeedback = lazy(() => import('./pages/GeneralFeedback'));
+const Exam = lazy(() => import('./pages/Exam'));
+const Health = lazy(() => import('./pages/Health'));
+const FeedbackOverview = lazy(() => import('./pages/FeedbackOverview'));
+const Report = lazy(() => import('./pages/Report'));
+const FourWayLearning = lazy(() => import('./pages/FourWayLearning.jsx'));
+const PendingApproval = lazy(() => import('./pages/PendingApproval'));
+import ProtectedRoute from './components/ProtectedRoute';
+
+const MainLayout = lazy(() => import('./components/MainLayout'));
 
 function App() {
   return (
     <UserProvider>
       <Router>
-        <Routes>
-          <Route path="/" element={<Login />} />
-          <Route path="/student" element={<Student />} />
-          <Route path="/teacher" element={<Teacher />} />
-          <Route path="/institution" element={<Institution />} />
-          <Route path="/admission" element={<Admission />} />
-          <Route path="/waiting-list" element={<WaitingList />} />
-          <Route path="/attendance" element={<Attendance />} />
-          <Route path="/general-feedback" element={<GeneralFeedback />} />
-          <Route path="/exam" element={<Exam />} />
-          <Route path="/health" element={<Health />} />
-          <Route path="/feedback-overview" element={<FeedbackOverview />} />
-          <Route path="/report-harassment" element={<Report type="sexual_harassment" />} />
-          <Route path="/report-misbehavior" element={<Report type="misbehavior" />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/profileview" element={<ProfileView />} />
-          <Route path="/group" element={<Group />} />
-          <Route path="/allotment" element={<Allotment />} />
-          <Route path="/details" element={<Details />} />
-          <Route path="/ttr-ai" element={<TTRAI />} />
-          <Route path="/4-way-learning" element={<FourWayLearning />} />
-        </Routes>
+        <Suspense fallback={<div className="container" style={{ textAlign: 'center', marginTop: '50px' }}>Loading...</div>}>
+          <Routes>
+            <Route path="/" element={<Login />} />
+            <Route path="/details" element={<Details />} />
+            <Route path="/pending-approval" element={<PendingApproval />} />
+
+            <Route element={<MainLayout />}>
+              {/* Common Routes (Accessible to all authenticated users) */}
+              <Route element={<ProtectedRoute allowedRoles={['student', 'teacher', 'institution']} />}>
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/profileview" element={<ProfileView />} />
+                <Route path="/group" element={<Group />} />
+                <Route path="/details" element={<Details />} /> {/* Sometimes needed for editing */}
+                <Route path="/general-feedback" element={<GeneralFeedback />} />
+                <Route path="/report-harassment" element={<Report type="sexual_harassment" />} />
+                <Route path="/report-misbehavior" element={<Report type="misbehavior" />} />
+                <Route path="/ttr-ai" element={<TTRAI />} />
+                <Route path="/4-way-learning" element={<FourWayLearning />} />
+                <Route path="/health" element={<Health />} />
+              </Route>
+
+              {/* Student Only */}
+              <Route element={<ProtectedRoute allowedRoles={['student']} />}>
+                <Route path="/student" element={<Student />} />
+                <Route path="/exam" element={<Exam />} /> {/* Usually students take exams */}
+              </Route>
+
+              {/* Teacher Only */}
+              <Route element={<ProtectedRoute allowedRoles={['teacher']} />}>
+                <Route path="/teacher" element={<Teacher />} />
+                <Route path="/attendance" element={<Attendance />} />
+                <Route path="/feedback-overview" element={<FeedbackOverview />} />
+              </Route>
+
+              {/* Institution/Admin Only */}
+              <Route element={<ProtectedRoute allowedRoles={['institution']} />}>
+                <Route path="/institution" element={<Institution />} />
+                <Route path="/admission" element={<Admission />} />
+                <Route path="/waiting-list" element={<WaitingList />} />
+                <Route path="/allotment" element={<Allotment />} />
+              </Route>
+            </Route>
+          </Routes>
+        </Suspense>
       </Router>
     </UserProvider>
   );

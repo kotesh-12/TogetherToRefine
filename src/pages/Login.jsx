@@ -4,8 +4,8 @@ import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     GoogleAuthProvider,
-    signInWithRedirect,
     signInWithPopup,
+    signInWithRedirect,
     getRedirectResult
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -16,14 +16,13 @@ export default function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
-    const [role, setRole] = useState('');
+    const [role, setRole] = useState('student'); // Default to student to avoid empty state issues
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
     // New Fields (Legacy for Email/Pass signup)
     const [name, setName] = useState('');
     const [gender, setGender] = useState('');
-    const [grade, setGrade] = useState('');
 
     const navigate = useNavigate();
 
@@ -34,17 +33,17 @@ export default function Login() {
 
     const checkUserExists = async (uid) => {
         try {
-            // 1. Check 'users' (Student)
-            let docSnap = await getDoc(doc(db, "users", uid));
-            if (docSnap.exists()) return { role: docSnap.data().role, isNew: !docSnap.data().profileCompleted };
+            // 1. Check 'institutions' (Priority High)
+            let docSnap = await getDoc(doc(db, "institutions", uid));
+            if (docSnap.exists()) return { role: 'institution', isNew: false, approved: true };
 
             // 2. Check 'teachers'
             docSnap = await getDoc(doc(db, "teachers", uid));
-            if (docSnap.exists()) return { role: 'teacher', isNew: !docSnap.data().profileCompleted };
+            if (docSnap.exists()) return { role: 'teacher', isNew: !docSnap.data().profileCompleted, approved: docSnap.data().approved };
 
-            // 3. Check 'institutions'
-            docSnap = await getDoc(doc(db, "institutions", uid));
-            if (docSnap.exists()) return { role: 'institution', isNew: false };
+            // 3. Check 'users' (Student - Fallback)
+            docSnap = await getDoc(doc(db, "users", uid));
+            if (docSnap.exists()) return { role: docSnap.data().role || 'student', isNew: !docSnap.data().profileCompleted, approved: docSnap.data().approved };
 
             return { role: null, isNew: true };
         } catch (e) {
@@ -77,12 +76,15 @@ export default function Login() {
                     console.log("Redirect result user:", user.email);
 
                     // Check existing user role
-                    const { role, isNew } = await checkUserExists(user.uid);
-                    console.log("Redirect Auth Checked: ", role, isNew);
+                    const { role, isNew, approved } = await checkUserExists(user.uid);
+                    console.log("Redirect Auth Checked: ", role, isNew, approved);
 
                     if (role && !isNew) {
-                        // User exists and has profile -> Dashboard
-                        redirectToRolePage(role);
+                        if (approved === false) {
+                            navigate('/pending-approval');
+                        } else {
+                            redirectToRolePage(role);
+                        }
                     } else {
                         // New user or incomplete profile -> Details page
                         navigate('/details');
@@ -134,16 +136,20 @@ export default function Login() {
                 console.log("User Logged In:", userCredential.user.uid);
                 const uid = userCredential.user.uid;
 
-                const { role: dbRole, isNew } = await checkUserExists(uid);
-                console.log("Checked Role:", dbRole, "IsNew:", isNew);
+                const { role: dbRole, isNew, approved } = await checkUserExists(uid);
+                console.log("Checked Role:", dbRole, "IsNew:", isNew, "Approved:", approved);
 
                 if (dbRole) {
                     if (isNew) {
                         console.log("Redirecting to Details...");
                         navigate('/details');
                     } else {
-                        console.log("Redirecting to Role Page:", dbRole);
-                        redirectToRolePage(dbRole);
+                        if (approved === false) {
+                            navigate('/pending-approval');
+                        } else {
+                            console.log("Redirecting to Role Page:", dbRole);
+                            redirectToRolePage(dbRole);
+                        }
                     }
                 } else {
                     console.log("Role not found in DB. Navigate to details for setup.");
@@ -172,7 +178,7 @@ export default function Login() {
                 const collectionName = role === 'institution' ? "institutions" : (role === 'teacher' ? "teachers" : "users");
                 await setDoc(doc(db, collectionName, uid), userData);
 
-                navigate('/details');
+                navigate('/details', { state: { role } });
             }
         } catch (err) {
             console.error(err);
@@ -186,13 +192,42 @@ export default function Login() {
         setLoading(true);
         setError('');
         const provider = new GoogleAuthProvider();
+        provider.addScope('profile');
+        provider.addScope('email');
+        // Force the 'select_account' prompt to ask Google to show the account chooser.
+        provider.setCustomParameters({
+            prompt: 'select_account'
+        });
+
         try {
-            // Reverting to Redirect strategy as Popup may be blocked or hanging
-            await signInWithRedirect(auth, provider);
-            // Note: execution stops here as page redirects
+            const result = await signInWithPopup(auth, provider);
+            const user = result.user;
+            console.log("Google Popup Success:", user.email);
+
+            // Check existing user role
+            // Check existing user role
+            const { role: dbRole, isNew, approved } = await checkUserExists(user.uid);
+
+            if (dbRole && !isNew) {
+                if (approved === false) {
+                    navigate('/pending-approval');
+                } else {
+                    redirectToRolePage(dbRole);
+                }
+            } else {
+                // Pass the selected role from the UI dropdown (state 'role') to Details page
+                navigate('/details', { state: { role: role } });
+            }
+
         } catch (err) {
-            console.error("Google Sign In Error:", err);
-            setError(err.message.replace('Firebase: ', ''));
+            console.error("Google Auth Error:", err);
+            // Handle 'popup-closed-by-user' gracefully
+            if (err.code === 'auth/popup-closed-by-user') {
+                setError('Sign-in cancelled.');
+            } else {
+                setError(err.message.replace('Firebase: ', ''));
+            }
+        } finally {
             setLoading(false);
         }
     };
@@ -254,7 +289,7 @@ export default function Login() {
                         required
                     />
 
-                    <div className="password-wrapper" style={{ position: 'relative' }}>
+                    <div className="password-wrapper">
                         <input
                             type={showPassword ? "text" : "password"}
                             className="input-field"
@@ -267,38 +302,25 @@ export default function Login() {
                             type="button"
                             className="password-toggle"
                             onClick={() => setShowPassword(!showPassword)}
-                            style={{
-                                position: 'absolute',
-                                right: '10px',
-                                top: '35%',
-                                transform: 'translateY(-50%)',
-                                background: 'none',
-                                border: 'none',
-                                color: '#666',
-                                cursor: 'pointer',
-                                fontSize: '0.8rem',
-                                fontWeight: 'bold'
-                            }}
                         >
                             {showPassword ? "HIDE" : "SHOW"}
                         </button>
                     </div>
 
-                    <button type="submit" className="btn" style={{ width: '100%' }} disabled={loading}>
+                    <button type="submit" className="btn full-width" disabled={loading}>
                         {loading ? 'Processing...' : (isLogin ? 'Login' : 'Sign Up')}
                     </button>
                 </form>
 
-                <div style={{ display: 'flex', alignItems: 'center', margin: '20px 0' }}>
-                    <div style={{ flex: 1, height: '1px', background: '#ccc' }} />
-                    <span style={{ padding: '0 10px', color: '#666', fontSize: '14px' }}>OR</span>
-                    <div style={{ flex: 1, height: '1px', background: '#ccc' }} />
+                <div className="auth-divider">
+                    <div className="divider-line" />
+                    <span className="divider-text">OR</span>
+                    <div className="divider-line" />
                 </div>
 
                 <button
                     type="button"
-                    className="btn"
-                    style={{ width: '100%', background: '#fff', color: '#db4437', border: '1px solid #db4437' }}
+                    className="btn google-btn"
                     onClick={handleGoogleSignIn}
                     disabled={loading}
                 >
@@ -308,7 +330,7 @@ export default function Login() {
                 <div className="toggle-link" onClick={toggleMode}>
                     {isLogin ? "Don't have an account? Sign up" : "Already have an account? Login"}
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }

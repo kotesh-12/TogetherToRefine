@@ -1,19 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase';
-import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, addDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import AnnouncementBar from '../components/AnnouncementBar';
 
 export default function TTRAI() {
     const navigate = useNavigate();
-    const [messages, setMessages] = useState([
-        { text: "Hello! I am TTR AI. I'm here to help you with your educational journey. How can I assist you today?", sender: 'ai' }
-    ]);
+    const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
     const [userContext, setUserContext] = useState(null);
     const messagesEndRef = useRef(null);
+    const [currentUser, setCurrentUser] = useState(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -23,15 +22,22 @@ export default function TTRAI() {
         scrollToBottom();
     }, [messages]);
 
+    // 1. Auth & Context Loading
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (user) {
+                setCurrentUser(user);
                 // Fetch User Context for the AI
                 let context = {};
                 let userDoc = await getDoc(doc(db, "users", user.uid));
 
                 if (!userDoc.exists()) {
                     userDoc = await getDoc(doc(db, "institutions", user.uid));
+                }
+
+                // Fallback check for teachers if not found in users/institutions
+                if (!userDoc.exists()) {
+                    userDoc = await getDoc(doc(db, "teachers", user.uid));
                 }
 
                 if (userDoc.exists()) {
@@ -58,6 +64,31 @@ export default function TTRAI() {
         return () => unsubscribe();
     }, [navigate]);
 
+    // 2. Chat History Listener
+    useEffect(() => {
+        if (!currentUser) return;
+
+        const q = query(
+            collection(db, 'ai_chats', currentUser.uid, 'messages'),
+            orderBy('createdAt', 'asc')
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const loadedMsgs = snapshot.docs.map(doc => doc.data());
+
+            if (loadedMsgs.length === 0) {
+                setMessages([
+                    { text: "Hello! I am TTR AI. I'm here to help you with your educational journey. How can I assist you today?", sender: 'ai' }
+                ]);
+            } else {
+                setMessages(loadedMsgs);
+            }
+        });
+
+        return () => unsubscribe();
+    }, [currentUser]);
+
+
     const generateSystemPrompt = (context) => {
         return `
             You are TTR AI, an intelligent educational assistant.
@@ -69,23 +100,22 @@ export default function TTRAI() {
             - Gender: ${context?.gender}
 
             Your Guidelines:
-            1. **Educational Focus**: Your primary goal is to help with educational, career, and future-aim related questions specific to the user's level (Class ${context?.class}).
+            1. **Educational Focus**: Your primary goal is to help with educational, career, and future-aim related questions specific to the user's level.
             2. **Strict Restriction on Non-Educational Topics**: 
                - If the user asks clearly "uneducated" or irrelevant questions (e.g., entertainment, gossip, explicit content, pure nonsense), reply EXACTLY: "I am with you I'm here to help you in your educational and future aim questions only."
             3. **General Knowledge Exception**:
-               - If the user asks a General Knowledge question (e.g., "Who is PM of India?", "Capital of France"), provide a very BRIEF answer (1-2 sentences).
-               - Then, politely pivot back to how this might relate to their studies or simply cut the topic short to make it feel less important than their core studies.
+               - If the user asks a General Knowledge question, provide a very BRIEF answer (1-2 sentences).
+               - Then, politely pivot back to how this might relate to studies.
             4. **Tone**: Encouraging, formal yet accessible, and mentorship-oriented. Matches the user's gender and age group appropriately.
             
             5. **Time Awareness**:
                - Current Date: ${new Date().toDateString()}
                - System Time: ${new Date().toLocaleTimeString()}
-               - Mention the date if asked "What is today?".
             
             6. **Upcoming Schedule / Calendar Context**:
                - The following exams/events are scheduled for students:
-                 ${context?.upcomingEvents?.map(e => `- ${e.title} on ${e.deadline || 'Date TBA'}`).join('\n') || "(No upcoming exams found in calendar)"}
-               - If the user asks about exams, use this schedule to remind them. For example, if "Maths Public Exam" is on May 2nd, remind them how many days are left.
+                 ${context?.upcomingEvents?.map(e => `- ${e.title} on ${e.deadline || 'Date TBA'}`).join('\n') || "(No upcoming exams found)"}
+               - If the user asks about exams, use this schedule to remind them.
         `;
     };
 
@@ -109,9 +139,6 @@ export default function TTRAI() {
             const voices = window.speechSynthesis.getVoices();
 
             // Priority list for "Sweet/Student Friendly" voices
-            // 1. Google US English (Clean, often female)
-            // 2. Microsoft Zira (Standard Windows Female)
-            // 3. Samantha (Mac)
             const preferredVoice = voices.find(v => v.name.includes("Google US English")) ||
                 voices.find(v => v.name.includes("Zira")) ||
                 voices.find(v => v.name.includes("Samantha")) ||
@@ -119,9 +146,6 @@ export default function TTRAI() {
 
             if (preferredVoice) utterance.voice = preferredVoice;
 
-            // Pitch & Rate Tuning for "Sweet/Happy" Vibe
-            // Pitch 1.3 = Higher, younger, enthusiastic
-            // Rate 0.95 = Slightly slower, more explanatory and calm
             utterance.pitch = 1.3;
             utterance.rate = 0.95;
             utterance.volume = 1;
@@ -142,8 +166,6 @@ export default function TTRAI() {
 
         if (isListening) {
             setIsListening(false);
-            // It stops naturally or we can force stop if we had a ref
-            // simple toggle logic:
             return;
         }
 
@@ -175,8 +197,22 @@ export default function TTRAI() {
         }
     };
 
+    // Helper to add message to DB
+    const saveMessage = async (msgObj) => {
+        if (!currentUser) return;
+        try {
+            await addDoc(collection(db, 'ai_chats', currentUser.uid, 'messages'), {
+                ...msgObj,
+                createdAt: new Date()
+            });
+        } catch (e) {
+            console.error("Error saving message", e);
+        }
+    };
+
     const handleSend = async () => {
         if (!input.trim() && !selectedImage) return;
+        if (!currentUser) return;
 
         let finalInput = input;
         let systemCtx = generateSystemPrompt(userContext);
@@ -185,9 +221,23 @@ export default function TTRAI() {
         const urlRegex = /(https?:\/\/[^\s]+)/g;
         const urls = input.match(urlRegex);
 
-        // Show user message immediately
         const userMsg = { text: input || "Image Uploaded", image: selectedImage, sender: 'user' };
-        setMessages(prev => [...prev, userMsg]);
+
+        // Optimistic update handled by listener? No, usually listener acts fast but slight delay. 
+        // For smoother UX, we can clear input immediately but rely on listener for display.
+        // Actually, if we use listener, we don't need setMessages here.
+        // BUT, saving image Base64 to Firestore is risky (size limits). 
+        // We will strip the image from the DB object if it's too large, or just not save the image data to history.
+        // For this version: We Save TEXT to history. We preserve Image in local context for this session ONLY?
+        // Or we try to save small ones.
+
+        const dbMsg = { ...userMsg };
+        if (selectedImage && selectedImage.length > 1000000) {
+            delete dbMsg.image; // Don't save large images to Firestore
+            dbMsg.text += " [Image too large to save in history]";
+        }
+
+        saveMessage(dbMsg); // Save User Message
 
         const imageToSend = selectedImage;
         setInput('');
@@ -197,7 +247,7 @@ export default function TTRAI() {
         try {
             // If URL found, fetch content
             if (urls && urls.length > 0) {
-                const url = urls[0]; // Process first URL for now
+                const url = urls[0];
                 try {
                     const fetchRes = await fetch('/api/fetch-url', {
                         method: 'POST',
@@ -214,21 +264,28 @@ export default function TTRAI() {
                 }
             }
 
-            // If image is present, force teacher style
             if (imageToSend) {
                 systemCtx += `
                     \n\n**SPECIAL INSTRUCTION FOR IMAGE/VISUAL INPUT**:
                     The user has uploaded an image or requested visual analysis.
-                    You MUST respond in the **Teacher Style** format:
-                    1. **Formal Text**: Explain the content/topic in formal English.
-                    2. **Teacher's Explanation**: Explain it simply in a conversational mix of English and the user's likely mother tongue. 
-                    Focus on making it understood easily.
+                    Respond in 'Teacher Style' format.
                 `;
             }
 
+            // BUILD HISTORY FROM PREVIOUS MESSAGES
+            // Map our specific message format to Gemini's expected format
+            // Limit to last 10 messages for context window
+            const previousHistory = messages.slice(-10).map(m => ({
+                role: m.sender === 'user' ? 'user' : 'model',
+                parts: [{ text: m.text }]
+            }));
+
             const history = [
-                { role: "user", parts: [{ text: systemCtx }] },
-                { role: "model", parts: [{ text: "Understood. I am TTR AI, ready to assist." }] }
+                { role: "user", parts: [{ text: systemCtx }] }, // System instruction as first user message or separate? 
+                // Gemini often takes system instruction separately or as first turn. 
+                // We'll put it first.
+                { role: "model", parts: [{ text: "Understood. I am ready." }] },
+                ...previousHistory
             ];
 
             const response = await fetch('/api/chat', {
@@ -251,12 +308,12 @@ export default function TTRAI() {
 
             const data = await response.json();
 
-            setMessages(prev => [...prev, { text: data.text, sender: 'ai' }]);
-
-            // Auto-speak removed as per user request. User can click speaker icon.
+            // Save AI Response to DB
+            saveMessage({ text: data.text, sender: 'ai' });
 
         } catch (error) {
             console.error("AI Error:", error);
+            // Save error as local message only? Or db?
             setMessages(prev => [...prev, { text: "Error: " + error.message, sender: 'ai', isError: true }]);
         } finally {
             setLoading(false);
@@ -264,37 +321,22 @@ export default function TTRAI() {
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#f0f2f5' }}>
+        <div className="ttr-ai-container">
             {/* Header */}
             <AnnouncementBar title="TTR AI Assistant ✨" leftIcon="back" />
 
             {/* Chat Area */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <div className="chat-area">
                 {messages.map((msg, idx) => (
-                    <div key={idx} style={{
-                        alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
-                        maxWidth: '80%',
-                        backgroundColor: msg.sender === 'user' ? '#6c5ce7' : 'white',
-                        color: msg.sender === 'user' ? 'white' : '#333',
-                        padding: '12px 16px',
-                        borderRadius: '16px',
-                        borderBottomRightRadius: msg.sender === 'user' ? '4px' : '16px',
-                        borderBottomLeftRadius: msg.sender === 'ai' ? '4px' : '16px',
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                        lineHeight: '1.5',
-                        position: 'relative'
-                    }}>
+                    <div key={idx} className={`message-bubble ${msg.sender === 'user' ? 'message-user' : 'message-ai'}`}>
                         {msg.image && (
-                            <img src={msg.image} alt="User Upload" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', marginBottom: '8px', display: 'block' }} />
+                            <img src={msg.image} alt="User Upload" className="message-image" />
                         )}
                         {msg.text}
                         {msg.sender === 'ai' && (
                             <button
                                 onClick={() => speakText(msg.text)}
-                                style={{
-                                    position: 'absolute', bottom: '-25px', left: '0',
-                                    background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px'
-                                }}
+                                className="speak-button"
                                 title={isSpeaking ? "Stop Speaking" : "Read Aloud"}
                             >
                                 {isSpeaking ? '🔇' : '🔊'}
@@ -303,7 +345,7 @@ export default function TTRAI() {
                     </div>
                 ))}
                 {loading && (
-                    <div style={{ alignSelf: 'flex-start', backgroundColor: 'white', padding: '10px', borderRadius: '10px' }}>
+                    <div className="loading-indicator">
                         Typing...
                     </div>
                 )}
@@ -311,38 +353,26 @@ export default function TTRAI() {
             </div>
 
             {/* Input Area */}
-            <div style={{ padding: '20px', backgroundColor: 'white', borderTop: '1px solid #ddd', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div className="input-area">
                 {selectedImage && (
-                    <div style={{ position: 'relative', width: 'fit-content' }}>
-                        <img src={selectedImage} alt="Preview" style={{ height: '80px', borderRadius: '8px', border: '1px solid #ddd' }} />
+                    <div className="image-preview-container">
+                        <img src={selectedImage} alt="Preview" className="image-preview" />
                         <button
                             onClick={() => setSelectedImage(null)}
-                            style={{ position: 'absolute', top: -10, right: -10, background: '#ff7675', color: 'white', border: 'none', borderRadius: '50%', w: '24px', h: '24px', cursor: 'pointer' }}
+                            className="remove-image-button"
                         >✕</button>
                     </div>
                 )}
 
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px', borderRadius: '50%', backgroundColor: '#f0f2f5', color: '#636e72', minWidth: '40px', height: '40px' }}>
+                <div className="input-controls">
+                    <label className="icon-button">
                         📷
                         <input type="file" accept="image/*" onChange={handleImageChange} style={{ display: 'none' }} />
                     </label>
 
                     <button
                         onClick={toggleVoiceInput}
-                        style={{
-                            background: isListening ? '#ff7675' : '#f0f2f5',
-                            color: isListening ? 'white' : '#636e72',
-                            border: 'none',
-                            borderRadius: '50%',
-                            minWidth: '40px',
-                            height: '40px',
-                            cursor: 'pointer',
-                            fontSize: '18px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                        }}
+                        className={`voice-button ${isListening ? 'listening' : ''}`}
                         title="Voice Input"
                     >
                         {isListening ? '🛑' : '🎙️'}
@@ -354,24 +384,12 @@ export default function TTRAI() {
                         onChange={(e) => setInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                         placeholder={selectedImage ? "Add topic..." : "Type, Paste Link, or Speak..."}
-                        style={{ flex: 1, padding: '12px', borderRadius: '24px', border: '1px solid #ddd', outline: 'none' }}
+                        className="chat-input"
                     />
                     <button
                         onClick={handleSend}
                         disabled={loading}
-                        style={{
-                            backgroundColor: '#6c5ce7',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '50%',
-                            width: '46px',
-                            height: '46px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '20px'
-                        }}
+                        className="send-button"
                     >
                         ➤
                     </button>

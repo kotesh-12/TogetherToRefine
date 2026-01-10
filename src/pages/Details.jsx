@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { collection, getDocs, doc, setDoc, getDoc, addDoc } from 'firebase/firestore';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { collection, getDocs, doc, setDoc, getDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
 export default function Details() {
     const navigate = useNavigate();
-    const [role, setRole] = useState('');
+    const location = useLocation();
+
+    // Check if role was passed from Login/Signup page (PRIORITY)
+    const passedRole = location.state?.role;
+
+    const [role, setRole] = useState(passedRole || '');
     const [institutions, setInstitutions] = useState([]);
     const [userId, setUserId] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -18,15 +23,31 @@ export default function Details() {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (user) {
                 setUserId(user.uid);
+
+                // If we received a role from Login page, trust it and skip DB check
+                if (passedRole) {
+                    setRole(passedRole);
+                    setLoading(false);
+                    return;
+                }
+
                 // Try to get role from Firestore if not in local state
                 try {
+                    // Check 'users' (Student)
                     let userDoc = await getDoc(doc(db, "users", user.uid));
                     if (userDoc.exists()) {
                         setRole(userDoc.data().role);
                     } else {
-                        userDoc = await getDoc(doc(db, "institutions", user.uid));
+                        // Check 'teachers'
+                        userDoc = await getDoc(doc(db, "teachers", user.uid));
                         if (userDoc.exists()) {
-                            setRole('institution'); // or userDoc.data().role
+                            setRole('teacher');
+                        } else {
+                            // Check 'institutions'
+                            userDoc = await getDoc(doc(db, "institutions", user.uid));
+                            if (userDoc.exists()) {
+                                setRole('institution');
+                            }
                         }
                     }
                 } catch (e) {
@@ -82,8 +103,18 @@ export default function Details() {
         }
 
         try {
+            // Cleanup: If we are saving as Teacher or Institution, ensure we don't have a record in 'users' that blocks correct login
+            if (role === 'teacher' || role === 'institution') {
+                try {
+                    await deleteDoc(doc(db, "users", userId));
+                    console.log("Cleaned up potential stale user record.");
+                } catch (cleanupErr) {
+                    console.warn("Cleanup warning:", cleanupErr);
+                }
+            }
+
             // Save extra details to Firestore
-            const collectionName = role === 'institution' ? 'institutions' : 'users';
+            const collectionName = role === 'institution' ? 'institutions' : (role === 'teacher' ? 'teachers' : 'users');
 
             // Ensure we merge with existing data, and set profileCompleted
             await setDoc(doc(db, collectionName, userId), {
@@ -100,8 +131,11 @@ export default function Details() {
                     const instSnap = await getDoc(instRef);
                     const instName = instSnap.exists() ? (instSnap.data().schoolName || instSnap.data().name) : "Unknown Institution";
 
-                    // Update user's own doc with Institution Name for display (as per previous Profile request)
-                    await setDoc(doc(db, collectionName, userId), { institutionName: instName }, { merge: true });
+                    // Update user's own doc with Institution Name and SET STATUS TO PENDING (not approved)
+                    await setDoc(doc(db, collectionName, userId), {
+                        institutionName: instName,
+                        approved: false // User cannot access dashboard yet
+                    }, { merge: true });
 
                     // Add to Admissions (Waiting List)
                     await addDoc(collection(db, "admissions"), {
@@ -119,12 +153,17 @@ export default function Details() {
                         joinedAt: new Date()
                     });
 
-                    // Add to Linked Users (optional, maybe redundant with Admissions but keeping for legacy compatibility)
-                    await setDoc(doc(db, "institutions", formData.institutionId, "linkedUsers", userId), {
-                        ...formData,
-                        userId, role, status: 'pending'
-                    });
+                    // Redirect to Pending page
+                    navigate('/pending-approval');
+                    return;
+                } else {
+                    // If no institution selected (e.g. independent), approve immediately?
+                    // Currently required field, but safe fallback:
+                    await setDoc(doc(db, collectionName, userId), { approved: true }, { merge: true });
                 }
+            } else {
+                // Institution role is auto-approved for now (or different flow)
+                await setDoc(doc(db, collectionName, userId), { approved: true }, { merge: true });
             }
 
             console.log("Submission successful, redirecting...");
@@ -145,20 +184,38 @@ export default function Details() {
 
     return (
         <div className="container">
-            <header style={{
-                backgroundColor: '#1e90ff', color: 'white', padding: '15px',
-                textAlign: 'center', fontSize: '24px', fontWeight: 'bold', borderRadius: '10px 10px 0 0'
-            }}>
-                Details
+            <header className="details-header">
+                {role ? `${role.charAt(0).toUpperCase() + role.slice(1)} Profile Setup` : 'Complete Your Profile'}
             </header>
 
-            <div className="card" style={{ marginTop: '0', borderRadius: '0 0 10px 10px' }}>
+            <div className="card details-card">
                 <form onSubmit={handleSubmit}>
+
+                    {/* Role Status and Change Option */}
+                    <div className="role-status-box">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span><strong>Role:</strong> {role ? role.toUpperCase() : 'NOT SELECTED'}</span>
+                            {(!role || true) && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setRole('');
+                                        setFormData({}); // Clear form data to prevent mixups
+                                    }}
+                                    className="change-role-button"
+                                    style={{ marginLeft: '10px', fontSize: '12px', padding: '5px 10px' }}
+                                >
+                                    Change Role ✎
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
 
                     {/* Fallback Role Selection if not detected */}
                     {!role && (
-                        <div className="form-group" style={{ marginBottom: '20px', padding: '10px', background: '#ffeaa7', borderRadius: '5px' }}>
-                            <label style={{ fontWeight: 'bold' }}>⚠️ Role not detected. Please select your role:</label>
+                        <div className="form-group fallback-role-box">
+                            <label className="warning-label">⚠️ Please select your role to continue:</label>
                             <select value={role} onChange={(e) => setRole(e.target.value)} className="input-field" required>
                                 <option value="">-- Select Role --</option>
                                 <option value="student">Student</option>
@@ -171,6 +228,8 @@ export default function Details() {
                     {/* Teacher Fields */}
                     {role === 'teacher' && (
                         <div className="form-group">
+                            <h3 style={{ borderBottom: '2px solid #0984e3', paddingBottom: '5px', marginBottom: '15px', color: '#0984e3' }}>👨‍🏫 Teacher Details</h3>
+
                             <label>First Name</label>
                             <input name="firstName" value={formData.firstName || ''} className="input-field" required onChange={handleChange} />
 
@@ -190,7 +249,7 @@ export default function Details() {
                             <input type="date" name="dob" value={formData.dob || ''} className="input-field" required onChange={handleChange} />
 
                             <label className="text-muted">Experience</label>
-                            <div style={{ display: 'flex', gap: '10px' }}>
+                            <div className="experience-container">
                                 <select name="expYears" value={formData.expYears || '0 Years'} className="input-field" onChange={handleChange}>
                                     <option>0 Years</option><option>1 Year</option><option>2 Years</option><option>3 Years</option><option>4 Years</option><option>5+ Years</option>
                                 </select>
@@ -199,13 +258,15 @@ export default function Details() {
                                 </select>
                             </div>
 
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '10px 0' }}>
+                            <label className="checkbox-label">
                                 <input type="checkbox" name="noExp" checked={formData.noExp || false} onChange={handleChange} /> No Experience
                             </label>
 
-                            <label>Select Your Institution:</label>
+                            <label style={{ color: '#d63031', fontWeight: 'bold', marginTop: '15px' }}>Apply to School/Institution:</label>
+                            {institutions.length === 0 && <p style={{ color: 'red', fontSize: '12px' }}>No registered institutions found. You cannot submit without selecting one.</p>}
+                            <p style={{ fontSize: '12px', color: '#666', marginTop: '-5px', marginBottom: '10px' }}>Select the school you want to join. They will receive your application.</p>
                             <select name="institutionId" value={formData.institutionId || ''} className="input-field" required onChange={handleChange}>
-                                <option value="" disabled>Select an institution</option>
+                                <option value="" disabled>Select a School to Apply</option>
                                 {institutions.map(inst => (
                                     <option key={inst.id} value={inst.id}>{inst.schoolName || inst.name || "Unnamed"}</option>
                                 ))}
@@ -216,6 +277,8 @@ export default function Details() {
                     {/* Student Fields */}
                     {role === 'student' && (
                         <div className="form-group">
+                            <h3 style={{ borderBottom: '2px solid #00b894', paddingBottom: '5px', marginBottom: '15px', color: '#00b894' }}>🎓 Student Details</h3>
+
                             <label>First Name</label>
                             <input name="firstName" value={formData.firstName || ''} className="input-field" required onChange={handleChange} />
 
@@ -228,9 +291,10 @@ export default function Details() {
                                 {['LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'].map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
 
-                            <label>Select Your Institution:</label>
+                            <label style={{ color: '#d63031', fontWeight: 'bold', marginTop: '15px' }}>Apply to School/Institution:</label>
+                            {institutions.length === 0 && <p style={{ color: 'red', fontSize: '12px' }}>No registered institutions found. You cannot submit without selecting one.</p>}
                             <select name="institutionId" value={formData.institutionId || ''} className="input-field" required onChange={handleChange}>
-                                <option value="" disabled>Select an institution</option>
+                                <option value="" disabled>Select a School to Apply</option>
                                 {institutions.map(inst => (
                                     <option key={inst.id} value={inst.id}>{inst.schoolName || inst.name || "Unnamed"}</option>
                                 ))}
@@ -259,6 +323,8 @@ export default function Details() {
                     {/* Institution Fields */}
                     {role === 'institution' && (
                         <div className="form-group">
+                            <h3 style={{ borderBottom: '2px solid #6c5ce7', paddingBottom: '5px', marginBottom: '15px', color: '#6c5ce7' }}>🏫 Institution Registration</h3>
+
                             <label>Chairman Name</label>
                             <input name="chairmanName" value={formData.chairmanName || ''} className="input-field" required onChange={handleChange} />
 
@@ -277,13 +343,13 @@ export default function Details() {
                             <label className="text-muted">Principal Profile Link</label>
                             <input type="url" name="principalLink" value={formData.principalLink || ''} className="input-field" onChange={handleChange} />
 
-                            <h4 style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '10px' }}>📞 Institution Contact Details</h4>
-                            <p className="text-muted" style={{ fontSize: '12px' }}>This will be visible to students for admissions/inquiries.</p>
+                            <h4 className="section-header">📞 Institution Contact Details</h4>
+                            <p className="text-muted help-text">This will be visible to students for admissions/inquiries.</p>
 
                             <label>Official Phone Number</label>
                             <input name="phoneNumber" type="tel" value={formData.phoneNumber || ''} className="input-field" placeholder="+91 9876543210" required onChange={handleChange} />
 
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', margin: '5px 0' }}>
+                            <label className="checkbox-label-sm">
                                 <input
                                     type="checkbox"
                                     onChange={(e) => {
@@ -298,8 +364,8 @@ export default function Details() {
                             <label>WhatsApp Number</label>
                             <input name="whatsappNumber" type="tel" value={formData.whatsappNumber || ''} className="input-field" placeholder="+91 9876543210" required onChange={handleChange} />
 
-                            <h4 style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '10px' }}>🚑 Emergency & Safety Contacts</h4>
-                            <p className="text-muted" style={{ fontSize: '12px' }}>These numbers will be shown to your students in the Report Harassment page.</p>
+                            <h4 className="section-header">🚑 Emergency & Safety Contacts</h4>
+                            <p className="text-muted help-text">These numbers will be shown to your students in the Report Harassment page.</p>
 
                             <label>Local Police Station Name</label>
                             <input name="localPoliceName" value={formData.localPoliceName || ''} className="input-field" placeholder="e.g. Banjara Hills PS" required onChange={handleChange} />
@@ -309,11 +375,19 @@ export default function Details() {
                         </div>
                     )}
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
-                        <button type="submit" className="btn" style={{ flex: 1, backgroundColor: '#2ecc71', color: 'white' }}>Submit Details</button>
+                    <div className="submit-container">
+                        <button type="submit" className="btn submit-button">Submit Details</button>
                     </div>
 
                 </form>
+
+                {/* Debug Info */}
+                <div style={{ marginTop: '30px', borderTop: '1px solid #ddd', paddingTop: '10px', fontSize: '11px', color: '#999' }}>
+                    <strong>Debug Info:</strong><br />
+                    UID: {userId || '...'}<br />
+                    Current Role State: {role || 'None'}<br />
+                    Collection Found: {role === 'teacher' ? 'Teachers' : (role === 'institution' ? 'Institutions' : 'Users/None')}
+                </div>
             </div>
         </div>
     );

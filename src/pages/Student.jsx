@@ -4,7 +4,7 @@ import { db } from '../firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import AIBadge from '../components/AIBadge';
 import AnnouncementBar from '../components/AnnouncementBar';
-import BottomNav from '../components/BottomNav';
+
 
 import { useUser } from '../context/UserContext';
 
@@ -172,7 +172,6 @@ export default function Student() {
                     </div>
                 </div>
             </div>
-            <BottomNav />
         </div>
     );
 }

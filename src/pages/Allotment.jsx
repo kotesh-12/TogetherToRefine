@@ -96,6 +96,31 @@ export default function Allotment() {
                     assignedSection: sec,
                     allottedAt: new Date()
                 });
+
+                // APPROVE THE USER SO THEY CAN LOGIN
+                const userColl = personToAllot.role === 'teacher' ? 'teachers' : 'users';
+                if (personToAllot.userId) {
+                    console.log(`Approving user ${personToAllot.userId} in collection ${userColl}...`);
+                    try {
+                        await setDoc(doc(db, userColl, personToAllot.userId), {
+                            approved: true, // IMPORTANT: Allows login
+                            assignedClass: cls,
+                            assignedSection: sec,
+                            class: cls, // Redundant but safe for different query patterns
+                            section: sec,
+                            updatedAt: new Date()
+                        }, { merge: true });
+                        console.log("User approval successful.");
+                    } catch (appErr) {
+                        console.error("Failed to approve user:", appErr);
+                        alert("Error approving user: " + appErr.message);
+                        return; // Stop if approval fails
+                    }
+                } else {
+                    console.warn("No userId found in personToAllot object, cannot approve main user profile.");
+                    alert("Warning: This applicant record is missing a Link to the User ID. The user might not get access automatically.");
+                }
+
                 alert(`${name} has been successfully allotted to Class ${cls}-${sec}!\nStudy Group '${extra} (${cls}-${sec})' has been created.`);
                 navigate('/waiting-list'); // Go back to waiting list to allot more
                 return;
