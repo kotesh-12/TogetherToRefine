@@ -108,6 +108,8 @@ export default function Allotment() {
                             assignedSection: sec,
                             class: cls, // Redundant but safe for different query patterns
                             section: sec,
+                            // Save Subject (Teacher) or Age (User) to profile so Dashboard works correctly
+                            ...(personToAllot.role === 'teacher' ? { subject: extra } : { age: extra }),
                             updatedAt: new Date()
                         }, { merge: true });
                         console.log("User approval successful.");
