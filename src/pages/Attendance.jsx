@@ -107,7 +107,8 @@ export default function Attendance() {
                     q = query(collection(db, colName), where('classAssigned', '==', cls));
                 }
             } else {
-                q = query(collection(db, colName));
+                // Fetch ONLY teachers created by this specific Institution (or associated with it)
+                q = query(collection(db, colName), where('createdBy', '==', userData.uid));
             }
 
             const snapshot = await getDocs(q);

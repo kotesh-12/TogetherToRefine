@@ -122,7 +122,7 @@ export default function Student() {
                 )}
 
                 {/* AI Learning Tools */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginTop: '20px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '20px' }}>
                     <div className="card" onClick={() => navigate('/ttr-ai')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)', color: 'white' }}>
                         <h3>🤖 TTR AI Chat</h3>
                         <p style={{ fontSize: '13px', margin: '5px 0 0' }}>Chat with your personal AI assistant.</p>
@@ -134,6 +134,10 @@ export default function Student() {
                     <div className="card" onClick={() => navigate('/video-library')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #0984e3, #74b9ff)', color: 'white' }}>
                         <h3>🎬 Video Library</h3>
                         <p style={{ fontSize: '13px', margin: '5px 0 0' }}>Watch class recordings & tutorials.</p>
+                    </div>
+                    <div className="card" onClick={() => navigate('/select-feedback-target')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #00cec9, #81ecec)', color: 'white' }}>
+                        <h3>📝 Give Feedback</h3>
+                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>Rate teachers & staff.</p>
                     </div>
                 </div>
 

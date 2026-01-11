@@ -1,0 +1,140 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { db } from '../firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { useUser } from '../context/UserContext';
+import AIBadge from '../components/AIBadge';
+import AnnouncementBar from '../components/AnnouncementBar';
+
+export default function SelectFeedbackTarget() {
+    const navigate = useNavigate();
+    const { userData } = useUser();
+    const [targets, setTargets] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [title, setTitle] = useState("Select Person");
+
+    useEffect(() => {
+        const fetchData = async () => {
+            if (!userData) return;
+
+            const role = userData.role;
+            let list = [];
+
+            try {
+                if (role === 'student') {
+                    setTitle("Select Teacher for Feedback");
+                    const userClass = userData.class || userData.assignedClass;
+                    const userSection = userData.section || userData.assignedSection;
+
+                    if (userClass) {
+                        // Students fetch Teachers assigned to their class
+                        const q = query(
+                            collection(db, "teacher_allotments"),
+                            where("classAssigned", "==", userClass),
+                            where("section", "==", userSection)
+                        );
+                        const snap = await getDocs(q);
+                        list = snap.docs.map(d => ({ id: d.id, ...d.data(), type: 'Teacher' }));
+                    }
+                }
+                else if (role === 'teacher') {
+                    setTitle("Select Student for Feedback");
+                    const myClass = userData.assignedClass;
+                    const mySection = userData.assignedSection;
+
+                    if (myClass) {
+                        // Teachers fetch Students assigned to their class
+                        const q = query(
+                            collection(db, "student_allotments"),
+                            where("classAssigned", "==", myClass),
+                            where("section", "==", mySection)
+                        );
+                        const snap = await getDocs(q);
+                        list = snap.docs.map(d => ({ id: d.id, ...d.data(), type: 'Student' }));
+                    }
+                }
+
+                setTargets(list);
+            } catch (e) {
+                console.error("Error fetching targets:", e);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [userData]);
+
+    const handleSelect = (person) => {
+        const label = person.type === 'Teacher'
+            ? `${person.name} (${person.subject})`
+            : `${person.name} (${person.classAssigned}-${person.section})`;
+
+        localStorage.setItem("selectedPerson", label);
+        navigate('/general-feedback');
+    };
+
+    return (
+        <div className="page-wrapper">
+            <AIBadge />
+            <AnnouncementBar title={title} leftIcon="back" />
+
+            <div className="container" style={{ maxWidth: '600px', margin: '20px auto' }}>
+                <p className="text-center text-muted" style={{ marginBottom: '20px' }}>
+                    Who do you want to give feedback to?
+                </p>
+
+                {loading ? (
+                    <div className="text-center">Loading List...</div>
+                ) : (
+                    <div style={{ display: 'grid', gap: '15px' }}>
+                        {targets.length === 0 ? (
+                            <div className="card text-center text-muted">
+                                {userData?.role === 'teacher'
+                                    ? "No students found in your allotted class."
+                                    : "No teachers found for your class yet."}
+                            </div>
+                        ) : (
+                            targets.map(t => (
+                                <div
+                                    key={t.id}
+                                    onClick={() => handleSelect(t)}
+                                    className="card"
+                                    style={{
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        transition: 'transform 0.2s',
+                                        border: '1px solid #dfe6e9'
+                                    }}
+                                    onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.02)"}
+                                    onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                        <div style={{
+                                            width: '50px', height: '50px',
+                                            borderRadius: '50%',
+                                            background: '#0984e3', color: 'white',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            fontSize: '20px', fontWeight: 'bold'
+                                        }}>
+                                            {t.name.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <h4 style={{ margin: 0, color: '#2d3436' }}>{t.name}</h4>
+                                            <p style={{ margin: 0, fontSize: '13px', color: '#636e72' }}>
+                                                {t.type === 'Teacher' ? t.subject : "Student"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <span style={{ fontSize: '20px' }}>📝</span>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}

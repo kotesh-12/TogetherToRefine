@@ -15,15 +15,48 @@ export default function Group() {
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
 
+    // Institution Mode
+    const [isSelecting, setIsSelecting] = useState(false);
+    const [groupList, setGroupList] = useState([]);
+
     useEffect(() => {
         const gid = localStorage.getItem("activeGroupId");
+
+        // If no group selected
         if (!gid) {
-            alert("No group selected! Returning to Dashboard.");
-            navigate(-1);
+            // If Institution, allow selection
+            if (userData?.role === 'institution') {
+                setIsSelecting(true);
+                fetchInstitutionGroups();
+                return;
+            }
+            // If others, kick them out (Teachers should have auto-selected in Dashboard)
+            if (userData) { // Only redirect if userData is loaded
+                alert("No group selected! Returning to Dashboard.");
+                navigate(-1);
+            }
             return;
         }
-        setGroupId(gid);
 
+        setGroupId(gid);
+        loadGroupChat(gid);
+    }, [navigate, userData]);
+
+    const fetchInstitutionGroups = async () => {
+        if (!userData?.uid) return;
+        try {
+            // Fetch groups created by this institution
+            // Note: In Allotment.jsx, groups have 'createdBy: currentUser.uid'
+            const q = query(collection(db, "groups"), where("createdBy", "==", userData.uid));
+            const snap = await getDocs(q);
+            const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            setGroupList(list);
+        } catch (e) {
+            console.error("Error loading groups", e);
+        }
+    };
+
+    const loadGroupChat = (gid) => {
         // Fetch Group Info
         getDoc(doc(db, "groups", gid)).then(d => {
             if (d.exists()) setGroupName(d.data().groupName);
@@ -37,11 +70,10 @@ export default function Group() {
                 ...doc.data()
             }));
             setMessages(msgs);
-            setTimeout(scrollToBottom, 100);
+            setTimeout(scrollToBottom, 500);
         });
-
-        return () => unsubscribe();
-    }, [navigate]);
+        return unsubscribe;
+    };
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -51,11 +83,8 @@ export default function Group() {
         if (e.target.files[0]) {
             const f = e.target.files[0];
             if (f.size > 500000) return alert("File too big! Max 500KB.");
-
             const reader = new FileReader();
-            reader.onloadend = () => {
-                setFile(reader.result);
-            };
+            reader.onloadend = () => setFile(reader.result);
             reader.readAsDataURL(f);
         }
     };
@@ -75,15 +104,60 @@ export default function Group() {
         };
 
         await addDoc(collection(db, "groups", groupId, "messages"), payload);
-
         setNewMessage('');
         setFile(null);
     };
 
+    const selectGroup = (gid) => {
+        localStorage.setItem("activeGroupId", gid);
+        setGroupId(gid);
+        setIsSelecting(false);
+        loadGroupChat(gid);
+    }
+
+    // --- RENDER GROUP SELECTION LIST (For Institution) ---
+    if (isSelecting) {
+        return (
+            <div className="page-wrapper">
+                <header style={{ background: '#0984e3', color: 'white', padding: '15px' }}>
+                    <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '20px', marginRight: '10px' }}>⬅</button>
+                    <h2 style={{ display: 'inline', fontSize: '18px' }}>Select a Group to Monitor</h2>
+                </header>
+                <div className="container" style={{ marginTop: '20px' }}>
+                    {groupList.length === 0 ? (
+                        <p className="text-center text-muted">No active groups found. Please Allot Teachers to create groups.</p>
+                    ) : (
+                        <div style={{ display: 'grid', gap: '15px' }}>
+                            {groupList.map(g => (
+                                <div key={g.id} onClick={() => selectGroup(g.id)} className="card" style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                        <h4 style={{ margin: 0 }}>{g.groupName}</h4>
+                                        <p style={{ margin: 0, fontSize: '12px', color: '#666' }}>{g.className} - {g.section}</p>
+                                    </div>
+                                    <span style={{ fontSize: '20px' }}>💬</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
+    // --- RENDER CHAT ---
     return (
         <div className="page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
             <header style={{ background: '#0984e3', color: 'white', padding: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '20px' }}>⬅</button>
+                <button onClick={() => {
+                    if (userData?.role === 'institution') {
+                        setIsSelecting(true);
+                        localStorage.removeItem("activeGroupId");
+                        setMessages([]); // Clear chat
+                    } else {
+                        navigate(-1);
+                    }
+                }} style={{ background: 'none', border: 'none', color: 'white', fontSize: '20px' }}>⬅</button>
+
                 <div style={{ flex: 1 }}>
                     <h2 style={{ margin: 0, fontSize: '18px' }}>{groupName || "Chat Group"}</h2>
                     <span style={{ fontSize: '12px', opacity: 0.8 }}>Active Group</span>

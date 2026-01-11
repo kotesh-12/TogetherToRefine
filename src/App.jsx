@@ -25,6 +25,7 @@ const Report = lazy(() => import('./pages/Report'));
 const FourWayLearning = lazy(() => import('./pages/FourWayLearning.jsx'));
 const PendingApproval = lazy(() => import('./pages/PendingApproval'));
 const VideoLibrary = lazy(() => import('./pages/VideoLibrary'));
+const SelectFeedbackTarget = lazy(() => import('./pages/SelectFeedbackTarget'));
 import ProtectedRoute from './components/ProtectedRoute';
 
 const MainLayout = lazy(() => import('./components/MainLayout'));
@@ -53,6 +54,7 @@ function App() {
                 <Route path="/4-way-learning" element={<FourWayLearning />} />
                 <Route path="/health" element={<Health />} />
                 <Route path="/video-library" element={<VideoLibrary />} />
+                <Route path="/select-feedback-target" element={<SelectFeedbackTarget />} />
               </Route>
 
               {/* Student Only */}

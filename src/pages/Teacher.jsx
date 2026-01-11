@@ -50,10 +50,11 @@ export default function Teacher() {
                         </p>
                     )}
 
-                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '15px' }}>
+                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '15px', flexWrap: 'wrap' }}>
                         <button className="btn" onClick={handleGoToGroups}>Go to Groups</button>
                         <button className="btn" style={{ backgroundColor: '#0984e3' }} onClick={() => navigate('/attendance')}>Mark Attendance</button>
                         <button className="btn" style={{ backgroundColor: '#d63031' }} onClick={() => navigate('/video-library')}>Video Library</button>
+                        <button className="btn" style={{ backgroundColor: '#00cec9', color: 'white' }} onClick={() => navigate('/select-feedback-target')}>Give Feedback</button>
                     </div>
                 </div>
             </div>
