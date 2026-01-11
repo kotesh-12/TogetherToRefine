@@ -135,8 +135,8 @@ export default function Student() {
                         <h3>🎬 Video Library</h3>
                         <p style={{ fontSize: '13px', margin: '5px 0 0' }}>Watch class recordings & tutorials.</p>
                     </div>
-                    <div className="card" onClick={() => navigate('/select-feedback-target')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #00cec9, #81ecec)', color: 'white' }}>
-                        <h3>📝 Give Feedback</h3>
+                    <div className="card" onClick={() => navigate('/select-feedback-target')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #00b894, #55efc4)', color: 'white' }}>
+                        <h3>Give Feedback 📝</h3>
                         <p style={{ fontSize: '13px', margin: '5px 0 0' }}>Rate teachers & staff.</p>
                     </div>
                 </div>
