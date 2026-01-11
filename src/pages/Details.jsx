@@ -37,16 +37,19 @@ export default function Details() {
                     let userDoc = await getDoc(doc(db, "users", user.uid));
                     if (userDoc.exists()) {
                         setRole(userDoc.data().role);
+                        setFormData(userDoc.data());
                     } else {
                         // Check 'teachers'
                         userDoc = await getDoc(doc(db, "teachers", user.uid));
                         if (userDoc.exists()) {
                             setRole('teacher');
+                            setFormData(userDoc.data());
                         } else {
                             // Check 'institutions'
                             userDoc = await getDoc(doc(db, "institutions", user.uid));
                             if (userDoc.exists()) {
                                 setRole('institution');
+                                setFormData(userDoc.data());
                             }
                         }
                     }

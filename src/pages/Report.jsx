@@ -103,7 +103,77 @@ export default function Report({ type }) { // type: 'sexual_harassment' or 'misb
                 </div>
             )}
 
-            {/* Consolidated Styles */}
+            <div className="container" style={{ maxWidth: '600px', margin: '0 auto' }}>
+                <h2 style={{ color: isEmergency ? '#c0392b' : '#2c3e50', textAlign: 'center' }}>
+                    {isEmergency ? 'Report Sexual Harassment / Abuse' : 'Report Misbehavior / Bullying'}
+                </h2>
+                <p style={{ textAlign: 'center', color: '#7f8c8d', fontSize: '14px', marginBottom: '20px' }}>
+                    {isEmergency
+                        ? "This is a secure, serious reporting channel. Your safety is our priority."
+                        : "Report bullying, ragging, or any inappropriate behavior safely."}
+                </p>
+
+                <form onSubmit={handleSubmit} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+
+                    <label>Victim Name (Optional - Can remain anonymous)</label>
+                    <input name="victimName" value={formData.victimName} onChange={handleChange} className="input-field" placeholder="Leave empty for Anonymous" />
+
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <div style={{ flex: 1 }}>
+                            <label>Age</label>
+                            <input name="age" type="number" value={formData.age} onChange={handleChange} className="input-field" />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <label>Gender</label>
+                            <select name="gender" value={formData.gender} onChange={handleChange} className="input-field">
+                                <option value="">Select</option>
+                                <option>Female</option>
+                                <option>Male</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <label style={{ color: '#d63031', fontWeight: 'bold' }}>Name of Accused Person(s) *</label>
+                    <input name="accusedName" value={formData.accusedName} onChange={handleChange} className="input-field" required placeholder="Who is responsible?" />
+
+                    <label>Date & Time of Incident</label>
+                    <input name="incidentDate" type="datetime-local" value={formData.incidentDate} onChange={handleChange} className="input-field" required />
+
+                    <label>Location of Incident</label>
+                    <input name="location" value={formData.location} onChange={handleChange} className="input-field" required placeholder="Where did it happen? (e.g. Corridor, Bus)" />
+
+                    <label>Detailed Description *</label>
+                    <textarea
+                        name="description"
+                        value={formData.description}
+                        onChange={handleChange}
+                        className="input-field"
+                        style={{ height: '100px', resize: 'vertical' }}
+                        required
+                        placeholder="Please describe exactly what happened. Be as specific as possible."
+                    ></textarea>
+
+                    <label>Evidence Link (Optional)</label>
+                    <input name="evidence" value={formData.evidence} onChange={handleChange} className="input-field" placeholder="Google Drive / Cloud Link to photo/video" />
+
+                    <button type="submit" className="btn" style={{ backgroundColor: isEmergency ? '#e74c3c' : '#0984e3', marginTop: '10px' }}>
+                        Submit Secure Report 🔒
+                    </button>
+
+                    {isEmergency && (
+                        <button type="button" onClick={handleWhatsApp} className="btn" style={{ backgroundColor: '#25D366', marginTop: '5px' }}>
+                            Share Location on WhatsApp SOS 💬
+                        </button>
+                    )}
+
+                </form>
+
+                <div style={{ marginTop: '20px', fontSize: '12px', color: '#95a5a6', textAlign: 'center' }}>
+                    <p>🔒 This report is encrypted and sent directly to the Institution's Grievance Cell.</p>
+                    <p>False reporting is a punishable offense.</p>
+                </div>
+            </div>
             <style>{`
                 .scrolling-text {
                     white-space: nowrap;

@@ -24,6 +24,7 @@ const FeedbackOverview = lazy(() => import('./pages/FeedbackOverview'));
 const Report = lazy(() => import('./pages/Report'));
 const FourWayLearning = lazy(() => import('./pages/FourWayLearning.jsx'));
 const PendingApproval = lazy(() => import('./pages/PendingApproval'));
+const VideoLibrary = lazy(() => import('./pages/VideoLibrary'));
 import ProtectedRoute from './components/ProtectedRoute';
 
 const MainLayout = lazy(() => import('./components/MainLayout'));
@@ -51,6 +52,7 @@ function App() {
                 <Route path="/ttr-ai" element={<TTRAI />} />
                 <Route path="/4-way-learning" element={<FourWayLearning />} />
                 <Route path="/health" element={<Health />} />
+                <Route path="/video-library" element={<VideoLibrary />} />
               </Route>
 
               {/* Student Only */}
