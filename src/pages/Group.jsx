@@ -22,19 +22,10 @@ export default function Group() {
     useEffect(() => {
         const gid = localStorage.getItem("activeGroupId");
 
-        // If no group selected
+        // If no group selected, allow user to select one from their list
         if (!gid) {
-            // If Institution, allow selection
-            if (userData?.role === 'institution') {
-                setIsSelecting(true);
-                fetchInstitutionGroups();
-                return;
-            }
-            // If others, kick them out (Teachers should have auto-selected in Dashboard)
-            if (userData) { // Only redirect if userData is loaded
-                alert("No group selected! Returning to Dashboard.");
-                navigate(-1);
-            }
+            setIsSelecting(true);
+            fetchGroupsForSelection();
             return;
         }
 
@@ -42,15 +33,35 @@ export default function Group() {
         loadGroupChat(gid);
     }, [navigate, userData]);
 
-    const fetchInstitutionGroups = async () => {
-        if (!userData?.uid) return;
+    const fetchGroupsForSelection = async () => {
+        if (!userData) return;
         try {
-            // Fetch groups created by this institution
-            // Note: In Allotment.jsx, groups have 'createdBy: currentUser.uid'
-            const q = query(collection(db, "groups"), where("createdBy", "==", userData.uid));
-            const snap = await getDocs(q);
-            const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            setGroupList(list);
+            let q;
+            // 1. Institution: Show all groups created by them
+            if (userData.role === 'institution') {
+                q = query(collection(db, "groups"), where("createdBy", "==", userData.uid));
+            } else {
+                // 2. Student/Teacher: Show groups for their Class
+                const userClass = userData.class || userData.assignedClass;
+                if (userClass) {
+                    q = query(collection(db, "groups"), where("className", "==", userClass));
+                }
+            }
+
+            if (q) {
+                const snap = await getDocs(q);
+                const list = [];
+                const userSection = userData.section || userData.assignedSection;
+
+                snap.forEach(d => {
+                    const data = d.data();
+                    // Filter: Show if (Institution) OR (Section matches) OR (Group has no section)
+                    if (userData.role === 'institution' || !data.section || data.section === userSection || !userSection) {
+                        list.push({ id: d.id, ...data });
+                    }
+                });
+                setGroupList(list);
+            }
         } catch (e) {
             console.error("Error loading groups", e);
         }
@@ -121,7 +132,7 @@ export default function Group() {
             <div className="page-wrapper">
                 <header style={{ background: '#0984e3', color: 'white', padding: '15px' }}>
                     <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '20px', marginRight: '10px' }}>⬅</button>
-                    <h2 style={{ display: 'inline', fontSize: '18px' }}>Select a Group to Monitor</h2>
+                    <h2 style={{ display: 'inline', fontSize: '18px' }}>Select Your Class Group</h2>
                 </header>
                 <div className="container" style={{ marginTop: '20px' }}>
                     {groupList.length === 0 ? (

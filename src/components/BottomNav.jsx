@@ -49,13 +49,18 @@ export default function BottomNav() {
             {/* Attendance logic for students usually means seeing own attendance. 
                 Reusing the main page for now, if institution page has logic to show 'My Stats' 
                 User asked for redirect to respective page. */}
+            <div style={itemStyle} onClick={() => navigate('/group')} title="My Class Group">
+                <span style={{ fontSize: '24px' }}>🏫</span>
+                <span>Class</span>
+            </div>
+
             <div style={itemStyle} onClick={() => navigate('/attendance')} title="My Attendance">
                 <span style={{ fontSize: '24px' }}>📅</span>
                 <span>Attend.</span>
             </div>
 
-            <div style={itemStyle} onClick={() => navigate('/general-feedback')} title="Give Feedback">
-                <span style={{ fontSize: '24px' }}>📝</span>
+            <div style={itemStyle} onClick={() => navigate('/select-feedback-target')} title="Give Feedback">
+                <span style={{ fontSize: '24px' }}>🌟</span>
                 <span>Feedback</span>
             </div>
         </div>
