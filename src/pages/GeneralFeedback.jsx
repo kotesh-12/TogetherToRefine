@@ -168,8 +168,10 @@ export default function GeneralFeedback() {
                             <div className="text-center" style={{ marginBottom: '40px', position: 'relative' }}>
                                 <div style={{ fontSize: '60px', marginBottom: '10px' }}>🌟</div>
                                 <h2 style={{
-                                    background: 'linear-gradient(to right, #00f2fe, #4facfe)',
-                                    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                                    background: targetPerson.type === 'Institution' ? 'none' : 'linear-gradient(to right, #00f2fe, #4facfe)',
+                                    color: targetPerson.type === 'Institution' ? '#d63031' : 'inherit',
+                                    WebkitBackgroundClip: targetPerson.type === 'Institution' ? 'unset' : 'text',
+                                    WebkitTextFillColor: targetPerson.type === 'Institution' ? 'unset' : 'transparent',
                                     margin: '0', fontSize: '28px', fontWeight: '800'
                                 }}>
                                     Feedback for {targetPerson.name}
