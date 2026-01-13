@@ -62,36 +62,68 @@ export default function GeneralFeedback() {
         checkCycle();
     }, [activeTab, userData, targetPerson]);
 
-    // Fetch Received Feedback (Robust ID + Name fallback)
+    // Fetch Received Feedback (Super Fetch: UserUID + AllotmentIDs + Name)
     useEffect(() => {
         if (activeTab === 'read' && userData?.uid) {
             const fetchFeedback = async () => {
+                setLoading(true);
                 try {
-                    // 1. Query by Target ID (Standard)
-                    const qId = query(collection(db, "general_feedback"), where("targetId", "==", userData.uid));
-                    const snapId = await getDocs(qId);
+                    let allResults = [];
 
-                    // 2. Query by Target Name (Fallback for unlinked accounts)
-                    let list = snapId.docs.map(d => ({ id: d.id, ...d.data() }));
+                    // 1. Collect all Potential Target IDs
+                    const myIds = [userData.uid];
 
+                    // Fetch my allotments to get alternate IDs (e.g. if feedback sent to allotment ID)
+                    if (userData.role === 'teacher' || userData.role === 'student') {
+                        try {
+                            const col = userData.role === 'teacher' ? 'teacher_allotments' : 'student_allotments';
+                            const field = userData.role === 'teacher' ? 'teacherId' : 'studentId';
+                            const qAllot = query(collection(db, col), where(field, "==", userData.uid));
+                            const allotSnap = await getDocs(qAllot);
+                            allotSnap.forEach(d => myIds.push(d.id));
+                        } catch (e) { console.log("Allotment fetch error ignored", e); }
+                    }
+
+                    // 2. Query by IDs (Chunked 'in' query)
+                    // Firestore 'in' limit is 10. Split myIds.
+                    const uniqueIds = [...new Set(myIds)];
+                    const chunks = [];
+                    for (let i = 0; i < uniqueIds.length; i += 10) {
+                        chunks.push(uniqueIds.slice(i, i + 10));
+                    }
+
+                    for (const chunk of chunks) {
+                        const qIds = query(collection(db, "general_feedback"), where("targetId", "in", chunk));
+                        const snap = await getDocs(qIds);
+                        allResults.push(...snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                    }
+
+                    // 3. Query by Name (Fallback)
                     if (userData.name) {
                         try {
                             const qName = query(collection(db, "general_feedback"), where("targetName", "==", userData.name));
                             const snapName = await getDocs(qName);
-                            const listName = snapName.docs.map(d => ({ id: d.id, ...d.data() }));
-                            // Merge
-                            list = [...list, ...listName];
-                        } catch (e2) { console.log("Name query failed (optional)", e2); }
+                            const nameResults = snapName.docs.map(d => ({ id: d.id, ...d.data() }));
+                            // Remove duplicates already found by ID
+                            const idMap = new Set(allResults.map(r => r.id));
+                            nameResults.forEach(r => {
+                                if (!idMap.has(r.id)) allResults.push(r);
+                            });
+                        } catch (e2) { console.log("Name query failed", e2); }
                     }
 
-                    // Deduplicate by ID
-                    const uniqueList = Array.from(new Map(list.map(item => [item.id, item])).values());
+                    // Deduplicate (Final Safety)
+                    const uniqueList = Array.from(new Map(allResults.map(item => [item.id, item])).values());
 
                     // Sort Descending
                     uniqueList.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
 
                     setReceivedFeedback(uniqueList);
-                } catch (e) { console.error("Error fetching feedback:", e); }
+                } catch (e) {
+                    console.error("Error fetching feedback:", e);
+                } finally {
+                    setLoading(false);
+                }
             };
             fetchFeedback();
         }
