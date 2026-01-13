@@ -206,7 +206,7 @@ export default function VideoLibrary() {
                                     height='100%'
                                     style={{ position: 'absolute', top: 0, left: 0 }}
                                     controls={true}
-                                    light={false} // Load proper player
+                                    light={true}
                                 />
                             </div>
 
