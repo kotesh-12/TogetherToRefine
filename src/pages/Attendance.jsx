@@ -122,13 +122,15 @@ export default function Attendance() {
             if (view === 'teachers') {
                 const uniqueMap = new Map();
                 rawList.forEach(item => {
-                    if (!item.teacherId) return;
-                    if (!uniqueMap.has(item.teacherId)) {
-                        uniqueMap.set(item.teacherId, {
-                            id: item.teacherId, // Use User UID as ID
-                            name: item.teacherName || 'Unknown Teacher',
-                            classAssigned: 'Teacher', // Label
-                            ...item
+                    // Robust ID: prefer teacherId (User UID), fallback to allotment ID
+                    const tId = item.teacherId || item.id;
+
+                    if (!uniqueMap.has(tId)) {
+                        uniqueMap.set(tId, {
+                            ...item,
+                            id: tId, // Use resolved ID
+                            name: item.teacherName || item.name || 'Unknown Teacher',
+                            classAssigned: 'Teacher'
                         });
                     }
                 });
