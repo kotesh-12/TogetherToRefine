@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useUser } from '../context/UserContext';
 
@@ -12,6 +12,9 @@ export default function GeneralFeedback() {
     // Tabs: 'write' or 'read'
     const [activeTab, setActiveTab] = useState(location.state?.target ? 'write' : 'read');
     const [targetPerson, setTargetPerson] = useState(location.state?.target || null);
+
+    // Cooldown State
+    const [cooldown, setCooldown] = useState({ active: false, daysLeft: 0, date: null });
 
     // Write Form State
     const [ratings, setRatings] = useState({
@@ -25,6 +28,39 @@ export default function GeneralFeedback() {
 
     // Read List State
     const [receivedFeedback, setReceivedFeedback] = useState([]);
+
+    // Check Cooldown (Student -> Teacher)
+    useEffect(() => {
+        const checkCycle = async () => {
+            if (activeTab === 'write' && userData?.role === 'student' && targetPerson?.type === 'Teacher') {
+                try {
+                    const q = query(
+                        collection(db, "general_feedback"),
+                        where("authorId", "==", userData.uid),
+                        where("targetId", "==", targetPerson.id || targetPerson.uid), // Handle both ID types
+                        orderBy("timestamp", "desc"),
+                        limit(1)
+                    );
+                    const snap = await getDocs(q);
+                    if (!snap.empty) {
+                        const lastDate = snap.docs[0].data().timestamp.toDate();
+                        const now = new Date();
+                        const diffTime = Math.abs(now - lastDate);
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                        if (diffDays < 28) {
+                            setCooldown({ active: true, daysLeft: 28 - diffDays, date: lastDate.toLocaleDateString() });
+                        } else {
+                            setCooldown({ active: false, daysLeft: 0, date: null });
+                        }
+                    } else {
+                        setCooldown({ active: false, daysLeft: 0, date: null });
+                    }
+                } catch (e) { console.error("Error checking feedback cycle", e); }
+            }
+        };
+        checkCycle();
+    }, [activeTab, userData, targetPerson]);
 
     // Fetch Received Feedback
     useEffect(() => {
@@ -179,92 +215,108 @@ export default function GeneralFeedback() {
                                 <p style={{ color: '#888', marginTop: '5px' }}>Help us improve by rating honestly</p>
                             </div>
 
-                            <div style={{ display: 'grid', gap: '25px' }}>
-                                {categories.map(cat => (
-                                    <div key={cat.key} style={{
-                                        background: '#f8f9fa', padding: '20px', borderRadius: '16px',
-                                        border: '1px solid #cbd5e0', transition: 'transform 0.2s',
-                                        display: 'flex', flexDirection: 'column', gap: '15px',
-                                        boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
-                                    }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                            <div style={{
-                                                fontSize: '30px', background: 'white', width: '60px', height: '60px',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                borderRadius: '50%', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0'
+                            {/* Cooldown Block */}
+                            {cooldown.active ? (
+                                <div className="card text-center" style={{ padding: '40px', background: '#fff0f0', border: '1px solid #fab1a0' }}>
+                                    <div style={{ fontSize: '40px', marginBottom: '20px' }}>⏳</div>
+                                    <h3 style={{ color: '#d63031' }}>Feedback Cycle Active</h3>
+                                    <p style={{ color: '#636e72', marginBottom: '20px' }}>
+                                        You last gave feedback on <strong>{cooldown.date}</strong>.
+                                        <br />
+                                        You can submit new feedback in <strong>{cooldown.daysLeft} days</strong>.
+                                    </p>
+                                    <button className="btn" onClick={() => navigate(-1)}>Go Back</button>
+                                </div>
+                            ) : (
+                                <>
+                                    <div style={{ display: 'grid', gap: '25px' }}>
+                                        {categories.map(cat => (
+                                            <div key={cat.key} style={{
+                                                background: '#f8f9fa', padding: '20px', borderRadius: '16px',
+                                                border: '1px solid #cbd5e0', transition: 'transform 0.2s',
+                                                display: 'flex', flexDirection: 'column', gap: '15px',
+                                                boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
                                             }}>
-                                                {cat.icon}
-                                            </div>
-                                            <div>
-                                                <label style={{ fontSize: '18px', fontWeight: '700', color: '#2d3748' }}>{cat.label}</label>
-                                                <div style={{ fontSize: '12px', color: '#718096' }}>Rate their {cat.label.toLowerCase()}</div>
-                                            </div>
-                                        </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                                    <div style={{
+                                                        fontSize: '30px', background: 'white', width: '60px', height: '60px',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        borderRadius: '50%', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0'
+                                                    }}>
+                                                        {cat.icon}
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '18px', fontWeight: '700', color: '#2d3748' }}>{cat.label}</label>
+                                                        <div style={{ fontSize: '12px', color: '#718096' }}>Rate their {cat.label.toLowerCase()}</div>
+                                                    </div>
+                                                </div>
 
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                                            <select
-                                                style={{
-                                                    padding: '10px 15px', borderRadius: '12px', border: '1px solid #a0aec0',
-                                                    background: 'white', color: '#2d3748', fontWeight: '500', outline: 'none',
-                                                    minWidth: '140px', cursor: 'pointer'
-                                                }}
-                                                value={ratings[cat.key].dropdown}
-                                                onChange={(e) => handleDropdown(cat.key, e.target.value)}
-                                            >
-                                                <option value="" disabled>Select Rating...</option>
-                                                <option>Excellent</option><option>Good</option><option>Average</option><option>Poor</option>
-                                            </select>
-
-                                            <div style={{ display: 'flex', gap: '8px' }}>
-                                                {[1, 2, 3, 4, 5].map(s => (
-                                                    <span
-                                                        key={s}
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                                                    <select
                                                         style={{
-                                                            fontSize: '28px', cursor: 'pointer',
-                                                            color: s <= ratings[cat.key].stars ? '#fbbf24' : '#e2e8f0',
-                                                            transition: 'all 0.2s', transform: s <= ratings[cat.key].stars ? 'scale(1.1)' : 'scale(1)'
+                                                            padding: '10px 15px', borderRadius: '12px', border: '1px solid #a0aec0',
+                                                            background: 'white', color: '#2d3748', fontWeight: '500', outline: 'none',
+                                                            minWidth: '140px', cursor: 'pointer'
                                                         }}
-                                                        onClick={() => handleStars(cat.key, s)}
-                                                    >★</span>
-                                                ))}
+                                                        value={ratings[cat.key].dropdown}
+                                                        onChange={(e) => handleDropdown(cat.key, e.target.value)}
+                                                    >
+                                                        <option value="" disabled>Select Rating...</option>
+                                                        <option>Excellent</option><option>Good</option><option>Average</option><option>Poor</option>
+                                                    </select>
+
+                                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                                        {[1, 2, 3, 4, 5].map(s => (
+                                                            <span
+                                                                key={s}
+                                                                style={{
+                                                                    fontSize: '28px', cursor: 'pointer',
+                                                                    color: s <= ratings[cat.key].stars ? '#fbbf24' : '#e2e8f0',
+                                                                    transition: 'all 0.2s', transform: s <= ratings[cat.key].stars ? 'scale(1.1)' : 'scale(1)'
+                                                                }}
+                                                                onClick={() => handleStars(cat.key, s)}
+                                                            >★</span>
+                                                        ))}
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
 
-                            <div style={{ marginTop: '30px' }}>
-                                <label style={{ fontWeight: '700', color: '#2d3748', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <span>📝</span> Additional Comments
-                                </label>
-                                <textarea
-                                    className="input-field"
-                                    value={comment}
-                                    onChange={(e) => setComment(e.target.value)}
-                                    placeholder="Share any specific details or suggestions..."
-                                    style={{
-                                        height: '100px', resize: 'vertical', borderRadius: '16px',
-                                        border: '2px solid #edf2f7', padding: '15px', background: '#f8f9fa'
-                                    }}
-                                />
-                            </div>
+                                    <div style={{ marginTop: '30px' }}>
+                                        <label style={{ fontWeight: '700', color: '#2d3748', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <span>📝</span> Additional Comments
+                                        </label>
+                                        <textarea
+                                            className="input-field"
+                                            value={comment}
+                                            onChange={(e) => setComment(e.target.value)}
+                                            placeholder="Share any specific details or suggestions..."
+                                            style={{
+                                                height: '100px', resize: 'vertical', borderRadius: '16px',
+                                                border: '2px solid #edf2f7', padding: '15px', background: '#f8f9fa'
+                                            }}
+                                        />
+                                    </div>
 
-                            <button
-                                onClick={handleSubmit}
-                                disabled={loading}
-                                style={{
-                                    width: '100%', padding: '18px', marginTop: '20px',
-                                    background: 'linear-gradient(to right, #00c6fb, #005bea)',
-                                    color: 'white', border: 'none', borderRadius: '16px',
-                                    fontSize: '18px', fontWeight: 'bold', cursor: 'pointer',
-                                    boxShadow: '0 10px 20px rgba(0, 91, 234, 0.3)',
-                                    transition: 'transform 0.2s, box-shadow 0.2s'
-                                }}
-                                onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 15px 30px rgba(0, 91, 234, 0.4)'; }}
-                                onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 91, 234, 0.3)'; }}
-                            >
-                                {loading ? '🚀 Sending Feedback...' : '🚀 Submit Feedback'}
-                            </button>
+                                    <button
+                                        onClick={handleSubmit}
+                                        disabled={loading}
+                                        style={{
+                                            width: '100%', padding: '18px', marginTop: '20px',
+                                            background: 'linear-gradient(to right, #00c6fb, #005bea)',
+                                            color: 'white', border: 'none', borderRadius: '16px',
+                                            fontSize: '18px', fontWeight: 'bold', cursor: 'pointer',
+                                            boxShadow: '0 10px 20px rgba(0, 91, 234, 0.3)',
+                                            transition: 'transform 0.2s, box-shadow 0.2s'
+                                        }}
+                                        onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 15px 30px rgba(0, 91, 234, 0.4)'; }}
+                                        onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 91, 234, 0.3)'; }}
+                                    >
+                                        {loading ? '🚀 Sending Feedback...' : '🚀 Submit Feedback'}
+                                    </button>
+                                </>
+                            )}
                         </>
                     ) : (
                         <div style={{ textAlign: 'center', padding: '40px 0' }}>
