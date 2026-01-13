@@ -50,10 +50,23 @@ export default function SelectFeedbackTarget() {
                 else if (role === 'teacher') {
                     setTitle("Select Feedback Target"); // Changed title
 
-                    // 1. Fetch Institution
-                    if (userData.createdBy) {
+                    // 1. Fetch Institution (Robust Logic)
+                    let instId = userData.createdBy;
+
+                    // Fallback: If not in profile, check allotments
+                    if (!instId) {
                         try {
-                            const instDoc = await getDoc(doc(db, "users", userData.createdBy));
+                            const allotQ = query(collection(db, "teacher_allotments"), where("teacherId", "==", userData.uid));
+                            const allotSnap = await getDocs(allotQ);
+                            if (!allotSnap.empty) {
+                                instId = allotSnap.docs[0].data().createdBy;
+                            }
+                        } catch (e) { console.error("Error finding inst from allotments", e); }
+                    }
+
+                    if (instId) {
+                        try {
+                            const instDoc = await getDoc(doc(db, "users", instId));
                             if (instDoc.exists()) {
                                 setInstitutionTarget({ id: instDoc.id, ...instDoc.data(), type: 'Institution', name: instDoc.data().name || 'Institution' });
                             }
