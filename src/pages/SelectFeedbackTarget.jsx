@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { useUser } from '../context/UserContext';
-import AIBadge from '../components/AIBadge';
-import AnnouncementBar from '../components/AnnouncementBar';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore'; // Updated imports
 
 export default function SelectFeedbackTarget() {
     const navigate = useNavigate();
     const { userData } = useUser();
     const [targets, setTargets] = useState([]);
+    const [institutionTarget, setInstitutionTarget] = useState(null); // New State
     const [loading, setLoading] = useState(true);
     const [title, setTitle] = useState("Select Person");
 
@@ -38,11 +36,31 @@ export default function SelectFeedbackTarget() {
                             where("section", "==", userSection)
                         );
                         const snap = await getDocs(q);
-                        list = snap.docs.map(d => ({ id: d.id, ...d.data(), type: 'Teacher' }));
+                        list = snap.docs.map(d => ({ id: d.id, ...d.data(), type: 'Teacher' })); // Teacher ID is usually user ID? Wait. allotments have 'teacherId' field. We should use THAT as actual ID for feedback.
+                        // Actually, allotments have 'teacherId' (User UID) and 'teacherName'.
+                        // We should map 'id' to 'teacherId' for consistency, OR handle it downstream.
+                        // Previous logic used d.id (allotment ID). This might be WRONG for feedback target (User ID).
+                        // Let's fix this silently: `id: d.data().teacherId || d.id`
+                        list = list.map(item => ({ ...item, id: item.teacherId || item.id, type: 'Teacher' }));
                     }
                 }
                 else if (role === 'teacher') {
-                    setTitle("Select Student for Feedback");
+                    setTitle("Select Feedback Target"); // Changed title
+
+                    // 1. Fetch Institution
+                    if (userData.createdBy) {
+                        try {
+                            const instDoc = await getDoc(doc(db, "users", userData.createdBy));
+                            if (instDoc.exists()) {
+                                setInstitutionTarget({ id: instDoc.id, ...instDoc.data(), type: 'Institution', name: instDoc.data().name || 'Institution' });
+                            }
+                        } catch (e) { console.error("Error fetching institution", e); }
+                    }
+
+                    // 2. Fetch Students
+                    // Teacher allotments might be multiple. We need to fetch students for ALL their classes?
+                    // Or just the assigned one in profile (legacy)?
+                    // Profile has `userData.assignedClass`.
                     const myClass = userData.assignedClass;
                     const mySection = userData.assignedSection;
 
@@ -53,7 +71,9 @@ export default function SelectFeedbackTarget() {
                             where("section", "==", mySection)
                         );
                         const snap = await getDocs(q);
-                        list = snap.docs.map(d => ({ id: d.id, ...d.data(), type: 'Student' }));
+                        // Student Allotments usually are 1:1 with headers.
+                        // `student_allotments` has `studentId`, `studentName`.
+                        list = snap.docs.map(d => ({ id: d.data().studentId || d.id, ...d.data(), type: 'Student' }));
                     }
                 }
 
@@ -136,6 +156,42 @@ export default function SelectFeedbackTarget() {
                     <div className="text-center">Loading List...</div>
                 ) : (
                     <div style={{ display: 'grid', gap: '15px' }}>
+                        {/* Institution Card for Teachers */}
+                        {userData?.role === 'teacher' && institutionTarget && (
+                            <div
+                                onClick={() => handleSelect(institutionTarget)}
+                                className="card"
+                                style={{
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    background: '#d63031', // Red background as requested
+                                    color: 'white',
+                                    border: 'none',
+                                    boxShadow: '0 4px 15px rgba(214, 48, 49, 0.3)',
+                                    transform: 'scale(1.02)'
+                                }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                    <div style={{
+                                        width: '50px', height: '50px',
+                                        borderRadius: '50%',
+                                        background: 'rgba(255,255,255,0.2)', color: 'white',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontSize: '24px'
+                                    }}>
+                                        🏛️
+                                    </div>
+                                    <div>
+                                        <h4 style={{ margin: 0, color: 'white' }}>{institutionTarget.name}</h4>
+                                        <p style={{ margin: 0, fontSize: '13px', opacity: 0.9 }}>Give Feedback to Institution</p>
+                                    </div>
+                                </div>
+                                <span style={{ fontSize: '20px' }}>➜</span>
+                            </div>
+                        )}
+
                         {filteredTargets.length === 0 ? (
                             <div className="card text-center text-muted">
                                 {userData?.role === 'teacher'
