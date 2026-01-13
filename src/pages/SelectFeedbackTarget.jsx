@@ -15,7 +15,8 @@ export default function SelectFeedbackTarget() {
 
     // Teacher Filter States
     const [searchTerm, setSearchTerm] = useState('');
-    const [sortBy, setSortBy] = useState('name'); // 'name', 'class', 'section'
+    const [filterClass, setFilterClass] = useState('All');
+    const [filterSection, setFilterSection] = useState('All');
 
     useEffect(() => {
         const fetchData = async () => {
@@ -76,20 +77,22 @@ export default function SelectFeedbackTarget() {
         navigate('/general-feedback');
     };
 
-    // Filter & Sort Logic
+    // Extract Unique Options
+    const uniqueClasses = [...new Set(targets.filter(t => t.type === 'Student').map(t => t.classAssigned).filter(Boolean))].sort();
+    const uniqueSections = [...new Set(targets.filter(t => t.type === 'Student').map(t => t.section).filter(Boolean))].sort();
+
+    // Filter Logic
     const filteredTargets = targets
         .filter(t => {
             if (userData?.role === 'teacher') {
-                return t.name.toLowerCase().includes(searchTerm.toLowerCase());
+                const matchesSearch = t.name.toLowerCase().includes(searchTerm.toLowerCase());
+                const matchesClass = filterClass === 'All' || t.classAssigned === filterClass;
+                const matchesSection = filterSection === 'All' || t.section === filterSection;
+                return matchesSearch && matchesClass && matchesSection;
             }
-            return true; // No search for students (as per instructions "don't change anything in student role", though search is harmless)
+            return true;
         })
-        .sort((a, b) => {
-            if (sortBy === 'name') return a.name.localeCompare(b.name);
-            if (sortBy === 'class') return (a.classAssigned || '').localeCompare(b.classAssigned || '');
-            if (sortBy === 'section') return (a.section || '').localeCompare(b.section || '');
-            return 0;
-        });
+        .sort((a, b) => a.name.localeCompare(b.name));
 
     return (
         <div className="page-wrapper">
@@ -101,26 +104,36 @@ export default function SelectFeedbackTarget() {
                     Who do you want to give feedback to?
                 </p>
 
-                {/* Teacher Controls: Search & Sort */}
+                {/* Teacher Controls: Search & Filter */}
                 {userData?.role === 'teacher' && (
-                    <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         <input
                             className="input-field"
                             placeholder="🔍 Search Student..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            style={{ flex: 1, margin: 0 }}
+                            style={{ margin: 0 }}
                         />
-                        <select
-                            className="input-field"
-                            value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value)}
-                            style={{ width: '120px', margin: 0 }}
-                        >
-                            <option value="name">A-Z Name</option>
-                            <option value="class">By Class</option>
-                            <option value="section">By Section</option>
-                        </select>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <select
+                                className="input-field"
+                                value={filterClass}
+                                onChange={(e) => setFilterClass(e.target.value)}
+                                style={{ flex: 1, margin: 0 }}
+                            >
+                                <option value="All">All Classes</option>
+                                {uniqueClasses.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                            <select
+                                className="input-field"
+                                value={filterSection}
+                                onChange={(e) => setFilterSection(e.target.value)}
+                                style={{ flex: 1, margin: 0 }}
+                            >
+                                <option value="All">All Sections</option>
+                                {uniqueSections.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                        </div>
                     </div>
                 )}
 
