@@ -4,7 +4,7 @@ import AnnouncementBar from '../components/AnnouncementBar';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { db } from '../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 
 export default function Teacher() {
     const navigate = useNavigate();
@@ -13,6 +13,24 @@ export default function Teacher() {
     // Announcement State
     const [showModal, setShowModal] = useState(false);
     const [announcementText, setAnnouncementText] = useState('');
+    const [allotments, setAllotments] = useState([]);
+    const [selectedAllotmentId, setSelectedAllotmentId] = useState('');
+
+    // Fetch Allotments when Modal opens
+    React.useEffect(() => {
+        if (userData?.uid && showModal) {
+            const fetchAllotments = async () => {
+                try {
+                    const q = query(collection(db, "teacher_allotments"), where("teacherId", "==", userData.uid));
+                    const snap = await getDocs(q);
+                    const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    setAllotments(list);
+                    if (list.length > 0 && !selectedAllotmentId) setSelectedAllotmentId(list[0].id);
+                } catch (e) { console.error(e); }
+            };
+            fetchAllotments();
+        }
+    }, [userData, showModal]);
 
     const handleGoToGroups = () => {
         if (!userData) return;
@@ -37,13 +55,30 @@ export default function Teacher() {
 
     const handlePostAnnouncement = async () => {
         if (!announcementText.trim()) return alert("Please enter some text.");
-        if (!userData?.assignedClass) return alert("No class assigned to post to.");
+        // If no allotments found via fetch, fallback to userData if available, else block
+        let targetClass, targetSection, subject;
+
+        if (allotments.length > 0) {
+            const target = allotments.find(a => a.id === selectedAllotmentId);
+            if (!target) return alert("Please select a class.");
+            targetClass = target.classAssigned;
+            targetSection = target.section;
+            subject = target.subject;
+        } else if (userData?.assignedClass) {
+            // Fallback
+            targetClass = userData.assignedClass.toString();
+            targetSection = userData.assignedSection;
+            subject = userData.subject;
+        } else {
+            return alert("No class assigned.");
+        }
 
         try {
             await addDoc(collection(db, "announcements"), {
                 text: announcementText,
-                targetClass: userData.assignedClass.toString(),
-                targetSection: userData.assignedSection || 'A',
+                targetClass: targetClass,
+                targetSection: targetSection || 'A',
+                subject: subject || 'General',
                 authorName: userData.name,
                 authorId: userData.uid,
                 role: 'teacher',
@@ -114,9 +149,27 @@ export default function Teacher() {
                 }}>
                     <div className="card" style={{ width: '90%', maxWidth: '500px' }}>
                         <h3>📢 Make Announcement</h3>
-                        <p style={{ fontSize: '12px', color: '#666' }}>
-                            To Class: {userData?.assignedClass}-{userData?.assignedSection}
-                        </p>
+                        <div style={{ marginBottom: '10px' }}>
+                            <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px', color: '#666' }}>To Class:</label>
+                            {allotments.length > 0 ? (
+                                <select
+                                    className="input-field"
+                                    value={selectedAllotmentId}
+                                    onChange={(e) => setSelectedAllotmentId(e.target.value)}
+                                    style={{ margin: 0 }}
+                                >
+                                    {allotments.map(a => (
+                                        <option key={a.id} value={a.id}>
+                                            {a.classAssigned} - {a.section} ({a.subject})
+                                        </option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <p style={{ fontSize: '14px', fontWeight: 'bold' }}>
+                                    {userData?.assignedClass ? `${userData.assignedClass}-${userData.assignedSection}` : "Loading classes..."}
+                                </p>
+                            )}
+                        </div>
                         <textarea
                             className="input-field"
                             rows="4"
