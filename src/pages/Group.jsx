@@ -96,17 +96,25 @@ export default function Group() {
     const fetchMembers = async () => {
         if (!groupData) return;
         try {
-            // Fetch students in this class/section
-            // Note: This matches Student allotments. 
-            // Teachers are in 'teacher_allotments', we could fetch them too but start with students is safer.
-            const q = query(
+            // 1. Fetch Students
+            const qStudents = query(
                 collection(db, "student_allotments"),
-                where("classAssigned", "==", groupData.className), // Ensure groupData has className
+                where("classAssigned", "==", groupData.className),
                 where("section", "==", groupData.section)
             );
-            const snap = await getDocs(q);
-            const list = snap.docs.map(d => d.data());
-            setMembers(list);
+            const snapS = await getDocs(qStudents);
+            const students = snapS.docs.map(d => ({ ...d.data(), type: 'Student' }));
+
+            // 2. Fetch Teachers
+            const qTeachers = query(
+                collection(db, "teacher_allotments"),
+                where("classAssigned", "==", groupData.className),
+                where("section", "==", groupData.section)
+            );
+            const snapT = await getDocs(qTeachers);
+            const teachers = snapT.docs.map(d => ({ ...d.data(), type: 'Teacher' }));
+
+            setMembers([...teachers, ...students]);
         } catch (e) {
             console.error("Error fetching members", e);
         }
@@ -310,12 +318,18 @@ export default function Group() {
                     {members.length === 0 ? <p>Loading or no members found...</p> : (
                         members.map((m, i) => (
                             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '10px', borderBottom: '1px solid #f0f0f0' }}>
-                                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#a29bfe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>
+                                <div style={{
+                                    width: '40px', height: '40px', borderRadius: '50%',
+                                    background: m.type === 'Teacher' ? '#ff7675' : '#a29bfe',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold'
+                                }}>
                                     {m.name?.[0] || '?'}
                                 </div>
                                 <div>
-                                    <div style={{ fontWeight: 'bold' }}>{m.name}</div>
-                                    <div style={{ fontSize: '12px', color: '#666' }}>Student • {m.rollNumber || 'N/A'}</div>
+                                    <div style={{ fontWeight: 'bold' }}>{m.name} {m.type === 'Teacher' && '⭐'}</div>
+                                    <div style={{ fontSize: '12px', color: '#666' }}>
+                                        {m.type === 'Teacher' ? `Teacher • ${m.subject || 'General'}` : `Student • ${m.rollNumber || 'N/A'}`}
+                                    </div>
                                 </div>
                             </div>
                         ))

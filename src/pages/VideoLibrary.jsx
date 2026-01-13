@@ -32,17 +32,31 @@ export default function VideoLibrary() {
             const videoRef = collection(db, "videos");
 
             if (role === 'student') {
-                // Students see videos for their class (or 'All')
-                // Firestore OR queries are tricky. For now, fetch matching class.
-                const userClass = userData.class || userData.assignedClass;
-                if (!userClass) {
+                // Students see videos for their class
+                const rawClass = userData.class || userData.assignedClass; // E.g., "1st" or "1"
+                const section = userData.section || userData.assignedSection || 'A'; // E.g., "A"
+
+                if (!rawClass) {
                     setVideos([]);
                     return;
                 }
+
+                // Normalize Class Name (Handle "1st" -> "1")
+                // If it's pure number "1", parseInt works. If "1st", parseInt works (1).
+                // If "LKG", "UKG", "Nursery", we need to keep as is.
+                let classNum = rawClass.toString();
+                if (parseInt(classNum)) {
+                    classNum = parseInt(classNum).toString();
+                }
+
+                // Construct target string matches the 'targetClass' dropdown format "1-A"
+                // Teachers save as "1-A", "LKG-A".
+                const targetString = `${classNum}-${section}`;
+
+                console.log("Fetching videos for:", targetString);
+
                 // Order by date desc
-                q = query(videoRef, where("targetClass", "==", userClass));
-                // Note: We can't easily complex sort with where filter without index.
-                // Let's optimize: fetch all for class, sort client side.
+                q = query(videoRef, where("targetClass", "==", targetString));
             } else {
                 // Teachers/Institution see all (or filtered by what they uploaded? Let's show all for simplicity)
                 q = query(videoRef, orderBy("timestamp", "desc"));
