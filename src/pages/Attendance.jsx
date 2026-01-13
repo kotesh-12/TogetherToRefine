@@ -20,6 +20,7 @@ export default function Attendance() {
     // Student Stats State
     const [mySubjectStats, setMySubjectStats] = useState([]);
     const [myOverallStats, setMyOverallStats] = useState({ present: 0, total: 0, percent: 0 });
+    const [myHistory, setMyHistory] = useState([]); // New: History State
 
     useEffect(() => {
         if (role) {
@@ -28,11 +29,6 @@ export default function Attendance() {
 
             if (role === 'student' || role === 'teacher') {
                 fetchMyStats();
-            }
-            // If Teacher, try to set default subject from profile or previous usage
-            if (role === 'teacher') {
-                // Potential Enhancement: Fetch teacher's specific subject allocation
-                // For now, we leave it blank or let them type.
             }
         }
     }, [role, userData]);
@@ -51,10 +47,13 @@ export default function Attendance() {
             const subjectsObj = {};
             let globalTotal = 0;
             let globalPresent = 0;
+            const historyList = [];
 
             snapshot.forEach(d => {
                 const data = d.data();
-                const subj = data.subject || 'General'; // Default to General if no subject
+                historyList.push({ id: d.id, ...data });
+
+                const subj = data.subject || 'General';
 
                 if (!subjectsObj[subj]) subjectsObj[subj] = { total: 0, present: 0 };
 
@@ -66,6 +65,10 @@ export default function Attendance() {
                     globalPresent++;
                 }
             });
+
+            // Sort history by date descending
+            historyList.sort((a, b) => new Date(b.date) - new Date(a.date));
+            setMyHistory(historyList);
 
             // Convert to Array
             const statsArr = Object.keys(subjectsObj).map(key => ({
@@ -248,14 +251,31 @@ export default function Attendance() {
 
                 {/* Teacher's Own Stats */}
                 {role === 'teacher' && (
-                    <div className="card" style={{ background: 'linear-gradient(to right, #74b9ff, #a29bfe)', color: 'white', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', padding: '20px' }}>
-                        <div>
-                            <h3 style={{ margin: 0, color: 'white' }}>My Attendance</h3>
-                            <p style={{ margin: 0, opacity: 0.9 }}>Overall</p>
+                    <div className="card" style={{ background: 'linear-gradient(to right, #74b9ff, #a29bfe)', color: 'white', marginBottom: '20px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+                            <div>
+                                <h3 style={{ margin: 0, color: 'white' }}>My Attendance</h3>
+                                <p style={{ margin: 0, opacity: 0.9 }}>Overall</p>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>{myOverallStats.percent}%</div>
+                                <div style={{ fontSize: '0.9rem' }}>{myOverallStats.present}/{myOverallStats.total} Days</div>
+                            </div>
                         </div>
-                        <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>{myOverallStats.percent}%</div>
-                            <div style={{ fontSize: '0.9rem' }}>{myOverallStats.present}/{myOverallStats.total} Days</div>
+
+                        {/* Recent History Toggle/View */}
+                        <div style={{ background: 'rgba(255,255,255,0.2)', padding: '10px', borderRadius: '8px' }}>
+                            <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', borderBottom: '1px solid rgba(255,255,255,0.3)', paddingBottom: '5px' }}>Recent History</h4>
+                            <div style={{ maxHeight: '150px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                {myHistory.length > 0 ? myHistory.map(h => (
+                                    <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', background: 'rgba(255,255,255,0.1)', padding: '5px 10px', borderRadius: '4px' }}>
+                                        <span>{h.date}</span>
+                                        <span style={{ fontWeight: 'bold', color: h.status === 'present' ? '#55efc4' : '#fab1a0' }}>
+                                            {h.status.toUpperCase()}
+                                        </span>
+                                    </div>
+                                )) : <div style={{ fontSize: '12px' }}>No records yet.</div>}
+                            </div>
                         </div>
                     </div>
                 )}
