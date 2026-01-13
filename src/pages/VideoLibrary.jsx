@@ -6,6 +6,14 @@ import AIBadge from '../components/AIBadge';
 import { useUser } from '../context/UserContext';
 import ReactPlayer from 'react-player'; // Using standard import for better compatibility
 
+// Helper to extract ID
+const getYouTubeID = (url) => {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+};
+
 export default function VideoLibrary() {
     const { userData } = useUser();
     const role = userData?.role;
@@ -198,16 +206,33 @@ export default function VideoLibrary() {
 
                     {videos.map(video => (
                         <div key={video.id} className="card" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '100%' }}>
-                            {/* Video Player Wrapper */}
-                            <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
-                                <ReactPlayer
-                                    url={video.url}
-                                    width='100%'
-                                    height='100%'
-                                    style={{ position: 'absolute', top: 0, left: 0 }}
-                                    controls={true}
-                                    light={true}
+                            {/* Video Thumbnail (Click to Open) */}
+                            <div
+                                style={{ position: 'relative', paddingTop: '56.25%', background: '#000', cursor: 'pointer' }}
+                                onClick={() => window.open(video.url, '_blank')}
+                                title="Click to Watch on YouTube"
+                            >
+                                <img
+                                    src={`https://img.youtube.com/vi/${getYouTubeID(video.url)}/hqdefault.jpg`}
+                                    alt="Thumbnail"
+                                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.8 }}
+                                    onError={(e) => { e.target.style.display = 'none'; }}
                                 />
+                                {/* Play Button Overlay */}
+                                <div style={{
+                                    position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px'
+                                }}>
+                                    <div style={{
+                                        width: '60px', height: '40px', background: 'red', borderRadius: '10px',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.3)'
+                                    }}>
+                                        <span style={{ color: 'white', fontSize: '20px' }}>▶</span>
+                                    </div>
+                                    <span style={{ color: 'white', fontWeight: '600', textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>
+                                        Watch Video
+                                    </span>
+                                </div>
                             </div>
 
                             {/* Info */}
