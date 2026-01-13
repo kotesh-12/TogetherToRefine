@@ -55,6 +55,7 @@ function App() {
                 <Route path="/health" element={<Health />} />
                 <Route path="/video-library" element={<VideoLibrary />} />
                 <Route path="/select-feedback-target" element={<SelectFeedbackTarget />} />
+                <Route path="/attendance" element={<Attendance />} />
               </Route>
 
               {/* Student Only */}
@@ -66,7 +67,7 @@ function App() {
               {/* Teacher Only */}
               <Route element={<ProtectedRoute allowedRoles={['teacher']} />}>
                 <Route path="/teacher" element={<Teacher />} />
-                <Route path="/attendance" element={<Attendance />} />
+
                 <Route path="/feedback-overview" element={<FeedbackOverview />} />
               </Route>
 
