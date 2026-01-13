@@ -62,75 +62,60 @@ export default function GeneralFeedback() {
         checkCycle();
     }, [activeTab, userData, targetPerson]);
 
-    // Fetch Received Feedback (Super Fetch: UserUID + AllotmentIDs + Name)
+    // Fetch Received Feedback (Emergency Fuzzy Search)
     useEffect(() => {
         if (activeTab === 'read' && userData?.uid) {
             const fetchFeedback = async () => {
                 setLoading(true);
                 try {
-                    let allResults = [];
+                    // 1. Calculate My Aliases/IDs
+                    const myIds = new Set([userData.uid]);
 
-                    // 1. Collect all Potential Target IDs
-                    const myIds = [userData.uid];
-
-                    // Fetch my allotments to get alternate IDs (e.g. if feedback sent to allotment ID)
+                    // Fetch linked allotments to get IDs/Names
                     if (userData.role === 'teacher' || userData.role === 'student') {
                         try {
                             const col = userData.role === 'teacher' ? 'teacher_allotments' : 'student_allotments';
-
-                            // A. Linked Allotments (by UID)
+                            // Linked
                             const fieldId = userData.role === 'teacher' ? 'teacherId' : 'studentId';
                             const qAllot = query(collection(db, col), where(fieldId, "==", userData.uid));
                             const allotSnap = await getDocs(qAllot);
-                            allotSnap.forEach(d => myIds.push(d.id));
+                            allotSnap.forEach(d => myIds.add(d.id));
 
-                            // B. Orphaned Allotments (by Name) - CRITICAL FIX
-                            // If the allotment doesn't have a UID but matches my Name, I should see its feedback.
+                            // Try to find Name-based allotments too
                             if (userData.name) {
                                 const fieldName = userData.role === 'teacher' ? 'teacherName' : 'studentName';
                                 const qAllotName = query(collection(db, col), where(fieldName, "==", userData.name));
                                 const allotSnapName = await getDocs(qAllotName);
-                                allotSnapName.forEach(d => myIds.push(d.id));
+                                allotSnapName.forEach(d => myIds.add(d.id));
                             }
-
-                        } catch (e) { console.log("Allotment fetch error ignored", e); }
+                        } catch (e) { }
                     }
 
-                    // 2. Query by IDs (Chunked 'in' query)
-                    // Firestore 'in' limit is 10. Split myIds drastically.
-                    const uniqueIds = [...new Set(myIds)];
-                    const chunks = [];
-                    for (let i = 0; i < uniqueIds.length; i += 10) {
-                        chunks.push(uniqueIds.slice(i, i + 10));
-                    }
+                    // 2. EMERGENCY FETCH: Get last 100 feedbacks globally and filter client-side
+                    // This bypasses specific query limitations to find "Near Matches"
+                    const qGlobal = query(collection(db, "general_feedback"), orderBy("timestamp", "desc"), limit(100));
+                    const snapGlobal = await getDocs(qGlobal);
 
-                    for (const chunk of chunks) {
-                        const qIds = query(collection(db, "general_feedback"), where("targetId", "in", chunk));
-                        const snap = await getDocs(qIds);
-                        allResults.push(...snap.docs.map(d => ({ id: d.id, ...d.data() })));
-                    }
+                    const filtered = snapGlobal.docs.map(d => ({ id: d.id, ...d.data() })).filter(item => {
+                        // Strict ID Check
+                        if (myIds.has(item.targetId)) return true;
 
-                    // 3. Query by Name (Fallback)
-                    if (userData.name) {
-                        try {
-                            const qName = query(collection(db, "general_feedback"), where("targetName", "==", userData.name));
-                            const snapName = await getDocs(qName);
-                            const nameResults = snapName.docs.map(d => ({ id: d.id, ...d.data() }));
-                            // Remove duplicates already found by ID
-                            const idMap = new Set(allResults.map(r => r.id));
-                            nameResults.forEach(r => {
-                                if (!idMap.has(r.id)) allResults.push(r);
-                            });
-                        } catch (e2) { console.log("Name query failed", e2); }
-                    }
+                        // Name Check (Loose)
+                        if (item.targetName && userData.name) {
+                            const tName = item.targetName.toLowerCase().trim();
+                            const uName = userData.name.toLowerCase().trim();
+                            // Exact
+                            if (tName === uName) return true;
+                            // Partial
+                            if (tName.includes(uName) || uName.includes(tName)) return true;
+                            // Token Match
+                            const tTokens = tName.split(' ');
+                            if (tTokens.some(t => uName.includes(t) && t.length > 3)) return true;
+                        }
+                        return false;
+                    });
 
-                    // Deduplicate (Final Safety)
-                    const uniqueList = Array.from(new Map(allResults.map(item => [item.id, item])).values());
-
-                    // Sort Descending
-                    uniqueList.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
-
-                    setReceivedFeedback(uniqueList);
+                    setReceivedFeedback(filtered);
                 } catch (e) {
                     console.error("Error fetching feedback:", e);
                 } finally {
