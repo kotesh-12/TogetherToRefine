@@ -109,20 +109,21 @@ export default function SelectFeedbackTarget() {
                     setTitle("Select Person for Feedback");
                     const colName = institutionFilter === 'Teacher' ? 'teacher_allotments' : 'student_allotments';
 
-                    // Fetch all people created by this institution
+                    // Fetch all allotments created by this institution
                     const q = query(collection(db, colName), where('createdBy', '==', userData.uid));
                     const snap = await getDocs(q);
                     const rawList = snap.docs.map(d => ({ ...d.data(), docId: d.id }));
 
                     if (institutionFilter === 'Teacher') {
-                        // Deduplicate Teachers
+                        // Deduplicate Teachers by teacherId
                         const uniqueMap = new Map();
                         rawList.forEach(item => {
-                            if (!item.teacherId) return;
-                            if (!uniqueMap.has(item.teacherId)) {
-                                uniqueMap.set(item.teacherId, {
-                                    id: item.teacherId,
-                                    name: item.teacherName || 'Unknown Teacher',
+                            // Fallback: Use docId if teacherId missing (should not happen in valid data)
+                            const tId = item.teacherId || item.docId;
+                            if (!uniqueMap.has(tId)) {
+                                uniqueMap.set(tId, {
+                                    id: tId,
+                                    name: item.teacherName || item.name || 'Unknown Teacher',
                                     type: 'Teacher',
                                     subject: item.subject || 'General'
                                 });
@@ -132,7 +133,7 @@ export default function SelectFeedbackTarget() {
                     } else {
                         // Students
                         list = rawList.map(item => ({
-                            id: item.studentId || item.docId, // User UID preferably
+                            id: item.studentId || item.docId,
                             name: item.studentName || item.name,
                             type: 'Student',
                             classAssigned: item.classAssigned,
@@ -149,6 +150,7 @@ export default function SelectFeedbackTarget() {
             }
         };
 
+        setLoading(true);
         fetchData();
     }, [userData, institutionFilter]);
 
