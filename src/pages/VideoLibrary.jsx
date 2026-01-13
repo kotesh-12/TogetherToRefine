@@ -21,7 +21,6 @@ export default function VideoLibrary() {
     // State
     const [videos, setVideos] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [playingVideo, setPlayingVideo] = useState(null);
 
     // Add Video State (Teachers/Institution)
     const [showAdd, setShowAdd] = useState(false);
@@ -207,33 +206,16 @@ export default function VideoLibrary() {
 
                     {videos.map(video => (
                         <div key={video.id} className="card" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '100%' }}>
-                            {/* Video Thumbnail (Click to Open) */}
-                            <div
-                                style={{ position: 'relative', paddingTop: '56.25%', background: '#000', cursor: 'pointer' }}
-                                onClick={() => setPlayingVideo(video)}
-                                title="Click to Watch on YouTube"
-                            >
-                                <img
-                                    src={`https://img.youtube.com/vi/${getYouTubeID(video.url)}/hqdefault.jpg`}
-                                    alt="Thumbnail"
-                                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.8 }}
-                                    onError={(e) => { e.target.style.display = 'none'; }}
+                            {/* Video Player Wrapper */}
+                            <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
+                                <ReactPlayer
+                                    url={video.url}
+                                    width='100%'
+                                    height='100%'
+                                    style={{ position: 'absolute', top: 0, left: 0 }}
+                                    controls={true}
+                                    light={true}
                                 />
-                                {/* Play Button Overlay */}
-                                <div style={{
-                                    position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px'
-                                }}>
-                                    <div style={{
-                                        width: '60px', height: '40px', background: 'red', borderRadius: '10px',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.3)'
-                                    }}>
-                                        <span style={{ color: 'white', fontSize: '20px' }}>▶</span>
-                                    </div>
-                                    <span style={{ color: 'white', fontWeight: '600', textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>
-                                        Watch Video
-                                    </span>
-                                </div>
                             </div>
 
                             {/* Info */}
@@ -270,31 +252,6 @@ export default function VideoLibrary() {
                     ))}
                 </div>
             </div>
-            {/* Video Modal Overlay */}
-            {playingVideo && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.9)', zIndex: 3000,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                    <div style={{ position: 'relative', width: '90%', maxWidth: '800px', aspectRatio: '16/9', background: 'black' }}>
-                        <button
-                            onClick={() => setPlayingVideo(null)}
-                            style={{
-                                position: 'absolute', top: '-40px', right: 0,
-                                background: 'none', border: 'none', color: 'white', fontSize: '30px', cursor: 'pointer'
-                            }}
-                        >✕</button>
-                        <ReactPlayer
-                            url={playingVideo.url}
-                            width='100%'
-                            height='100%'
-                            controls={true}
-                            playing={true}
-                        />
-                    </div>
-                </div>
-            )}
         </div>
     );
 }
