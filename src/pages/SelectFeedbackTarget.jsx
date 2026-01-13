@@ -13,6 +13,10 @@ export default function SelectFeedbackTarget() {
     const [loading, setLoading] = useState(true);
     const [title, setTitle] = useState("Select Person");
 
+    // Teacher Filter States
+    const [searchTerm, setSearchTerm] = useState('');
+    const [sortBy, setSortBy] = useState('name'); // 'name', 'class', 'section'
+
     useEffect(() => {
         const fetchData = async () => {
             if (!userData) return;
@@ -27,7 +31,6 @@ export default function SelectFeedbackTarget() {
                     const userSection = userData.section || userData.assignedSection;
 
                     if (userClass) {
-                        // Students fetch Teachers assigned to their class
                         const q = query(
                             collection(db, "teacher_allotments"),
                             where("classAssigned", "==", userClass),
@@ -43,7 +46,6 @@ export default function SelectFeedbackTarget() {
                     const mySection = userData.assignedSection;
 
                     if (myClass) {
-                        // Teachers fetch Students assigned to their class
                         const q = query(
                             collection(db, "student_allotments"),
                             where("classAssigned", "==", myClass),
@@ -74,6 +76,21 @@ export default function SelectFeedbackTarget() {
         navigate('/general-feedback');
     };
 
+    // Filter & Sort Logic
+    const filteredTargets = targets
+        .filter(t => {
+            if (userData?.role === 'teacher') {
+                return t.name.toLowerCase().includes(searchTerm.toLowerCase());
+            }
+            return true; // No search for students (as per instructions "don't change anything in student role", though search is harmless)
+        })
+        .sort((a, b) => {
+            if (sortBy === 'name') return a.name.localeCompare(b.name);
+            if (sortBy === 'class') return (a.classAssigned || '').localeCompare(b.classAssigned || '');
+            if (sortBy === 'section') return (a.section || '').localeCompare(b.section || '');
+            return 0;
+        });
+
     return (
         <div className="page-wrapper">
             <AIBadge />
@@ -84,18 +101,41 @@ export default function SelectFeedbackTarget() {
                     Who do you want to give feedback to?
                 </p>
 
+                {/* Teacher Controls: Search & Sort */}
+                {userData?.role === 'teacher' && (
+                    <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                        <input
+                            className="input-field"
+                            placeholder="🔍 Search Student..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            style={{ flex: 1, margin: 0 }}
+                        />
+                        <select
+                            className="input-field"
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
+                            style={{ width: '120px', margin: 0 }}
+                        >
+                            <option value="name">A-Z Name</option>
+                            <option value="class">By Class</option>
+                            <option value="section">By Section</option>
+                        </select>
+                    </div>
+                )}
+
                 {loading ? (
                     <div className="text-center">Loading List...</div>
                 ) : (
                     <div style={{ display: 'grid', gap: '15px' }}>
-                        {targets.length === 0 ? (
+                        {filteredTargets.length === 0 ? (
                             <div className="card text-center text-muted">
                                 {userData?.role === 'teacher'
-                                    ? "No students found in your allotted class."
+                                    ? "No students found matching criteria."
                                     : "No teachers found for your class yet."}
                             </div>
                         ) : (
-                            targets.map(t => (
+                            filteredTargets.map(t => (
                                 <div
                                     key={t.id}
                                     onClick={() => handleSelect(t)}
@@ -124,7 +164,7 @@ export default function SelectFeedbackTarget() {
                                         <div>
                                             <h4 style={{ margin: 0, color: '#2d3436' }}>{t.name}</h4>
                                             <p style={{ margin: 0, fontSize: '13px', color: '#636e72' }}>
-                                                {t.type === 'Teacher' ? t.subject : "Student"}
+                                                {t.type === 'Teacher' ? t.subject : `Student • ${t.classAssigned}-${t.section}`}
                                             </p>
                                         </div>
                                     </div>
