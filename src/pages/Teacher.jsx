@@ -14,7 +14,10 @@ export default function Teacher() {
     const [showModal, setShowModal] = useState(false);
     const [announcementText, setAnnouncementText] = useState('');
     const [allotments, setAllotments] = useState([]);
-    const [selectedAllotmentId, setSelectedAllotmentId] = useState('');
+
+    // Selection State
+    const [selectedClass, setSelectedClass] = useState('');
+    const [selectedSection, setSelectedSection] = useState('All');
 
     // Fetch Allotments when Modal opens
     React.useEffect(() => {
@@ -25,12 +28,19 @@ export default function Teacher() {
                     const snap = await getDocs(q);
                     const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                     setAllotments(list);
-                    if (list.length > 0 && !selectedAllotmentId) setSelectedAllotmentId(list[0].id);
+                    if (list.length > 0 && !selectedClass) setSelectedClass(list[0].classAssigned);
                 } catch (e) { console.error(e); }
             };
             fetchAllotments();
         }
     }, [userData, showModal]);
+
+    // Derived Data
+    const uniqueClasses = [...new Set(allotments.map(a => a.classAssigned))].sort();
+    const sectionsForClass = allotments
+        .filter(a => a.classAssigned === selectedClass)
+        .map(a => a.section)
+        .sort();
 
     const handleGoToGroups = () => {
         if (!userData) return;
@@ -149,26 +159,34 @@ export default function Teacher() {
                 }}>
                     <div className="card" style={{ width: '90%', maxWidth: '500px' }}>
                         <h3>📢 Make Announcement</h3>
-                        <div style={{ marginBottom: '10px' }}>
-                            <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px', color: '#666' }}>To Class:</label>
-                            {allotments.length > 0 ? (
+                        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                            <div style={{ flex: 1 }}>
+                                <label style={{ fontSize: '12px', color: '#666', display: 'block' }}>Class:</label>
+                                {uniqueClasses.length > 0 ? (
+                                    <select
+                                        className="input-field"
+                                        value={selectedClass}
+                                        onChange={(e) => { setSelectedClass(e.target.value); setSelectedSection('All'); }}
+                                        style={{ margin: 0 }}
+                                    >
+                                        {uniqueClasses.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                ) : (
+                                    <p>{userData?.assignedClass || 'N/A'}</p>
+                                )}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <label style={{ fontSize: '12px', color: '#666', display: 'block' }}>Section:</label>
                                 <select
                                     className="input-field"
-                                    value={selectedAllotmentId}
-                                    onChange={(e) => setSelectedAllotmentId(e.target.value)}
+                                    value={selectedSection}
+                                    onChange={(e) => setSelectedSection(e.target.value)}
                                     style={{ margin: 0 }}
                                 >
-                                    {allotments.map(a => (
-                                        <option key={a.id} value={a.id}>
-                                            {a.classAssigned} - {a.section} ({a.subject})
-                                        </option>
-                                    ))}
+                                    <option value="All">All Sections</option>
+                                    {sectionsForClass.map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
-                            ) : (
-                                <p style={{ fontSize: '14px', fontWeight: 'bold' }}>
-                                    {userData?.assignedClass ? `${userData.assignedClass}-${userData.assignedSection}` : "Loading classes..."}
-                                </p>
-                            )}
+                            </div>
                         </div>
                         <textarea
                             className="input-field"
