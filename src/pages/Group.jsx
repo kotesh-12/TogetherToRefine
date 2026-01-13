@@ -47,7 +47,13 @@ export default function Group() {
                 q = query(collection(db, "groups"), where("createdBy", "==", userData.uid));
             } else {
                 // 2. Student/Teacher: Show groups for their Class
-                const userClass = userData.class || userData.assignedClass;
+                let userClass = userData.class || userData.assignedClass;
+
+                // Normalize "1st" -> "1" to match Group Data
+                if (userClass && parseInt(userClass)) {
+                    userClass = parseInt(userClass).toString();
+                }
+
                 if (userClass) {
                     q = query(collection(db, "groups"), where("className", "==", userClass));
                 }
