@@ -107,21 +107,32 @@ export default function Attendance() {
                     q = query(collection(db, colName), where('classAssigned', '==', cls));
                 }
             } else {
-                // Fetch ONLY teachers created by this specific Institution (or associated with it)
+                // Fetch All Allotments to find Teachers linked to this Institution
                 q = query(collection(db, colName), where('createdBy', '==', userData.uid));
             }
 
             const snapshot = await getDocs(q);
-            let fetched = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            let rawList = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
-            // Fetch Status for this Date AND Subject
-            // If Subject is blank, we can't show specific status accurately if multiple exist? 
-            // Or only show if match?
-            // Let's assume for Marking, "Subject" is required if it's Student view.
+            // Deduplicate Teachers if view is 'teachers'
+            let fetched = rawList;
+            if (view === 'teachers') {
+                const uniqueMap = new Map();
+                rawList.forEach(item => {
+                    if (!item.teacherId) return;
+                    if (!uniqueMap.has(item.teacherId)) {
+                        uniqueMap.set(item.teacherId, {
+                            id: item.teacherId, // Use User UID as ID
+                            name: item.teacherName || 'Unknown Teacher',
+                            classAssigned: 'Teacher', // Label
+                            ...item
+                        });
+                    }
+                });
+                fetched = Array.from(uniqueMap.values());
+            }
 
-            // We need to query attendance for this Date + specific Subject (if viewing students)
-            // Or just Date if Teachers (usually generic attendance)
-
+            // Fetch Attendance for Date
             let attQuery = query(collection(db, "attendance"), where("date", "==", selectedDate));
             if (view === 'students' && subject) {
                 attQuery = query(collection(db, "attendance"), where("date", "==", selectedDate), where("subject", "==", subject));
@@ -133,14 +144,9 @@ export default function Attendance() {
                 attendanceMap[d.data().userId] = d.data().status;
             });
 
-            // Calculate Stats (Optionally subject-wise stats for the teacher to see?)
-            // For listing, we just show "Percent" (Overall? Or Subject specific?)
-            // Showing Overall is safer/easier for now.
-            // Let's calculate Overall Percentage for the users in the list
+            // Calculate Stats (Example: Consistency)
             const stats = await Promise.all(fetched.map(async (p) => {
                 try {
-                    // Fetch ALL attendance (any subject) to show overall consistency
-                    // Or prioritize subject? Let's show Overall consistency.
                     const allAtt = await getDocs(query(collection(db, "attendance"), where("userId", "==", p.id)));
                     let total = 0, present = 0;
                     allAtt.forEach(doc => { total++; if (doc.data().status === 'present') present++; });
