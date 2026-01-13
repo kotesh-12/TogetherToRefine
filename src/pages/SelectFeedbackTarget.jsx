@@ -69,12 +69,7 @@ export default function SelectFeedbackTarget() {
     }, [userData]);
 
     const handleSelect = (person) => {
-        const label = person.type === 'Teacher'
-            ? `${person.name} (${person.subject})`
-            : `${person.name} (${person.classAssigned}-${person.section})`;
-
-        localStorage.setItem("selectedPerson", label);
-        navigate('/general-feedback');
+        navigate('/general-feedback', { state: { target: person } });
     };
 
     // Extract Unique Options

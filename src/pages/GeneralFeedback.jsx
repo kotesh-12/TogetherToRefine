@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
+import { useUser } from '../context/UserContext';
 
 export default function GeneralFeedback() {
     const navigate = useNavigate();
-    const [selectedPerson, setSelectedPerson] = useState('');
+    const location = useLocation();
+    const { userData } = useUser();
+
+    // Tabs: 'write' or 'read'
+    const [activeTab, setActiveTab] = useState(location.state?.target ? 'write' : 'read');
+    const [targetPerson, setTargetPerson] = useState(location.state?.target || null);
+
+    // Write Form State
     const [ratings, setRatings] = useState({
         behavior: { dropdown: '', stars: 0 },
         communication: { dropdown: '', stars: 0 },
@@ -15,10 +23,27 @@ export default function GeneralFeedback() {
     const [comment, setComment] = useState('');
     const [loading, setLoading] = useState(false);
 
+    // Read List State
+    const [receivedFeedback, setReceivedFeedback] = useState([]);
+
+    // Fetch Received Feedback
     useEffect(() => {
-        const person = localStorage.getItem('selectedPerson');
-        if (person) setSelectedPerson(person);
-    }, []);
+        if (activeTab === 'read' && userData?.uid) {
+            const fetchFeedback = async () => {
+                try {
+                    // Query where current user is the Target
+                    const q = query(
+                        collection(db, "general_feedback"),
+                        where("targetId", "==", userData.uid),
+                        orderBy("timestamp", "desc")
+                    );
+                    const snap = await getDocs(q);
+                    setReceivedFeedback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                } catch (e) { console.error("Error fetching feedback:", e); }
+            };
+            fetchFeedback();
+        }
+    }, [activeTab, userData]);
 
     const handleDropdown = (category, val) => {
         setRatings(prev => ({ ...prev, [category]: { ...prev[category], dropdown: val } }));
@@ -29,6 +54,8 @@ export default function GeneralFeedback() {
     };
 
     const handleSubmit = async () => {
+        if (!targetPerson) return alert("No target selected.");
+
         // Validation
         const r = ratings;
         if (!r.behavior.dropdown || !r.behavior.stars ||
@@ -41,7 +68,12 @@ export default function GeneralFeedback() {
         setLoading(true);
         try {
             await addDoc(collection(db, "general_feedback"), {
-                targetPerson: selectedPerson,
+                authorId: userData.uid,
+                authorName: userData.name,
+                authorRole: userData.role,
+                targetId: targetPerson.id || targetPerson.uid,
+                targetName: targetPerson.name,
+                targetRole: targetPerson.type || 'User', // 'Student', 'Teacher'
                 behavior: r.behavior,
                 communication: r.communication,
                 bodyLanguage: r.bodyLanguage,
@@ -50,7 +82,9 @@ export default function GeneralFeedback() {
                 timestamp: serverTimestamp()
             });
             alert("Feedback Submitted Successfully!");
-            navigate('/student'); // Return home
+            // Switch to Read tab to see if we received anything? Or just go home.
+            // User flow: usually goes back.
+            navigate(-1);
         } catch (e) {
             console.error(e);
             alert("Error submitting feedback.");
@@ -102,104 +136,182 @@ export default function GeneralFeedback() {
                     borderRadius: '50%', filter: 'blur(60px)', opacity: '0.4'
                 }}></div>
 
-                <div className="text-center" style={{ marginBottom: '40px', position: 'relative' }}>
-                    <div style={{ fontSize: '60px', marginBottom: '10px' }}>🌟</div>
-                    <h2 style={{
-                        background: 'linear-gradient(to right, #00f2fe, #4facfe)',
-                        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                        margin: '0', fontSize: '28px', fontWeight: '800'
-                    }}>
-                        Feedback for {selectedPerson || "User"}
-                    </h2>
-                    <p style={{ color: '#888', marginTop: '5px' }}>Help us improve by rating honestly</p>
-                </div>
-
-                <div style={{ display: 'grid', gap: '25px' }}>
-                    {categories.map(cat => (
-                        <div key={cat.key} style={{
-                            background: '#f8f9fa', padding: '20px', borderRadius: '16px',
-                            border: '1px solid #cbd5e0', transition: 'transform 0.2s', // Darker border
-                            display: 'flex', flexDirection: 'column', gap: '15px',
-                            boxShadow: '0 2px 5px rgba(0,0,0,0.05)' // Subtle shadow for depth
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                <div style={{
-                                    fontSize: '30px', background: 'white', width: '60px', height: '60px',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    borderRadius: '50%', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0'
-                                }}>
-                                    {cat.icon}
-                                </div>
-                                <div>
-                                    <label style={{ fontSize: '18px', fontWeight: '700', color: '#2d3748' }}>{cat.label}</label>
-                                    <div style={{ fontSize: '12px', color: '#718096' }}>Rate their {cat.label.toLowerCase()}</div>
-                                </div>
-                            </div>
-
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                                <select
-                                    style={{
-                                        padding: '10px 15px', borderRadius: '12px', border: '1px solid #a0aec0', // Darker border for dropdown
-                                        background: 'white', color: '#2d3748', fontWeight: '500', outline: 'none',
-                                        minWidth: '140px', cursor: 'pointer'
-                                    }}
-                                    value={ratings[cat.key].dropdown}
-                                    onChange={(e) => handleDropdown(cat.key, e.target.value)}
-                                >
-                                    <option value="" disabled>Select Rating...</option>
-                                    <option>Excellent</option><option>Good</option><option>Average</option><option>Poor</option>
-                                </select>
-
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                    {[1, 2, 3, 4, 5].map(s => (
-                                        <span
-                                            key={s}
-                                            style={{
-                                                fontSize: '28px', cursor: 'pointer',
-                                                color: s <= ratings[cat.key].stars ? '#fbbf24' : '#e2e8f0',
-                                                transition: 'all 0.2s', transform: s <= ratings[cat.key].stars ? 'scale(1.1)' : 'scale(1)'
-                                            }}
-                                            onClick={() => handleStars(cat.key, s)}
-                                        >★</span>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                <div style={{ marginTop: '30px' }}>
-                    <label style={{ fontWeight: '700', color: '#2d3748', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span>📝</span> Additional Comments
-                    </label>
-                    <textarea
-                        className="input-field"
-                        value={comment}
-                        onChange={(e) => setComment(e.target.value)}
-                        placeholder="Share any specific details or suggestions..."
+                {/* Tabs */}
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '30px', background: '#f0f2f5', padding: '5px', borderRadius: '12px' }}>
+                    <button
+                        onClick={() => setActiveTab('read')}
                         style={{
-                            height: '100px', resize: 'vertical', borderRadius: '16px',
-                            border: '2px solid #edf2f7', padding: '15px', background: '#f8f9fa'
+                            flex: 1, padding: '12px', borderRadius: '10px', border: 'none',
+                            background: activeTab === 'read' ? 'white' : 'transparent',
+                            boxShadow: activeTab === 'read' ? '0 2px 5px rgba(0,0,0,0.1)' : 'none',
+                            fontWeight: 'bold', cursor: 'pointer', color: activeTab === 'read' ? '#0984e3' : '#636e72'
                         }}
-                    />
+                    >
+                        📩 Received Feedback
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('write')}
+                        style={{
+                            flex: 1, padding: '12px', borderRadius: '10px', border: 'none',
+                            background: activeTab === 'write' ? 'white' : 'transparent',
+                            boxShadow: activeTab === 'write' ? '0 2px 5px rgba(0,0,0,0.1)' : 'none',
+                            fontWeight: 'bold', cursor: 'pointer', color: activeTab === 'write' ? '#0984e3' : '#636e72'
+                        }}
+                    >
+                        📝 Give Feedback
+                    </button>
                 </div>
 
-                <button
-                    onClick={handleSubmit}
-                    disabled={loading}
-                    style={{
-                        width: '100%', padding: '18px', marginTop: '20px',
-                        background: 'linear-gradient(to right, #00c6fb, #005bea)',
-                        color: 'white', border: 'none', borderRadius: '16px',
-                        fontSize: '18px', fontWeight: 'bold', cursor: 'pointer',
-                        boxShadow: '0 10px 20px rgba(0, 91, 234, 0.3)',
-                        transition: 'transform 0.2s, box-shadow 0.2s'
-                    }}
-                    onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 15px 30px rgba(0, 91, 234, 0.4)'; }}
-                    onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 91, 234, 0.3)'; }}
-                >
-                    {loading ? '🚀 Sending Feedback...' : '🚀 Submit Feedback'}
-                </button>
+                {activeTab === 'write' ? (
+                    targetPerson ? (
+                        <>
+                            <div className="text-center" style={{ marginBottom: '40px', position: 'relative' }}>
+                                <div style={{ fontSize: '60px', marginBottom: '10px' }}>🌟</div>
+                                <h2 style={{
+                                    background: 'linear-gradient(to right, #00f2fe, #4facfe)',
+                                    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                                    margin: '0', fontSize: '28px', fontWeight: '800'
+                                }}>
+                                    Feedback for {targetPerson.name}
+                                </h2>
+                                <p style={{ color: '#888', marginTop: '5px' }}>Help us improve by rating honestly</p>
+                            </div>
+
+                            <div style={{ display: 'grid', gap: '25px' }}>
+                                {categories.map(cat => (
+                                    <div key={cat.key} style={{
+                                        background: '#f8f9fa', padding: '20px', borderRadius: '16px',
+                                        border: '1px solid #cbd5e0', transition: 'transform 0.2s',
+                                        display: 'flex', flexDirection: 'column', gap: '15px',
+                                        boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                            <div style={{
+                                                fontSize: '30px', background: 'white', width: '60px', height: '60px',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                borderRadius: '50%', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0'
+                                            }}>
+                                                {cat.icon}
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '18px', fontWeight: '700', color: '#2d3748' }}>{cat.label}</label>
+                                                <div style={{ fontSize: '12px', color: '#718096' }}>Rate their {cat.label.toLowerCase()}</div>
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                                            <select
+                                                style={{
+                                                    padding: '10px 15px', borderRadius: '12px', border: '1px solid #a0aec0',
+                                                    background: 'white', color: '#2d3748', fontWeight: '500', outline: 'none',
+                                                    minWidth: '140px', cursor: 'pointer'
+                                                }}
+                                                value={ratings[cat.key].dropdown}
+                                                onChange={(e) => handleDropdown(cat.key, e.target.value)}
+                                            >
+                                                <option value="" disabled>Select Rating...</option>
+                                                <option>Excellent</option><option>Good</option><option>Average</option><option>Poor</option>
+                                            </select>
+
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                {[1, 2, 3, 4, 5].map(s => (
+                                                    <span
+                                                        key={s}
+                                                        style={{
+                                                            fontSize: '28px', cursor: 'pointer',
+                                                            color: s <= ratings[cat.key].stars ? '#fbbf24' : '#e2e8f0',
+                                                            transition: 'all 0.2s', transform: s <= ratings[cat.key].stars ? 'scale(1.1)' : 'scale(1)'
+                                                        }}
+                                                        onClick={() => handleStars(cat.key, s)}
+                                                    >★</span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div style={{ marginTop: '30px' }}>
+                                <label style={{ fontWeight: '700', color: '#2d3748', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <span>📝</span> Additional Comments
+                                </label>
+                                <textarea
+                                    className="input-field"
+                                    value={comment}
+                                    onChange={(e) => setComment(e.target.value)}
+                                    placeholder="Share any specific details or suggestions..."
+                                    style={{
+                                        height: '100px', resize: 'vertical', borderRadius: '16px',
+                                        border: '2px solid #edf2f7', padding: '15px', background: '#f8f9fa'
+                                    }}
+                                />
+                            </div>
+
+                            <button
+                                onClick={handleSubmit}
+                                disabled={loading}
+                                style={{
+                                    width: '100%', padding: '18px', marginTop: '20px',
+                                    background: 'linear-gradient(to right, #00c6fb, #005bea)',
+                                    color: 'white', border: 'none', borderRadius: '16px',
+                                    fontSize: '18px', fontWeight: 'bold', cursor: 'pointer',
+                                    boxShadow: '0 10px 20px rgba(0, 91, 234, 0.3)',
+                                    transition: 'transform 0.2s, box-shadow 0.2s'
+                                }}
+                                onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 15px 30px rgba(0, 91, 234, 0.4)'; }}
+                                onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 91, 234, 0.3)'; }}
+                            >
+                                {loading ? '🚀 Sending Feedback...' : '🚀 Submit Feedback'}
+                            </button>
+                        </>
+                    ) : (
+                        <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                            <p style={{ color: '#666', marginBottom: '20px' }}>Select a person to give feedback to.</p>
+                            <button
+                                className="btn"
+                                onClick={() => navigate('/select-feedback-target')}
+                                style={{ background: '#0984e3', color: 'white' }}
+                            >
+                                🔍 Find Person
+                            </button>
+                        </div>
+                    )
+                ) : (
+                    // READ MODE
+                    <div style={{ display: 'grid', gap: '15px' }}>
+                        {receivedFeedback.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '30px', color: '#888' }}>
+                                No feedback received yet. 📭
+                            </div>
+                        ) : (
+                            receivedFeedback.map(f => (
+                                <div key={f.id} style={{
+                                    background: 'white', padding: '20px', borderRadius: '16px',
+                                    border: '1px solid #e1e8ed', boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                        <div style={{ fontWeight: 'bold', color: '#2d3436' }}>From: {f.authorName} ({f.authorRole})</div>
+                                        <div style={{ fontSize: '12px', color: '#b2bec3' }}>
+                                            {f.timestamp?.toDate().toLocaleDateString()}
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                        {Object.keys(f).filter(k => ['behavior', 'communication', 'bodyLanguage', 'hardworking'].includes(k)).map(k => (
+                                            <div key={k} style={{ background: '#f8f9fa', padding: '10px', borderRadius: '8px', fontSize: '13px' }}>
+                                                <strong>{k.charAt(0).toUpperCase() + k.slice(1)}:</strong> {f[k].stars}★ ({f[k].dropdown})
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {f.comment && (
+                                        <div style={{ marginTop: '15px', background: '#ffeaa7', padding: '10px', borderRadius: '8px', fontSize: '14px', color: '#d63031' }}>
+                                            💬 "{f.comment}"
+                                        </div>
+                                    )}
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );
