@@ -206,16 +206,21 @@ export default function VideoLibrary() {
 
                     {videos.map(video => (
                         <div key={video.id} className="card" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '100%' }}>
-                            {/* Video Player Wrapper */}
+                            {/* Native Iframe for Maximum Reliability */}
                             <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
-                                <ReactPlayer
-                                    url={video.url}
-                                    width='100%'
-                                    height='100%'
-                                    style={{ position: 'absolute', top: 0, left: 0 }}
-                                    controls={true}
-                                    light={true}
-                                />
+                                {getYouTubeID(video.url) ? (
+                                    <iframe
+                                        src={`https://www.youtube.com/embed/${getYouTubeID(video.url)}`}
+                                        title={video.title}
+                                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 0 }}
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowFullScreen
+                                    />
+                                ) : (
+                                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+                                        Invalid Video URL
+                                    </div>
+                                )}
                             </div>
 
                             {/* Info */}
