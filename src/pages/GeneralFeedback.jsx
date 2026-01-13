@@ -62,22 +62,35 @@ export default function GeneralFeedback() {
         checkCycle();
     }, [activeTab, userData, targetPerson]);
 
-    // Fetch Received Feedback
+    // Fetch Received Feedback (Robust ID + Name fallback)
     useEffect(() => {
         if (activeTab === 'read' && userData?.uid) {
             const fetchFeedback = async () => {
                 try {
-                    // Query where current user is the Target
-                    const q = query(
-                        collection(db, "general_feedback"),
-                        where("targetId", "==", userData.uid)
-                    );
-                    const snap = await getDocs(q);
+                    // 1. Query by Target ID (Standard)
+                    const qId = query(collection(db, "general_feedback"), where("targetId", "==", userData.uid));
+                    const snapId = await getDocs(qId);
 
-                    const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                    // Client-Side Sort
-                    list.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
-                    setReceivedFeedback(list);
+                    // 2. Query by Target Name (Fallback for unlinked accounts)
+                    let list = snapId.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                    if (userData.name) {
+                        try {
+                            const qName = query(collection(db, "general_feedback"), where("targetName", "==", userData.name));
+                            const snapName = await getDocs(qName);
+                            const listName = snapName.docs.map(d => ({ id: d.id, ...d.data() }));
+                            // Merge
+                            list = [...list, ...listName];
+                        } catch (e2) { console.log("Name query failed (optional)", e2); }
+                    }
+
+                    // Deduplicate by ID
+                    const uniqueList = Array.from(new Map(list.map(item => [item.id, item])).values());
+
+                    // Sort Descending
+                    uniqueList.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+
+                    setReceivedFeedback(uniqueList);
                 } catch (e) { console.error("Error fetching feedback:", e); }
             };
             fetchFeedback();
