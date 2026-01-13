@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore'; // Updated imports
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { useUser } from '../context/UserContext';
+import AIBadge from '../components/AIBadge';
+import AnnouncementBar from '../components/AnnouncementBar';
 
 export default function SelectFeedbackTarget() {
     const navigate = useNavigate();
