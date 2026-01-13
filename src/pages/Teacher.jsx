@@ -62,21 +62,25 @@ export default function Teacher() {
         <div className="page-wrapper">
             <AIBadge />
 
-            {/* Left Top Announcement Button (Opposite to AI Badge) */}
-            <button
-                onClick={() => setShowModal(true)}
-                style={{
-                    position: 'fixed', top: '15px', left: '15px', zIndex: 2000,
-                    width: '45px', height: '45px', borderRadius: '50%',
-                    background: 'white', border: 'none', boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', cursor: 'pointer'
-                }}
-                title="Make Announcement"
-            >
-                📢
-            </button>
+
 
             <AnnouncementBar title="Teacher Dashboard" />
+
+            {/* Announcement Button (Relative) */}
+            <div style={{ display: 'flex', padding: '10px 15px', justifyContent: 'flex-start' }}>
+                <button
+                    onClick={() => setShowModal(true)}
+                    style={{
+                        width: '45px', height: '45px', borderRadius: '50%',
+                        background: 'white', border: 'none', boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', cursor: 'pointer',
+                        color: '#0984e3'
+                    }}
+                    title="Make Announcement"
+                >
+                    📢
+                </button>
+            </div>
 
             <div className="container">
                 <div className="card text-center" style={{ marginTop: '20px' }}>
