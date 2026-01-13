@@ -64,6 +64,17 @@ export default function SelectFeedbackTarget() {
                         } catch (e) { console.error("Error finding inst from allotments", e); }
                     }
 
+                    // Fallback 2: If still no ID (orphan teacher?), find ANY Institution (Demo Mode)
+                    if (!instId) {
+                        try {
+                            const qInst = query(collection(db, "users"), where("role", "==", "institution"));
+                            const qSnap = await getDocs(qInst);
+                            if (!qSnap.empty) {
+                                instId = qSnap.docs[0].id;
+                            }
+                        } catch (e) { console.error("Error finding any inst", e); }
+                    }
+
                     if (instId) {
                         try {
                             const instDoc = await getDoc(doc(db, "users", instId));
