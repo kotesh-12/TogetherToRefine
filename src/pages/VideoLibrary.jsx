@@ -21,6 +21,7 @@ export default function VideoLibrary() {
     // State
     const [videos, setVideos] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [playingVideo, setPlayingVideo] = useState(null);
 
     // Add Video State (Teachers/Institution)
     const [showAdd, setShowAdd] = useState(false);
@@ -209,7 +210,7 @@ export default function VideoLibrary() {
                             {/* Video Thumbnail (Click to Open) */}
                             <div
                                 style={{ position: 'relative', paddingTop: '56.25%', background: '#000', cursor: 'pointer' }}
-                                onClick={() => window.open(video.url, '_blank')}
+                                onClick={() => setPlayingVideo(video)}
                                 title="Click to Watch on YouTube"
                             >
                                 <img
@@ -269,6 +270,31 @@ export default function VideoLibrary() {
                     ))}
                 </div>
             </div>
+            {/* Video Modal Overlay */}
+            {playingVideo && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.9)', zIndex: 3000,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                    <div style={{ position: 'relative', width: '90%', maxWidth: '800px', aspectRatio: '16/9', background: 'black' }}>
+                        <button
+                            onClick={() => setPlayingVideo(null)}
+                            style={{
+                                position: 'absolute', top: '-40px', right: 0,
+                                background: 'none', border: 'none', color: 'white', fontSize: '30px', cursor: 'pointer'
+                            }}
+                        >✕</button>
+                        <ReactPlayer
+                            url={playingVideo.url}
+                            width='100%'
+                            height='100%'
+                            controls={true}
+                            playing={true}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
