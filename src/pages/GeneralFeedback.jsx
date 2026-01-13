@@ -77,15 +77,27 @@ export default function GeneralFeedback() {
                     if (userData.role === 'teacher' || userData.role === 'student') {
                         try {
                             const col = userData.role === 'teacher' ? 'teacher_allotments' : 'student_allotments';
-                            const field = userData.role === 'teacher' ? 'teacherId' : 'studentId';
-                            const qAllot = query(collection(db, col), where(field, "==", userData.uid));
+
+                            // A. Linked Allotments (by UID)
+                            const fieldId = userData.role === 'teacher' ? 'teacherId' : 'studentId';
+                            const qAllot = query(collection(db, col), where(fieldId, "==", userData.uid));
                             const allotSnap = await getDocs(qAllot);
                             allotSnap.forEach(d => myIds.push(d.id));
+
+                            // B. Orphaned Allotments (by Name) - CRITICAL FIX
+                            // If the allotment doesn't have a UID but matches my Name, I should see its feedback.
+                            if (userData.name) {
+                                const fieldName = userData.role === 'teacher' ? 'teacherName' : 'studentName';
+                                const qAllotName = query(collection(db, col), where(fieldName, "==", userData.name));
+                                const allotSnapName = await getDocs(qAllotName);
+                                allotSnapName.forEach(d => myIds.push(d.id));
+                            }
+
                         } catch (e) { console.log("Allotment fetch error ignored", e); }
                     }
 
                     // 2. Query by IDs (Chunked 'in' query)
-                    // Firestore 'in' limit is 10. Split myIds.
+                    // Firestore 'in' limit is 10. Split myIds drastically.
                     const uniqueIds = [...new Set(myIds)];
                     const chunks = [];
                     for (let i = 0; i < uniqueIds.length; i += 10) {
