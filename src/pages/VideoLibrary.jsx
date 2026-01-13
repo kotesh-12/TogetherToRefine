@@ -9,7 +9,7 @@ import ReactPlayer from 'react-player'; // Using standard import for better comp
 // Helper to extract ID
 const getYouTubeID = (url) => {
     if (!url) return null;
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
     const match = url.match(regExp);
     return (match && match[2].length === 11) ? match[2] : null;
 };
@@ -210,11 +210,12 @@ export default function VideoLibrary() {
                             <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
                                 {getYouTubeID(video.url) ? (
                                     <iframe
-                                        src={`https://www.youtube.com/embed/${getYouTubeID(video.url)}`}
+                                        src={`https://www.youtube.com/embed/${getYouTubeID(video.url)}?rel=0&modestbranding=1`}
                                         title={video.title}
                                         style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 0 }}
                                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                         allowFullScreen
+                                        loading="lazy"
                                     />
                                 ) : (
                                     <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
