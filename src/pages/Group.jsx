@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../firebase';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, getDocs } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 
@@ -10,7 +10,7 @@ export default function Group() {
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [groupId, setGroupId] = useState(null);
-    const [groupName, setGroupName] = useState('');
+    const [groupData, setGroupData] = useState(null); // Store full group object
     const [file, setFile] = useState(null);
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -18,6 +18,11 @@ export default function Group() {
     // Institution Mode
     const [isSelecting, setIsSelecting] = useState(false);
     const [groupList, setGroupList] = useState([]);
+
+    // UI States
+    const [showMenu, setShowMenu] = useState(false);
+    const [viewMode, setViewMode] = useState(null); // 'members', 'photos', 'files', 'docs'
+    const [members, setMembers] = useState([]);
 
     useEffect(() => {
         const gid = localStorage.getItem("activeGroupId");
@@ -70,7 +75,9 @@ export default function Group() {
     const loadGroupChat = (gid) => {
         // Fetch Group Info
         getDoc(doc(db, "groups", gid)).then(d => {
-            if (d.exists()) setGroupName(d.data().groupName);
+            if (d.exists()) {
+                setGroupData(d.data());
+            }
         });
 
         // Listen to Messages
@@ -85,6 +92,32 @@ export default function Group() {
         });
         return unsubscribe;
     };
+
+    const fetchMembers = async () => {
+        if (!groupData) return;
+        try {
+            // Fetch students in this class/section
+            // Note: This matches Student allotments. 
+            // Teachers are in 'teacher_allotments', we could fetch them too but start with students is safer.
+            const q = query(
+                collection(db, "student_allotments"),
+                where("classAssigned", "==", groupData.className), // Ensure groupData has className
+                where("section", "==", groupData.section)
+            );
+            const snap = await getDocs(q);
+            const list = snap.docs.map(d => d.data());
+            setMembers(list);
+        } catch (e) {
+            console.error("Error fetching members", e);
+        }
+    };
+
+    // Trigger fetch when viewMode changes to 'members'
+    useEffect(() => {
+        if (viewMode === 'about' || viewMode === 'members') {
+            fetchMembers();
+        }
+    }, [viewMode, groupData]);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -126,6 +159,22 @@ export default function Group() {
         loadGroupChat(gid);
     }
 
+    // --- SUB-COMPONENTS ---
+    const OverlayView = ({ title, onClose, children }) => (
+        <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'white', zIndex: 2000, display: 'flex', flexDirection: 'column'
+        }}>
+            <div style={{ padding: '15px', borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '20px' }}>⬅</button>
+                <h3 style={{ margin: 0 }}>{title}</h3>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '15px' }}>
+                {children}
+            </div>
+        </div>
+    );
+
     // --- RENDER GROUP SELECTION LIST (For Institution) ---
     if (isSelecting) {
         return (
@@ -157,8 +206,20 @@ export default function Group() {
 
     // --- RENDER CHAT ---
     return (
-        <div className="page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-            <header style={{ background: '#0984e3', color: 'white', padding: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: '#f4f4f4',
+            display: 'flex', flexDirection: 'column',
+            zIndex: 1500 // Above BottomNav usually
+        }}>
+            {/* Header - Fixed Top */}
+            <header style={{
+                height: '60px',
+                background: '#0984e3', color: 'white',
+                padding: '0 15px', display: 'flex', alignItems: 'center', gap: '10px',
+                flexShrink: 0, boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+            }}>
                 <button onClick={() => {
                     if (userData?.role === 'institution') {
                         setIsSelecting(true);
@@ -169,13 +230,31 @@ export default function Group() {
                     }
                 }} style={{ background: 'none', border: 'none', color: 'white', fontSize: '20px' }}>⬅</button>
 
-                <div style={{ flex: 1 }}>
-                    <h2 style={{ margin: 0, fontSize: '18px' }}>{groupName || "Chat Group"}</h2>
-                    <span style={{ fontSize: '12px', opacity: 0.8 }}>Active Group</span>
+                <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => setViewMode('members')}>
+                    <h2 style={{ margin: 0, fontSize: '18px' }}>{groupData?.groupName || "Chat Group"}</h2>
+                    <span style={{ fontSize: '12px', opacity: 0.8 }}>Tap for Info</span>
+                </div>
+
+                <div style={{ position: 'relative' }}>
+                    <button onClick={() => setShowMenu(!showMenu)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '24px', cursor: 'pointer' }}>⋮</button>
+                    {showMenu && (
+                        <div style={{
+                            position: 'absolute', top: '100%', right: 0,
+                            background: 'white', color: '#333',
+                            borderRadius: '8px', boxShadow: '0 5px 15px rgba(0,0,0,0.2)',
+                            minWidth: '150px', display: 'flex', flexDirection: 'column'
+                        }}>
+                            <div style={{ padding: '12px', borderBottom: '1px solid #eee', cursor: 'pointer' }} onClick={() => { setViewMode('files'); setShowMenu(false); }}>📂 Files</div>
+                            <div style={{ padding: '12px', borderBottom: '1px solid #eee', cursor: 'pointer' }} onClick={() => { setViewMode('docs'); setShowMenu(false); }}>📄 Documents</div>
+                            <div style={{ padding: '12px', borderBottom: '1px solid #eee', cursor: 'pointer' }} onClick={() => { setViewMode('photos'); setShowMenu(false); }}>🖼️ Photos</div>
+                            <div style={{ padding: '12px', cursor: 'pointer' }} onClick={() => { setViewMode('about'); setShowMenu(false); }}>ℹ️ About</div>
+                        </div>
+                    )}
                 </div>
             </header>
 
-            <div style={{ flex: 1, overflowY: 'auto', background: '#f4f4f4', padding: '15px' }}>
+            {/* Chat Area - Scrollable Middle */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '15px' }}>
                 {messages.map((msg) => {
                     const isMe = msg.uid === userData?.uid;
                     return (
@@ -203,9 +282,13 @@ export default function Group() {
                 <div ref={messagesEndRef} />
             </div>
 
-            <form onSubmit={handleSend} style={{ padding: '10px', background: 'white', borderTop: '1px solid #ddd', display: 'flex', gap: '10px', alignItems: 'center' }}>
+            {/* Footer Input - Fixed Bottom relative to container */}
+            <form onSubmit={handleSend} style={{
+                background: 'white', padding: '10px',
+                borderTop: '1px solid #ddd', display: 'flex', gap: '10px', alignItems: 'center',
+                flexShrink: 0
+            }}>
                 <input type="file" ref={fileInputRef} onChange={handleFileSelect} style={{ display: 'none' }} accept="image/*" />
-
                 <button type="button" onClick={() => fileInputRef.current.click()} style={{ background: '#dfe6e9', border: 'none', borderRadius: '50%', width: '40px', height: '40px', fontSize: '20px' }}>📎</button>
 
                 <div style={{ flex: 1, position: 'relative' }}>
@@ -218,9 +301,47 @@ export default function Group() {
                         style={{ width: '100%', padding: '10px', borderRadius: '20px', border: '1px solid #ddd', outline: 'none' }}
                     />
                 </div>
-
                 <button type="submit" className="btn" style={{ backgroundColor: '#0984e3', borderRadius: '20px', padding: '10px 20px' }}>Send</button>
             </form>
+
+            {/* OVERLAYS */}
+            {(viewMode === 'members' || viewMode === 'about') && (
+                <OverlayView title="Group Members" onClose={() => setViewMode(null)}>
+                    {members.length === 0 ? <p>Loading or no members found...</p> : (
+                        members.map((m, i) => (
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '10px', borderBottom: '1px solid #f0f0f0' }}>
+                                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#a29bfe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>
+                                    {m.name?.[0] || '?'}
+                                </div>
+                                <div>
+                                    <div style={{ fontWeight: 'bold' }}>{m.name}</div>
+                                    <div style={{ fontSize: '12px', color: '#666' }}>Student • {m.rollNumber || 'N/A'}</div>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </OverlayView>
+            )}
+
+            {viewMode === 'photos' && (
+                <OverlayView title="Shared Photos" onClose={() => setViewMode(null)}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '5px' }}>
+                        {messages.filter(m => m.image).map(m => (
+                            <img key={m.id} src={m.image} style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: '4px' }} alt="shared" />
+                        ))}
+                    </div>
+                    {messages.filter(m => m.image).length === 0 && <p className="text-center text-muted">No photos shared.</p>}
+                </OverlayView>
+            )}
+
+            {(viewMode === 'files' || viewMode === 'docs') && (
+                <OverlayView title={viewMode === 'files' ? "Shared Files" : "Shared Documents"} onClose={() => setViewMode(null)}>
+                    <p className="text-center text-muted" style={{ marginTop: '50px' }}>
+                        No {viewMode} shared yet. <br />
+                        <span style={{ fontSize: '12px' }}>(Only images supported currently)</span>
+                    </p>
+                </OverlayView>
+            )}
         </div>
     );
 }
