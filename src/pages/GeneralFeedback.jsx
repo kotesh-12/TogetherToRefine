@@ -70,11 +70,14 @@ export default function GeneralFeedback() {
                     // Query where current user is the Target
                     const q = query(
                         collection(db, "general_feedback"),
-                        where("targetId", "==", userData.uid),
-                        orderBy("timestamp", "desc")
+                        where("targetId", "==", userData.uid)
                     );
                     const snap = await getDocs(q);
-                    setReceivedFeedback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+
+                    const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    // Client-Side Sort
+                    list.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+                    setReceivedFeedback(list);
                 } catch (e) { console.error("Error fetching feedback:", e); }
             };
             fetchFeedback();
