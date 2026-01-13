@@ -145,7 +145,7 @@ export default function Teacher() {
                         <button className="btn" onClick={handleGoToGroups}>Go to Groups</button>
                         <button className="btn" style={{ backgroundColor: '#0984e3' }} onClick={() => navigate('/attendance')}>Mark Attendance</button>
                         <button className="btn" style={{ backgroundColor: '#d63031' }} onClick={() => navigate('/video-library')}>Video Library</button>
-                        <button className="btn" style={{ backgroundColor: '#00cec9', color: 'white' }} onClick={() => navigate('/select-feedback-target')}>Give Feedback</button>
+                        <button className="btn" style={{ backgroundColor: '#00cec9', color: 'white' }} onClick={() => navigate('/general-feedback')}>Feedback</button>
                     </div>
                 </div>
             </div>
