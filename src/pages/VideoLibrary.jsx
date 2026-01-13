@@ -26,12 +26,13 @@ export default function VideoLibrary() {
     const [showAdd, setShowAdd] = useState(false);
     const [newVideo, setNewVideo] = useState({ title: '', url: '', subject: 'General', targetClass: '' });
 
-    // Filter State (Students)
+    // Filter State (Students & Teachers)
     const [filterSubject, setFilterSubject] = useState('All');
+    const [filterClass, setFilterClass] = useState(''); // Teacher/Inst Filter
 
     useEffect(() => {
         if (userData) fetchVideos();
-    }, [userData, filterSubject]);
+    }, [userData, filterSubject, filterClass]);
 
     const fetchVideos = async () => {
         setLoading(true);
@@ -41,33 +42,28 @@ export default function VideoLibrary() {
 
             if (role === 'student') {
                 // Students see videos for their class
-                const rawClass = userData.class || userData.assignedClass; // E.g., "1st" or "1"
-                const section = userData.section || userData.assignedSection || 'A'; // E.g., "A"
+                const rawClass = userData.class || userData.assignedClass;
+                const section = userData.section || userData.assignedSection || 'A';
 
                 if (!rawClass) {
                     setVideos([]);
                     return;
                 }
 
-                // Normalize Class Name (Handle "1st" -> "1")
-                // If it's pure number "1", parseInt works. If "1st", parseInt works (1).
-                // If "LKG", "UKG", "Nursery", we need to keep as is.
                 let classNum = rawClass.toString();
                 if (parseInt(classNum)) {
                     classNum = parseInt(classNum).toString();
                 }
 
-                // Construct target string matches the 'targetClass' dropdown format "1-A"
-                // Teachers save as "1-A", "LKG-A".
                 const targetString = `${classNum}-${section}`;
-
-                console.log("Fetching videos for:", targetString);
-
-                // Order by date desc
                 q = query(videoRef, where("targetClass", "==", targetString));
             } else {
-                // Teachers/Institution see all (or filtered by what they uploaded? Let's show all for simplicity)
-                q = query(videoRef, orderBy("timestamp", "desc"));
+                // Teachers/Institution: Filter by Selected Class if any
+                if (filterClass && filterClass !== 'All') {
+                    q = query(videoRef, where("targetClass", "==", filterClass), orderBy("timestamp", "desc"));
+                } else {
+                    q = query(videoRef, orderBy("timestamp", "desc"));
+                }
             }
 
             const snapshot = await getDocs(q);
@@ -157,7 +153,20 @@ export default function VideoLibrary() {
                     )}
 
                     {(role === 'teacher' || role === 'institution') && (
-                        <button className="btn" onClick={() => setShowAdd(true)}>+ Add New Video</button>
+                        <>
+                            <select
+                                className="input-field"
+                                style={{ maxWidth: '200px', margin: 0 }}
+                                value={filterClass}
+                                onChange={(e) => setFilterClass(e.target.value)}
+                            >
+                                <option value="All">All Classes</option>
+                                {['Nursery-A', 'LKG-A', 'UKG-A', '1-A', '2-A', '3-A', '4-A', '5-A', '6-A', '7-A', '8-A', '9-A', '10-A', '10-B'].map(c => (
+                                    <option key={c} value={c}>{c}</option>
+                                ))}
+                            </select>
+                            <button className="btn" onClick={() => setShowAdd(true)}>+ Add New Video</button>
+                        </>
                     )}
                 </div>
 
