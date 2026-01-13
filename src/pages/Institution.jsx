@@ -117,8 +117,8 @@ export default function Institution() {
                     <button className="btn" style={{ height: '100px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#e67e22' }} onClick={() => navigate('/exam')}>
                         📢 <span style={{ marginTop: '10px', fontSize: '14px' }}>Notify/Exams</span>
                     </button>
-                    <button className="btn" style={{ height: '100px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#e84393' }} onClick={() => navigate('/feedback-overview')}>
-                        📊 <span style={{ marginTop: '10px', fontSize: '14px' }}>Feedback View</span>
+                    <button className="btn" style={{ height: '100px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#e84393' }} onClick={() => navigate('/general-feedback')}>
+                        📊 <span style={{ marginTop: '10px', fontSize: '14px' }}>Feedback</span>
                     </button>
                     <button className="btn" style={{ height: '100px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ff7675' }} onClick={() => navigate('/health')}>
                         🏥 <span style={{ marginTop: '10px', fontSize: '14px' }}>Health Camp</span>

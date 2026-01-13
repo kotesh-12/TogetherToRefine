@@ -18,6 +18,8 @@ export default function SelectFeedbackTarget() {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterClass, setFilterClass] = useState('All');
     const [filterSection, setFilterSection] = useState('All');
+    // Institution Filter State
+    const [institutionFilter, setInstitutionFilter] = useState('Teacher'); // 'Teacher' or 'Student'
 
     useEffect(() => {
         const fetchData = async () => {
@@ -103,6 +105,41 @@ export default function SelectFeedbackTarget() {
                         list = snap.docs.map(d => ({ id: d.data().studentId || d.id, ...d.data(), type: 'Student' }));
                     }
                 }
+                else if (role === 'institution') {
+                    setTitle("Select Person for Feedback");
+                    const colName = institutionFilter === 'Teacher' ? 'teacher_allotments' : 'student_allotments';
+
+                    // Fetch all people created by this institution
+                    const q = query(collection(db, colName), where('createdBy', '==', userData.uid));
+                    const snap = await getDocs(q);
+                    const rawList = snap.docs.map(d => ({ ...d.data(), docId: d.id }));
+
+                    if (institutionFilter === 'Teacher') {
+                        // Deduplicate Teachers
+                        const uniqueMap = new Map();
+                        rawList.forEach(item => {
+                            if (!item.teacherId) return;
+                            if (!uniqueMap.has(item.teacherId)) {
+                                uniqueMap.set(item.teacherId, {
+                                    id: item.teacherId,
+                                    name: item.teacherName || 'Unknown Teacher',
+                                    type: 'Teacher',
+                                    subject: item.subject || 'General'
+                                });
+                            }
+                        });
+                        list = Array.from(uniqueMap.values());
+                    } else {
+                        // Students
+                        list = rawList.map(item => ({
+                            id: item.studentId || item.docId, // User UID preferably
+                            name: item.studentName || item.name,
+                            type: 'Student',
+                            classAssigned: item.classAssigned,
+                            section: item.section
+                        }));
+                    }
+                }
 
                 setTargets(list);
             } catch (e) {
@@ -113,7 +150,7 @@ export default function SelectFeedbackTarget() {
         };
 
         fetchData();
-    }, [userData]);
+    }, [userData, institutionFilter]);
 
     const handleSelect = (person) => {
         navigate('/general-feedback', { state: { target: person } });
@@ -176,6 +213,34 @@ export default function SelectFeedbackTarget() {
                                 {uniqueSections.map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                         </div>
+                    </div>
+                )}
+
+                {/* Institution Controls */}
+                {userData?.role === 'institution' && (
+                    <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', background: '#ececec', padding: '5px', borderRadius: '10px' }}>
+                        <button
+                            onClick={() => setInstitutionFilter('Teacher')}
+                            style={{
+                                flex: 1, padding: '10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                                background: institutionFilter === 'Teacher' ? 'white' : 'transparent',
+                                boxShadow: institutionFilter === 'Teacher' ? '0 2px 5px rgba(0,0,0,0.1)' : 'none',
+                                fontWeight: 'bold', color: '#2d3436'
+                            }}
+                        >
+                            👨‍🏫 Teachers
+                        </button>
+                        <button
+                            onClick={() => setInstitutionFilter('Student')}
+                            style={{
+                                flex: 1, padding: '10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                                background: institutionFilter === 'Student' ? 'white' : 'transparent',
+                                boxShadow: institutionFilter === 'Student' ? '0 2px 5px rgba(0,0,0,0.1)' : 'none',
+                                fontWeight: 'bold', color: '#2d3436'
+                            }}
+                        >
+                            🎓 Students
+                        </button>
                     </div>
                 )}
 
