@@ -24,6 +24,7 @@ export default function GeneralFeedback() {
         hardworking: { dropdown: '', stars: 0 }
     });
     const [comment, setComment] = useState('');
+    const [revealName, setRevealName] = useState(false);
     const [loading, setLoading] = useState(false);
 
     // Read List State
@@ -155,8 +156,10 @@ export default function GeneralFeedback() {
         try {
             await addDoc(collection(db, "general_feedback"), {
                 authorId: userData.uid,
-                authorPid: userData.pid || null, // Save PID for anonymity
-                authorName: userData.name, // Keep existing for record, but UI will prefer PID
+                // If user wants to reveal name, we DO NOT save PID, so the reader defaults to Name.
+                // If user wants to be anonymous, we save PID, so the reader defaults to PID.
+                authorPid: revealName ? null : (userData.pid || null),
+                authorName: userData.name,
                 authorRole: userData.role,
                 targetId: targetPerson.id || targetPerson.uid,
                 targetName: targetPerson.name,
@@ -348,6 +351,20 @@ export default function GeneralFeedback() {
                                                 border: '2px solid #edf2f7', padding: '15px', background: '#f8f9fa'
                                             }}
                                         />
+                                    </div>
+
+                                    {/* Reveal Name Option */}
+                                    <div style={{ marginTop: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <input
+                                            type="checkbox"
+                                            id="revealName"
+                                            checked={revealName}
+                                            onChange={(e) => setRevealName(e.target.checked)}
+                                            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                        />
+                                        <label htmlFor="revealName" style={{ cursor: 'pointer', fontSize: '14px', color: '#2d3436' }}>
+                                            Show my Name (Uncheck for Anonymous ID)
+                                        </label>
                                     </div>
 
                                     <button
