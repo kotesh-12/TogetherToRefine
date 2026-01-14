@@ -34,19 +34,24 @@ export default function GeneralFeedback() {
         const checkCycle = async () => {
             if (activeTab === 'write' && userData?.role === 'student' && targetPerson?.type === 'Teacher') {
                 try {
+                    // Fetch LAST feedback without orderBy to avoid index issues
                     const q = query(
                         collection(db, "general_feedback"),
                         where("authorId", "==", userData.uid),
-                        where("targetId", "==", targetPerson.id || targetPerson.uid), // Handle both ID types
-                        orderBy("timestamp", "desc"),
-                        limit(1)
+                        where("targetId", "==", targetPerson.id || targetPerson.uid)
                     );
                     const snap = await getDocs(q);
+
                     if (!snap.empty) {
-                        const lastDate = snap.docs[0].data().timestamp.toDate();
+                        // Client-side sort to find latest
+                        const docs = snap.docs.map(d => d.data());
+                        docs.sort((a, b) => b.timestamp.seconds - a.timestamp.seconds);
+                        const lastFeedback = docs[0];
+
+                        const lastDate = lastFeedback.timestamp.toDate();
                         const now = new Date();
                         const diffTime = Math.abs(now - lastDate);
-                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); // Floor to trust full days passed
 
                         if (diffDays < 28) {
                             setCooldown({ active: true, daysLeft: 28 - diffDays, date: lastDate.toLocaleDateString() });
