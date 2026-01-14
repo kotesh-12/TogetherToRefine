@@ -155,7 +155,8 @@ export default function GeneralFeedback() {
         try {
             await addDoc(collection(db, "general_feedback"), {
                 authorId: userData.uid,
-                authorName: userData.name,
+                authorPid: userData.pid || null, // Save PID for anonymity
+                authorName: userData.name, // Keep existing for record, but UI will prefer PID
                 authorRole: userData.role,
                 targetId: targetPerson.id || targetPerson.uid,
                 targetName: targetPerson.name,
@@ -394,7 +395,9 @@ export default function GeneralFeedback() {
                                     border: '1px solid #e1e8ed', boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
                                 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                                        <div style={{ fontWeight: 'bold', color: '#2d3436' }}>From: {f.authorName} ({f.authorRole})</div>
+                                        <div style={{ fontWeight: 'bold', color: '#2d3436' }}>
+                                            From: {f.authorPid || f.authorName} ({f.authorRole})
+                                        </div>
                                         <div style={{ fontSize: '12px', color: '#b2bec3' }}>
                                             {f.timestamp?.toDate().toLocaleDateString()}
                                         </div>
