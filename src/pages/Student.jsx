@@ -88,6 +88,19 @@ export default function Student() {
 
             <AnnouncementBar title={`Welcome, ${userData?.name || "Student"}!`} />
 
+            {userData?.pid && (
+                <div style={{ textAlign: 'center', marginTop: '10px' }}>
+                    <div style={{
+                        background: '#f1f2f6', color: '#2d3436',
+                        display: 'inline-block', padding: '4px 10px',
+                        borderRadius: '20px', fontSize: '12px',
+                        fontWeight: 'bold', border: '1px solid #dfe6e9'
+                    }}>
+                        ID: {userData.pid}
+                    </div>
+                </div>
+            )}
+
             <div className="container">
                 <div className="dropdown-container">
                     <div className="dropdown-toggle card" onClick={() => setShowDropdown(!showDropdown)}>

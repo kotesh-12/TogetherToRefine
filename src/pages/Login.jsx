@@ -166,11 +166,17 @@ export default function Login() {
                     uid = userCredential.user.uid;
                 }
 
+                // Generate Permanent ID (PID)
+                const prefix = role === 'student' ? 'ST' : (role === 'teacher' ? 'TE' : 'IN');
+                const randomNum = Math.floor(100000 + Math.random() * 900000); // 6 digit random
+                const pid = `${prefix}-${randomNum}`;
+
                 const userData = {
                     email,
                     role,
                     name,
                     gender,
+                    pid, // Save PID
                     createdAt: new Date(),
                     profileCompleted: false
                 };

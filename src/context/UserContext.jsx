@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { auth, db } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 
 const UserContext = createContext();
 
@@ -32,7 +32,13 @@ export function UserProvider({ children }) {
                     const instSnap = await getDoc(instRef);
                     if (instSnap.exists()) {
                         unsubscribeSnapshot = onSnapshot(instRef, (d) => {
-                            setUserData({ ...d.data(), uid: currentUser.uid, collection: 'institutions', role: 'institution' });
+                            const data = d.data();
+                            if (!data.pid) {
+                                const pid = `IN-${Math.floor(100000 + Math.random() * 900000)}`;
+                                setDoc(doc(db, "institutions", currentUser.uid), { pid }, { merge: true });
+                                data.pid = pid;
+                            }
+                            setUserData({ ...data, uid: currentUser.uid, collection: 'institutions', role: 'institution' });
                             localStorage.setItem('user_collection_cache', 'institutions');
                             setLoading(false);
                         });
@@ -44,7 +50,13 @@ export function UserProvider({ children }) {
                     const teachSnap = await getDoc(teachRef);
                     if (teachSnap.exists()) {
                         unsubscribeSnapshot = onSnapshot(teachRef, (d) => {
-                            setUserData({ ...d.data(), uid: currentUser.uid, collection: 'teachers', role: 'teacher' });
+                            const data = d.data();
+                            if (!data.pid) {
+                                const pid = `TE-${Math.floor(100000 + Math.random() * 900000)}`;
+                                setDoc(doc(db, "teachers", currentUser.uid), { pid }, { merge: true });
+                                data.pid = pid;
+                            }
+                            setUserData({ ...data, uid: currentUser.uid, collection: 'teachers', role: 'teacher' });
                             localStorage.setItem('user_collection_cache', 'teachers');
                             setLoading(false);
                         });
@@ -56,7 +68,15 @@ export function UserProvider({ children }) {
                     unsubscribeSnapshot = onSnapshot(userRef, (d) => {
                         if (d.exists()) {
                             console.log("Found in 'users'");
-                            setUserData({ ...d.data(), uid: currentUser.uid, collection: 'users', role: d.data().role || 'student' });
+                            const data = d.data();
+                            const role = data.role || 'student';
+                            if (!data.pid) {
+                                const prefix = role === 'teacher' ? 'TE' : (role === 'institution' ? 'IN' : 'ST');
+                                const pid = `${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;
+                                setDoc(doc(db, "users", currentUser.uid), { pid }, { merge: true });
+                                data.pid = pid;
+                            }
+                            setUserData({ ...data, uid: currentUser.uid, collection: 'users', role });
                             localStorage.setItem('user_collection_cache', 'users');
                         } else {
                             console.log("User document not found in any collection.");
@@ -75,7 +95,15 @@ export function UserProvider({ children }) {
                         const subscribe = (col, roleName) => {
                             return onSnapshot(doc(db, col, currentUser.uid), (d) => {
                                 if (d.exists()) {
-                                    setUserData({ ...d.data(), uid: currentUser.uid, collection: col, role: d.data().role || roleName });
+                                    const data = d.data();
+                                    const role = data.role || roleName;
+                                    if (!data.pid) {
+                                        const prefix = role === 'teacher' ? 'TE' : (role === 'institution' ? 'IN' : 'ST');
+                                        const pid = `${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;
+                                        setDoc(doc(db, col, currentUser.uid), { pid }, { merge: true });
+                                        data.pid = pid;
+                                    }
+                                    setUserData({ ...data, uid: currentUser.uid, collection: col, role });
                                     localStorage.setItem('user_collection_cache', col); // Cache it!
                                     setLoading(false);
                                 } else {

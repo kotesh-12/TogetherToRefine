@@ -120,8 +120,18 @@ export default function Details() {
             const collectionName = role === 'institution' ? 'institutions' : (role === 'teacher' ? 'teachers' : 'users');
 
             // Ensure we merge with existing data, and set profileCompleted
+            // Generate PID if doesn't exist (e.g. Google Sign Up or First Time)
+            let finalPid = formData.pid;
+            if (!finalPid) {
+                const prefix = role === 'student' ? 'ST' : (role === 'teacher' ? 'TE' : 'IN');
+                const randomNum = Math.floor(100000 + Math.random() * 900000);
+                finalPid = `${prefix}-${randomNum}`;
+                console.log("Generated New PID:", finalPid);
+            }
+
             await setDoc(doc(db, collectionName, userId), {
                 ...formData,
+                pid: finalPid,
                 profileCompleted: true,
                 updatedAt: new Date()
             }, { merge: true });

@@ -130,6 +130,17 @@ export default function Teacher() {
             <div className="container">
                 <div className="card text-center" style={{ marginTop: '20px' }}>
                     <h2>Welcome, {userData?.name || 'Teacher'}!</h2>
+                    {userData?.pid && (
+                        <div style={{
+                            background: '#f1f2f6', color: '#2d3436',
+                            display: 'inline-block', padding: '4px 10px',
+                            borderRadius: '20px', fontSize: '12px',
+                            fontWeight: 'bold', marginBottom: '15px',
+                            border: '1px solid #dfe6e9'
+                        }}>
+                            ID: {userData.pid}
+                        </div>
+                    )}
                     <p>Access your classes, upload notes, and manage attendance.</p>
                     {userData?.assignedClass ? (
                         <p style={{ color: '#0984e3', fontWeight: 'bold' }}>

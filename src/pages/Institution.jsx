@@ -94,9 +94,19 @@ export default function Institution() {
             <div className="container">
                 <div className="card" style={{ marginBottom: '20px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        {/* The h2 is now part of the header, so it's removed from here */}
+                        {/* PID Badge */}
+                        {profile?.pid && (
+                            <div style={{
+                                background: '#f1f2f6', color: '#2d3436',
+                                display: 'inline-block', padding: '4px 10px',
+                                borderRadius: '20px', fontSize: '12px',
+                                fontWeight: 'bold', border: '1px solid #dfe6e9'
+                            }}>
+                                ID: {profile.pid}
+                            </div>
+                        )}
                         {profile && (
-                            <div style={{ textAlign: 'right', fontSize: '14px', color: '#666' }}>
+                            <div style={{ textAlign: 'right', fontSize: '14px', color: '#666', flex: 1 }}>
                                 <p>{profile.principalName} (Principal)</p>
                                 <p>Est: {profile.estYear}</p>
                             </div>
