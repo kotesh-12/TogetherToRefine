@@ -35,7 +35,12 @@ export default function Group() {
         }
 
         setGroupId(gid);
-        loadGroupChat(gid);
+        const unsubscribe = loadGroupChat(gid);
+
+        // Cleanup subscription on unmount or gid change
+        return () => {
+            if (unsubscribe) unsubscribe();
+        };
     }, [navigate, userData]);
 
     const fetchGroupsForSelection = async () => {

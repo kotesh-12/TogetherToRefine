@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, setDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, setDoc, doc, updateDoc } from 'firebase/firestore';
 import AnnouncementBar from '../components/AnnouncementBar';
 import AIBadge from '../components/AIBadge';
 import { useUser } from '../context/UserContext';
 
 export default function Attendance() {
     const { userData } = useUser();
+    const navigate = useNavigate();
     const role = userData?.role;
 
     // View State
@@ -41,15 +43,155 @@ export default function Attendance() {
     const fetchMyStats = async () => {
         if (!userData?.uid) return;
         try {
-            const q = query(collection(db, "attendance"), where("userId", "==", userData.uid));
-            const snapshot = await getDocs(q);
+            let mergedDocs = [];
+            const seenIds = new Set();
+            const attendanceQueries = []; // Holds promises for parallel fetching
+
+            // 1. Fetch by correct User UID
+            const q1 = query(collection(db, "attendance"), where("userId", "==", userData.uid));
+            const snap1 = await getDocs(q1);
+            snap1.forEach(d => {
+                if (!seenIds.has(d.id)) {
+                    seenIds.add(d.id);
+                    mergedDocs.push(d);
+                }
+            });
+
+            // 2. Teacher Fallback: Fetch by Allotment ID
+            if (userData.role === 'teacher') {
+                try {
+                    // FIX: Check 'userId' field in allotments, as that is what is saved by Allotment.jsx
+                    const tAllotQ = query(collection(db, "teacher_allotments"), where("userId", "==", userData.uid));
+                    const tAllotSnap = await getDocs(tAllotQ);
+
+                    const tAllotmentIds = tAllotSnap.docs.map(d => d.id);
+                    for (const altId of tAllotmentIds) {
+                        if (altId !== userData.uid) {
+                            const q2 = query(collection(db, "attendance"), where("userId", "==", altId));
+                            const snap2 = await getDocs(q2);
+                            snap2.forEach(d => {
+                                if (!seenIds.has(d.id)) {
+                                    seenIds.add(d.id);
+                                    mergedDocs.push(d);
+                                }
+                            });
+                        }
+                    }
+                } catch (err) {
+                    console.warn("Teacher legacy fetch (ID) failed", err);
+                }
+
+                // 2.1. Teacher Fallback: Fetch by Name (If ID link is missing)
+                if (userData.name) {
+                    try {
+                        const tNameQ = query(collection(db, "teacher_allotments"), where("name", "==", userData.name));
+                        const tNameSnap = await getDocs(tNameQ);
+
+                        const tNameIds = tNameSnap.docs.map(d => d.id);
+                        for (const altId of tNameIds) {
+                            // Fetch attendance for this Allotment ID
+                            if (altId !== userData.uid) {
+                                const q3 = query(collection(db, "attendance"), where("userId", "==", altId));
+                                const snap3 = await getDocs(q3);
+                                snap3.forEach(d => {
+                                    if (!seenIds.has(d.id)) {
+                                        seenIds.add(d.id);
+                                        mergedDocs.push(d);
+                                    }
+                                });
+                            }
+
+                            // SELF-HEALING: Link allotment to User UID via 'userId' field
+                            const docRef = tNameSnap.docs.find(d => d.id === altId);
+                            if (docRef && !docRef.data().userId) {
+                                console.log(`Self-healing Teacher Allotment ${altId} with UID ${userData.uid}`);
+                                updateDoc(doc(db, "teacher_allotments", altId), { userId: userData.uid })
+                                    .catch(e => console.warn("Healing failed", e));
+                            }
+                        }
+                    } catch (err) {
+                        console.warn("Teacher legacy fetch (Name) failed", err);
+                    }
+                }
+            }
+
+            // 3. Student Fallback: Fetch by Allotment ID (Legacy/Bug fix/Self-Healing)
+            const uClass = userData.assignedClass || userData.class;
+            const uSection = userData.assignedSection || userData.section;
+
+            try {
+                // A. Explicit Link Match: Allotments already linked to this User UID
+                // (This catches cases where name might be different but ID is linked)
+                const linkedAllotQ = query(collection(db, "student_allotments"), where("userId", "==", userData.uid));
+                const linkedSnap = await getDocs(linkedAllotQ);
+
+                linkedSnap.forEach(d => {
+                    if (d.id !== userData.uid) {
+                        // This is an allotment doc ID that belongs to me
+                        // Fetch attendance marked against this Allotment ID
+                        const q2 = query(collection(db, "attendance"), where("userId", "==", d.id));
+                        // We will execute these properly
+                        attendanceQueries.push(getDocs(q2));
+                    }
+                });
+
+                // B. Legacy Name Match: Allotments matching Name/Class (if not linked)
+                // DATA NORMALIZATION FIX:
+                // 1. Construct Name: If 'name' is missing, combine first/second strings.
+                // 2. Normalize Class: Convert '10th' -> '10', '1st' -> '1', etc to match Allotment format.
+
+                const rawName = userData.name || `${userData.firstName || ''} ${userData.secondName || ''}`.trim();
+
+                // Remove non-numeric characters from class (e.g. "10th" -> "10") to match Allotment's simpler format
+                // If it's "Nursery"/"LKG"/"UKG", it stays the same.
+                const normalizedClass = (uClass || '').replace(/(\d+)(st|nd|rd|th)/i, '$1');
+
+                if (normalizedClass && uSection && rawName) {
+
+                    // Fetch ALL students in this class/section
+                    const altQ = query(collection(db, "student_allotments"),
+                        where("classAssigned", "==", normalizedClass),
+                        where("section", "==", uSection)
+                    );
+                    const altSnap = await getDocs(altQ);
+
+                    const targetName = rawName.toLowerCase().replace(/\s+/g, ''); // normalize spaces
+
+                    altSnap.forEach(d => {
+                        const data = d.data();
+                        const allotmentName = (data.name || "").toLowerCase().replace(/\s+/g, '');
+
+                        // Check for lenient match (contains)
+                        const isMatch = allotmentName.includes(targetName) || targetName.includes(allotmentName);
+
+                        if (d.id !== userData.uid && isMatch) {
+                            const q3 = query(collection(db, "attendance"), where("userId", "==", d.id));
+                            attendanceQueries.push(getDocs(q3));
+                        }
+                    });
+                }
+
+                // Execute all legacy/fallback queries
+                const fallbackResults = await Promise.all(attendanceQueries);
+                fallbackResults.forEach(snap => {
+                    snap.forEach(d => {
+                        if (!seenIds.has(d.id)) {
+                            seenIds.add(d.id);
+                            mergedDocs.push(d);
+                        }
+                    });
+                });
+
+            } catch (err) {
+                console.warn("Legacy attendance fetch failed", err);
+            }
 
             const subjectsObj = {};
             let globalTotal = 0;
             let globalPresent = 0;
             const historyList = [];
 
-            snapshot.forEach(d => {
+            mergedDocs.forEach(d => {
                 const data = d.data();
                 historyList.push({ id: d.id, ...data });
 
@@ -68,7 +210,7 @@ export default function Attendance() {
 
             // Sort history by date descending
             historyList.sort((a, b) => new Date(b.date) - new Date(a.date));
-            setMyHistory(historyList);
+            setMyHistory(historyList); // React key use `h.id`
 
             // Convert to Array
             const statsArr = Object.keys(subjectsObj).map(key => ({
@@ -117,13 +259,48 @@ export default function Attendance() {
             const snapshot = await getDocs(q);
             let rawList = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
+            // SELF-HEALING: If allotments are missing 'userId', try to find and link the real User UID.
+            // This fixes the bug where students can't see attendance marked by teachers because it was keyed to a random ID.
+            if (view === 'students' && rawList.some(r => !r.userId)) {
+                try {
+                    const [cNum, sNum] = cls.split('-');
+                    // Find actual users in this class
+                    const uQ = query(collection(db, "users"), where("assignedClass", "==", cNum), where("assignedSection", "==", sNum));
+                    const uSnap = await getDocs(uQ);
+
+                    const nameMap = new Map();
+                    uSnap.forEach(u => nameMap.set(u.data().name.trim().toLowerCase(), u.id));
+
+                    const updates = [];
+                    rawList = rawList.map(r => {
+                        if (!r.userId && r.name) {
+                            const key = r.name.trim().toLowerCase();
+                            if (nameMap.has(key)) {
+                                const foundUid = nameMap.get(key);
+                                console.log(`Self-healing link for ${r.name}: ${foundUid}`);
+                                // Update Firestore in background
+                                updates.push(updateDoc(doc(db, "student_allotments", r.id), { userId: foundUid }));
+                                return { ...r, userId: foundUid };
+                            }
+                        }
+                        return r;
+                    });
+
+                    // Execute updates silently
+                    if (updates.length > 0) Promise.all(updates).catch(e => console.error("Healing update failed", e));
+
+                } catch (healingErr) {
+                    console.warn("Auto-linking failed:", healingErr);
+                }
+            }
+
             // Deduplicate Teachers if view is 'teachers'
             let fetched = rawList;
             if (view === 'teachers') {
                 const uniqueMap = new Map();
                 rawList.forEach(item => {
-                    // Robust ID: prefer teacherId (User UID), fallback to allotment ID
-                    const tId = item.teacherId || item.id;
+                    // Robust ID: prefer userId (User UID), fallback to teacherId (legacy), fallback to allotment ID
+                    const tId = item.userId || item.teacherId || item.id;
 
                     if (!uniqueMap.has(tId)) {
                         uniqueMap.set(tId, {
@@ -183,12 +360,17 @@ export default function Attendance() {
             return;
         }
 
+        const studentRec = list.find(l => l.id === id);
+        // CRITICAL FIX: Use the linked User UID if available, otherwise fallback to Allotment ID
+        // This ensures the Student Dashboard (which queries by their UID) can see the record.
+        const targetId = studentRec?.userId || id;
+
         try {
             const finalSubject = view === 'teachers' ? 'General' : subject; // Teachers don't have subject-wise attendance usually
-            const docId = `${selectedDate}_${id}_${finalSubject}`;
+            const docId = `${selectedDate}_${targetId}_${finalSubject}`;
 
             await setDoc(doc(db, "attendance", docId), {
-                userId: id,
+                userId: targetId,
                 date: selectedDate,
                 subject: finalSubject,
                 status: status,
@@ -198,6 +380,7 @@ export default function Attendance() {
             });
             setList(prev => prev.map(item => item.id === id ? { ...item, status } : item));
         } catch (e) {
+            console.error("Error marking attendance:", e);
             alert("Error marking attendance");
         }
     };
@@ -382,6 +565,28 @@ export default function Attendance() {
                             </div>
                         ))}
                     </div>
+
+                    {list.length > 0 && (
+                        <div style={{ textAlign: 'center', marginTop: '20px', marginBottom: '40px' }}>
+                            <button
+                                className="btn"
+                                disabled={list.some(item => item.status === 'pending')}
+                                style={{
+                                    backgroundColor: list.some(item => item.status === 'pending') ? '#b2bec3' : '#00b894',
+                                    padding: '12px 40px',
+                                    fontSize: '1.2rem',
+                                    boxShadow: list.some(item => item.status === 'pending') ? 'none' : '0 4px 10px rgba(0,184,148,0.4)',
+                                    cursor: list.some(item => item.status === 'pending') ? 'not-allowed' : 'pointer'
+                                }}
+                                onClick={() => {
+                                    alert("Attendance Submitted Successfully! ✅");
+                                    navigate(-1);
+                                }}
+                            >
+                                Submit Attendance
+                            </button>
+                        </div>
+                    )}
 
                 </div>
             </div>

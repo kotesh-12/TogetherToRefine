@@ -51,7 +51,11 @@ export default function Report({ type }) { // type: 'sexual_harassment' or 'misb
     };
 
     const handleWhatsApp = () => {
-        const text = `🚨 Emergency Report (${type})\n\nLoc: ${formData.location}\nAccused: ${formData.accusedName}\nDesc: ${formData.description}`;
+        if (!formData.location) {
+            alert("Please enter a location first.");
+            return;
+        }
+        const text = `🚨 Emergency Report (${type})\n\nLoc: ${formData.location}\nAccused: ${formData.accusedName || 'Unknown'}\nDesc: ${formData.description || 'Emergency'}`;
         window.open(`https://wa.me/919959007119?text=${encodeURIComponent(text)}`, '_blank');
     }
 

@@ -63,7 +63,8 @@ export default function Allotment() {
                 classAssigned: cls,
                 section: sec,
                 [role === 'teacher' ? 'subject' : 'age']: extra,
-                createdBy: currentUser ? currentUser.uid : 'unknown'
+                createdBy: currentUser ? currentUser.uid : 'unknown',
+                userId: personToAllot?.userId || null
             };
 
             // Add to main allotment collection

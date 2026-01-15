@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase';
-import { doc, getDoc, collection, getDocs, addDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, addDoc, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import AnnouncementBar from '../components/AnnouncementBar';
+
 
 export default function TTRAI() {
     const navigate = useNavigate();
@@ -13,6 +14,13 @@ export default function TTRAI() {
     const [userContext, setUserContext] = useState(null);
     const messagesEndRef = useRef(null);
     const [currentUser, setCurrentUser] = useState(null);
+
+    // Cleanup Speech on Unmount
+    useEffect(() => {
+        return () => {
+            window.speechSynthesis.cancel();
+        };
+    }, []);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -70,11 +78,12 @@ export default function TTRAI() {
 
         const q = query(
             collection(db, 'ai_chats', currentUser.uid, 'messages'),
-            orderBy('createdAt', 'asc')
+            orderBy('createdAt', 'desc'),
+            limit(50)
         );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const loadedMsgs = snapshot.docs.map(doc => doc.data());
+            const loadedMsgs = snapshot.docs.map(doc => doc.data()).reverse(); // Reverse because we fetched DESC
 
             if (loadedMsgs.length === 0) {
                 setMessages([
@@ -210,6 +219,11 @@ export default function TTRAI() {
         }
     };
 
+    // Initialize Gemini AI Client: REMOVED (Reverting to Backend)
+    // const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+
+    // ... (restored code)
+
     const handleSend = async () => {
         if (!input.trim() && !selectedImage) return;
         if (!currentUser) return;
@@ -223,21 +237,19 @@ export default function TTRAI() {
 
         const userMsg = { text: input || "Image Uploaded", image: selectedImage, sender: 'user' };
 
-        // Optimistic update handled by listener? No, usually listener acts fast but slight delay. 
-        // For smoother UX, we can clear input immediately but rely on listener for display.
-        // Actually, if we use listener, we don't need setMessages here.
-        // BUT, saving image Base64 to Firestore is risky (size limits). 
-        // We will strip the image from the DB object if it's too large, or just not save the image data to history.
-        // For this version: We Save TEXT to history. We preserve Image in local context for this session ONLY?
-        // Or we try to save small ones.
-
+        // Data prep for DB (remove large image)
         const dbMsg = { ...userMsg };
         if (selectedImage && selectedImage.length > 1000000) {
-            delete dbMsg.image; // Don't save large images to Firestore
+            delete dbMsg.image;
             dbMsg.text += " [Image too large to save in history]";
         }
+        saveMessage(dbMsg);
 
-        saveMessage(dbMsg); // Save User Message
+        if (selectedImage && selectedImage.length > 5000000) { // ~5MB Limit for API safety
+            alert("Image is too large for AI processing. Please use a smaller image (<5MB).");
+            setLoading(false);
+            return;
+        }
 
         const imageToSend = selectedImage;
         setInput('');
@@ -245,19 +257,19 @@ export default function TTRAI() {
         setLoading(true);
 
         try {
-            // If URL found, fetch content
+            // If URL found, fetch content (Backend Proxy)
             if (urls && urls.length > 0) {
                 const url = urls[0];
                 try {
                     const fetchRes = await fetch('/api/fetch-url', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ url })
+                        body: JSON.stringify({ url: urls[0] })
                     });
                     const fetchData = await fetchRes.json();
 
                     if (fetchData.content) {
-                        systemCtx += `\n\n**CONTEXT FROM LINK (${url})**:\n"${fetchData.content}"\n\nUser Question: ${finalInput}\n(Answer based on the link content if relevant)`;
+                        systemCtx += `\n\n**CONTEXT FROM LINK (${urls[0]})**:\n"${fetchData.content}"\n\nUser Question: ${finalInput}\n(Answer based on the link content if relevant)`;
                     }
                 } catch (e) {
                     console.error("Link fetch failed", e);
@@ -272,18 +284,17 @@ export default function TTRAI() {
                 `;
             }
 
-            // BUILD HISTORY FROM PREVIOUS MESSAGES
-            // Map our specific message format to Gemini's expected format
-            // Limit to last 10 messages for context window
-            const previousHistory = messages.slice(-10).map(m => ({
-                role: m.sender === 'user' ? 'user' : 'model',
-                parts: [{ text: m.text }]
-            }));
+            // BUILD HISTORY FROM PREVIOUS MESSAGES (Filter errors)
+            const previousHistory = messages
+                .filter(m => !m.isError)
+                .slice(-10)
+                .map(m => ({
+                    role: m.sender === 'user' ? 'user' : 'model',
+                    parts: [{ text: m.text }]
+                }));
 
             const history = [
-                { role: "user", parts: [{ text: systemCtx }] }, // System instruction as first user message or separate? 
-                // Gemini often takes system instruction separately or as first turn. 
-                // We'll put it first.
+                { role: "user", parts: [{ text: systemCtx }] },
                 { role: "model", parts: [{ text: "Understood. I am ready." }] },
                 ...previousHistory
             ];
@@ -313,7 +324,6 @@ export default function TTRAI() {
 
         } catch (error) {
             console.error("AI Error:", error);
-            // Save error as local message only? Or db?
             setMessages(prev => [...prev, { text: "Error: " + error.message, sender: 'ai', isError: true }]);
         } finally {
             setLoading(false);

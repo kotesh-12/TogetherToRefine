@@ -41,10 +41,13 @@ export default function WaitingList() {
     const addDemoData = async () => {
         try {
             setLoading(true);
+            const auth = getAuth();
+            const uid = auth.currentUser?.uid;
+
             const demos = [
-                { name: "Rahul Sharma", role: "student", age: "15", gender: "Male", status: "waiting", joinedAt: new Date() },
-                { name: "Sneha Gupta", role: "teacher", subject: "Math", expYears: "5", gender: "Female", status: "waiting", joinedAt: new Date() },
-                { name: "Vikram Singh", role: "student", age: "14", gender: "Male", status: "waiting", joinedAt: new Date() }
+                { name: "Rahul Sharma", role: "student", age: "15", gender: "Male", status: "waiting", institutionId: uid, joinedAt: new Date() },
+                { name: "Sneha Gupta", role: "teacher", subject: "Math", expYears: "5", gender: "Female", status: "waiting", institutionId: uid, joinedAt: new Date() },
+                { name: "Vikram Singh", role: "student", age: "14", gender: "Male", status: "waiting", institutionId: uid, joinedAt: new Date() }
             ];
 
             for (const d of demos) {
@@ -54,11 +57,7 @@ export default function WaitingList() {
             alert("✅ Added 3 Demo Applicants!");
         } catch (e) {
             console.error("Firebase Error:", e);
-            if (e.code === 'permission-denied') {
-                alert("PERMISSION ERROR: The database rules won't allow this.\nPlease update your Firestore rules to allow write access.");
-            } else {
-                alert("Failed to add demo data: " + e.message);
-            }
+            alert("Failed to add demo data: " + e.message);
         } finally {
             setLoading(false);
         }
@@ -74,7 +73,7 @@ export default function WaitingList() {
 
     return (
         <div className="container" style={{ maxWidth: '800px', marginTop: '30px' }}>
-            <button onClick={() => navigate('/allotment')} style={{ marginBottom: '20px', background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer' }}>⬅ Back to Allotment</button>
+            <button onClick={() => navigate('/institution')} style={{ marginBottom: '20px', background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer' }}>⬅ Back to Dashboard</button>
 
             <div className="card">
                 <h2 className="text-center">🕒 Waiting List</h2>

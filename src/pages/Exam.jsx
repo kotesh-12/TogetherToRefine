@@ -1,10 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, orderBy, getDocs } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from '../context/UserContext';
+import AnnouncementBar from '../components/AnnouncementBar';
 
 export default function Exam() {
     const navigate = useNavigate();
+    const { userData } = useUser();
+
+    // Opportunities List (for Students)
+    const [opportunities, setOpportunities] = useState([]);
+
+    useEffect(() => {
+        const fetchOpp = async () => {
+            try {
+                const q = query(collection(db, "opportunities"), orderBy("createdAt", "desc"));
+                const snap = await getDocs(q);
+                setOpportunities(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+            } catch (e) { console.error(e); }
+        };
+        fetchOpp();
+    }, []);
+
     const [formData, setFormData] = useState({
         title: '',
         category: 'Govt Scholarship',
@@ -58,14 +76,38 @@ export default function Exam() {
     // ... existing handlers ...
 
     // New Handler for Results (Placeholder)
+    // Result Form State
+    const [resultData, setResultData] = useState({
+        exam: '',
+        class: '10-A',
+        subject: 'Math',
+        studentName: '',
+        marks: '',
+        total: '100'
+    });
+
     const handlePublishResult = async () => {
-        // Logic to save result to Firestore 'results' collection
-        // For now, alert and mock update
-        alert("Result would be saved to database!");
-        setDummyResults([
-            { exam: "Half-Yearly 2024", class: "10-A", student: "New Student", marks: 88, total: 100 },
-            ...dummyResults
-        ]);
+        if (!resultData.exam || !resultData.studentName || !resultData.marks) {
+            return alert("Please fill all fields (Exam, Student, Marks).");
+        }
+
+        setLoading(true);
+        try {
+            await addDoc(collection(db, "results"), {
+                ...resultData,
+                marks: Number(resultData.marks),
+                total: Number(resultData.total),
+                publishedAt: serverTimestamp()
+            });
+            alert("Result Published Successfully! 💾");
+            // Clear crucial fields
+            setResultData(prev => ({ ...prev, studentName: '', marks: '' }));
+        } catch (e) {
+            console.error(e);
+            alert("Error publishing result: " + e.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     // Demo Data State
@@ -80,6 +122,40 @@ export default function Exam() {
         ]);
         alert("Dummy results loaded!");
     };
+
+    // Student View: Read-Only Opportunities
+    if (userData?.role === 'student') {
+        return (
+            <div className="page-wrapper">
+                <AnnouncementBar title="Scholarships & Exams 🎓" leftIcon="back" />
+                <div className="container" style={{ maxWidth: '800px', margin: '20px auto' }}>
+
+                    {opportunities.length === 0 ? (
+                        <div className="card text-center text-muted">No opportunities posted yet.</div>
+                    ) : (
+                        opportunities.map(op => (
+                            <div key={op.id} className="card" style={{ marginBottom: '15px', borderLeft: '4px solid #6c5ce7' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                                    <h3 style={{ margin: '0 0 5px 0', color: '#2d3436' }}>{op.title}</h3>
+                                    <span style={{ fontSize: '12px', background: '#ffeaa7', padding: '4px 8px', borderRadius: '4px' }}>{op.category}</span>
+                                </div>
+                                <p style={{ color: '#636e72', fontSize: '14px', whiteSpace: 'pre-wrap' }}>{op.description}</p>
+
+                                <div style={{ marginTop: '15px', display: 'flex', gap: '15px', fontSize: '13px', color: '#b2bec3' }}>
+                                    {op.deadline && <span>📅 Deadline: {op.deadline}</span>}
+                                    {op.link && (
+                                        <a href={op.link} target="_blank" rel="noopener noreferrer" style={{ color: '#0984e3', textDecoration: 'underline' }}>
+                                            🔗 Apply Link
+                                        </a>
+                                    )}
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="container" style={{ maxWidth: '800px', margin: '40px auto' }}>
@@ -169,20 +245,20 @@ export default function Exam() {
 
                         <div className="form-group" style={{ marginTop: '20px' }}>
                             <label>Exam Name</label>
-                            <input className="input-field" placeholder="e.g. Half-Yearly Exam 2024" />
+                            <input className="input-field" placeholder="e.g. Half-Yearly Exam 2024" value={resultData.exam} onChange={e => setResultData({ ...resultData, exam: e.target.value })} />
                         </div>
 
                         <div className="form-group" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px' }}>
                             <div>
                                 <label>Class</label>
-                                <select className="input-field">
-                                    {['1-A', '2-A', '3-A', '4-A', '5-A', '6-A', '7-A', '8-A', '9-A', '10-A'].map(c => <option key={c}>{c}</option>)}
+                                <select className="input-field" value={resultData.class} onChange={e => setResultData({ ...resultData, class: e.target.value })}>
+                                    {['1-A', '2-A', '3-A', '4-A', '5-A', '6-A', '7-A', '8-A', '9-A', '10-A'].map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
                             </div>
                             <div>
                                 <label>Subject</label>
-                                <select className="input-field">
-                                    {['Math', 'Science', 'English', 'Social', 'Hindi'].map(s => <option key={s}>{s}</option>)}
+                                <select className="input-field" value={resultData.subject} onChange={e => setResultData({ ...resultData, subject: e.target.value })}>
+                                    {['Math', 'Science', 'English', 'Social', 'Hindi'].map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
                             </div>
                         </div>
@@ -190,9 +266,9 @@ export default function Exam() {
                         <div style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '20px' }}>
                             <h4>Student Marks Entry</h4>
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
-                                <input className="input-field" placeholder="Student Name / Roll No" style={{ flex: 2 }} />
-                                <input className="input-field" placeholder="Marks Obtained" type="number" style={{ flex: 1 }} />
-                                <input className="input-field" placeholder="Total Marks" type="number" defaultValue="100" style={{ flex: 1 }} />
+                                <input className="input-field" placeholder="Student Name / Roll No" style={{ flex: 2 }} value={resultData.studentName} onChange={e => setResultData({ ...resultData, studentName: e.target.value })} />
+                                <input className="input-field" placeholder="Marks Obtained" type="number" style={{ flex: 1 }} value={resultData.marks} onChange={e => setResultData({ ...resultData, marks: e.target.value })} />
+                                <input className="input-field" placeholder="Total Marks" type="number" style={{ flex: 1 }} value={resultData.total} onChange={e => setResultData({ ...resultData, total: e.target.value })} />
                             </div>
 
                             <button className="btn" style={{ width: '100%', backgroundColor: '#0984e3' }} onClick={handlePublishResult}>

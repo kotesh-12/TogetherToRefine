@@ -23,6 +23,24 @@ export default function Student() {
 
     const [myGroups, setMyGroups] = useState([]);
     const [loadingGroups, setLoadingGroups] = useState(false);
+    const [examResults, setExamResults] = useState([]);
+
+    useEffect(() => {
+        if (userData) {
+            const fetchResults = async () => {
+                try {
+                    const snap = await getDocs(collection(db, "results"));
+                    const list = snap.docs.map(d => d.data());
+                    const myName = userData.name ? userData.name.toLowerCase() : '';
+                    if (myName) {
+                        const myRes = list.filter(r => r.studentName && r.studentName.toLowerCase().includes(myName));
+                        setExamResults(myRes);
+                    }
+                } catch (e) { console.error("Error loading results", e); }
+            };
+            fetchResults();
+        }
+    }, [userData]);
 
     useEffect(() => {
         const fetchRealGroups = async () => {
@@ -136,6 +154,10 @@ export default function Student() {
 
                 {/* AI Learning Tools */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '20px' }}>
+                    <div className="card" onClick={() => navigate('/attendance')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #0984e3, #74b9ff)', color: 'white' }}>
+                        <h3>📅 Attendance</h3>
+                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>View your attendance record.</p>
+                    </div>
                     <div className="card" onClick={() => navigate('/ttr-ai')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)', color: 'white' }}>
                         <h3>🤖 TTR AI Chat</h3>
                         <p style={{ fontSize: '13px', margin: '5px 0 0' }}>Chat with your personal AI assistant.</p>
@@ -144,11 +166,11 @@ export default function Student() {
                         <h3>🧠 4-Way Learning</h3>
                         <p style={{ fontSize: '13px', margin: '5px 0 0' }}>Concept, Fiction, Story, & Teaching.</p>
                     </div>
-                    <div className="card" onClick={() => navigate('/video-library')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #0984e3, #74b9ff)', color: 'white' }}>
+                    <div className="card" onClick={() => navigate('/video-library')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #00b894, #55efc4)', color: 'white' }}>
                         <h3>🎬 Video Library</h3>
                         <p style={{ fontSize: '13px', margin: '5px 0 0' }}>Watch class recordings & tutorials.</p>
                     </div>
-                    <div className="card" onClick={() => navigate('/select-feedback-target')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #00cec9, #55efc4)', color: 'white' }}>
+                    <div className="card" onClick={() => navigate('/select-feedback-target')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #00cec9, #81ecec)', color: 'white' }}>
                         <h3>Give Feedback 🌟</h3>
                         <p style={{ fontSize: '13px', margin: '5px 0 0' }}>Rate teachers & staff.</p>
                     </div>
@@ -168,24 +190,24 @@ export default function Student() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {/* Dummy Data for Demo */}
-                                <tr style={{ borderBottom: '1px solid #eee' }}>
-                                    <td style={{ padding: '8px' }}>Mid-Term</td>
-                                    <td style={{ padding: '8px' }}>Mathematics</td>
-                                    <td style={{ padding: '8px' }}>85/100</td>
-                                    <td style={{ padding: '8px', color: 'green', fontWeight: 'bold' }}>Pass</td>
-                                </tr>
-                                <tr style={{ borderBottom: '1px solid #eee' }}>
-                                    <td style={{ padding: '8px' }}>Unit Test 1</td>
-                                    <td style={{ padding: '8px' }}>Science</td>
-                                    <td style={{ padding: '8px' }}>42/50</td>
-                                    <td style={{ padding: '8px', color: 'green', fontWeight: 'bold' }}>Pass</td>
-                                </tr>
+                                {examResults.length === 0 ? (
+                                    <tr><td colSpan="4" style={{ padding: '15px', textAlign: 'center', color: '#888' }}>No results found for you yet.</td></tr>
+                                ) : (
+                                    examResults.map((res, i) => (
+                                        <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
+                                            <td style={{ padding: '8px' }}>{res.exam}</td>
+                                            <td style={{ padding: '8px' }}>{res.subject}</td>
+                                            <td style={{ padding: '8px' }}>{res.marks}/{res.total}</td>
+                                            <td style={{ padding: '8px' }}>
+                                                <span style={{ color: (res.marks / res.total) >= 0.35 ? 'green' : 'red', fontWeight: 'bold' }}>
+                                                    {(res.marks / res.total) >= 0.35 ? 'Pass' : 'Fail'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
                             </tbody>
                         </table>
-                        <p className="text-muted" style={{ fontSize: '12px', marginTop: '10px', textAlign: 'center' }}>
-                            (These are demo results. Real results will appear here after your institution publishes them.)
-                        </p>
                     </div>
                 </div>
             </div>

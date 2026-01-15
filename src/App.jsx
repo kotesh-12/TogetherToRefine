@@ -26,6 +26,7 @@ const FourWayLearning = lazy(() => import('./pages/FourWayLearning.jsx'));
 const PendingApproval = lazy(() => import('./pages/PendingApproval'));
 const VideoLibrary = lazy(() => import('./pages/VideoLibrary'));
 const SelectFeedbackTarget = lazy(() => import('./pages/SelectFeedbackTarget'));
+const Notification = lazy(() => import('./pages/Notification'));
 import ProtectedRoute from './components/ProtectedRoute';
 
 const MainLayout = lazy(() => import('./components/MainLayout'));
@@ -56,12 +57,12 @@ function App() {
                 <Route path="/video-library" element={<VideoLibrary />} />
                 <Route path="/select-feedback-target" element={<SelectFeedbackTarget />} />
                 <Route path="/attendance" element={<Attendance />} />
+                <Route path="/exam" element={<Exam />} />
               </Route>
 
               {/* Student Only */}
               <Route element={<ProtectedRoute allowedRoles={['student']} />}>
                 <Route path="/student" element={<Student />} />
-                <Route path="/exam" element={<Exam />} /> {/* Usually students take exams */}
               </Route>
 
               {/* Teacher Only */}
@@ -77,6 +78,7 @@ function App() {
                 <Route path="/admission" element={<Admission />} />
                 <Route path="/waiting-list" element={<WaitingList />} />
                 <Route path="/allotment" element={<Allotment />} />
+                <Route path="/notification" element={<Notification />} />
               </Route>
             </Route>
           </Routes>

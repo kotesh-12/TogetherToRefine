@@ -9,6 +9,15 @@ export default function PendingApproval() {
     const [loading, setLoading] = useState(false);
     const [statusMsg, setStatusMsg] = useState('');
 
+    // Auto-check on mount
+    useEffect(() => {
+        // Wait a bit for auth to initialize if needed, or checkStatus handles it?
+        // checkStatus relies on getAuth().currentUser. 
+        // Better to wait for onAuthStateChanged or just try.
+        // Actually, we should check logic. 
+        checkStatus();
+    }, []);
+
     const checkStatus = async () => {
         setLoading(true);
         setStatusMsg('Checking logic...');
@@ -19,6 +28,8 @@ export default function PendingApproval() {
             navigate('/');
             return;
         }
+
+
 
         try {
             console.log("Checking status for:", user.uid);

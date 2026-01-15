@@ -119,7 +119,7 @@ export default function Health() {
                                 {healthData.height && healthData.weight && (
                                     <div style={{ padding: '10px', background: '#f8f9fa', borderRadius: '5px', margin: '10px 0', borderLeft: '4px solid #0984e3' }}>
                                         <strong>🧮 Calculated BMI: </strong>
-                                        {((healthData.weight / ((healthData.height / 100) * (healthData.height / 100)))).toFixed(1)}
+                                        {healthData.height > 0 ? ((healthData.weight / ((healthData.height / 100) * (healthData.height / 100)))).toFixed(1) : 'N/A'}
                                         <span style={{ fontSize: '12px', marginLeft: '10px' }}>
                                             ({(healthData.weight / ((healthData.height / 100) * (healthData.height / 100))) < 18.5 ? "Underweight" :
                                                 (healthData.weight / ((healthData.height / 100) * (healthData.height / 100))) < 25 ? "Normal" : "Overweight"})

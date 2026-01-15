@@ -13,16 +13,16 @@ app.use(express.json({ limit: '10mb' }));
 
 const PORT = 5000;
 
-const API_KEY = process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+const API_KEY = process.env.GEMINI_API_KEY;
 
 if (!API_KEY) {
-    console.error("Error: GEMINI_API_KEY or VITE_GEMINI_API_KEY is missing in .env");
+    console.error("Error: GEMINI_API_KEY is missing in .env");
     process.exit(1);
 }
 
 const genAI = new GoogleGenerativeAI(API_KEY);
 // Using gemini-2.0-flash as tested
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 // Endpoint to fetch and parse URL content (Smart Notes)
 app.post('/api/fetch-url', async (req, res) => {

@@ -21,17 +21,18 @@ const ProtectedRoute = ({ allowedRoles }) => {
     }
 
     // Role Check
-    // userData.role should match one of allowedRoles
-    // We handle the case where 'institution' might be stored as 'admin' or similar if schema changes, but current schema is specific.
-
     if (allowedRoles && !allowedRoles.includes(userData.role)) {
         // Unauthorized. 
-        // Redirect to their OWN home page based on their actual role.
         if (userData.role === 'student') return <Navigate to="/student" replace />;
         if (userData.role === 'teacher') return <Navigate to="/teacher" replace />;
         if (userData.role === 'institution') return <Navigate to="/institution" replace />;
-
         return <Navigate to="/" replace />;
+    }
+
+    // APPROVAL CHECK (Bug Fix)
+    // If they are allowed by role, but NOT approved yet, send to pending.
+    if ((userData.role === 'student' || userData.role === 'teacher') && userData.approved === false) {
+        return <Navigate to="/pending-approval" replace />;
     }
 
     return <Outlet />;

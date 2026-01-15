@@ -66,22 +66,19 @@ export default function Teacher() {
     const handlePostAnnouncement = async () => {
         if (!announcementText.trim()) return alert("Please enter some text.");
         // If no allotments found via fetch, fallback to userData if available, else block
-        let targetClass, targetSection, subject;
+        // Fix: Use state variables if allotments exist
+        let targetClass = selectedClass;
+        let targetSection = selectedSection;
+        let subject = userData?.subject || 'General';
 
-        if (allotments.length > 0) {
-            const target = allotments.find(a => a.id === selectedAllotmentId);
-            if (!target) return alert("Please select a class.");
-            targetClass = target.classAssigned;
-            targetSection = target.section;
-            subject = target.subject;
-        } else if (userData?.assignedClass) {
-            // Fallback
+        // Fallback if no allotments loaded but user has direct assignment
+        if (allotments.length === 0 && userData?.assignedClass) {
             targetClass = userData.assignedClass.toString();
-            targetSection = userData.assignedSection;
-            subject = userData.subject;
-        } else {
-            return alert("No class assigned.");
+            targetSection = userData.assignedSection || 'A';
+            subject = userData.subject || 'General';
         }
+
+        if (!targetClass) return alert("Please select a class.");
 
         try {
             await addDoc(collection(db, "announcements"), {

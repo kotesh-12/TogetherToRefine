@@ -7,7 +7,8 @@ import { useUser } from '../context/UserContext';
 export default function TopBar({ title, leftIcon = 'home' }) {
     const navigate = useNavigate();
     const { userData } = useUser();
-    const [announcement, setAnnouncement] = useState('🔔 Welcome to TTR! Stay tuned for updates.');
+    const [announcement, setAnnouncement] = useState('Welcome to TTR!');
+
 
     const handleLeftClick = () => {
         if (leftIcon === 'back') {
@@ -26,7 +27,10 @@ export default function TopBar({ title, leftIcon = 'home' }) {
         const unsubscribe = onSnapshot(q, (snapshot) => {
             if (!snapshot.empty) {
                 const data = snapshot.docs[0].data();
-                setAnnouncement(`🔔 ${data.text}`);
+                const text = data.text;
+                setAnnouncement(text);
+
+
             }
         });
         return () => unsubscribe();
@@ -34,6 +38,7 @@ export default function TopBar({ title, leftIcon = 'home' }) {
 
     return (
         <div style={{ position: 'sticky', top: 0, zIndex: 999, backgroundColor: '#f0f2f5' }}>
+
             {/* Main Header with Home & Profile */}
             <header className="app-header" style={{ marginBottom: 0, borderRadius: '0 0 0 0' }}>
                 <div
@@ -62,9 +67,100 @@ export default function TopBar({ title, leftIcon = 'home' }) {
             </header>
 
             {/* Announcement Bar attached below */}
-            <div className="announcement-bar" style={{ marginTop: 0, borderRadius: '0 0 10px 10px' }}>
+            <div className="announcement-bar" style={{ marginTop: 0, borderRadius: '0 0 10px 10px', position: 'relative', overflow: 'hidden' }}>
                 <div className="scrolling-text">{announcement}</div>
+                {isPatriotic(announcement) ? <PatrioticConfetti /> : (isFestival(announcement) && <SimpleConfetti />)}
             </div>
+        </div>
+    );
+}
+
+// Helper: Patriotic Days (Republic & Independence Day)
+function isPatriotic(text) {
+    if (!text) return false;
+    const keywords = ['republic day', 'independence day', 'jai hind', 'august 15', 'january 26', 'india'];
+    const lower = text.toLowerCase();
+    return keywords.some(k => lower.includes(k));
+}
+
+// Helper: General Festivals
+function isFestival(text) {
+    if (!text) return false;
+    const keywords = ['festival', 'sankranthi', 'diwali', 'christmas', 'new year', 'holiday', 'pongal', 'ugadi', 'dussehra', 'celebration', 'happy'];
+    const lower = text.toLowerCase();
+    return keywords.some(k => lower.includes(k));
+}
+
+// Intro Animation with Lion Emblem
+
+
+// Indian Flag Floating Animation
+function PatrioticConfetti() {
+    const particles = Array.from({ length: 40 });
+
+    return (
+        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 10 }}>
+            {particles.map((_, i) => {
+                const color = ['#FF9933', '#FFFFFF', '#138808'][i % 3]; // Saffron, White, Green
+                const style = {
+                    position: 'absolute',
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`,
+                    width: '12px',
+                    height: '8px',
+                    backgroundColor: color,
+                    animation: `float ${3 + Math.random() * 4}s ease-in-out infinite`,
+                    animationDelay: `-${Math.random() * 5}s`,
+                    opacity: 0.9,
+                    borderRadius: '1px',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                };
+                return <div key={i} style={style} />;
+            })}
+            <style>
+                {`
+                @keyframes float {
+                    0% { transform: translateY(0) translateX(0) rotate(0deg); opacity: 0; }
+                    20% { opacity: 1; }
+                    50% { transform: translateY(-20px) translateX(10px) rotate(10deg); }
+                    80% { opacity: 1; }
+                    100% { transform: translateY(-40px) translateX(-10px) rotate(-10deg); opacity: 0; }
+                }
+                `}
+            </style>
+        </div>
+    );
+}
+
+// Lightweight Confetti Component
+function SimpleConfetti() {
+    const particles = Array.from({ length: 50 });
+
+    return (
+        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 10 }}>
+            {particles.map((_, i) => {
+                const style = {
+                    position: 'absolute',
+                    left: `${Math.random() * 100}%`,
+                    top: `-10px`,
+                    width: '8px',
+                    height: '8px',
+                    backgroundColor: ['#ffbeb3', '#badc58', '#f9ca24', '#686de0', '#e056fd'][Math.floor(Math.random() * 5)],
+                    animation: `fall ${2 + Math.random() * 3}s linear infinite`,
+                    animationDelay: `-${Math.random() * 5}s`,
+                    opacity: 0.8,
+                    borderRadius: '50%'
+                };
+                return <div key={i} style={style} />;
+            })}
+            <style>
+                {`
+                @keyframes fall {
+                    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+                    100% { transform: translateY(100px) rotate(360deg); opacity: 0; }
+                }
+                `}
+            </style>
         </div>
     );
 }
