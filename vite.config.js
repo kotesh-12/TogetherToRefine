@@ -19,12 +19,12 @@ export default defineConfig({
         background_color: '#ffffff',
         icons: [
           {
-            src: 'ttr_logo.jpg',
+            src: 'TTR1_logo.jpg',
             sizes: '192x192',
             type: 'image/jpeg'
           },
           {
-            src: 'ttr_logo.jpg',
+            src: 'TTR1_logo.jpg',
             sizes: '512x512',
             type: 'image/jpeg'
           }
