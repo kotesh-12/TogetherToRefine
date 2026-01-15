@@ -16,8 +16,9 @@ export default function SelectFeedbackTarget() {
 
     // Teacher Filter States
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterClass, setFilterClass] = useState('All');
-    const [filterSection, setFilterSection] = useState('All');
+    // Initialize filter to default Class/Section if available, else 'All'
+    const [filterClass, setFilterClass] = useState(userData?.assignedClass ? userData.assignedClass.toString() : 'All');
+    const [filterSection, setFilterSection] = useState((userData?.assignedSection && userData.assignedSection !== 'All') ? userData.assignedSection.toString() : 'All');
     // Institution Filter State
     const [institutionFilter, setInstitutionFilter] = useState('Teacher'); // 'Teacher' or 'Student'
 
@@ -50,59 +51,42 @@ export default function SelectFeedbackTarget() {
                     }
                 }
                 else if (role === 'teacher') {
-                    setTitle("Select Feedback Target"); // Changed title
+                    setTitle("Select Feedback Target");
 
-                    // 1. Fetch Institution (Robust Logic)
+                    // 1. Fetch Institution ID
                     let instId = userData.createdBy;
-
-                    // Fallback: If not in profile, check allotments
                     if (!instId) {
+                        // Fallback: Check allotments
                         try {
                             const allotQ = query(collection(db, "teacher_allotments"), where("teacherId", "==", userData.uid));
                             const allotSnap = await getDocs(allotQ);
-                            if (!allotSnap.empty) {
-                                instId = allotSnap.docs[0].data().createdBy;
-                            }
-                        } catch (e) { console.error("Error finding inst from allotments", e); }
+                            if (!allotSnap.empty) instId = allotSnap.docs[0].data().createdBy;
+                        } catch (e) { }
                     }
-
-                    // Fallback 2: If still no ID (orphan teacher?), find ANY Institution (Demo Mode)
+                    // Fallback 2: Any Institution (Demo)
                     if (!instId) {
                         try {
                             const qInst = query(collection(db, "users"), where("role", "==", "institution"));
                             const qSnap = await getDocs(qInst);
-                            if (!qSnap.empty) {
-                                instId = qSnap.docs[0].id;
-                            }
-                        } catch (e) { console.error("Error finding any inst", e); }
+                            if (!qSnap.empty) instId = qSnap.docs[0].id;
+                        } catch (e) { }
                     }
 
                     if (instId) {
+                        // Add Institution as Target
                         try {
                             const instDoc = await getDoc(doc(db, "users", instId));
                             if (instDoc.exists()) {
                                 setInstitutionTarget({ id: instDoc.id, ...instDoc.data(), type: 'Institution', name: instDoc.data().name || 'Institution' });
                             }
-                        } catch (e) { console.error("Error fetching institution", e); }
-                    }
+                        } catch (e) { }
 
-                    // 2. Fetch Students
-                    // Teacher allotments might be multiple. We need to fetch students for ALL their classes?
-                    // Or just the assigned one in profile (legacy)?
-                    // Profile has `userData.assignedClass`.
-                    const myClass = userData.assignedClass;
-                    const mySection = userData.assignedSection;
-
-                    if (myClass) {
-                        const q = query(
-                            collection(db, "student_allotments"),
-                            where("classAssigned", "==", myClass),
-                            where("section", "==", mySection)
-                        );
-                        const snap = await getDocs(q);
-                        // Student Allotments usually are 1:1 with headers.
-                        // `student_allotments` has `studentId`, `studentName`.
-                        list = snap.docs.map(d => ({ id: d.data().studentId || d.id, ...d.data(), type: 'Student' }));
+                        // 2. Fetch ALL Students from this Institution
+                        try {
+                            const q = query(collection(db, "student_allotments"), where("createdBy", "==", instId));
+                            const snap = await getDocs(q);
+                            list = snap.docs.map(d => ({ id: d.data().studentId || d.id, ...d.data(), type: 'Student' }));
+                        } catch (e) { console.error(e); }
                     }
                 }
                 else if (role === 'institution') {

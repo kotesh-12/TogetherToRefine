@@ -23,6 +23,41 @@ export default function Attendance() {
     const [mySubjectStats, setMySubjectStats] = useState([]);
     const [myOverallStats, setMyOverallStats] = useState({ present: 0, total: 0, percent: 0 });
     const [myHistory, setMyHistory] = useState([]); // New: History State
+    const [teacherClasses, setTeacherClasses] = useState([]); // Restricted classes for Teacher
+
+    useEffect(() => {
+        if (role === 'teacher' && userData?.uid) {
+            const fetchAllowedClasses = async () => {
+                try {
+                    // Fetch allotments linked to this teacher
+                    const q = query(collection(db, "teacher_allotments"), where("userId", "==", userData.uid));
+                    const snap = await getDocs(q);
+                    const classes = snap.docs.map(d => {
+                        const data = d.data();
+                        return `${data.classAssigned}-${data.section}`;
+                    });
+                    // Fallback: If no userId link, try Name match (Legacy)
+                    if (classes.length === 0 && userData.name) {
+                        const q2 = query(collection(db, "teacher_allotments"), where("name", "==", userData.name));
+                        const snap2 = await getDocs(q2);
+                        snap2.forEach(d => {
+                            const data = d.data();
+                            classes.push(`${data.classAssigned}-${data.section}`);
+                        });
+                    }
+                    const uniqueClasses = [...new Set(classes)];
+                    setTeacherClasses(uniqueClasses);
+                    // Auto-select first if available
+                    if (uniqueClasses.length > 0 && !cls) {
+                        setCls(uniqueClasses[0]);
+                    }
+                } catch (e) {
+                    console.error("Error fetching teacher classes", e);
+                }
+            };
+            fetchAllowedClasses();
+        }
+    }, [role, userData]);
 
     useEffect(() => {
         if (role) {
@@ -477,9 +512,15 @@ export default function Attendance() {
                             <>
                                 <select className="input-field" value={cls} onChange={(e) => setCls(e.target.value)} style={{ width: '150px', margin: 0 }}>
                                     <option value="">- Class -</option>
-                                    {['Nursery-A', 'LKG-A', 'UKG-A', '1-A', '2-A', '3-A', '4-A', '5-A', '6-A', '7-A', '8-A', '9-A', '10-A', '10-B'].map(c => (
-                                        <option key={c} value={c}>{c}</option>
-                                    ))}
+                                    {role === 'teacher' ? (
+                                        teacherClasses.length > 0 ? (
+                                            teacherClasses.map(c => <option key={c} value={c}>{c}</option>)
+                                        ) : <option disabled>No classes allotted</option>
+                                    ) : (
+                                        ['Nursery-A', 'LKG-A', 'UKG-A', '1-A', '2-A', '3-A', '4-A', '5-A', '6-A', '7-A', '8-A', '9-A', '10-A', '10-B'].map(c => (
+                                            <option key={c} value={c}>{c}</option>
+                                        ))
+                                    )}
                                 </select>
 
                                 {/* Subject Input */}

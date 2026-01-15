@@ -30,41 +30,71 @@ export default function GeneralFeedback() {
     // Read List State
     const [receivedFeedback, setReceivedFeedback] = useState([]);
 
-    // Check Cooldown (Student -> Teacher)
+    // Check Cooldown Logic
     useEffect(() => {
         const checkCycle = async () => {
-            if (activeTab === 'write' && userData?.role === 'student' && targetPerson?.type === 'Teacher') {
-                try {
-                    // Fetch LAST feedback without orderBy to avoid index issues
-                    const q = query(
-                        collection(db, "general_feedback"),
-                        where("authorId", "==", userData.uid),
-                        where("targetId", "==", targetPerson.id || targetPerson.uid)
-                    );
-                    const snap = await getDocs(q);
+            if (activeTab !== 'write' || !userData || !targetPerson) return;
 
-                    if (!snap.empty) {
-                        // Client-side sort to find latest
-                        const docs = snap.docs.map(d => d.data());
-                        docs.sort((a, b) => b.timestamp.seconds - a.timestamp.seconds);
-                        const lastFeedback = docs[0];
+            // 1. Student -> Teacher (Existing Rule: 28 Days)
+            if (userData.role === 'student' && targetPerson.type === 'Teacher') {
+                await runCooldownCheck(28);
+            }
+            // 2. Teacher -> Student (New Rule: 28 Days Block, 75 Days Due Warning)
+            else if (userData.role === 'teacher' && targetPerson.type === 'Student') {
+                // Only for Allotted Class Students
+                // Normalize class comparison
+                const myClass = (userData.assignedClass || '').toString();
+                const mySec = (userData.assignedSection || '').toString();
+                const tClass = (targetPerson.classAssigned || '').toString();
+                const tSec = (targetPerson.section || '').toString();
 
-                        const lastDate = lastFeedback.timestamp.toDate();
-                        const now = new Date();
-                        const diffTime = Math.abs(now - lastDate);
-                        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); // Floor to trust full days passed
+                if (myClass === tClass && mySec === tSec) {
+                    await runCooldownCheck(28, 75);
+                } else {
+                    // For other students, maybe just standard logic or no restrictions? 
+                    // User said "restricted access... list of their class students only by default", but permitted "any".
+                    // Assuming no restrictions for non-allotted, or same restriction?
+                    // User said "rule for only their alloted class". So others are free? 
+                    // I will leave others free.
+                    setCooldown({ active: false, daysLeft: 0, date: null });
+                }
+            }
+        };
 
-                        if (diffDays < 28) {
-                            setCooldown({ active: true, daysLeft: 28 - diffDays, date: lastDate.toLocaleDateString() });
-                        } else {
-                            setCooldown({ active: false, daysLeft: 0, date: null });
-                        }
+        const runCooldownCheck = async (minDays, maxDaysWarning = 0) => {
+            try {
+                const q = query(
+                    collection(db, "general_feedback"),
+                    where("authorId", "==", userData.uid),
+                    where("targetId", "==", targetPerson.id || targetPerson.uid)
+                );
+                const snap = await getDocs(q);
+
+                if (!snap.empty) {
+                    const docs = snap.docs.map(d => d.data());
+                    docs.sort((a, b) => b.timestamp.seconds - a.timestamp.seconds);
+                    const lastFeedback = docs[0];
+                    const lastDate = lastFeedback.timestamp.toDate();
+                    const now = new Date();
+                    const diffDays = Math.floor(Math.abs(now - lastDate) / (1000 * 60 * 60 * 24));
+
+                    if (diffDays < minDays) {
+                        setCooldown({ active: true, daysLeft: minDays - diffDays, date: lastDate.toLocaleDateString(), type: 'block' });
+                    } else if (maxDaysWarning > 0 && diffDays > maxDaysWarning) {
+                        setCooldown({ active: false, daysLeft: diffDays, date: lastDate.toLocaleDateString(), type: 'warning', max: maxDaysWarning });
                     } else {
                         setCooldown({ active: false, daysLeft: 0, date: null });
                     }
-                } catch (e) { console.error("Error checking feedback cycle", e); }
-            }
+                } else {
+                    // Never given feedback
+                    if (maxDaysWarning > 0) {
+                        // technically overdue if new student? No, treating as fresh.
+                        setCooldown({ active: false, daysLeft: 0, date: null, type: 'new' });
+                    }
+                }
+            } catch (e) { console.error(e); }
         };
+
         checkCycle();
     }, [activeTab, userData, targetPerson]);
 
@@ -269,20 +299,29 @@ export default function GeneralFeedback() {
                                 <p style={{ color: '#888', marginTop: '5px' }}>Help us improve by rating honestly</p>
                             </div>
 
-                            {/* Cooldown Block */}
-                            {cooldown.active ? (
+                            {/* Cooldown / Status Block */}
+                            {cooldown.active && cooldown.type === 'block' ? (
                                 <div className="card text-center" style={{ padding: '40px', background: '#fff0f0', border: '1px solid #fab1a0' }}>
                                     <div style={{ fontSize: '40px', marginBottom: '20px' }}>⏳</div>
                                     <h3 style={{ color: '#d63031' }}>Feedback Cycle Active</h3>
                                     <p style={{ color: '#636e72', marginBottom: '20px' }}>
                                         You last gave feedback on <strong>{cooldown.date}</strong>.
                                         <br />
-                                        You can submit new feedback in <strong>{cooldown.daysLeft} days</strong>.
+                                        Please wait <strong>{cooldown.daysLeft} more days</strong> before submitting again.
                                     </p>
                                     <button className="btn" onClick={() => navigate(-1)}>Go Back</button>
                                 </div>
                             ) : (
                                 <>
+                                    {cooldown.type === 'warning' && (
+                                        <div style={{ background: '#ffeaa7', padding: '15px', borderRadius: '10px', marginBottom: '20px', border: '1px solid #fdcb6e', color: '#d63031', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <span style={{ fontSize: '24px' }}>⚠️</span>
+                                            <div>
+                                                <strong>Feedback Overdue!</strong>
+                                                <div style={{ fontSize: '13px' }}>It has been {cooldown.daysLeft} days since your last feedback. Policy requires feedback every 75 days.</div>
+                                            </div>
+                                        </div>
+                                    )}
                                     <div style={{ display: 'grid', gap: '25px' }}>
                                         {categories.map(cat => (
                                             <div key={cat.key} style={{
