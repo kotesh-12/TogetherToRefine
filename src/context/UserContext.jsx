@@ -27,63 +27,67 @@ export function UserProvider({ children }) {
                 setLoading(true);
 
                 const detectFull = async () => {
-                    // 1. Check Institution
+                    console.time("RoleDetection");
+                    // Parallelize checks!
                     const instRef = doc(db, "institutions", currentUser.uid);
-                    const instSnap = await getDoc(instRef);
-                    if (instSnap.exists()) {
-                        unsubscribeSnapshot = onSnapshot(instRef, (d) => {
-                            const data = d.data();
-                            if (!data.pid) {
-                                const pid = `IN-${Math.floor(100000 + Math.random() * 900000)}`;
-                                setDoc(doc(db, "institutions", currentUser.uid), { pid }, { merge: true });
-                                data.pid = pid;
-                            }
-                            setUserData({ ...data, uid: currentUser.uid, collection: 'institutions', role: 'institution' });
-                            localStorage.setItem('user_collection_cache', 'institutions');
-                            setLoading(false);
-                        });
-                        return;
-                    }
-
-                    // 2. Check Teacher
                     const teachRef = doc(db, "teachers", currentUser.uid);
-                    const teachSnap = await getDoc(teachRef);
-                    if (teachSnap.exists()) {
-                        unsubscribeSnapshot = onSnapshot(teachRef, (d) => {
-                            const data = d.data();
-                            if (!data.pid) {
-                                const pid = `TE-${Math.floor(100000 + Math.random() * 900000)}`;
-                                setDoc(doc(db, "teachers", currentUser.uid), { pid }, { merge: true });
-                                data.pid = pid;
-                            }
-                            setUserData({ ...data, uid: currentUser.uid, collection: 'teachers', role: 'teacher' });
-                            localStorage.setItem('user_collection_cache', 'teachers');
-                            setLoading(false);
-                        });
-                        return;
-                    }
-
-                    // 3. Fallback to Student ('users')
                     const userRef = doc(db, "users", currentUser.uid);
-                    unsubscribeSnapshot = onSnapshot(userRef, (d) => {
-                        if (d.exists()) {
-                            console.log("Found in 'users'");
-                            const data = d.data();
-                            const role = data.role || 'student';
-                            if (!data.pid) {
-                                const prefix = role === 'teacher' ? 'TE' : (role === 'institution' ? 'IN' : 'ST');
-                                const pid = `${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;
-                                setDoc(doc(db, "users", currentUser.uid), { pid }, { merge: true });
-                                data.pid = pid;
-                            }
-                            setUserData({ ...data, uid: currentUser.uid, collection: 'users', role });
-                            localStorage.setItem('user_collection_cache', 'users');
+
+                    try {
+                        const [instSnap, teachSnap, userSnap] = await Promise.all([
+                            getDoc(instRef),
+                            getDoc(teachRef),
+                            getDoc(userRef)
+                        ]);
+
+                        if (instSnap.exists()) {
+                            unsubscribeSnapshot = onSnapshot(instRef, (d) => {
+                                const data = d.data();
+                                if (!data.pid) {
+                                    const pid = `IN-${Math.floor(100000 + Math.random() * 900000)}`;
+                                    setDoc(instRef, { pid }, { merge: true });
+                                    data.pid = pid;
+                                }
+                                setUserData({ ...data, uid: currentUser.uid, collection: 'institutions', role: 'institution' });
+                                localStorage.setItem('user_collection_cache', 'institutions');
+                                setLoading(false);
+                            });
+                        } else if (teachSnap.exists()) {
+                            unsubscribeSnapshot = onSnapshot(teachRef, (d) => {
+                                const data = d.data();
+                                if (!data.pid) {
+                                    const pid = `TE-${Math.floor(100000 + Math.random() * 900000)}`;
+                                    setDoc(teachRef, { pid }, { merge: true });
+                                    data.pid = pid;
+                                }
+                                setUserData({ ...data, uid: currentUser.uid, collection: 'teachers', role: 'teacher' });
+                                localStorage.setItem('user_collection_cache', 'teachers');
+                                setLoading(false);
+                            });
+                        } else if (userSnap.exists()) {
+                            unsubscribeSnapshot = onSnapshot(userRef, (d) => {
+                                const data = d.data();
+                                const role = data.role || 'student';
+                                if (!data.pid) {
+                                    const prefix = role === 'teacher' ? 'TE' : (role === 'institution' ? 'IN' : 'ST');
+                                    const pid = `${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;
+                                    setDoc(userRef, { pid }, { merge: true });
+                                    data.pid = pid;
+                                }
+                                setUserData({ ...data, uid: currentUser.uid, collection: 'users', role });
+                                localStorage.setItem('user_collection_cache', 'users');
+                                setLoading(false);
+                            });
                         } else {
                             console.log("User document not found in any collection.");
                             setUserData(null);
+                            setLoading(false);
                         }
+                    } catch (err) {
+                        console.error("Parallel detection failed", err);
                         setLoading(false);
-                    });
+                    }
+                    console.timeEnd("RoleDetection");
                 };
 
                 // Strategy: Check cached collection first, then priority sequence
