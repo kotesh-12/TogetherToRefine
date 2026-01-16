@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useUser } from '../context/UserContext';
 import { useNavigate } from 'react-router-dom';
 import {
     createUserWithEmailAndPassword,
@@ -25,6 +26,31 @@ export default function Login() {
     const [gender, setGender] = useState('');
 
     const navigate = useNavigate();
+    const { user, userData } = useUser(); // Access global user state
+
+    // Redirect if already logged in
+    useEffect(() => {
+        if (user && userData && userData.role) {
+            console.log("User already logged in. Redirecting...", userData.role);
+            if (userData.approved === false) {
+                navigate('/pending-approval');
+            } else {
+                switch (userData.role) {
+                    case 'student': navigate('/student'); break;
+                    case 'teacher': navigate('/teacher'); break;
+                    case 'institution': navigate('/institution'); break;
+                    default: navigate('/admission');
+                }
+            }
+        } else if (user && !userData) {
+            // User is auth'd but no DB record found yet? 
+            // Usually UserContext handles waiting for userData, but if it fails to find role:
+            // Stay on login or go to details? 
+            // Let's assume UserContext sets userData=null if not found, so we might want to send to Details if we are sure.
+            // actually UserContext handles userData quite robustly. If it returns null, maybe we should let them login/signup again or go to details.
+            // For now, let's just focus on successful roles.
+        }
+    }, [user, userData, navigate]);
 
     const toggleMode = () => {
         setIsLogin(!isLogin);
