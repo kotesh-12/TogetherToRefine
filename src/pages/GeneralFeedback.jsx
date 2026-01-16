@@ -41,8 +41,8 @@ export default function GeneralFeedback() {
             }
             // 2. Teacher -> Student (New Rule: 28 Days Block, 75 Days Due Warning)
             else if (userData.role === 'teacher' && targetPerson.type === 'Student') {
-                // Only for Allotted Class Students
-                // Normalize class comparison
+                // ... existing logic ...
+                // Normalize class comparison (Same as before)
                 const myClass = (userData.assignedClass || '').toString();
                 const mySec = (userData.assignedSection || '').toString();
                 const tClass = (targetPerson.classAssigned || '').toString();
@@ -51,13 +51,12 @@ export default function GeneralFeedback() {
                 if (myClass === tClass && mySec === tSec) {
                     await runCooldownCheck(28, 75);
                 } else {
-                    // For other students, maybe just standard logic or no restrictions? 
-                    // User said "restricted access... list of their class students only by default", but permitted "any".
-                    // Assuming no restrictions for non-allotted, or same restriction?
-                    // User said "rule for only their alloted class". So others are free? 
-                    // I will leave others free.
                     setCooldown({ active: false, daysLeft: 0, date: null });
                 }
+            }
+            // 3. Institution -> Any (28 Days Rule)
+            else if (userData.role === 'institution') {
+                await runCooldownCheck(28);
             }
         };
 
@@ -79,7 +78,10 @@ export default function GeneralFeedback() {
                     const diffDays = Math.floor(Math.abs(now - lastDate) / (1000 * 60 * 60 * 24));
 
                     if (diffDays < minDays) {
-                        setCooldown({ active: true, daysLeft: minDays - diffDays, date: lastDate.toLocaleDateString(), type: 'block' });
+                        const nextAllowed = new Date(lastDate);
+                        nextAllowed.setDate(lastDate.getDate() + minDays);
+                        const dateStr = nextAllowed.toLocaleString('en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+                        setCooldown({ active: true, daysLeft: minDays - diffDays, date: lastDate.toLocaleDateString(), nextDate: dateStr, type: 'block' });
                     } else if (maxDaysWarning > 0 && diffDays > maxDaysWarning) {
                         setCooldown({ active: false, daysLeft: diffDays, date: lastDate.toLocaleDateString(), type: 'warning', max: maxDaysWarning });
                     } else {
@@ -186,9 +188,9 @@ export default function GeneralFeedback() {
         try {
             await addDoc(collection(db, "general_feedback"), {
                 authorId: userData.uid,
-                // If user wants to reveal name, we DO NOT save PID, so the reader defaults to Name.
-                // If user wants to be anonymous, we save PID, so the reader defaults to PID.
-                authorPid: revealName ? null : (userData.pid || null),
+                // Logic: Higher Authorities (Institution/Teacher->Student) ALWAYS reveal name (pid: null)
+                // Students can choose to be anonymous (pid: exists)
+                authorPid: (userData.role === 'institution' || (userData.role === 'teacher' && targetPerson.type === 'Student') || revealName) ? null : (userData.pid || 'Anonymous'),
                 authorName: userData.name,
                 authorRole: userData.role,
                 targetId: targetPerson.id || targetPerson.uid,
@@ -305,9 +307,8 @@ export default function GeneralFeedback() {
                                     <div style={{ fontSize: '40px', marginBottom: '20px' }}>⏳</div>
                                     <h3 style={{ color: '#d63031' }}>Feedback Cycle Active</h3>
                                     <p style={{ color: '#636e72', marginBottom: '20px' }}>
-                                        You last gave feedback on <strong>{cooldown.date}</strong>.
-                                        <br />
-                                        Please wait <strong>{cooldown.daysLeft} more days</strong> before submitting again.
+                                        You can submit your next feedback on:<br />
+                                        <strong style={{ fontSize: '1.2rem', color: '#2d3436' }}>{cooldown.nextDate}</strong>
                                     </p>
                                     <button className="btn" onClick={() => navigate(-1)}>Go Back</button>
                                 </div>
@@ -393,18 +394,25 @@ export default function GeneralFeedback() {
                                     </div>
 
                                     {/* Reveal Name Option */}
-                                    <div style={{ marginTop: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                        <input
-                                            type="checkbox"
-                                            id="revealName"
-                                            checked={revealName}
-                                            onChange={(e) => setRevealName(e.target.checked)}
-                                            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                                        />
-                                        <label htmlFor="revealName" style={{ cursor: 'pointer', fontSize: '14px', color: '#2d3436' }}>
-                                            Show my Name (Uncheck for Anonymous ID)
-                                        </label>
-                                    </div>
+                                    {(userData.role === 'institution' || (userData.role === 'teacher' && targetPerson.type === 'Student')) ? (
+                                        <div style={{ marginTop: '15px', color: '#636e72', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                            <span>🔒</span>
+                                            Feedback will be sent as <strong>{userData.name}</strong> (Official)
+                                        </div>
+                                    ) : (
+                                        <div style={{ marginTop: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <input
+                                                type="checkbox"
+                                                id="revealName"
+                                                checked={revealName}
+                                                onChange={(e) => setRevealName(e.target.checked)}
+                                                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                            />
+                                            <label htmlFor="revealName" style={{ cursor: 'pointer', fontSize: '14px', color: '#2d3436' }}>
+                                                Show my Name (Uncheck for Anonymous ID)
+                                            </label>
+                                        </div>
+                                    )}
 
                                     <button
                                         onClick={handleSubmit}

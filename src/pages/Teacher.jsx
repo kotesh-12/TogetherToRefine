@@ -21,7 +21,7 @@ export default function Teacher() {
 
     // Fetch Allotments when Modal opens
     React.useEffect(() => {
-        if (userData?.uid && showModal) {
+        if (userData?.uid) {
             const fetchAllotments = async () => {
                 try {
                     const q = query(collection(db, "teacher_allotments"), where("teacherId", "==", userData.uid));
@@ -139,7 +139,18 @@ export default function Teacher() {
                         </div>
                     )}
                     <p>Access your classes, upload notes, and manage attendance.</p>
-                    {userData?.assignedClass ? (
+                    {allotments.length > 0 ? (
+                        <div style={{ marginBottom: '15px' }}>
+                            <h4 style={{ margin: '5px 0', color: '#636e72' }}>My Classes:</h4>
+                            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                {allotments.map(a => (
+                                    <span key={a.id} style={{ background: '#dfe6e9', padding: '5px 10px', borderRadius: '15px', fontSize: '14px', border: '1px solid #b2bec3' }}>
+                                        {a.classAssigned}-{a.section} ({a.subject})
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    ) : userData?.assignedClass ? (
                         <p style={{ color: '#0984e3', fontWeight: 'bold' }}>
                             Assigned Class: {userData.assignedClass} - {userData.assignedSection} ({userData.subject})
                         </p>
@@ -154,6 +165,7 @@ export default function Teacher() {
                         <button className="btn" style={{ backgroundColor: '#0984e3' }} onClick={() => navigate('/attendance')}>Mark Attendance</button>
                         <button className="btn" style={{ backgroundColor: '#d63031' }} onClick={() => navigate('/video-library')}>Video Library</button>
                         <button className="btn" style={{ backgroundColor: '#00cec9', color: 'white' }} onClick={() => navigate('/general-feedback')}>Feedback</button>
+                        <button className="btn" style={{ backgroundColor: '#fdcb6e', color: '#2d3436' }} onClick={() => navigate('/timetable')}>Timetable</button>
                     </div>
                 </div>
             </div>

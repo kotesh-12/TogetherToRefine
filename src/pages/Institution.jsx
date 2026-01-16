@@ -198,6 +198,10 @@ export default function Institution() {
                         <span style={{ fontSize: '28px', marginBottom: '8px' }}>🎬</span>
                         <span>Video Lib</span>
                     </button>
+                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fdcb6e', color: '#2d3436' }} onClick={() => navigate('/timetable')}>
+                        <span style={{ fontSize: '28px', marginBottom: '8px' }}>🗓️</span>
+                        <span>Timetable</span>
+                    </button>
                 </div>
 
                 <div className="card" style={{ padding: '20px', borderRadius: '15px' }}>
@@ -250,63 +254,65 @@ export default function Institution() {
 
 
             {/* Announcement Modal */}
-            {showModal && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.8)', zIndex: 3000,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                    <div className="card" style={{ width: '90%', maxWidth: '500px' }}>
-                        <h3>📢 Make Institution Announcement</h3>
-                        <p className="text-muted" style={{ fontSize: '12px' }}>This will be visible to all students and teachers.</p>
+            {
+                showModal && (
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        background: 'rgba(0,0,0,0.8)', zIndex: 3000,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                        <div className="card" style={{ width: '90%', maxWidth: '500px' }}>
+                            <h3>📢 Make Institution Announcement</h3>
+                            <p className="text-muted" style={{ fontSize: '12px' }}>This will be visible to all students and teachers.</p>
 
-                        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                            <div style={{ flex: 1 }}>
-                                <label style={{ fontSize: '12px', color: '#666', display: 'block' }}>Class:</label>
-                                <select
-                                    className="input-field"
-                                    value={selectedClass}
-                                    onChange={(e) => setSelectedClass(e.target.value)}
-                                    style={{ margin: 0 }}
-                                >
-                                    <option value="All">All Classes</option>
-                                    <option value="Nursery">Nursery</option>
-                                    <option value="LKG">LKG</option>
-                                    <option value="UKG">UKG</option>
-                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(c => <option key={c} value={c.toString()}>Class {c}</option>)}
-                                </select>
+                            <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                                <div style={{ flex: 1 }}>
+                                    <label style={{ fontSize: '12px', color: '#666', display: 'block' }}>Class:</label>
+                                    <select
+                                        className="input-field"
+                                        value={selectedClass}
+                                        onChange={(e) => setSelectedClass(e.target.value)}
+                                        style={{ margin: 0 }}
+                                    >
+                                        <option value="All">All Classes</option>
+                                        <option value="Nursery">Nursery</option>
+                                        <option value="LKG">LKG</option>
+                                        <option value="UKG">UKG</option>
+                                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(c => <option key={c} value={c.toString()}>Class {c}</option>)}
+                                    </select>
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label style={{ fontSize: '12px', color: '#666', display: 'block' }}>Section:</label>
+                                    <select
+                                        className="input-field"
+                                        value={selectedSection}
+                                        onChange={(e) => setSelectedSection(e.target.value)}
+                                        style={{ margin: 0 }}
+                                    >
+                                        <option value="All">All Sections</option>
+                                        <option value="A">Section A</option>
+                                        <option value="B">Section B</option>
+                                        <option value="C">Section C</option>
+                                        <option value="D">Section D</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div style={{ flex: 1 }}>
-                                <label style={{ fontSize: '12px', color: '#666', display: 'block' }}>Section:</label>
-                                <select
-                                    className="input-field"
-                                    value={selectedSection}
-                                    onChange={(e) => setSelectedSection(e.target.value)}
-                                    style={{ margin: 0 }}
-                                >
-                                    <option value="All">All Sections</option>
-                                    <option value="A">Section A</option>
-                                    <option value="B">Section B</option>
-                                    <option value="C">Section C</option>
-                                    <option value="D">Section D</option>
-                                </select>
-                            </div>
-                        </div>
 
-                        <textarea
-                            className="input-field"
-                            rows="4"
-                            placeholder="Type your announcement here..."
-                            value={announcementText}
-                            onChange={(e) => setAnnouncementText(e.target.value)}
-                        />
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
-                            <button className="btn-outline" onClick={() => setShowModal(false)} style={{ padding: '8px 16px', border: '1px solid #ccc', background: 'transparent', borderRadius: '4px', cursor: 'pointer' }}>Cancel</button>
-                            <button className="btn" onClick={handlePostAnnouncement}>Post</button>
+                            <textarea
+                                className="input-field"
+                                rows="4"
+                                placeholder="Type your announcement here..."
+                                value={announcementText}
+                                onChange={(e) => setAnnouncementText(e.target.value)}
+                            />
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+                                <button className="btn-outline" onClick={() => setShowModal(false)} style={{ padding: '8px 16px', border: '1px solid #ccc', background: 'transparent', borderRadius: '4px', cursor: 'pointer' }}>Cancel</button>
+                                <button className="btn" onClick={handlePostAnnouncement}>Post</button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }

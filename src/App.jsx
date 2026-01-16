@@ -27,6 +27,7 @@ const PendingApproval = lazy(() => import('./pages/PendingApproval'));
 const VideoLibrary = lazy(() => import('./pages/VideoLibrary'));
 const SelectFeedbackTarget = lazy(() => import('./pages/SelectFeedbackTarget'));
 const Notification = lazy(() => import('./pages/Notification'));
+const Timetable = lazy(() => import('./pages/Timetable'));
 import ProtectedRoute from './components/ProtectedRoute';
 
 const MainLayout = lazy(() => import('./components/MainLayout'));
@@ -57,6 +58,7 @@ function App() {
                 <Route path="/video-library" element={<VideoLibrary />} />
                 <Route path="/select-feedback-target" element={<SelectFeedbackTarget />} />
                 <Route path="/attendance" element={<Attendance />} />
+                <Route path="/timetable" element={<Timetable />} />
                 <Route path="/exam" element={<Exam />} />
               </Route>
 

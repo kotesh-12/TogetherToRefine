@@ -17,8 +17,8 @@ export default function SelectFeedbackTarget() {
     // Teacher Filter States
     const [searchTerm, setSearchTerm] = useState('');
     // Initialize filter to default Class/Section if available, else 'All'
-    const [filterClass, setFilterClass] = useState(userData?.assignedClass ? userData.assignedClass.toString() : 'All');
-    const [filterSection, setFilterSection] = useState((userData?.assignedSection && userData.assignedSection !== 'All') ? userData.assignedSection.toString() : 'All');
+    const [filterClass, setFilterClass] = useState('All');
+    const [filterSection, setFilterSection] = useState('All');
     // Institution Filter State
     const [institutionFilter, setInstitutionFilter] = useState('Teacher'); // 'Teacher' or 'Student'
 
@@ -53,40 +53,94 @@ export default function SelectFeedbackTarget() {
                 else if (role === 'teacher') {
                     setTitle("Select Feedback Target");
 
-                    // 1. Fetch Institution ID
                     let instId = userData.createdBy;
-                    if (!instId) {
-                        // Fallback: Check allotments
-                        try {
-                            const allotQ = query(collection(db, "teacher_allotments"), where("teacherId", "==", userData.uid));
-                            const allotSnap = await getDocs(allotQ);
-                            if (!allotSnap.empty) instId = allotSnap.docs[0].data().createdBy;
-                        } catch (e) { }
-                    }
-                    // Fallback 2: Any Institution (Demo)
-                    if (!instId) {
-                        try {
-                            const qInst = query(collection(db, "users"), where("role", "==", "institution"));
-                            const qSnap = await getDocs(qInst);
-                            if (!qSnap.empty) instId = qSnap.docs[0].id;
-                        } catch (e) { }
-                    }
+                    let teacherClasses = [];
 
+                    // 1. Fetch Teacher Allotments (Find Institution ID & My Classes)
+                    try {
+                        // Standard: userId
+                        let allotQ = query(collection(db, "teacher_allotments"), where("userId", "==", userData.uid));
+                        let allotSnap = await getDocs(allotQ);
+
+                        // Legacy: teacherId
+                        if (allotSnap.empty) {
+                            allotQ = query(collection(db, "teacher_allotments"), where("teacherId", "==", userData.uid));
+                            allotSnap = await getDocs(allotQ);
+                        }
+
+                        // Legacy: Name (Very old records which usually lack IDs)
+                        if (allotSnap.empty && userData.name) {
+                            allotQ = query(collection(db, "teacher_allotments"), where("name", "==", userData.name));
+                            allotSnap = await getDocs(allotQ);
+                        }
+
+                        // Collect Data
+                        allotSnap.forEach(d => {
+                            const data = d.data();
+                            if (data.createdBy && !instId) instId = data.createdBy;
+                            if (data.classAssigned) teacherClasses.push({ cls: data.classAssigned, sec: data.section });
+                        });
+
+                    } catch (e) { console.error("Error fetching teacher allotments", e); }
+
+                    // 2. Fetch Students (Strategy A: By Institution)
                     if (instId) {
-                        // Add Institution as Target
                         try {
+                            // Add Institution as Target
                             const instDoc = await getDoc(doc(db, "users", instId));
                             if (instDoc.exists()) {
                                 setInstitutionTarget({ id: instDoc.id, ...instDoc.data(), type: 'Institution', name: instDoc.data().name || 'Institution' });
                             }
-                        } catch (e) { }
 
-                        // 2. Fetch ALL Students from this Institution
-                        try {
+                            // Fetch All Students from Institution
                             const q = query(collection(db, "student_allotments"), where("createdBy", "==", instId));
                             const snap = await getDocs(q);
-                            list = snap.docs.map(d => ({ id: d.data().studentId || d.id, ...d.data(), type: 'Student' }));
-                        } catch (e) { console.error(e); }
+                            list = snap.docs.map(d => ({ id: d.data().userId || d.data().studentId || d.id, ...d.data(), type: 'Student' }));
+                        } catch (e) { }
+                    }
+
+                    // Fallback: Use User Profile if Allotments missing (Critical for Legacy Teachers)
+                    if (teacherClasses.length === 0 && (userData.assignedClass || userData.class)) {
+                        teacherClasses.push({ cls: userData.assignedClass || userData.class, sec: userData.assignedSection || userData.section });
+                    }
+
+                    // 3. Fetch Students (Strategy B: By Allotted Class - Always Merge)
+                    // We fetch specific class students to ensure they are visible even if Institution link isn't perfect
+                    if (teacherClasses.length > 0) {
+                        try {
+                            const studentPromises = teacherClasses.map(tc => {
+                                // Variant Logic: Handle Types (String vs Number) and Suffixes
+                                const variants = [tc.cls];
+                                if (!isNaN(parseFloat(tc.cls))) {
+                                    const n = parseInt(tc.cls, 10);
+                                    const s = ["th", "st", "nd", "rd"];
+                                    const v = n % 100;
+                                    const suf = s[(v - 20) % 10] || s[v] || s[0];
+                                    variants.push(`${n}${suf}`); // "5th"
+                                    variants.push(`${n}`);     // "5"
+                                    variants.push(n);          // 5 (Number)
+                                }
+                                const uniqueVars = [...new Set(variants)];
+
+                                // Relaxed Query: Removed strict section check to ensure Students appear. Client filter handles 'section'.
+                                const qS = query(collection(db, "student_allotments"), where("classAssigned", "in", uniqueVars));
+                                return getDocs(qS);
+                            });
+
+                            const snapshots = await Promise.all(studentPromises);
+                            snapshots.forEach(snap => {
+                                const subList = snap.docs.map(d => ({ id: d.data().userId || d.data().studentId || d.id, ...d.data(), type: 'Student' }));
+                                list = [...list, ...subList];
+                            });
+
+                            // Deduplicate by ID
+                            const uniqueIds = new Set();
+                            list = list.filter(item => {
+                                if (uniqueIds.has(item.id)) return false;
+                                uniqueIds.add(item.id);
+                                return true;
+                            });
+                        } catch (e) { console.error("Error fetching students by class", e); }
                     }
                 }
                 else if (role === 'institution') {
@@ -151,7 +205,9 @@ export default function SelectFeedbackTarget() {
         .filter(t => {
             if (userData?.role === 'teacher') {
                 const matchesSearch = t.name.toLowerCase().includes(searchTerm.toLowerCase());
-                const matchesClass = filterClass === 'All' || t.classAssigned === filterClass;
+                const rawCls = (t.classAssigned || '').toString();
+                const normCls = rawCls.replace(/(\d+)(st|nd|rd|th)/i, '$1');
+                const matchesClass = filterClass === 'All' || rawCls === filterClass || normCls === filterClass;
                 const matchesSection = filterSection === 'All' || t.section === filterSection;
                 return matchesSearch && matchesClass && matchesSection;
             }
@@ -187,7 +243,7 @@ export default function SelectFeedbackTarget() {
                                 style={{ flex: 1, margin: 0 }}
                             >
                                 <option value="All">All Classes</option>
-                                {uniqueClasses.map(c => <option key={c} value={c}>{c}</option>)}
+                                {['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'].map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                             <select
                                 className="input-field"
@@ -196,7 +252,7 @@ export default function SelectFeedbackTarget() {
                                 style={{ flex: 1, margin: 0 }}
                             >
                                 <option value="All">All Sections</option>
-                                {uniqueSections.map(s => <option key={s} value={s}>{s}</option>)}
+                                {['A', 'B', 'C', 'D', 'E'].map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                         </div>
                     </div>

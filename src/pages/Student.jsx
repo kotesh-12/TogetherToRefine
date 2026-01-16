@@ -174,6 +174,10 @@ export default function Student() {
                         <h3>Give Feedback 🌟</h3>
                         <p style={{ fontSize: '13px', margin: '5px 0 0' }}>Rate teachers & staff.</p>
                     </div>
+                    <div className="card" onClick={() => navigate('/timetable')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #e17055, #fab1a0)', color: 'white' }}>
+                        <h3>🗓️ Timetable</h3>
+                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>View weekly class schedule.</p>
+                    </div>
                 </div>
 
                 {/* Exam Results Section (New) */}

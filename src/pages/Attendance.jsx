@@ -30,20 +30,27 @@ export default function Attendance() {
             const fetchAllowedClasses = async () => {
                 try {
                     // Fetch allotments linked to this teacher
-                    const q = query(collection(db, "teacher_allotments"), where("userId", "==", userData.uid));
-                    const snap = await getDocs(q);
-                    const classes = snap.docs.map(d => {
-                        const data = d.data();
+                    let classes = [];
+                    const clsHelper = (docSnap) => {
+                        const data = docSnap.data();
                         return `${data.classAssigned}-${data.section}`;
-                    });
-                    // Fallback: If no userId link, try Name match (Legacy)
+                    };
+
+                    // 1. By userId (New)
+                    const q1 = query(collection(db, "teacher_allotments"), where("userId", "==", userData.uid));
+                    const snap1 = await getDocs(q1);
+                    snap1.forEach(d => classes.push(clsHelper(d)));
+
+                    // 2. By teacherId (Legacy)
+                    const q2 = query(collection(db, "teacher_allotments"), where("teacherId", "==", userData.uid));
+                    const snap2 = await getDocs(q2);
+                    snap2.forEach(d => classes.push(clsHelper(d)));
+
+                    // 3. By Name (Legacy Fallback)
                     if (classes.length === 0 && userData.name) {
-                        const q2 = query(collection(db, "teacher_allotments"), where("name", "==", userData.name));
-                        const snap2 = await getDocs(q2);
-                        snap2.forEach(d => {
-                            const data = d.data();
-                            classes.push(`${data.classAssigned}-${data.section}`);
-                        });
+                        const q3 = query(collection(db, "teacher_allotments"), where("name", "==", userData.name));
+                        const snap3 = await getDocs(q3);
+                        snap3.forEach(d => classes.push(clsHelper(d)));
                     }
                     const uniqueClasses = [...new Set(classes)];
                     setTeacherClasses(uniqueClasses);
@@ -281,10 +288,25 @@ export default function Attendance() {
 
             if (view === 'students') {
                 const [classNum, sec] = cls.split('-');
+
+                // Robust Query for mixed data (1 vs 1st)
+                const variants = [classNum];
+                if (!isNaN(classNum)) {
+                    const n = parseInt(classNum, 10);
+                    const suffixes = ["th", "st", "nd", "rd"];
+                    const v = n % 100;
+                    const suffix = suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0];
+                    if (n !== 11 && n !== 12 && n !== 13) {
+                        // Logic handles general cases, but explicit check for 11/12/13 is safer with simple array
+                        // Actually the calc `suffixes[v]` for v=11 is undefined (len 4), so it falls to `suffixes[0]` i.e "th". Correct.
+                    }
+                    variants.push(`${n}${suffix}`);
+                }
+
                 if (sec) {
-                    q = query(collection(db, colName), where('classAssigned', '==', classNum), where('section', '==', sec));
+                    q = query(collection(db, colName), where('classAssigned', 'in', variants), where('section', '==', sec));
                 } else {
-                    q = query(collection(db, colName), where('classAssigned', '==', cls));
+                    q = query(collection(db, colName), where('classAssigned', 'in', variants));
                 }
             } else {
                 // Fetch All Allotments to find Teachers linked to this Institution
@@ -512,15 +534,10 @@ export default function Attendance() {
                             <>
                                 <select className="input-field" value={cls} onChange={(e) => setCls(e.target.value)} style={{ width: '150px', margin: 0 }}>
                                     <option value="">- Class -</option>
-                                    {role === 'teacher' ? (
-                                        teacherClasses.length > 0 ? (
-                                            teacherClasses.map(c => <option key={c} value={c}>{c}</option>)
-                                        ) : <option disabled>No classes allotted</option>
-                                    ) : (
-                                        ['Nursery-A', 'LKG-A', 'UKG-A', '1-A', '2-A', '3-A', '4-A', '5-A', '6-A', '7-A', '8-A', '9-A', '10-A', '10-B'].map(c => (
-                                            <option key={c} value={c}>{c}</option>
-                                        ))
-                                    )}
+                                    {/* Show All Classes for Everyone (Teacher & Institution) to allow full access */}
+                                    {['Nursery-A', 'LKG-A', 'UKG-A', '1-A', '2-A', '3-A', '4-A', '5-A', '6-A', '7-A', '8-A', '9-A', '10-A', '10-B'].map(c => (
+                                        <option key={c} value={c}>{c}</option>
+                                    ))}
                                 </select>
 
                                 {/* Subject Input */}
