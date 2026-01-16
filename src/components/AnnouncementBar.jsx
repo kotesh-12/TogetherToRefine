@@ -36,11 +36,51 @@ export default function TopBar({ title, leftIcon = 'home' }) {
         return () => unsubscribe();
     }, []);
 
+    const [installPrompt, setInstallPrompt] = useState(null);
+
+    useEffect(() => {
+        const handler = (e) => {
+            // Prevent the mini-infobar from appearing on mobile
+            e.preventDefault();
+            // Stash the event so it can be triggered later.
+            setInstallPrompt(e);
+        };
+        window.addEventListener('beforeinstallprompt', handler);
+        return () => window.removeEventListener('beforeinstallprompt', handler);
+    }, []);
+
+    const handleInstallClick = () => {
+        if (!installPrompt) {
+            alert("This button is visible for testing. In production, it only appears if the browser allows installation!");
+            return;
+        }
+        installPrompt.prompt();
+        installPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === 'accepted') {
+                console.log('User accepted the install prompt');
+                setInstallPrompt(null);
+            } else {
+                console.log('User dismissed the install prompt');
+            }
+        });
+    };
+
     return (
         <div style={{ position: 'sticky', top: 0, zIndex: 999, backgroundColor: '#f0f2f5' }}>
 
             {/* Main Header with Home & Profile */}
-            <header className="app-header" style={{ marginBottom: 0, borderRadius: '0 0 0 0' }}>
+            {/* Main Header with Home & Profile */}
+            <header className="app-header" style={{
+                marginBottom: 0,
+                borderRadius: '0 0 0 0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '15px 20px',
+                position: 'relative'
+            }}>
+
+                {/* Left: Back/Home Icon */}
                 <div
                     className="icon-btn"
                     onClick={handleLeftClick}
@@ -48,23 +88,80 @@ export default function TopBar({ title, leftIcon = 'home' }) {
                         fontSize: leftIcon === 'back' ? '16px' : '24px',
                         fontWeight: leftIcon === 'back' ? 'bold' : 'normal',
                         cursor: 'pointer',
-                        left: '20px',
-                        position: 'absolute',
-                        color: leftIcon === 'back' ? 'white' : 'inherit' // Ensure visibility on header
+                        padding: '0',
+                        color: leftIcon === 'back' ? 'white' : 'inherit',
+                        position: 'relative',
+                        left: 'auto'
                     }}
                     title={leftIcon === 'back' ? "Go Back" : "Dashboard"}
                 >
                     {leftIcon === 'back' ? 'Back' : '🏠'}
                 </div>
-                <h1 style={{ fontSize: '18px', margin: 0 }}>{title || `Welcome, ${userData?.name || "User"}!`}</h1>
-                <div className="profile-pic" onClick={() => navigate('/profile')} style={{ cursor: 'pointer', right: '20px', position: 'absolute' }}>
-                    {userData?.profileImageURL ? (
-                        <img src={userData.profileImageURL} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%' }} />
-                    ) : (
-                        <span style={{ fontSize: '24px' }}>👤</span>
+
+                {/* Center: Title */}
+                <h1 style={{
+                    fontSize: '18px',
+                    margin: 0,
+                    position: 'absolute',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: '60%',
+                    textAlign: 'center',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                }}>
+                    {title || `Welcome, ${userData?.name || "User"}!`}
+                </h1>
+
+                {/* Right: Install & Profile */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', zIndex: 100 }}>
+
+                    {/* Install App Button - TEST MODE ENABLED */}
+                    {(installPrompt || true) && (
+                        <div style={{ display: 'block' }}>
+                            <button
+                                onClick={handleInstallClick}
+                                style={{
+                                    background: '#ff4757', // High contrast red
+                                    color: 'white',
+                                    border: '2px solid white',
+                                    borderRadius: '50px',
+                                    padding: '8px 16px',
+                                    fontSize: '13px',
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '5px',
+                                    boxShadow: '0 4px 6px rgba(0,0,0,0.2)',
+                                    whiteSpace: 'nowrap'
+                                }}
+                            >
+                                ⬇️ Install TTR
+                            </button>
+                        </div>
                     )}
+
+                    <div className="profile-pic" onClick={() => navigate('/profile')} style={{ cursor: 'pointer', width: '35px', height: '35px', position: 'relative', right: 'auto' }}>
+                        {userData?.profileImageURL ? (
+                            <img src={userData.profileImageURL} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                        ) : (
+                            <span style={{ fontSize: '24px', lineHeight: '35px' }}>👤</span>
+                        )}
+                    </div>
                 </div>
             </header>
+
+            <style>
+                {`
+                @keyframes pulse-btn {
+                    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(9, 132, 227, 0.7); }
+                    70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(9, 132, 227, 0); }
+                    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(9, 132, 227, 0); }
+                }
+            `}
+            </style>
 
             {/* Announcement Bar attached below */}
             <div className="announcement-bar" style={{ marginTop: 0, borderRadius: '0 0 10px 10px', position: 'relative', overflow: 'hidden' }}>
