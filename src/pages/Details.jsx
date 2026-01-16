@@ -15,6 +15,7 @@ export default function Details() {
     const [institutions, setInstitutions] = useState([]);
     const [userId, setUserId] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isRoleLocked, setIsRoleLocked] = useState(false);
 
     // Form states
     const [formData, setFormData] = useState({});
@@ -28,6 +29,7 @@ export default function Details() {
                 if (passedRole) {
                     setRole(passedRole);
                     setLoading(false);
+                    // Note: We don't lock here because it passed from nav state, likely initial signup
                     return;
                 }
 
@@ -38,18 +40,21 @@ export default function Details() {
                     if (userDoc.exists()) {
                         setRole(userDoc.data().role);
                         setFormData(userDoc.data());
+                        setIsRoleLocked(true);
                     } else {
                         // Check 'teachers'
                         userDoc = await getDoc(doc(db, "teachers", user.uid));
                         if (userDoc.exists()) {
                             setRole('teacher');
                             setFormData(userDoc.data());
+                            setIsRoleLocked(true);
                         } else {
                             // Check 'institutions'
                             userDoc = await getDoc(doc(db, "institutions", user.uid));
                             if (userDoc.exists()) {
                                 setRole('institution');
                                 setFormData(userDoc.data());
+                                setIsRoleLocked(true);
                             }
                         }
                     }
@@ -208,7 +213,7 @@ export default function Details() {
                     <div className="role-status-box">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span><strong>Role:</strong> {role ? role.toUpperCase() : 'NOT SELECTED'}</span>
-                            {(!role || true) && (
+                            {(!isRoleLocked && role) && (
                                 <button
                                     type="button"
                                     onClick={() => {
