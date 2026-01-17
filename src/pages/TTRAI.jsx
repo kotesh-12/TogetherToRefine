@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase';
 import { doc, getDoc, collection, getDocs, addDoc, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import AnnouncementBar from '../components/AnnouncementBar';
 
 
@@ -319,28 +320,55 @@ export default function TTRAI() {
                 ...previousHistory
             ];
 
-            const response = await fetch('/api/chat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    history: history,
-                    message: finalInput || "Explain this image",
-                    image: imageToSend ? imageToSend.split(',')[1] : null,
-                    mimeType: imageToSend ? imageToSend.split(';')[0].split(':')[1] : null
-                })
-            });
+            // ... inside handleSend ...
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || "Failed to fetch response");
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        history: history,
+                        message: finalInput || "Explain this image",
+                        image: imageToSend ? imageToSend.split(',')[1] : null,
+                        mimeType: imageToSend ? imageToSend.split(';')[0].split(':')[1] : null
+                    })
+                });
+
+                if (!response.ok) throw new Error("Backend unavailable");
+                const data = await response.json();
+                saveMessage({ text: data.text, sender: 'ai' });
+
+            } catch (backendError) {
+                console.warn("Backend failed, switching to Client-Side AI...", backendError);
+
+                // CLIENT-SIDE FALLBACK
+                const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+                if (!apiKey) {
+                    throw new Error("AI Service Unavailable (Backend down & No Client Key)");
+                }
+
+                const genAI = new GoogleGenerativeAI(apiKey);
+                const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+                // Construct Prompt (Simplified for Client)
+                const chat = model.startChat({
+                    history: history
+                });
+
+                let msgParts = [finalInput || "Explain this image"];
+                if (imageToSend) {
+                    msgParts.push({
+                        inlineData: {
+                            data: imageToSend.split(',')[1],
+                            mimeType: imageToSend.split(';')[0].split(':')[1]
+                        }
+                    });
+                }
+
+                const result = await chat.sendMessage(msgParts);
+                const text = result.response.text();
+                saveMessage({ text: text, sender: 'ai' });
             }
-
-            const data = await response.json();
-
-            // Save AI Response to DB
-            saveMessage({ text: data.text, sender: 'ai' });
 
         } catch (error) {
             console.error("AI Error:", error);
