@@ -55,14 +55,21 @@ export default function FourWayLearning() {
             id: 'fictional',
             title: '🚀 Fictional',
             fullTitle: 'Fictional Learning',
-            desc: 'Learn through analogies and fictional scenarios.',
+            desc: 'Learn through analogies using Indian Mythology, History, or Sci-Fi.',
             prompt: (topic) => `
-                You are a Sci-Fi/Fantasy Writer for a student in ${userClass}.
-                Task: Explain "${topic}" by creating a fictional story or analogy.
+                You are a Creative Educational Storyteller for a student in ${userClass}.
+                Task: Explain "${topic}" by creating a fictional analogy or story using iconic characters.
+                
+                Character Preference (Priority Order):
+                1. **Indian Mythology/History**: Use characters from Mahabharata (e.g., Arjuna, Krishna, Bhima), Ramayana (e.g., Hanuman, Rama), or great Kings (e.g., Chhatrapati Shivaji Maharaj).
+                   - Example: Explain 'Force' using Bhima's strength or 'Focus' using Arjuna.
+                2. **Superheroes/Sci-Fi**: If (and only if) Indian characters don't fit the concept well, use Superheroes (e.g., Iron Man) or Aliens.
+
                 Guidelines:
-                1. Create unique characters (e.g., Superheroes, Aliens, or Wizards) that represent the parts of the concept.
-                2. The interactions between characters should mirror how the concept works (e.g., Electron characters orbiting a Nucleus castle).
-                3. Make it vivid and memorable.
+                1. Select the character set that best analogizes the concept.
+                2. The characters' actions and interactions must mirror the scientific/logical concept exactly.
+                3. Keep the tone respectful yet engaging for a ${userClass} student.
+                4. Start by introducing the characters involved in this specific analogy.
             `
         },
         {
