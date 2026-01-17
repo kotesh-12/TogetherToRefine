@@ -199,9 +199,9 @@ export default function Group() {
     if (isSelecting) {
         return (
             <div className="page-wrapper">
-                <header style={{ background: '#0984e3', color: 'white', padding: '15px' }}>
-                    <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '20px', marginRight: '10px' }}>⬅</button>
-                    <h2 style={{ display: 'inline', fontSize: '18px' }}>Select Your Class Group</h2>
+                <header style={{ background: '#0984e3', color: 'white', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h2 style={{ margin: 0, fontSize: '18px' }}>Select Your Class Group</h2>
+                    <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '20px' }}>⬅</button>
                 </header>
                 <div className="container" style={{ marginTop: '20px' }}>
                     {groupList.length === 0 ? (
@@ -240,6 +240,29 @@ export default function Group() {
                 padding: '0 15px', display: 'flex', alignItems: 'center', gap: '10px',
                 flexShrink: 0, boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
             }}>
+                <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => setViewMode('members')}>
+                    <h2 style={{ margin: 0, fontSize: '18px' }}>{groupData?.groupName || "Chat Group"}</h2>
+                    <span style={{ fontSize: '12px', opacity: 0.8 }}>Tap for Info</span>
+                </div>
+
+                <div style={{ position: 'relative' }}>
+                    <button onClick={() => setShowMenu(!showMenu)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '24px', cursor: 'pointer' }}>⋮</button>
+                    {showMenu && (
+                        <div style={{
+                            position: 'absolute', top: '100%', right: 0,
+                            background: 'white', color: '#333',
+                            borderRadius: '8px', boxShadow: '0 5px 15px rgba(0,0,0,0.2)',
+                            minWidth: '150px', display: 'flex', flexDirection: 'column',
+                            zIndex: 2000
+                        }}>
+                            <div style={{ padding: '12px', borderBottom: '1px solid #eee', cursor: 'pointer' }} onClick={() => { setViewMode('files'); setShowMenu(false); }}>📂 Files</div>
+                            <div style={{ padding: '12px', borderBottom: '1px solid #eee', cursor: 'pointer' }} onClick={() => { setViewMode('docs'); setShowMenu(false); }}>📄 Documents</div>
+                            <div style={{ padding: '12px', borderBottom: '1px solid #eee', cursor: 'pointer' }} onClick={() => { setViewMode('photos'); setShowMenu(false); }}>🖼️ Photos</div>
+                            <div style={{ padding: '12px', cursor: 'pointer' }} onClick={() => { setViewMode('about'); setShowMenu(false); }}>ℹ️ About</div>
+                        </div>
+                    )}
+                </div>
+
                 <button onClick={() => {
                     if (userData?.role === 'institution') {
                         setIsSelecting(true);
@@ -254,28 +277,6 @@ export default function Group() {
                         navigate(-1);
                     }
                 }} style={{ background: 'none', border: 'none', color: 'white', fontSize: '20px' }}>⬅</button>
-
-                <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => setViewMode('members')}>
-                    <h2 style={{ margin: 0, fontSize: '18px' }}>{groupData?.groupName || "Chat Group"}</h2>
-                    <span style={{ fontSize: '12px', opacity: 0.8 }}>Tap for Info</span>
-                </div>
-
-                <div style={{ position: 'relative' }}>
-                    <button onClick={() => setShowMenu(!showMenu)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '24px', cursor: 'pointer' }}>⋮</button>
-                    {showMenu && (
-                        <div style={{
-                            position: 'absolute', top: '100%', right: 0,
-                            background: 'white', color: '#333',
-                            borderRadius: '8px', boxShadow: '0 5px 15px rgba(0,0,0,0.2)',
-                            minWidth: '150px', display: 'flex', flexDirection: 'column'
-                        }}>
-                            <div style={{ padding: '12px', borderBottom: '1px solid #eee', cursor: 'pointer' }} onClick={() => { setViewMode('files'); setShowMenu(false); }}>📂 Files</div>
-                            <div style={{ padding: '12px', borderBottom: '1px solid #eee', cursor: 'pointer' }} onClick={() => { setViewMode('docs'); setShowMenu(false); }}>📄 Documents</div>
-                            <div style={{ padding: '12px', borderBottom: '1px solid #eee', cursor: 'pointer' }} onClick={() => { setViewMode('photos'); setShowMenu(false); }}>🖼️ Photos</div>
-                            <div style={{ padding: '12px', cursor: 'pointer' }} onClick={() => { setViewMode('about'); setShowMenu(false); }}>ℹ️ About</div>
-                        </div>
-                    )}
-                </div>
             </header>
 
             {/* Chat Area - Scrollable Middle */}
