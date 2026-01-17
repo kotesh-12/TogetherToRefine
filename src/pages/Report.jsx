@@ -96,7 +96,9 @@ export default function Report({ type }) { // type: 'sexual_harassment' or 'misb
 
     return (
         <div style={{ padding: '20px', background: isEmergency ? '#fff5f5' : '#fff', minHeight: '100vh' }}>
-            <button onClick={() => navigate(-1)} style={{ marginBottom: '20px', border: 'none', background: 'none', fontSize: '20px' }}>⬅ Back</button>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
+                <button onClick={() => navigate(-1)} style={{ border: 'none', background: 'none', fontSize: '20px', cursor: 'pointer' }}>⬅ Back</button>
+            </div>
 
             {/* Dynamic Emergency Banner */}
             {isEmergency && (

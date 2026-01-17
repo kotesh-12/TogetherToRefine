@@ -229,17 +229,19 @@ export default function GeneralFeedback() {
             padding: '40px 20px',
             fontFamily: "'Inter', sans-serif"
         }}>
-            <button
-                onClick={() => navigate(-1)}
-                style={{
-                    marginBottom: '20px', background: 'rgba(255,255,255,0.2)',
-                    border: 'none', color: 'white', padding: '10px 20px',
-                    borderRadius: '30px', cursor: 'pointer', backdropFilter: 'blur(10px)',
-                    display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 'bold'
-                }}
-            >
-                ⬅ Back
-            </button>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
+                <button
+                    onClick={() => navigate(-1)}
+                    style={{
+                        background: 'rgba(255,255,255,0.2)',
+                        border: 'none', color: 'white', padding: '10px 20px',
+                        borderRadius: '30px', cursor: 'pointer', backdropFilter: 'blur(10px)',
+                        display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 'bold'
+                    }}
+                >
+                    ⬅ Back
+                </button>
+            </div>
 
             <div style={{
                 maxWidth: '650px',

@@ -51,7 +51,9 @@ export default function Notification() {
 
     return (
         <div className="container" style={{ maxWidth: '600px', margin: '40px auto' }}>
-            <button onClick={() => navigate(-1)} style={{ marginBottom: '20px', background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>⬅ Back</button>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
+                <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>⬅ Back</button>
+            </div>
             <div className="card" style={{ padding: '30px', borderRadius: '15px' }}>
                 <h2 className="text-center" style={{ color: '#2d3436' }}>📢 Post Notification</h2>
                 <p className="text-center text-muted">Create an announcement for students and teachers.</p>

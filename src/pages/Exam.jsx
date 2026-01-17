@@ -159,7 +159,9 @@ export default function Exam() {
 
     return (
         <div className="container" style={{ maxWidth: '800px', margin: '40px auto' }}>
-            <button onClick={() => navigate(-1)} style={{ marginBottom: '20px', background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>⬅ Back</button>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
+                <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>⬅ Back</button>
+            </div>
 
             <div className="card">
                 <div style={{ display: 'flex', borderBottom: '1px solid #eee', marginBottom: '20px' }}>
