@@ -72,7 +72,8 @@ export default function Group() {
                 snap.forEach(d => {
                     const data = d.data();
                     // Filter: Show if (Institution) OR (Section matches) OR (Group has no section)
-                    if (userData.role === 'institution' || !data.section || data.section === userSection || !userSection) {
+                    // For Teachers, we show ALL sections of their class to be safe
+                    if (userData.role === 'institution' || userData.role === 'teacher' || !data.section || data.section === userSection || !userSection) {
                         list.push({ id: d.id, ...data });
                     }
                 });
@@ -244,6 +245,11 @@ export default function Group() {
                         setIsSelecting(true);
                         localStorage.removeItem("activeGroupId");
                         setMessages([]); // Clear chat
+                    } else if (userData?.role === 'teacher') {
+                        // FIX: Explicitly go to Teacher Dashboard to avoid blank page in history
+                        navigate('/teacher', { replace: true });
+                    } else if (userData?.role === 'student') {
+                        navigate('/student', { replace: true });
                     } else {
                         navigate(-1);
                     }

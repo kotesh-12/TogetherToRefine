@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { collection, query, where, getDocs, doc, getDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { onAuthStateChanged, getAuth } from 'firebase/auth';
@@ -16,6 +16,16 @@ export default function Institution() {
     const [announcementText, setAnnouncementText] = useState('');
     const [selectedClass, setSelectedClass] = useState('All');
     const [selectedSection, setSelectedSection] = useState('All');
+
+    const isNavigating = useRef(false);
+
+    const handleCardClick = (path) => {
+        if (isNavigating.current) return;
+        isNavigating.current = true;
+        navigate(path);
+        // Reset after delay
+        setTimeout(() => { isNavigating.current = false; }, 2000);
+    };
 
     const handlePostAnnouncement = async () => {
         if (!announcementText.trim()) return alert("Please enter some text.");
@@ -162,43 +172,43 @@ export default function Institution() {
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '15px', marginBottom: '30px' }}>
-                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#6c5ce7' }} onClick={() => navigate('/allotment')}>
+                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#6c5ce7' }} onClick={() => handleCardClick('/allotment')}>
                         <span style={{ fontSize: '28px', marginBottom: '8px' }}>📘</span>
                         <span>Allotments</span>
                     </button>
-                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#2d3436' }} onClick={() => navigate('/admission')}>
+                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#2d3436' }} onClick={() => handleCardClick('/admission')}>
                         <span style={{ fontSize: '28px', marginBottom: '8px' }}>📝</span>
                         <span>Admission</span>
                     </button>
-                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0984e3' }} onClick={() => navigate('/attendance')}>
+                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0984e3' }} onClick={() => handleCardClick('/attendance')}>
                         <span style={{ fontSize: '28px', marginBottom: '8px' }}>📅</span>
                         <span>Attendance</span>
                     </button>
-                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#00b894' }} onClick={() => navigate('/group')}>
+                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#00b894' }} onClick={() => handleCardClick('/group')}>
                         <span style={{ fontSize: '28px', marginBottom: '8px' }}>👥</span>
                         <span>Groups</span>
                     </button>
-                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#e67e22' }} onClick={() => navigate('/notification')}>
+                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#e67e22' }} onClick={() => handleCardClick('/notification')}>
                         <span style={{ fontSize: '28px', marginBottom: '8px' }}>📢</span>
                         <span>Notify</span>
                     </button>
-                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#e84393' }} onClick={() => navigate('/general-feedback')}>
+                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#e84393' }} onClick={() => handleCardClick('/general-feedback')}>
                         <span style={{ fontSize: '28px', marginBottom: '8px' }}>📊</span>
                         <span>Feedback</span>
                     </button>
-                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ff7675' }} onClick={() => navigate('/health')}>
+                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ff7675' }} onClick={() => handleCardClick('/health')}>
                         <span style={{ fontSize: '28px', marginBottom: '8px' }}>🏥</span>
                         <span>Health</span>
                     </button>
-                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#636e72' }} onClick={() => navigate('/waiting-list')}>
+                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#636e72' }} onClick={() => handleCardClick('/waiting-list')}>
                         <span style={{ fontSize: '28px', marginBottom: '8px' }}>🕒</span>
                         <span>Waiting List</span>
                     </button>
-                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#d63031' }} onClick={() => navigate('/video-library')}>
+                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#d63031' }} onClick={() => handleCardClick('/video-library')}>
                         <span style={{ fontSize: '28px', marginBottom: '8px' }}>🎬</span>
                         <span>Video Lib</span>
                     </button>
-                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fdcb6e', color: '#2d3436' }} onClick={() => navigate('/timetable')}>
+                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fdcb6e', color: '#2d3436' }} onClick={() => handleCardClick('/timetable')}>
                         <span style={{ fontSize: '28px', marginBottom: '8px' }}>🗓️</span>
                         <span>Timetable</span>
                     </button>

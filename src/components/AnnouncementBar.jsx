@@ -1,24 +1,29 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { useUser } from '../context/UserContext';
 
-export default function TopBar({ title, leftIcon = 'home' }) {
+export default function TopBar({ title, leftIcon = 'home', backPath }) {
     const navigate = useNavigate();
+    const location = useLocation();
     const { userData } = useUser();
     const [announcement, setAnnouncement] = useState('Welcome to TTR!');
 
 
     const handleLeftClick = () => {
         if (leftIcon === 'back') {
-            navigate(-1);
+            if (backPath) {
+                navigate(backPath, { replace: true });
+            } else {
+                navigate(-1);
+            }
         } else {
-            // Default: Home
-            if (userData?.role === 'student') navigate('/student');
-            else if (userData?.role === 'teacher') navigate('/teacher');
-            else if (userData?.role === 'institution') navigate('/institution');
-            else navigate('/');
+            // Default: Home Icon
+            if (userData?.role === 'student') navigate('/student', { replace: true });
+            else if (userData?.role === 'teacher') navigate('/teacher', { replace: true });
+            else if (userData?.role === 'institution') navigate('/institution', { replace: true });
+            else navigate('/', { replace: true });
         }
     };
 
@@ -27,7 +32,10 @@ export default function TopBar({ title, leftIcon = 'home' }) {
         const unsubscribe = onSnapshot(q, (snapshot) => {
             if (!snapshot.empty) {
                 const data = snapshot.docs[0].data();
-                const text = data.text;
+                // Filter by Target Class/Section if user is student
+                // (Simplified display logic for now)
+                let text = data.text;
+                if (data.authorName) text = `${data.authorName}: ${text}`;
                 setAnnouncement(text);
 
 
@@ -36,33 +44,14 @@ export default function TopBar({ title, leftIcon = 'home' }) {
         return () => unsubscribe();
     }, []);
 
-    const [installPrompt, setInstallPrompt] = useState(null);
+    // Check if running in standalone mode (already installed)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
 
-    useEffect(() => {
-        const handler = (e) => {
-            // Prevent the mini-infobar from appearing on mobile
-            e.preventDefault();
-            // Stash the event so it can be triggered later.
-            setInstallPrompt(e);
-        };
-        window.addEventListener('beforeinstallprompt', handler);
-        return () => window.removeEventListener('beforeinstallprompt', handler);
-    }, []);
-
-    const handleInstallClick = () => {
-        if (!installPrompt) {
-            alert("This button is visible for testing. In production, it only appears if the browser allows installation!");
-            return;
+    const handleDownloadClick = () => {
+        if (location.pathname === '/download') {
+            return; // Do nothing if already on the page
         }
-        installPrompt.prompt();
-        installPrompt.userChoice.then((choiceResult) => {
-            if (choiceResult.outcome === 'accepted') {
-                console.log('User accepted the install prompt');
-                setInstallPrompt(null);
-            } else {
-                console.log('User dismissed the install prompt');
-            }
-        });
+        navigate('/download');
     };
 
     return (
@@ -117,13 +106,13 @@ export default function TopBar({ title, leftIcon = 'home' }) {
                 {/* Right: Install & Profile */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px', zIndex: 100 }}>
 
-                    {/* Install App Button - TEST MODE ENABLED */}
-                    {(installPrompt || true) && (
+                    {/* Direct Install/Download Button - Hidden in Standalone Mode */}
+                    {!isStandalone && (
                         <div style={{ display: 'block' }}>
                             <button
-                                onClick={handleInstallClick}
+                                onClick={handleDownloadClick}
                                 style={{
-                                    background: '#ff4757', // High contrast red
+                                    background: '#00b894', // Green for download
                                     color: 'white',
                                     border: '2px solid white',
                                     borderRadius: '50px',
@@ -138,7 +127,7 @@ export default function TopBar({ title, leftIcon = 'home' }) {
                                     whiteSpace: 'nowrap'
                                 }}
                             >
-                                ⬇️ Install TTR
+                                ⬇️ Install App
                             </button>
                         </div>
                     )}

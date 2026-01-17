@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import AIBadge from '../components/AIBadge';
 import AnnouncementBar from '../components/AnnouncementBar';
 import { useNavigate } from 'react-router-dom';
@@ -18,6 +18,16 @@ export default function Teacher() {
     // Selection State
     const [selectedClass, setSelectedClass] = useState('');
     const [selectedSection, setSelectedSection] = useState('All');
+
+    const isNavigating = useRef(false);
+
+    const handleCardClick = (path) => {
+        if (isNavigating.current) return;
+        isNavigating.current = true;
+        navigate(path);
+        // Reset after delay
+        setTimeout(() => { isNavigating.current = false; }, 2000);
+    };
 
     // Fetch Allotments when Modal opens
     React.useEffect(() => {
@@ -43,24 +53,10 @@ export default function Teacher() {
         .sort();
 
     const handleGoToGroups = () => {
-        if (!userData) return;
-
-        // Check if teacher has been allotted a class
-        if (!userData.assignedClass || !userData.assignedSection) {
-            alert("You have not been assigned to a class yet. Please contact your Institution's Admin to allot you a class.");
-            return;
-        }
-
-        // Construct Group ID based on standard format: SUBJECT_CLASS_SECTION
-        const subject = (userData.subject || 'General').toUpperCase().replace(/\s+/g, "_");
-        const cls = userData.assignedClass.toString().toUpperCase();
-        const sec = userData.assignedSection.toString().toUpperCase();
-
-        const groupId = `${subject}_${cls}_${sec}`;
-
-        console.log("Navigating to Group:", groupId);
-        localStorage.setItem("activeGroupId", groupId);
-        navigate('/group');
+        // User requested: "first show them list of groups"
+        // So we prevent auto-entry and force selection mode in Group.jsx
+        localStorage.removeItem("activeGroupId");
+        handleCardClick('/group');
     };
 
     const handlePostAnnouncement = async () => {
@@ -112,12 +108,7 @@ export default function Teacher() {
             <div style={{ display: 'flex', padding: '10px 15px', justifyContent: 'flex-start' }}>
                 <button
                     onClick={() => setShowModal(true)}
-                    style={{
-                        width: '45px', height: '45px', borderRadius: '50%',
-                        background: 'white', border: 'none', boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', cursor: 'pointer',
-                        color: '#0984e3'
-                    }}
+                    className="teacher-announcement-btn"
                     title="Make Announcement"
                 >
                     📢
@@ -142,9 +133,9 @@ export default function Teacher() {
                     {allotments.length > 0 ? (
                         <div style={{ marginBottom: '15px' }}>
                             <h4 style={{ margin: '5px 0', color: '#636e72' }}>My Classes:</h4>
-                            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                            <div className="teacher-classes-list">
                                 {allotments.map(a => (
-                                    <span key={a.id} style={{ background: '#dfe6e9', padding: '5px 10px', borderRadius: '15px', fontSize: '14px', border: '1px solid #b2bec3' }}>
+                                    <span key={a.id} className="teacher-class-pill">
                                         {a.classAssigned}-{a.section} ({a.subject})
                                     </span>
                                 ))}
@@ -160,12 +151,12 @@ export default function Teacher() {
                         </p>
                     )}
 
-                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '15px', flexWrap: 'wrap' }}>
+                    <div className="teacher-actions-container">
                         <button className="btn" onClick={handleGoToGroups}>Go to Groups</button>
-                        <button className="btn" style={{ backgroundColor: '#0984e3' }} onClick={() => navigate('/attendance')}>Mark Attendance</button>
-                        <button className="btn" style={{ backgroundColor: '#d63031' }} onClick={() => navigate('/video-library')}>Video Library</button>
-                        <button className="btn" style={{ backgroundColor: '#00cec9', color: 'white' }} onClick={() => navigate('/general-feedback')}>Feedback</button>
-                        <button className="btn" style={{ backgroundColor: '#fdcb6e', color: '#2d3436' }} onClick={() => navigate('/timetable')}>Timetable</button>
+                        <button className="btn btn-attendance" onClick={() => handleCardClick('/attendance')}>Mark Attendance</button>
+                        <button className="btn btn-library" onClick={() => handleCardClick('/video-library')}>Video Library</button>
+                        <button className="btn btn-feedback" onClick={() => handleCardClick('/general-feedback')}>Feedback</button>
+                        <button className="btn btn-timetable" onClick={() => handleCardClick('/timetable')}>Timetable</button>
                     </div>
                 </div>
             </div>

@@ -36,13 +36,13 @@ export default function Login() {
             if (userData && userData.role) {
                 console.log("User already logged in. Redirecting...", userData.role);
                 if (userData.approved === false) {
-                    navigate('/pending-approval');
+                    navigate('/pending-approval', { replace: true });
                 } else {
                     switch (userData.role) {
-                        case 'student': navigate('/student'); break;
-                        case 'teacher': navigate('/teacher'); break;
-                        case 'institution': navigate('/institution'); break;
-                        default: navigate('/admission');
+                        case 'student': navigate('/student', { replace: true }); break;
+                        case 'teacher': navigate('/teacher', { replace: true }); break;
+                        case 'institution': navigate('/institution', { replace: true }); break;
+                        default: navigate('/admission', { replace: true });
                     }
                 }
             } else {
@@ -82,7 +82,11 @@ export default function Login() {
 
             // 3. Check 'users' (Student - Fallback)
             docSnap = await getDoc(doc(db, "users", uid));
-            if (docSnap.exists()) return { role: docSnap.data().role || 'student', isNew: !docSnap.data().profileCompleted, approved: docSnap.data().approved };
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                const normalizedRole = (data.role || 'student').toLowerCase();
+                return { role: normalizedRole, isNew: !data.profileCompleted, approved: data.approved };
+            }
 
             return { role: null, isNew: true };
         } catch (e) {
@@ -92,7 +96,8 @@ export default function Login() {
     };
 
     const redirectToRolePage = (role) => {
-        switch (role) {
+        const r = (role || '').toLowerCase();
+        switch (r) {
             case 'student': navigate('/student'); break;
             case 'teacher': navigate('/teacher'); break;
             case 'institution': navigate('/institution'); break;

@@ -1,8 +1,9 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 export default function BottomNav() {
     const navigate = useNavigate();
+    const location = useLocation();
 
     // Style for the container
     const navStyle = {
@@ -34,32 +35,35 @@ export default function BottomNav() {
         fontWeight: '600'
     };
 
+    const handleNav = (path) => {
+        if (location.pathname !== path) {
+            navigate(path, { replace: true });
+        }
+    };
+
     return (
         <div style={navStyle}>
-            <div style={itemStyle} onClick={() => navigate('/health')} title="Health Report">
+            <div style={itemStyle} onClick={() => handleNav('/health')} title="Health Report">
                 <span style={{ fontSize: '24px' }}>🏥</span>
                 <span>Health</span>
             </div>
 
-            <div style={itemStyle} onClick={() => navigate('/exam')} title="Exams & Opportunities">
+            <div style={itemStyle} onClick={() => handleNav('/exam')} title="Exams & Opportunities">
                 <span style={{ fontSize: '24px' }}>📢</span>
                 <span>Exams</span>
             </div>
 
-            {/* Attendance logic for students usually means seeing own attendance. 
-                Reusing the main page for now, if institution page has logic to show 'My Stats' 
-                User asked for redirect to respective page. */}
-            <div style={itemStyle} onClick={() => navigate('/group')} title="My Class Group">
+            <div style={itemStyle} onClick={() => handleNav('/group')} title="My Class Group">
                 <span style={{ fontSize: '24px' }}>🏫</span>
                 <span>Class</span>
             </div>
 
-            <div style={itemStyle} onClick={() => navigate('/attendance')} title="My Attendance">
+            <div style={itemStyle} onClick={() => handleNav('/attendance')} title="My Attendance">
                 <span style={{ fontSize: '24px' }}>📅</span>
                 <span>Attend.</span>
             </div>
 
-            <div style={itemStyle} onClick={() => navigate('/select-feedback-target')} title="Give Feedback">
+            <div style={itemStyle} onClick={() => handleNav('/select-feedback-target')} title="Give Feedback">
                 <span style={{ fontSize: '24px' }}>🌟</span>
                 <span>Feedback</span>
             </div>

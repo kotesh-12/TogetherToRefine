@@ -67,14 +67,14 @@ export function UserProvider({ children }) {
                         } else if (userSnap.exists()) {
                             unsubscribeSnapshot = onSnapshot(userRef, (d) => {
                                 const data = d.data();
-                                const role = data.role || 'student';
+                                const normalizedRole = (data.role || 'student').toLowerCase();
                                 if (!data.pid) {
-                                    const prefix = role === 'teacher' ? 'TE' : (role === 'institution' ? 'IN' : 'ST');
+                                    const prefix = normalizedRole === 'teacher' ? 'TE' : (normalizedRole === 'institution' ? 'IN' : 'ST');
                                     const pid = `${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;
                                     setDoc(userRef, { pid }, { merge: true });
                                     data.pid = pid;
                                 }
-                                setUserData({ ...data, uid: currentUser.uid, collection: 'users', role });
+                                setUserData({ ...data, uid: currentUser.uid, collection: 'users', role: normalizedRole });
                                 localStorage.setItem('user_collection_cache', 'users');
                                 setLoading(false);
                             });
@@ -100,7 +100,9 @@ export function UserProvider({ children }) {
                             return onSnapshot(doc(db, col, currentUser.uid), (d) => {
                                 if (d.exists()) {
                                     const data = d.data();
-                                    const role = data.role || roleName;
+                                    const roleRaw = data.role || roleName;
+                                    const role = roleRaw.toLowerCase();
+
                                     if (!data.pid) {
                                         const prefix = role === 'teacher' ? 'TE' : (role === 'institution' ? 'IN' : 'ST');
                                         const pid = `${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;

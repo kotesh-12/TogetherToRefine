@@ -226,7 +226,7 @@
 .chat-input {
   flex: 1;
   padding: 12px 20px;
-  border-radius: 24px;
+  border-radius: 22px;
   border: 1px solid #ddd;
   outline: none;
   font-size: 16px;
@@ -458,4 +458,82 @@ button.btn.google-btn:hover {
 
 .full-width {
   width: 100%;
+}
+
+/* =========================================
+   Teacher Dashboard Styles (Refactored)
+   ========================================= */
+.teacher-announcement-btn {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  background: white;
+  border: none;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  cursor: pointer;
+  color: #098ec9;
+  transition: transform 0.2s;
+}
+
+.teacher-announcement-btn:hover {
+  transform: scale(1.1);
+}
+
+.teacher-classes-list {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.teacher-class-pill {
+  background: #dfe6e9;
+  padding: 5px 10px;
+  border-radius: 15px;
+  font-size: 14px;
+  border: 1px solid #b2bec9;
+}
+
+.teacher-actions-container {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 15px;
+  flex-wrap: wrap;
+}
+
+/* Dashboard Action Buttons */
+.btn-attendance {
+  background-color: #0984e3;
+}
+
+.btn-library {
+  background-color: #d63031;
+}
+
+.btn-feedback {
+  background-color: #00cec9;
+  color: white;
+}
+
+.btn-timetable {
+  background-color: #fdcb6e;
+  color: #2d3436;
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid #aaa;
+  color: #555;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.btn-outline:hover {
+  background: #f0f0f0;
 }

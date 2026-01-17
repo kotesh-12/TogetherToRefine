@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
@@ -24,6 +24,16 @@ export default function Student() {
     const [myGroups, setMyGroups] = useState([]);
     const [loadingGroups, setLoadingGroups] = useState(false);
     const [examResults, setExamResults] = useState([]);
+
+    const isNavigating = useRef(false);
+
+    const handleCardClick = (path) => {
+        if (isNavigating.current) return;
+        isNavigating.current = true;
+        navigate(path);
+        // Reset after a delay (e.g., if navigation is cancelled or to allow re-clicking later)
+        setTimeout(() => { isNavigating.current = false; }, 2000);
+    };
 
     useEffect(() => {
         if (userData) {
@@ -148,33 +158,33 @@ export default function Student() {
                 {selectedPerson && (
                     <div className="card text-center mt-4">
                         <h2>{selectedPerson}</h2>
-                        <button className="btn mt-2" onClick={() => navigate('/profileview')}>Proceed</button>
+                        <button className="btn mt-2" onClick={() => handleCardClick('/profileview')}>Proceed</button>
                     </div>
                 )}
 
                 {/* AI Learning Tools */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '20px' }}>
-                    <div className="card" onClick={() => navigate('/attendance')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #0984e3, #74b9ff)', color: 'white' }}>
+                    <div className="card" onClick={() => handleCardClick('/attendance')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #0984e3, #74b9ff)', color: 'white' }}>
                         <h3>📅 Attendance</h3>
                         <p style={{ fontSize: '13px', margin: '5px 0 0' }}>View your attendance record.</p>
                     </div>
-                    <div className="card" onClick={() => navigate('/ttr-ai')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)', color: 'white' }}>
+                    <div className="card" onClick={() => handleCardClick('/ttr-ai')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)', color: 'white' }}>
                         <h3>🤖 TTR AI Chat</h3>
                         <p style={{ fontSize: '13px', margin: '5px 0 0' }}>Chat with your personal AI assistant.</p>
                     </div>
-                    <div className="card" onClick={() => navigate('/4-way-learning')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #fd79a8, #e84393)', color: 'white' }}>
+                    <div className="card" onClick={() => handleCardClick('/4-way-learning')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #fd79a8, #e84393)', color: 'white' }}>
                         <h3>🧠 4-Way Learning</h3>
                         <p style={{ fontSize: '13px', margin: '5px 0 0' }}>Concept, Fiction, Story, & Teaching.</p>
                     </div>
-                    <div className="card" onClick={() => navigate('/video-library')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #00b894, #55efc4)', color: 'white' }}>
+                    <div className="card" onClick={() => handleCardClick('/video-library')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #00b894, #55efc4)', color: 'white' }}>
                         <h3>🎬 Video Library</h3>
                         <p style={{ fontSize: '13px', margin: '5px 0 0' }}>Watch class recordings & tutorials.</p>
                     </div>
-                    <div className="card" onClick={() => navigate('/select-feedback-target')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #00cec9, #81ecec)', color: 'white' }}>
+                    <div className="card" onClick={() => handleCardClick('/select-feedback-target')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #00cec9, #81ecec)', color: 'white' }}>
                         <h3>Give Feedback 🌟</h3>
                         <p style={{ fontSize: '13px', margin: '5px 0 0' }}>Rate teachers & staff.</p>
                     </div>
-                    <div className="card" onClick={() => navigate('/timetable')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #e17055, #fab1a0)', color: 'white' }}>
+                    <div className="card" onClick={() => handleCardClick('/timetable')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #e17055, #fab1a0)', color: 'white' }}>
                         <h3>🗓️ Timetable</h3>
                         <p style={{ fontSize: '13px', margin: '5px 0 0' }}>View weekly class schedule.</p>
                     </div>
