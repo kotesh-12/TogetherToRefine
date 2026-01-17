@@ -199,9 +199,9 @@ export default function Group() {
     if (isSelecting) {
         return (
             <div className="page-wrapper">
-                <header style={{ background: '#0984e3', color: 'white', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <header style={{ background: '#0984e3', color: 'white', padding: '15px', display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '16px', fontWeight: 'bold' }}>Back</button>
                     <h2 style={{ margin: 0, fontSize: '18px' }}>Select Your Class Group</h2>
-                    <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '20px' }}>⬅</button>
                 </header>
                 <div className="container" style={{ marginTop: '20px' }}>
                     {groupList.length === 0 ? (
@@ -240,6 +240,20 @@ export default function Group() {
                 padding: '0 15px', display: 'flex', alignItems: 'center', gap: '10px',
                 flexShrink: 0, boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
             }}>
+                <button onClick={() => {
+                    if (userData?.role === 'institution') {
+                        setIsSelecting(true);
+                        localStorage.removeItem("activeGroupId");
+                        setMessages([]); // Clear chat
+                    } else if (userData?.role === 'teacher') {
+                        navigate('/teacher', { replace: true });
+                    } else if (userData?.role === 'student') {
+                        navigate('/student', { replace: true });
+                    } else {
+                        navigate(-1);
+                    }
+                }} style={{ background: 'none', border: 'none', color: 'white', fontSize: '16px', fontWeight: 'bold' }}>Back</button>
+
                 <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => setViewMode('members')}>
                     <h2 style={{ margin: 0, fontSize: '18px' }}>{groupData?.groupName || "Chat Group"}</h2>
                     <span style={{ fontSize: '12px', opacity: 0.8 }}>Tap for Info</span>
@@ -262,21 +276,6 @@ export default function Group() {
                         </div>
                     )}
                 </div>
-
-                <button onClick={() => {
-                    if (userData?.role === 'institution') {
-                        setIsSelecting(true);
-                        localStorage.removeItem("activeGroupId");
-                        setMessages([]); // Clear chat
-                    } else if (userData?.role === 'teacher') {
-                        // FIX: Explicitly go to Teacher Dashboard to avoid blank page in history
-                        navigate('/teacher', { replace: true });
-                    } else if (userData?.role === 'student') {
-                        navigate('/student', { replace: true });
-                    } else {
-                        navigate(-1);
-                    }
-                }} style={{ background: 'none', border: 'none', color: 'white', fontSize: '20px' }}>⬅</button>
             </header>
 
             {/* Chat Area - Scrollable Middle */}

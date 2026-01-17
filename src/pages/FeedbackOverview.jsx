@@ -44,9 +44,9 @@ export default function FeedbackOverview() {
 
     return (
         <div className="container" style={{ maxWidth: '900px', margin: '20px auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h2 className="text-center" style={{ margin: 0 }}>📊 Institutional Feedback Overview</h2>
-                <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>⬅ Back</button>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px', gap: '20px' }}>
+                <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>Back</button>
+                <h2 className="text-center" style={{ margin: 0, flex: 1 }}>📊 Institutional Feedback Overview</h2>
             </div>
 
             <div className="card" style={{ marginBottom: '20px', display: 'flex', gap: '15px', flexWrap: 'wrap' }}>

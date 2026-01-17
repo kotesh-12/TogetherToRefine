@@ -229,7 +229,7 @@ export default function GeneralFeedback() {
             padding: '40px 20px',
             fontFamily: "'Inter', sans-serif"
         }}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '20px' }}>
                 <button
                     onClick={() => navigate(-1)}
                     style={{
@@ -239,7 +239,7 @@ export default function GeneralFeedback() {
                         display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 'bold'
                     }}
                 >
-                    ⬅ Back
+                    Back
                 </button>
             </div>
 

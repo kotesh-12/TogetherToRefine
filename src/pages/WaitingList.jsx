@@ -73,8 +73,8 @@ export default function WaitingList() {
 
     return (
         <div className="container" style={{ maxWidth: '800px', marginTop: '30px' }}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
-                <button onClick={() => navigate('/institution')} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer' }}>⬅ Back to Dashboard</button>
+            <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '20px' }}>
+                <button onClick={() => navigate('/institution')} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer' }}>Back to Dashboard</button>
             </div>
 
             <div className="card">

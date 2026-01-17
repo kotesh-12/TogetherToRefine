@@ -18,12 +18,12 @@ export default function ProfileView() {
 
     return (
         <div className="container" style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '20px' }}>
                 <button
                     onClick={() => navigate(-1)}
                     style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer' }}
                 >
-                    ⬅ Back
+                    Back
                 </button>
             </div>
 
