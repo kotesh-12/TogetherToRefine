@@ -33,34 +33,71 @@ export default function FourWayLearning() {
 
     const chatContainerRef = useRef(null);
 
+    const userClass = userData?.class || "Grade 10"; // Default to 10th if unknown
+
     const modes = [
         {
             id: 'conceptual',
             title: '🧠 Conceptual',
             fullTitle: 'Conceptual Learning',
             desc: 'Understand the "Why" and "How" with deep conceptual clarity.',
-            prompt: (topic) => `Explain the concept of "${topic}" in depth. Focus on the core principles.`
+            prompt: (topic) => `
+                You are a Conceptual Tutor for a student in ${userClass}.
+                Task: Explain "${topic}" strictly conceptually.
+                Guidelines:
+                1. Focus ONLY on the core principles, definitions, and underlying logic.
+                2. Do NOT use fictional stories or analogies here. Stick to the facts.
+                3. Structure the answer logically: Definition -> Core Mechanism -> Real World Application.
+                4. Match the complexity to a ${userClass} level.
+            `
         },
         {
             id: 'fictional',
             title: '🚀 Fictional',
             fullTitle: 'Fictional Learning',
             desc: 'Learn through analogies and fictional scenarios.',
-            prompt: (topic) => `Explain "${topic}" by creating a fictional story or a sci-fi analogy.`
+            prompt: (topic) => `
+                You are a Sci-Fi/Fantasy Writer for a student in ${userClass}.
+                Task: Explain "${topic}" by creating a fictional story or analogy.
+                Guidelines:
+                1. Create unique characters (e.g., Superheroes, Aliens, or Wizards) that represent the parts of the concept.
+                2. The interactions between characters should mirror how the concept works (e.g., Electron characters orbiting a Nucleus castle).
+                3. Make it vivid and memorable.
+            `
         },
         {
             id: 'storytelling',
             title: '📖 Story',
             fullTitle: 'Story Telling',
             desc: 'Weave the topic into a compelling narrative.',
-            prompt: (topic) => `Tell a story that revolves around "${topic}".`
+            prompt: (topic) => `
+                You are a Storyteller for a student in ${userClass}.
+                Task: Tell an engaging short story where "${topic}" is the central plot device.
+                Guidelines:
+                1. Start with "Once upon a time..." or a strong hook.
+                2. The protagonist should encounter a problem that is solved understanding "${topic}".
+                3. The story should flow naturally, teaching the concept subconsciously.
+            `
         },
         {
             id: 'teaching',
             title: '👩‍🏫 Teaching',
-            fullTitle: 'Teacher Style',
-            desc: 'Read a formal paragraph, then explain it simply in mother tongue.',
-            prompt: (topic, lang) => `Act as a Teacher. Explain "${topic}" formally, then explain it in ${lang}.`
+            fullTitle: 'Teacher Style (Dialogue)',
+            desc: 'Interactive 2-way communication dialogue between Teacher and Student.',
+            prompt: (topic, lang) => `
+                Act as a Friendly Teacher teaching a student in ${userClass}.
+                Task: Explain "${topic}" using a 2-Way Communication (Dialogue) format.
+                Language: Explain primarily in ${lang} (or Hinglish if Hindi).
+                
+                Format:
+                **Teacher:** [Introductory question or simple definition]
+                **Student:** [Asks a common doubt or curious question specific to ${userClass} level]
+                **Teacher:** [Explains clearly using an example]
+                **Student:** [Has an "Aha!" moment or asks for clarification]
+                **Teacher:** [Final summary]
+                
+                Keep the tone encouraging and conversational.
+            `
         }
     ];
 
