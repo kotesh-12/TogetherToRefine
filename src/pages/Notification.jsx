@@ -52,7 +52,7 @@ export default function Notification() {
     return (
         <div className="container" style={{ maxWidth: '600px', margin: '40px auto' }}>
             <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '20px' }}>
-                <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>Back</button>
+                <button onClick={() => navigate(-1)} className="btn-back-marker">Back</button>
             </div>
             <div className="card" style={{ padding: '30px', borderRadius: '15px' }}>
                 <h2 className="text-center" style={{ color: '#2d3436' }}>📢 Post Notification</h2>

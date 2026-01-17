@@ -45,7 +45,7 @@ export default function FeedbackOverview() {
     return (
         <div className="container" style={{ maxWidth: '900px', margin: '20px auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px', gap: '20px' }}>
-                <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>Back</button>
+                <button onClick={() => navigate(-1)} className="btn-back-marker">Back</button>
                 <h2 className="text-center" style={{ margin: 0, flex: 1 }}>📊 Institutional Feedback Overview</h2>
             </div>
 

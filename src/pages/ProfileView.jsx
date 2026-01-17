@@ -21,7 +21,7 @@ export default function ProfileView() {
             <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '20px' }}>
                 <button
                     onClick={() => navigate(-1)}
-                    style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer' }}
+                    className="btn-back-marker"
                 >
                     Back
                 </button>

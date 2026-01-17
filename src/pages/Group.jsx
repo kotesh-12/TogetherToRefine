@@ -200,7 +200,7 @@ export default function Group() {
         return (
             <div className="page-wrapper">
                 <header style={{ background: '#0984e3', color: 'white', padding: '15px', display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '16px', fontWeight: 'bold' }}>Back</button>
+                    <button onClick={() => navigate(-1)} className="btn-back-marker">Back</button>
                     <h2 style={{ margin: 0, fontSize: '18px' }}>Select Your Class Group</h2>
                 </header>
                 <div className="container" style={{ marginTop: '20px' }}>
@@ -252,7 +252,7 @@ export default function Group() {
                     } else {
                         navigate(-1);
                     }
-                }} style={{ background: 'none', border: 'none', color: 'white', fontSize: '16px', fontWeight: 'bold' }}>Back</button>
+                }} className="btn-back-marker">Back</button>
 
                 <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => setViewMode('members')}>
                     <h2 style={{ margin: 0, fontSize: '18px' }}>{groupData?.groupName || "Chat Group"}</h2>

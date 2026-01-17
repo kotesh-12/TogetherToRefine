@@ -232,12 +232,7 @@ export default function GeneralFeedback() {
             <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '20px' }}>
                 <button
                     onClick={() => navigate(-1)}
-                    style={{
-                        background: 'rgba(255,255,255,0.2)',
-                        border: 'none', color: 'white', padding: '10px 20px',
-                        borderRadius: '30px', cursor: 'pointer', backdropFilter: 'blur(10px)',
-                        display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 'bold'
-                    }}
+                    className="btn-back-marker"
                 >
                     Back
                 </button>

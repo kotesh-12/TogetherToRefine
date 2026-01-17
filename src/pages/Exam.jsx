@@ -159,10 +159,10 @@ export default function Exam() {
 
     return (
         <div className="container" style={{ maxWidth: '800px', margin: '40px auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '20px' }}>
-                <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>Back</button>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px', gap: '20px' }}>
+                <button onClick={() => navigate(-1)} className="btn-back-marker">Back</button>
+                <h2 className="text-center" style={{ margin: 0, flex: 1 }}>📊 Institutional Feedback Overview</h2>
             </div>
-
             <div className="card">
                 <div style={{ display: 'flex', borderBottom: '1px solid #eee', marginBottom: '20px' }}>
                     <button
