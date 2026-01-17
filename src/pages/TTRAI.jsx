@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase';
 import { doc, getDoc, collection, getDocs, addDoc, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import AnnouncementBar from '../components/AnnouncementBar';
 
 
@@ -334,44 +333,23 @@ export default function TTRAI() {
                     })
                 });
 
-                if (!response.ok) throw new Error("Backend unavailable");
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error("Backend Error: " + errorText);
+                }
                 const data = await response.json();
                 saveMessage({ text: data.text, sender: 'ai' });
 
             } catch (backendError) {
-                console.warn("Backend failed, switching to Client-Side AI...", backendError);
-
-                // CLIENT-SIDE FALLBACK
-                const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-                if (!apiKey) {
-                    throw new Error("AI Service Unavailable (Backend down & No Client Key)");
-                }
-
-                const genAI = new GoogleGenerativeAI(apiKey);
-                const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-                // Construct Prompt (Simplified for Client)
-                const chat = model.startChat({
-                    history: history
-                });
-
-                let msgParts = [finalInput || "Explain this image"];
-                if (imageToSend) {
-                    msgParts.push({
-                        inlineData: {
-                            data: imageToSend.split(',')[1],
-                            mimeType: imageToSend.split(';')[0].split(':')[1]
-                        }
-                    });
-                }
-
-                const result = await chat.sendMessage(msgParts);
-                const text = result.response.text();
-                saveMessage({ text: text, sender: 'ai' });
+                console.error("AI Request Failed:", backendError);
+                setMessages(prev => [...prev, {
+                    text: "Error: Unable to connect to AI Server. Please ensure the backend server is running on port 5000 (`npm run server`).",
+                    sender: 'ai',
+                    isError: true
+                }]);
             }
-
         } catch (error) {
-            console.error("AI Error:", error);
+            console.error("General Error:", error);
             setMessages(prev => [...prev, { text: "Error: " + error.message, sender: 'ai', isError: true }]);
         } finally {
             setLoading(false);
