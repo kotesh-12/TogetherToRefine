@@ -132,6 +132,13 @@ export default function TTRAI() {
     const [isListening, setIsListening] = useState(false);
     const [isSpeaking, setIsSpeaking] = useState(false);
 
+    // Permission States
+    const [micPermission, setMicPermission] = useState(false);
+    const [cameraPermission, setCameraPermission] = useState(false);
+    const [permissionModal, setPermissionModal] = useState(null); // 'mic' or 'camera'
+
+    const fileInputRef = useRef(null);
+
     // Voice Output
     const speakText = (text) => {
         if ('speechSynthesis' in window) {
@@ -168,6 +175,11 @@ export default function TTRAI() {
 
     // Voice Input
     const toggleVoiceInput = () => {
+        if (!micPermission) {
+            setPermissionModal('mic');
+            return;
+        }
+
         if (!('webkitSpeechRecognition' in window)) {
             alert("Voice input not supported in this browser. Try Chrome.");
             return;
@@ -192,6 +204,14 @@ export default function TTRAI() {
         };
 
         recognition.start();
+    };
+
+    const handleCameraClick = () => {
+        if (!cameraPermission) {
+            setPermissionModal('camera');
+        } else {
+            fileInputRef.current?.click();
+        }
     };
 
     const handleImageChange = (e) => {
@@ -375,10 +395,16 @@ export default function TTRAI() {
                 )}
 
                 <div className="input-controls">
-                    <label className="icon-button">
+                    <button className="icon-button" onClick={handleCameraClick} title="Upload Image / Camera">
                         📷
-                        <input type="file" accept="image/*" onChange={handleImageChange} style={{ display: 'none' }} />
-                    </label>
+                    </button>
+                    <input
+                        type="file"
+                        accept="image/*"
+                        ref={fileInputRef}
+                        onChange={handleImageChange}
+                        style={{ display: 'none' }}
+                    />
 
                     <button
                         onClick={toggleVoiceInput}
@@ -405,6 +431,48 @@ export default function TTRAI() {
                     </button>
                 </div>
             </div>
+
+            {/* PERMISSION MODAL */}
+            {permissionModal && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.5)', zIndex: 3000,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                    <div style={{ background: 'white', padding: '25px', borderRadius: '15px', maxWidth: '300px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '40px', marginBottom: '10px' }}>
+                            {permissionModal === 'mic' ? '🎙️' : '📷'}
+                        </div>
+                        <h3 style={{ margin: '0 0 10px 0' }}>Permission Needed</h3>
+                        <p style={{ color: '#666', fontSize: '14px', marginBottom: '20px' }}>
+                            {permissionModal === 'mic'
+                                ? "Do you allow TTR AI to access your microphone for voice commands?"
+                                : "Do you allow TTR AI to access your photo gallery or camera to upload images?"}
+                        </p>
+                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                            <button
+                                onClick={() => setPermissionModal(null)}
+                                style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}
+                            >
+                                Deny
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (permissionModal === 'mic') setMicPermission(true);
+                                    if (permissionModal === 'camera') {
+                                        setCameraPermission(true);
+                                        setTimeout(() => fileInputRef.current?.click(), 100);
+                                    }
+                                    setPermissionModal(null);
+                                }}
+                                style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', background: '#0984e3', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}
+                            >
+                                Allow
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

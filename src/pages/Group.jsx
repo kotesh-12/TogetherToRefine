@@ -21,6 +21,7 @@ export default function Group() {
 
     // UI States
     const [showMenu, setShowMenu] = useState(false);
+    const [showAttachMenu, setShowAttachMenu] = useState(false);
     const [viewMode, setViewMode] = useState(null); // 'members', 'photos', 'files', 'docs'
     const [members, setMembers] = useState([]);
 
@@ -313,8 +314,25 @@ export default function Group() {
                 borderTop: '1px solid #ddd', display: 'flex', gap: '10px', alignItems: 'center',
                 flexShrink: 0
             }}>
+                {/* Attachment Menu */}
+                {showAttachMenu && (
+                    <div style={{
+                        position: 'absolute', bottom: '60px', left: '10px',
+                        background: 'white', borderRadius: '8px',
+                        boxShadow: '0 5px 15px rgba(0,0,0,0.2)',
+                        padding: '10px', display: 'flex', flexDirection: 'column', gap: '10px',
+                        zIndex: 2000
+                    }}>
+                        <div style={{ fontSize: '12px', color: '#666', marginBottom: '5px' }}>Attach Media</div>
+                        <button type="button" onClick={() => { fileInputRef.current.click(); setShowAttachMenu(false); }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'none', border: 'none', cursor: 'pointer', padding: '5px' }}>
+                            <span style={{ fontSize: '20px' }}>🖼️</span> Photos / Camera
+                        </button>
+                    </div>
+                )}
+
                 <input type="file" ref={fileInputRef} onChange={handleFileSelect} style={{ display: 'none' }} accept="image/*" />
-                <button type="button" onClick={() => fileInputRef.current.click()} style={{ background: '#dfe6e9', border: 'none', borderRadius: '50%', width: '40px', height: '40px', fontSize: '20px' }}>📎</button>
+                <button type="button" onClick={() => setShowAttachMenu(!showAttachMenu)} style={{ background: '#dfe6e9', border: 'none', borderRadius: '50%', width: '40px', height: '40px', fontSize: '20px', cursor: 'pointer' }}>📎</button>
 
                 <div style={{ flex: 1, position: 'relative' }}>
                     {file && <div style={{ position: 'absolute', bottom: '100%', left: 0, background: '#fab1a0', padding: '5px', fontSize: '12px', borderRadius: '4px' }}>Image Attached <button type="button" onClick={() => setFile(null)}>x</button></div>}
