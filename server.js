@@ -12,7 +12,6 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
 const PORT = 5000;
-
 const API_KEY = process.env.GEMINI_API_KEY;
 
 if (!API_KEY) {
@@ -21,74 +20,68 @@ if (!API_KEY) {
 }
 
 const genAI = new GoogleGenerativeAI(API_KEY);
-// Using gemini-2.0-flash as tested
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-// Endpoint to fetch and parse URL content (Smart Notes)
+// --- DYNAMIC MODEL FALLBACK SYSTEM ---
+// Based on list-mode check: gemini-2.0-flash is available.
+let currentModelName = "gemini-2.0-flash";
+let model = genAI.getGenerativeModel({ model: currentModelName });
+
+async function initAI() {
+    console.log(`🤖 Testing AI Model: ${currentModelName}...`);
+    try {
+        await model.generateContent("Test");
+        console.log(`✅ ${currentModelName} is working!`);
+    } catch (e) {
+        console.warn(`⚠️ ${currentModelName} Failed:`, e.message);
+        if (e.message.includes("404") || e.message.includes("not found")) {
+            console.log("🔄 404 Error. Switching to 'gemini-flash-latest'...");
+            currentModelName = "gemini-flash-latest";
+            model = genAI.getGenerativeModel({ model: currentModelName });
+            try {
+                await model.generateContent("Test");
+                console.log("✅ Fallback to 'gemini-flash-latest' Successful!");
+            } catch (ex) {
+                console.error("❌ Fallback failed:", ex.message);
+            }
+        }
+    }
+}
+initAI();
+
+// --- ROUTES ---
+
 app.post('/api/fetch-url', async (req, res) => {
     try {
         const { url } = req.body;
-        if (!url) return res.status(400).json({ error: "No URL provided" });
-
-        console.log(`Fetching URL: ${url}`);
-        const response = await axios.get(url, {
-            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' }
-        });
-
-        const $ = cheerio.load(response.data);
-
-        // Remove script and style elements
-        $('script').remove();
-        $('style').remove();
-        $('nav').remove();
-        $('header').remove();
-        $('footer').remove();
-
-        const text = $('body').text().replace(/\s+/g, ' ').trim();
-
-        // Limit text length to avoid token limits
-        const truncatedText = text.substring(0, 10000);
-
-        res.json({ content: truncatedText });
-    } catch (error) {
-        console.error("URL Fetch Error:", error);
-        res.status(500).json({ error: "Failed to fetch URL content", details: error.message });
-    }
+        if (!url) return res.status(400).json({ error: "No URL" });
+        const r = await axios.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+        const $ = cheerio.load(r.data);
+        $('script, style, nav, header, footer').remove();
+        res.json({ content: $('body').text().trim().substring(0, 10000) });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Endpoint for AI Chat
 app.post('/api/chat', async (req, res) => {
     try {
         const { history, message, image, mimeType } = req.body;
+        const chat = model.startChat({ history: history || [] });
 
-        const chat = model.startChat({
-            history: history
-        });
-
-        let msgParts = message;
+        let parts = [{ text: message || " " }];
         if (image) {
-            msgParts = [
-                { text: message },
-                {
-                    inlineData: {
-                        mimeType: mimeType || "image/jpeg",
-                        data: image
-                    }
-                }
-            ];
+            // All "flash" models support images
+            parts.push({ inlineData: { mimeType: mimeType || "image/jpeg", data: image } });
         }
 
-        const result = await chat.sendMessage(msgParts);
+        const result = await chat.sendMessage(parts);
         const response = await result.response;
-        const text = response.text();
-
-        res.json({ text });
+        res.json({ text: response.text() });
     } catch (error) {
-        console.error("Server AI Error:", error);
-        res.status(500).json({ error: error.message || "Internal Server Error" });
+        console.error("AI Generation Error:", error.message);
+        res.status(500).json({ error: error.message });
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`Backend Server running on http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`Backend Server running on http://localhost:${PORT}`));
+
+// Force Event Loop to stay alive (Fix for premature exit)
+setInterval(() => { }, 60000);
