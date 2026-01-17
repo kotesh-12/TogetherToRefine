@@ -112,7 +112,6 @@ export default function Student() {
     return (
         <div className="page-wrapper">
             <AIBadge />
-            <AIBadge />
 
             <AnnouncementBar title={`Welcome, ${userData?.name || "Student"}!`} />
 
