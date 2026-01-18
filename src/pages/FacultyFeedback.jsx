@@ -144,6 +144,7 @@ export default function FacultyFeedback() {
                                                     <div style={{ display: 'flex', gap: '15px', fontSize: '13px', color: '#2d3436' }}>
                                                         <span><strong>Behavior:</strong> {f.behavior?.stars}★</span>
                                                         <span><strong>Comm:</strong> {f.communication?.stars}★</span>
+                                                        <span><strong>Body Lang:</strong> {f.bodyLanguage?.stars}★</span>
                                                         <span><strong>Hardwork:</strong> {f.hardworking?.stars}★</span>
                                                     </div>
 
