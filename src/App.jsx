@@ -31,6 +31,7 @@ const Timetable = lazy(() => import('./pages/Timetable'));
 const DownloadApp = lazy(() => import('./pages/DownloadApp'));
 const UpidHistory = lazy(() => import('./pages/UpidHistory'));
 const FacultyFeedback = lazy(() => import('./pages/FacultyFeedback'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 
 import ProtectedRoute from './components/ProtectedRoute';
 const MainLayout = lazy(() => import('./components/MainLayout'));
@@ -48,7 +49,7 @@ function App() {
 
             <Route element={<MainLayout />}>
               {/* Common Routes (Accessible to all authenticated users) */}
-              <Route element={<ProtectedRoute allowedRoles={['student', 'teacher', 'institution']} />}>
+              <Route element={<ProtectedRoute allowedRoles={['student', 'teacher', 'institution', 'admin']} />}>
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/profileview" element={<ProfileView />} />
                 <Route path="/group" element={<Group />} />
@@ -64,6 +65,11 @@ function App() {
                 <Route path="/attendance" element={<Attendance />} />
                 <Route path="/timetable" element={<Timetable />} />
                 <Route path="/exam" element={<Exam />} />
+              </Route>
+
+              {/* Admin Route */}
+              <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                <Route path="/admin" element={<AdminDashboard />} />
               </Route>
 
               {/* Student Only */}
