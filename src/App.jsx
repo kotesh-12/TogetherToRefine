@@ -33,6 +33,7 @@ const DownloadApp = lazy(() => import('./pages/DownloadApp'));
 const UpidHistory = lazy(() => import('./pages/UpidHistory'));
 const FacultyFeedback = lazy(() => import('./pages/FacultyFeedback'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const InstitutionDetailsAdmin = lazy(() => import('./pages/InstitutionDetailsAdmin'));
 
 import ProtectedRoute from './components/ProtectedRoute';
 const MainLayout = lazy(() => import('./components/MainLayout'));
@@ -72,6 +73,7 @@ function App() {
               {/* Admin Route */}
               <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
                 <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/institution/:id" element={<InstitutionDetailsAdmin />} />
               </Route>
 
               {/* Student Only */}

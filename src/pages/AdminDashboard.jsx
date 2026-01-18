@@ -222,7 +222,7 @@ export default function AdminDashboard() {
                                                     <button className="btn" style={{ padding: '5px 10px', fontSize: '12px' }} onClick={() => approveInstitution(inst.id)}>Approve</button>
                                                 )}
                                                 {inst.approved && (
-                                                    <button className="btn" style={{ padding: '5px 10px', fontSize: '12px', background: '#b2bec3' }}>View</button>
+                                                    <button className="btn" style={{ padding: '5px 10px', fontSize: '12px', background: '#b2bec3' }} onClick={() => navigate(`/admin/institution/${inst.id}`)}>View</button>
                                                 )}
                                                 <button className="btn" style={{ padding: '5px 10px', fontSize: '12px', background: '#d63031', color: 'white' }} onClick={() => deleteInstitution(inst.id)}>Delete</button>
                                             </div>
