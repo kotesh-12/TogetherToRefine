@@ -30,6 +30,7 @@ const Notification = lazy(() => import('./pages/Notification'));
 const Timetable = lazy(() => import('./pages/Timetable'));
 const DownloadApp = lazy(() => import('./pages/DownloadApp'));
 const UpidHistory = lazy(() => import('./pages/UpidHistory'));
+const FacultyFeedback = lazy(() => import('./pages/FacultyFeedback'));
 
 import ProtectedRoute from './components/ProtectedRoute';
 const MainLayout = lazy(() => import('./components/MainLayout'));
@@ -84,6 +85,7 @@ function App() {
                 <Route path="/waiting-list" element={<WaitingList />} />
                 <Route path="/allotment" element={<Allotment />} />
                 <Route path="/notification" element={<Notification />} />
+                <Route path="/faculty-feedback" element={<FacultyFeedback />} />
               </Route>
             </Route>
           </Routes>
