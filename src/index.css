@@ -26,8 +26,11 @@ body {
 .container {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 20px;
+  /* Reduced from 2rem to prevent mobile overflow */
   width: 100%;
+  box-sizing: border-box;
+  /* Crucial: Includes padding in width calculation */
 }
 
 .card {
