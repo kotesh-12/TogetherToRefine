@@ -287,14 +287,15 @@ export default function GeneralFeedback() {
                 }}></div>
 
                 {/* Tabs */}
-                <div style={{ display: 'flex', gap: '10px', marginBottom: '30px', background: '#f0f2f5', padding: '5px', borderRadius: '12px' }}>
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '30px', background: '#f0f2f5', padding: '5px', borderRadius: '12px', flexWrap: 'wrap' }}>
                     <button
                         onClick={() => setActiveTab('read')}
                         style={{
                             flex: 1, padding: '12px', borderRadius: '10px', border: 'none',
                             background: activeTab === 'read' ? 'white' : 'transparent',
                             boxShadow: activeTab === 'read' ? '0 2px 5px rgba(0,0,0,0.1)' : 'none',
-                            fontWeight: 'bold', cursor: 'pointer', color: activeTab === 'read' ? '#0984e3' : '#636e72'
+                            fontWeight: 'bold', cursor: 'pointer', color: activeTab === 'read' ? '#0984e3' : '#636e72',
+                            minWidth: '150px'
                         }}
                     >
                         📩 Received Feedback
@@ -305,7 +306,8 @@ export default function GeneralFeedback() {
                             flex: 1, padding: '12px', borderRadius: '10px', border: 'none',
                             background: activeTab === 'write' ? 'white' : 'transparent',
                             boxShadow: activeTab === 'write' ? '0 2px 5px rgba(0,0,0,0.1)' : 'none',
-                            fontWeight: 'bold', cursor: 'pointer', color: activeTab === 'write' ? '#0984e3' : '#636e72'
+                            fontWeight: 'bold', cursor: 'pointer', color: activeTab === 'write' ? '#0984e3' : '#636e72',
+                            minWidth: '150px'
                         }}
                     >
                         📝 Give Feedback
@@ -316,10 +318,23 @@ export default function GeneralFeedback() {
                             flex: 1, padding: '12px', borderRadius: '10px', border: 'none',
                             background: '#ff7675',
                             boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-                            fontWeight: 'bold', cursor: 'pointer', color: 'white'
+                            fontWeight: 'bold', cursor: 'pointer', color: 'white',
+                            minWidth: '150px'
                         }}
                     >
                         ⚠️ Misbehavior
+                    </button>
+                    <button
+                        onClick={() => navigate('/report-harassment', { state: { target: targetPerson } })}
+                        style={{
+                            flex: 1, padding: '12px', borderRadius: '10px', border: 'none',
+                            background: '#d63031',
+                            boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+                            fontWeight: 'bold', cursor: 'pointer', color: 'white',
+                            minWidth: '150px'
+                        }}
+                    >
+                        🚨 Sexual Harassment
                     </button>
                 </div>
 
