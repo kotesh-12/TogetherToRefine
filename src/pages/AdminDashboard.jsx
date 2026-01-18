@@ -71,6 +71,20 @@ export default function AdminDashboard() {
         }
     };
 
+    const deleteInstitution = async (id) => {
+        if (!confirm("Are you sure you want to DELETE this institution? This action cannot be undone.")) return;
+        try {
+            await deleteDoc(doc(db, "institutions", id));
+            setAllInstitutions(prev => prev.filter(i => i.id !== id));
+            setPendingInstitutions(prev => prev.filter(i => i.id !== id));
+            setStats(prev => ({ ...prev, institutions: prev.institutions - 1 }));
+            alert("Institution Deleted Successfully.");
+        } catch (e) {
+            console.error(e);
+            alert("Error deleting: " + e.message);
+        }
+    };
+
     if (loading) return <div className="container" style={{ textAlign: 'center', marginTop: '50px' }}>Loading Admin Dashboard...</div>;
 
     return (
@@ -194,12 +208,15 @@ export default function AdminDashboard() {
                                             </span>
                                         </td>
                                         <td style={{ padding: '10px' }}>
-                                            {!inst.approved && (
-                                                <button className="btn" style={{ padding: '5px 10px', fontSize: '12px' }} onClick={() => approveInstitution(inst.id)}>Approve</button>
-                                            )}
-                                            {inst.approved && (
-                                                <button className="btn" style={{ padding: '5px 10px', fontSize: '12px', background: '#b2bec3' }}>View</button>
-                                            )}
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                {!inst.approved && (
+                                                    <button className="btn" style={{ padding: '5px 10px', fontSize: '12px' }} onClick={() => approveInstitution(inst.id)}>Approve</button>
+                                                )}
+                                                {inst.approved && (
+                                                    <button className="btn" style={{ padding: '5px 10px', fontSize: '12px', background: '#b2bec3' }}>View</button>
+                                                )}
+                                                <button className="btn" style={{ padding: '5px 10px', fontSize: '12px', background: '#d63031', color: 'white' }} onClick={() => deleteInstitution(inst.id)}>Delete</button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
