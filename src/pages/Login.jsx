@@ -309,7 +309,6 @@ export default function Login() {
                         <option value="student">Student</option>
                         <option value="teacher">Teacher</option>
                         <option value="institution">Institution</option>
-                        <option value="admin">Admin</option>
                     </select>
 
                     {!isLogin && (
