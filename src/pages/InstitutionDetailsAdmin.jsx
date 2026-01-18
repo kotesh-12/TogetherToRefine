@@ -106,8 +106,19 @@ export default function InstitutionDetailsAdmin() {
                     </div>
                 </div>
 
-                {/* Navigation Tabs */}
-                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', overflowX: 'auto' }}>
+                {/* Navigation Tabs - Sticky */}
+                <div style={{
+                    display: 'flex',
+                    gap: '10px',
+                    marginBottom: '20px',
+                    overflowX: 'auto',
+                    position: 'sticky',
+                    top: '60px',
+                    zIndex: 10,
+                    background: '#f1f2f6',
+                    padding: '10px 0',
+                    borderBottom: '1px solid #dfe6e9'
+                }}>
                     {['overview', 'teachers', 'students', 'feedback'].map(tab => (
                         <button
                             key={tab}
@@ -118,7 +129,9 @@ export default function InstitutionDetailsAdmin() {
                                 background: activeTab === tab ? '#0984e3' : 'white',
                                 color: activeTab === tab ? 'white' : '#2d3436',
                                 border: '1px solid #dfe6e9',
-                                textTransform: 'capitalize'
+                                textTransform: 'capitalize',
+                                whiteSpace: 'nowrap',
+                                minWidth: '100px'
                             }}
                         >
                             {tab}
