@@ -55,18 +55,39 @@ export default function InstitutionDetailsAdmin() {
                     setTeacherList(tList);
                 } catch (e) { console.error("Error fetching teachers:", e); }
 
-                // 4. Fetch Feedbacks (Directly targeting this Institution)
+                // 4. Fetch Feedbacks (Directly targeting this Institution) AND Emergency Reports
                 try {
-                    console.log("Fetching Feedback for Target ID:", id);
-                    const feedbacksSnap = await getDocs(query(collection(db, "general_feedback"), where("targetId", "==", id)));
-                    console.log("Feedback Count:", feedbacksSnap.size);
-                    setStats(prev => ({ ...prev, feedbacks: feedbacksSnap.size }));
-                    const fList = [];
-                    feedbacksSnap.forEach(d => fList.push({ id: d.id, ...d.data() }));
-                    // Client-side Sort
-                    fList.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
-                    setFeedbackList(fList);
-                } catch (e) { console.error("Error fetching feedback:", e); }
+                    console.log("Fetching Feedback & Reports for Target ID:", id);
+
+                    // Parallel Fetch
+                    const [feedbacksSnap, reportsSnap] = await Promise.all([
+                        getDocs(query(collection(db, "general_feedback"), where("targetId", "==", id))),
+                        getDocs(query(collection(db, "emergency_reports"), where("institutionId", "==", id)))
+                    ]);
+
+                    console.log("Feedback Count:", feedbacksSnap.size, "Reports Count:", reportsSnap.size);
+
+                    let mergedList = [];
+
+                    // Standard Feedbacks
+                    feedbacksSnap.forEach(d => mergedList.push({ id: d.id, isReport: false, ...d.data() }));
+
+                    // Emergency Reports
+                    reportsSnap.forEach(d => mergedList.push({ id: d.id, isReport: true, ...d.data() }));
+
+                    // Update stats
+                    setStats(prev => ({ ...prev, feedbacks: mergedList.length }));
+
+                    // Sort: Newest First
+                    mergedList.sort((a, b) => {
+                        const tA = a.timestamp?.seconds || a.createdAt?.seconds || 0;
+                        const tB = b.timestamp?.seconds || b.createdAt?.seconds || 0;
+                        return tB - tA;
+                    });
+
+                    setFeedbackList(mergedList);
+
+                } catch (e) { console.error("Error fetching feedback/reports:", e); }
 
             } catch (e) {
                 console.error("Error in main fetch:", e);
@@ -255,26 +276,68 @@ export default function InstitutionDetailsAdmin() {
                         <h3>💬 Institution Feedback ({feedbackList.length})</h3>
                         {feedbackList.length === 0 ? <p>No feedback received yet.</p> : (
                             <div style={{ display: 'grid', gap: '15px' }}>
-                                {feedbackList.map(f => (
-                                    <div key={f.id} style={{ padding: '20px', border: '1px solid #eee', borderRadius: '12px', background: '#fff' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                                            <div>
-                                                <strong>{f.authorName || "Anonymous"}</strong> <span style={{ fontSize: '12px', color: '#636e72' }}>({f.authorRole || 'User'})</span>
+                                {feedbackList.map(f => {
+                                    if (f.isReport) {
+                                        // RENDER RED REPORT CARD
+                                        return (
+                                            <div key={f.id} style={{ padding: '20px', border: '2px solid #ff7675', borderRadius: '12px', background: '#fff0f0' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                                    <div>
+                                                        <strong style={{ color: '#d63031', fontSize: '16px' }}>
+                                                            {f.type === 'sexual_harassment' ? '🚨 SEXUAL HARASSMENT REPORT' : '⚠️ MISBEHAVIOR REPORT'}
+                                                        </strong>
+                                                        <span style={{ display: 'block', fontSize: '13px', color: '#636e72', marginTop: '4px' }}>
+                                                            From: {f.authorName || 'Anonymous'} ({f.authorRole})
+                                                        </span>
+                                                    </div>
+                                                    <span style={{ fontSize: '12px', color: '#b2bec3' }}>{f.createdAt?.seconds ? new Date(f.createdAt.seconds * 1000).toLocaleDateString() : 'Just now'}</span>
+                                                </div>
+
+                                                <div style={{ marginBottom: '10px', fontSize: '14px', color: '#2d3436' }}>
+                                                    <span style={{ fontWeight: 'bold' }}>Accused:</span> {f.accusedName}
+                                                </div>
+                                                <div style={{ marginBottom: '10px', fontSize: '14px', color: '#2d3436' }}>
+                                                    <span style={{ fontWeight: 'bold' }}>Location:</span> {f.location}
+                                                </div>
+                                                <div style={{ marginBottom: '10px', fontSize: '14px', color: '#2d3436' }}>
+                                                    <span style={{ fontWeight: 'bold' }}>Date/Time:</span> {new Date(f.incidentDate).toLocaleString()}
+                                                </div>
+
+                                                <p style={{ margin: '5px 0', background: 'white', padding: '10px', border: '1px solid #ffdcdc', borderRadius: '5px', color: '#d63031' }}>
+                                                    "{f.description}"
+                                                </p>
+
+                                                {f.evidence && (
+                                                    <div style={{ marginTop: '10px' }}>
+                                                        <a href={f.evidence} target="_blank" rel="noreferrer" style={{ color: '#0984e3', textDecoration: 'underline', fontSize: '14px' }}>View Evidence</a>
+                                                    </div>
+                                                )}
                                             </div>
-                                            <span style={{ fontSize: '12px', color: '#b2bec3' }}>{f.timestamp?.seconds ? new Date(f.timestamp.seconds * 1000).toLocaleDateString() : 'Just now'}</span>
-                                        </div>
+                                        );
+                                    } else {
+                                        // STANDARD FEEDBACK CARD
+                                        return (
+                                            <div key={f.id} style={{ padding: '20px', border: '1px solid #eee', borderRadius: '12px', background: '#fff' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                                    <div>
+                                                        <strong>{f.authorName || "Anonymous"}</strong> <span style={{ fontSize: '12px', color: '#636e72' }}>({f.authorRole || 'User'})</span>
+                                                    </div>
+                                                    <span style={{ fontSize: '12px', color: '#b2bec3' }}>{f.timestamp?.seconds ? new Date(f.timestamp.seconds * 1000).toLocaleDateString() : 'Just now'}</span>
+                                                </div>
 
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
-                                            {['behavior', 'communication', 'bodyLanguage', 'hardworking'].map(cat => f[cat] ? (
-                                                <span key={cat} style={{ fontSize: '12px', background: '#f1f2f6', padding: '5px 10px', borderRadius: '15px' }}>
-                                                    {cat.charAt(0).toUpperCase() + cat.slice(1)}: <strong>{f[cat].stars}★</strong>
-                                                </span>
-                                            ) : null)}
-                                        </div>
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
+                                                    {['behavior', 'communication', 'bodyLanguage', 'hardworking'].map(cat => f[cat] ? (
+                                                        <span key={cat} style={{ fontSize: '12px', background: '#f1f2f6', padding: '5px 10px', borderRadius: '15px' }}>
+                                                            {cat.charAt(0).toUpperCase() + cat.slice(1)}: <strong>{f[cat].stars}★</strong>
+                                                        </span>
+                                                    ) : null)}
+                                                </div>
 
-                                        {f.comment && <p style={{ margin: '5px 0', fontStyle: 'italic', color: '#2d3436' }}>"{f.comment}"</p>}
-                                    </div>
-                                ))}
+                                                {f.comment && <p style={{ margin: '5px 0', fontStyle: 'italic', color: '#2d3436' }}>"{f.comment}"</p>}
+                                            </div>
+                                        );
+                                    }
+                                })}
                             </div>
                         )}
                     </div>
