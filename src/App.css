@@ -38,10 +38,22 @@
 
 .card {
   padding: 2em;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  /* Disables context menu on iOS */
 }
 
 .read-the-docs {
   color: #888;
+}
+
+/* Responsive Grid Helper */
+.responsive-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+  margin-top: 20px;
 }
 
 /* =========================================

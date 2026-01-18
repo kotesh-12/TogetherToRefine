@@ -113,7 +113,7 @@ export default function Student() {
         <div className="page-wrapper">
             <AIBadge />
 
-            <AnnouncementBar title={`Welcome, ${userData?.name || "Student"}!`} />
+            <AnnouncementBar title={`Welcome, ${userData?.name || "Student"}!`} leftIcon="back" />
 
             {userData?.pid && (
                 <div style={{ textAlign: 'center', marginTop: '10px' }}>
@@ -162,7 +162,7 @@ export default function Student() {
                 )}
 
                 {/* AI Learning Tools */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '20px' }}>
+                <div className="responsive-grid">
                     <div className="card" onClick={() => handleCardClick('/attendance')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #0984e3, #74b9ff)', color: 'white' }}>
                         <h3>📅 Attendance</h3>
                         <p style={{ fontSize: '13px', margin: '5px 0 0' }}>View your attendance record.</p>
@@ -173,7 +173,7 @@ export default function Student() {
                     </div>
                     <div className="card" onClick={() => handleCardClick('/4-way-learning')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #fd79a8, #e84393)', color: 'white' }}>
                         <h3>🧠 4-Way Learning</h3>
-                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>Concept, Fiction, Story, & Teaching.</p>
+                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>Concept, Indian Mythos, Story, & Dialouge.</p>
                     </div>
                     <div className="card" onClick={() => handleCardClick('/video-library')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #00b894, #55efc4)', color: 'white' }}>
                         <h3>🎬 Video Library</h3>
