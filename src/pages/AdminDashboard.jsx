@@ -195,7 +195,16 @@ export default function AdminDashboard() {
                             <tbody>
                                 {allInstitutions.map(inst => (
                                     <tr key={inst.id} style={{ borderBottom: '1px solid #eee' }}>
-                                        <td style={{ padding: '10px' }}><strong>{inst.institutionName || inst.schoolName}</strong></td>
+                                        <td style={{ padding: '10px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                {inst.profileImageURL ? (
+                                                    <img src={inst.profileImageURL} alt="" style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover' }} />
+                                                ) : (
+                                                    <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🏫</div>
+                                                )}
+                                                <strong>{inst.institutionName || inst.schoolName}</strong>
+                                            </div>
+                                        </td>
                                         <td style={{ padding: '10px' }}>{inst.principalName}</td>
                                         <td style={{ padding: '10px' }}>{inst.estYear}</td>
                                         <td style={{ padding: '10px' }}>
