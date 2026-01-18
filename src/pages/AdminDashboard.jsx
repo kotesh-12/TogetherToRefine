@@ -146,6 +146,7 @@ export default function AdminDashboard() {
     return (
         <div className="page-wrapper" style={{ position: 'relative', background: '#f1f2f6', minHeight: '100vh', paddingBottom: '20px' }}>
             <AIBadge />
+            <AnnouncementBar title="Admin Dashboard" />
             {/* Notification (Announcement) Icon - Moved to Left Side below Home Button (Absolute) */}
             <div style={{ position: 'absolute', top: '150px', left: '20px', zIndex: 90 }}>
                 <button

@@ -5,6 +5,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 
 import { useUser } from '../context/UserContext';
+import AnnouncementBar from '../components/AnnouncementBar';
 // ...
 export default function AccessDenied() {
     const navigate = useNavigate();
@@ -47,65 +48,71 @@ export default function AccessDenied() {
     };
 
     return (
-        <div style={{
-            height: '100vh', display: 'flex', flexDirection: 'column',
-            justifyContent: 'center', alignItems: 'center', background: '#f1f2f6'
-        }}>
-            <div style={{ fontSize: '60px' }}>🚫</div>
-            <h1 style={{ color: '#d63031', marginBottom: '10px' }}>Access Denied</h1>
-            <p style={{ color: '#636e72', marginBottom: '10px' }}>
-                You do not have permission to view this page.
-            </p>
-            {userData && (
-                <div style={{ marginTop: '20px', padding: '15px', background: '#f8f9fa', borderRadius: '8px', border: '1px solid #ddd', textAlign: 'left', maxWidth: '400px', margin: '20px auto' }}>
-                    <p style={{ marginTop: 0 }}><strong>Debug Info:</strong></p>
-                    <p><strong>Current Role:</strong> <code>{userData.role}</code></p>
-                    <p><strong>User ID:</strong> <code style={{ fontSize: '10px' }}>{userData.uid}</code></p>
-                    <p style={{ fontSize: '12px', color: '#666' }}>If you intended to be an Admin, your current account does not have the 'admin' role.</p>
+        <div style={{ minHeight: '100vh', background: '#f1f2f6' }}>
+            <AnnouncementBar title="Access Denied" />
 
+            <div style={{
+                display: 'flex', flexDirection: 'column',
+                justifyContent: 'center', alignItems: 'center',
+                height: 'calc(100vh - 120px)', // Centered in remaining space
+                padding: '20px'
+            }}>
+                <div style={{ fontSize: '60px' }}>🚫</div>
+                <h1 style={{ color: '#d63031', marginBottom: '10px' }}>Access Denied</h1>
+                <p style={{ color: '#636e72', marginBottom: '10px' }}>
+                    You do not have permission to view this page.
+                </p>
+                {userData && (
+                    <div style={{ marginTop: '20px', padding: '15px', background: '#f8f9fa', borderRadius: '8px', border: '1px solid #ddd', textAlign: 'left', maxWidth: '400px', margin: '20px auto' }}>
+                        <p style={{ marginTop: 0 }}><strong>Debug Info:</strong></p>
+                        <p><strong>Current Role:</strong> <code>{userData.role}</code></p>
+                        <p><strong>User ID:</strong> <code style={{ fontSize: '10px' }}>{userData.uid}</code></p>
+                        <p style={{ fontSize: '12px', color: '#666' }}>If you intended to be an Admin, your current account does not have the 'admin' role.</p>
+
+                        <button
+                            onClick={makeMeAdmin}
+                            style={{
+                                marginTop: '10px',
+                                padding: '8px 12px',
+                                background: '#d63031',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '12px',
+                                fontWeight: 'bold'
+                            }}
+                        >
+                            🛠️ Fix: Set my Role to Admin
+                        </button>
+                    </div>
+                )}
+                <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                     <button
-                        onClick={makeMeAdmin}
-                        style={{
-                            marginTop: '10px',
-                            padding: '8px 12px',
-                            background: '#d63031',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '12px',
-                            fontWeight: 'bold'
+                        className="btn"
+                        onClick={() => {
+                            localStorage.clear();
+                            window.location.reload();
                         }}
+                        style={{ padding: '10px 20px', background: '#636e72', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
                     >
-                        🛠️ Fix: Set my Role to Admin
+                        🔄 Clear Cache
+                    </button>
+                    <button
+                        className="btn"
+                        onClick={handleLogout}
+                        style={{ padding: '10px 20px', background: '#d63031', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
+                        🚪 Logout
+                    </button>
+                    <button
+                        className="btn"
+                        onClick={() => navigate('/')}
+                        style={{ padding: '10px 20px', background: '#0984e3', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+                    >
+                        Go Home
                     </button>
                 </div>
-            )}
-            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                <button
-                    className="btn"
-                    onClick={() => {
-                        localStorage.clear();
-                        window.location.reload();
-                    }}
-                    style={{ padding: '10px 20px', background: '#636e72', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
-                >
-                    🔄 Clear Cache
-                </button>
-                <button
-                    className="btn"
-                    onClick={handleLogout}
-                    style={{ padding: '10px 20px', background: '#d63031', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
-                >
-                    🚪 Logout
-                </button>
-                <button
-                    className="btn"
-                    onClick={() => navigate('/')}
-                    style={{ padding: '10px 20px', background: '#0984e3', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
-                >
-                    Go Home
-                </button>
             </div>
         </div>
     );
