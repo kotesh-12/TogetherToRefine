@@ -16,11 +16,13 @@ export default function AdminDashboard() {
     const [pendingInstitutions, setPendingInstitutions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('overview');
+    const [allInstitutions, setAllInstitutions] = useState([]);
+    const [showInstModal, setShowInstModal] = useState(false);
 
     useEffect(() => {
         const fetchGlobalStats = async () => {
             try {
-                // Ensure auth before fetch (optional, handled by ProtectedRoute)
+                // ... (existing imports)
                 const [usersSnap, instSnap, teacherSnap, feedbackSnap] = await Promise.all([
                     getDocs(collection(db, "users")),
                     getDocs(collection(db, "institutions")),
@@ -35,14 +37,18 @@ export default function AdminDashboard() {
                     feedbacks: feedbackSnap.size
                 });
 
+                // Pending Institutions Logic & All Institutions
                 const pending = [];
+                const allInst = [];
                 instSnap.forEach(d => {
                     const data = d.data();
+                    allInst.push({ id: d.id, ...data });
                     if (data.approved === false) {
                         pending.push({ id: d.id, ...data });
                     }
                 });
                 setPendingInstitutions(pending);
+                setAllInstitutions(allInst);
 
             } catch (e) {
                 console.error("Admin stats error:", e);
@@ -86,10 +92,16 @@ export default function AdminDashboard() {
                         <h2 style={{ margin: '10px 0', fontSize: '30px' }}>{stats.teachers}</h2>
                         <span style={{ color: '#636e72' }}>Teachers</span>
                     </div>
-                    <div className="card text-center" style={{ padding: '30px', borderLeft: '5px solid #d63031' }}>
+                    <div className="card text-center"
+                        onClick={() => setShowInstModal(true)}
+                        style={{ padding: '30px', borderLeft: '5px solid #d63031', cursor: 'pointer', transition: 'transform 0.2s' }}
+                        onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                        onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                    >
                         <div style={{ fontSize: '40px', color: '#d63031' }}>🏫</div>
                         <h2 style={{ margin: '10px 0', fontSize: '30px' }}>{stats.institutions}</h2>
                         <span style={{ color: '#636e72' }}>Institutions</span>
+                        <div style={{ fontSize: '12px', color: '#b2bec3', marginTop: '5px' }}>Click to view details</div>
                     </div>
                     <div className="card text-center" style={{ padding: '30px', borderLeft: '5px solid #fdcb6e' }}>
                         <div style={{ fontSize: '40px', color: '#fdcb6e' }}>💬</div>
@@ -136,6 +148,68 @@ export default function AdminDashboard() {
                 </div>
 
             </div>
+
+            {/* Institution List Modal */}
+            {showInstModal && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.8)', zIndex: 2000,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                    <div className="card" style={{ width: '90%', maxWidth: '800px', maxHeight: '80vh', overflowY: 'auto', position: 'relative' }}>
+                        <button
+                            onClick={() => setShowInstModal(false)}
+                            style={{
+                                position: 'absolute', top: '15px', right: '15px',
+                                background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer'
+                            }}
+                        >
+                            &times;
+                        </button>
+                        <h2 style={{ marginTop: 0, borderBottom: '1px solid #eee', paddingBottom: '15px' }}>Registered Institutions ({allInstitutions.length})</h2>
+
+                        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '15px' }}>
+                            <thead>
+                                <tr style={{ background: '#f8f9fa', textAlign: 'left' }}>
+                                    <th style={{ padding: '10px' }}>Name</th>
+                                    <th style={{ padding: '10px' }}>Principal</th>
+                                    <th style={{ padding: '10px' }}>Est. Year</th>
+                                    <th style={{ padding: '10px' }}>Status</th>
+                                    <th style={{ padding: '10px' }}>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {allInstitutions.map(inst => (
+                                    <tr key={inst.id} style={{ borderBottom: '1px solid #eee' }}>
+                                        <td style={{ padding: '10px' }}><strong>{inst.institutionName || inst.schoolName}</strong></td>
+                                        <td style={{ padding: '10px' }}>{inst.principalName}</td>
+                                        <td style={{ padding: '10px' }}>{inst.estYear}</td>
+                                        <td style={{ padding: '10px' }}>
+                                            <span style={{
+                                                padding: '4px 10px', borderRadius: '12px', fontSize: '12px',
+                                                background: inst.approved ? '#d4edda' : '#fff3cd',
+                                                color: inst.approved ? '#155724' : '#856404'
+                                            }}>
+                                                {inst.approved ? 'Active' : 'Pending'}
+                                            </span>
+                                        </td>
+                                        <td style={{ padding: '10px' }}>
+                                            {!inst.approved && (
+                                                <button className="btn" style={{ padding: '5px 10px', fontSize: '12px' }} onClick={() => approveInstitution(inst.id)}>Approve</button>
+                                            )}
+                                            {inst.approved && (
+                                                <button className="btn" style={{ padding: '5px 10px', fontSize: '12px', background: '#b2bec3' }}>View</button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        {allInstitutions.length === 0 && <p className="text-center text-muted">No institutions found.</p>}
+                    </div>
+                </div>
+            )}
         </div>
+        </div >
     );
 }
