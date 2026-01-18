@@ -38,30 +38,7 @@ export default function WaitingList() {
         }
     };
 
-    const addDemoData = async () => {
-        try {
-            setLoading(true);
-            const auth = getAuth();
-            const uid = auth.currentUser?.uid;
 
-            const demos = [
-                { name: "Rahul Sharma", role: "student", age: "15", gender: "Male", status: "waiting", institutionId: uid, joinedAt: new Date() },
-                { name: "Sneha Gupta", role: "teacher", subject: "Math", expYears: "5", gender: "Female", status: "waiting", institutionId: uid, joinedAt: new Date() },
-                { name: "Vikram Singh", role: "student", age: "14", gender: "Male", status: "waiting", institutionId: uid, joinedAt: new Date() }
-            ];
-
-            for (const d of demos) {
-                await addDoc(collection(db, "admissions"), d);
-            }
-            fetchWaitingList(); // Refresh list
-            alert("✅ Added 3 Demo Applicants!");
-        } catch (e) {
-            console.error("Firebase Error:", e);
-            alert("Failed to add demo data: " + e.message);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const handleAllot = (person) => {
         // We will pass this person's ID to Allotment page to pre-fill or handle logic
@@ -85,7 +62,6 @@ export default function WaitingList() {
                     <div className="text-center" style={{ padding: '20px' }}>
                         No one in waiting list. <br />
                         <button className="btn" style={{ marginTop: '10px', marginRight: '10px' }} onClick={() => navigate('/admission')}>Add Admission</button>
-                        <button className="btn" style={{ marginTop: '10px', backgroundColor: '#2d3436' }} onClick={addDemoData}>Testing: Add 3 Demo Users</button>
                     </div>
                 ) : (
                     <div style={{ display: 'grid', gap: '10px', marginTop: '20px' }}>

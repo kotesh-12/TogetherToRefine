@@ -54,31 +54,7 @@ export default function Institution() {
         }
     };
 
-    const addDemoData = async () => {
-        const auth = getAuth();
-        const uid = auth.currentUser?.uid;
-        if (!uid) return alert("You must be logged in.");
 
-        const demoApplicants = [
-            { name: "Rahul Sharma", role: "student", age: "15", class: "10-A", gender: "Male", status: "waiting", institutionId: uid, joinedAt: new Date() },
-            { name: "Sneha Gupta", role: "teacher", subject: "Math", expYears: "5", gender: "Female", status: "waiting", institutionId: uid, joinedAt: new Date() },
-            { name: "Vikram Singh", role: "student", age: "14", class: "9-B", gender: "Male", status: "waiting", institutionId: uid, joinedAt: new Date() }
-        ];
-
-        try {
-            setLoading(true);
-            for (const app of demoApplicants) {
-                await addDoc(collection(db, "admissions"), app);
-            }
-            alert("✅ Demo applicants added to Waiting List! \n\nGo to 'Waiting List' to allot them.");
-            // Optional: refresh or just let the user navigate
-        } catch (e) {
-            console.error(e);
-            alert("Failed to add demo data.");
-        } finally {
-            setLoading(false);
-        }
-    };
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {

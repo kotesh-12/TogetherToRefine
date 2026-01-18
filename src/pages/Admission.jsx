@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { collection, addDoc } from 'firebase/firestore';
 
 export default function Admission() {
@@ -13,12 +13,21 @@ export default function Admission() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
+
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+            alert("You must be logged in to add an admission.");
+            setLoading(false);
+            return;
+        }
+
         try {
             await addDoc(collection(db, "admissions"), {
                 name,
                 role,
                 [role === 'teacher' ? 'subject' : 'age']: extra,
                 status: 'waiting', // Key status for Waiting List
+                institutionId: currentUser.uid, // REQUIRED: Limits visibility to this institution
                 joinedAt: new Date()
             });
             alert("Admission Successful! Added to Waiting List.");
