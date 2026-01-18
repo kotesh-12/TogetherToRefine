@@ -116,14 +116,20 @@ export default function Details() {
             return;
         }
 
+        // Check Institution specifically (Main verification point)
+        if ((role === 'student' || role === 'teacher') && !formData.institutionId) {
+            alert("⚠️ Please select a School/Institution to apply to.");
+            return;
+        }
+
         if (role === 'student') {
-            if (!formData.firstName || !formData.class || !formData.institutionId || !formData.dob) {
-                alert("Please fill all required fields (Name, Class, Institution, DOB).");
+            if (!formData.firstName || !formData.class || !formData.dob) {
+                alert("Please fill all required fields (Name, Class, DOB).");
                 return;
             }
         } else if (role === 'teacher') {
-            if (!formData.firstName || !formData.subject || !formData.institutionId) {
-                alert("Please fill all required fields (Name, Subject, Institution).");
+            if (!formData.firstName || !formData.subject) {
+                alert("Please fill all required fields (Name, Subject).");
                 return;
             }
         } else if (role === 'institution') {
