@@ -48,7 +48,8 @@ export function UserProvider({ children }) {
                                     setDoc(instRef, { pid }, { merge: true });
                                     data.pid = pid;
                                 }
-                                setUserData({ ...data, uid: currentUser.uid, collection: 'institutions', role: 'institution' });
+                                const role = (data.role || 'institution').trim().toLowerCase();
+                                setUserData({ ...data, uid: currentUser.uid, collection: 'institutions', role });
                                 localStorage.setItem('user_collection_cache', 'institutions');
                                 setLoading(false);
                             });
@@ -60,14 +61,15 @@ export function UserProvider({ children }) {
                                     setDoc(teachRef, { pid }, { merge: true });
                                     data.pid = pid;
                                 }
-                                setUserData({ ...data, uid: currentUser.uid, collection: 'teachers', role: 'teacher' });
+                                const role = (data.role || 'teacher').trim().toLowerCase();
+                                setUserData({ ...data, uid: currentUser.uid, collection: 'teachers', role });
                                 localStorage.setItem('user_collection_cache', 'teachers');
                                 setLoading(false);
                             });
                         } else if (userSnap.exists()) {
                             unsubscribeSnapshot = onSnapshot(userRef, (d) => {
                                 const data = d.data();
-                                const normalizedRole = (data.role || 'student').toLowerCase();
+                                const normalizedRole = (data.role || 'student').trim().toLowerCase();
                                 if (!data.pid) {
                                     const prefix = normalizedRole === 'teacher' ? 'TE' : (normalizedRole === 'institution' ? 'IN' : 'ST');
                                     const pid = `${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -100,8 +102,7 @@ export function UserProvider({ children }) {
                             return onSnapshot(doc(db, col, currentUser.uid), (d) => {
                                 if (d.exists()) {
                                     const data = d.data();
-                                    const roleRaw = data.role || roleName;
-                                    const role = roleRaw.toLowerCase();
+                                    const role = (data.role || roleName).trim().toLowerCase();
 
                                     if (!data.pid) {
                                         const prefix = role === 'teacher' ? 'TE' : (role === 'institution' ? 'IN' : 'ST');
@@ -125,8 +126,8 @@ export function UserProvider({ children }) {
                             });
                         };
 
-                        // Fast Path: Use Cache
-                        if (cachedCollection) {
+                        // Fast Path: Use Cache (DISABLED to fix role update issues)
+                        if (false && cachedCollection) {
                             console.log("Using cached collection:", cachedCollection);
                             unsubscribeSnapshot = subscribe(cachedCollection, cachedCollection === 'users' ? 'student' : (cachedCollection === 'institutions' ? 'institution' : 'teacher'));
                             return;

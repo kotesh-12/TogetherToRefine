@@ -342,8 +342,15 @@ export default function TTRAI() {
 
             } catch (backendError) {
                 console.error("AI Request Failed:", backendError);
+                let errorMsg = "Unable to connect to AI Server. Please ensure the backend server is running on port 5000.";
+
+                // If it's a backend error (e.g. 500), show that instead
+                if (backendError.message.includes("Backend Error")) {
+                    errorMsg = backendError.message;
+                }
+
                 setMessages(prev => [...prev, {
-                    text: "Error: Unable to connect to AI Server. Please ensure the backend server is running on port 5000 (`npm run server`).",
+                    text: `Error: ${errorMsg}`,
                     sender: 'ai',
                     isError: true
                 }]);

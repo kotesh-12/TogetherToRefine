@@ -19,7 +19,7 @@ export default function TopBar({ title, leftIcon = 'home', backPath }) {
                 navigate(-1);
             }
         } else {
-            // Default: Home Icon
+            // View first: Home Icon
             if (userData?.role === 'student') navigate('/student', { replace: true });
             else if (userData?.role === 'teacher') navigate('/teacher', { replace: true });
             else if (userData?.role === 'institution') navigate('/institution', { replace: true });

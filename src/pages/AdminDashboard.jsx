@@ -21,6 +21,26 @@ export default function AdminDashboard() {
     const [showFeedbackModal, setShowFeedbackModal] = useState(false);
     const [allFeedbacks, setAllFeedbacks] = useState([]);
     const [message, setMessage] = useState('');
+    const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
+
+    const handlePostAnnouncement = async () => {
+        const text = message.trim();
+        if (!text) return alert("Please enter text.");
+        try {
+            await addDoc(collection(db, "announcements"), {
+                text,
+                createdAt: new Date(),
+                authorName: "Admin",
+                type: 'global'
+            });
+            alert("Announcement Posted!");
+            setMessage('');
+            setShowAnnouncementModal(false);
+        } catch (e) {
+            console.error(e);
+            alert("Error posting.");
+        }
+    };
 
     // Fetch Feedbacks when Modal Opens
     useEffect(() => {
@@ -124,11 +144,31 @@ export default function AdminDashboard() {
     if (loading) return <div className="container" style={{ textAlign: 'center', marginTop: '50px' }}>Loading Admin Dashboard...</div>;
 
     return (
-        <div className="page-wrapper" style={{ background: '#f1f2f6', minHeight: '100vh', paddingBottom: '20px' }}>
+        <div className="page-wrapper" style={{ position: 'relative', background: '#f1f2f6', minHeight: '100vh', paddingBottom: '20px' }}>
             <AIBadge />
-            <AnnouncementBar title="Administrator Dashboard" leftIcon="home" />
+            {/* Notification (Announcement) Icon - Moved to Left Side below Home Button (Absolute) */}
+            <div style={{ position: 'absolute', top: '150px', left: '20px', zIndex: 90 }}>
+                <button
+                    onClick={() => setShowAnnouncementModal(true)}
+                    style={{
+                        width: '50px', height: '50px', borderRadius: '50%',
+                        background: '#fff', border: 'none',
+                        boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '24px', cursor: 'pointer', color: '#0984e3',
+                        transition: 'transform 0.2s'
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                    onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                    title="Post Notification"
+                >
+                    📢
+                </button>
+            </div>
 
             <div className="container" style={{ maxWidth: '1100px', margin: '30px auto' }}>
+
+
 
                 {/* Stats Grid */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '40px' }}>
@@ -383,6 +423,48 @@ export default function AdminDashboard() {
                             </tbody>
                         </table>
                         {allInstitutions.length === 0 && <p className="text-center text-muted">No institutions found.</p>}
+                    </div>
+                </div>
+            )}
+
+            {/* Announcement Modal */}
+            {showAnnouncementModal && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.8)', zIndex: 3000,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                    <div className="card" style={{ width: '90%', maxWidth: '500px', position: 'relative', padding: '25px' }}>
+                        <button
+                            onClick={() => setShowAnnouncementModal(false)}
+                            style={{
+                                position: 'absolute', top: '10px', right: '10px',
+                                background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#636e72'
+                            }}
+                        >
+                            &times;
+                        </button>
+                        <h3 style={{ marginTop: 0, textAlign: 'center', color: '#2d3436' }}>📢 Post Global Notification</h3>
+                        <p className="text-center text-muted" style={{ fontSize: '14px', marginBottom: '20px' }}>
+                            This announcement will be visible to ALL users (Students, Teachers, Institutions).
+                        </p>
+
+                        <textarea
+                            className="input-field"
+                            rows="5"
+                            placeholder="Type your announcement here..."
+                            value={message}
+                            onChange={(e) => setMessage(e.target.value)}
+                            style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #ddd', resize: 'vertical' }}
+                        />
+
+                        <button
+                            className="btn"
+                            onClick={handlePostAnnouncement}
+                            style={{ width: '100%', marginTop: '15px', background: '#0984e3', padding: '12px' }}
+                        >
+                            Post Announcement
+                        </button>
                     </div>
                 </div>
             )}

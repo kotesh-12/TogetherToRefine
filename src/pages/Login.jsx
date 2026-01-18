@@ -42,6 +42,7 @@ export default function Login() {
                         case 'student': navigate('/student', { replace: true }); break;
                         case 'teacher': navigate('/teacher', { replace: true }); break;
                         case 'institution': navigate('/institution', { replace: true }); break;
+                        case 'admin': navigate('/admin', { replace: true }); break;
                         default: navigate('/admission', { replace: true });
                     }
                 }
@@ -74,11 +75,17 @@ export default function Login() {
         try {
             // 1. Check 'institutions' (Priority High)
             let docSnap = await getDoc(doc(db, "institutions", uid));
-            if (docSnap.exists()) return { role: 'institution', isNew: false, approved: true };
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                return { role: (data.role || 'institution').toLowerCase(), isNew: false, approved: true };
+            }
 
             // 2. Check 'teachers'
             docSnap = await getDoc(doc(db, "teachers", uid));
-            if (docSnap.exists()) return { role: 'teacher', isNew: !docSnap.data().profileCompleted, approved: docSnap.data().approved };
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                return { role: (data.role || 'teacher').toLowerCase(), isNew: !data.profileCompleted, approved: data.approved };
+            }
 
             // 3. Check 'users' (Student - Fallback)
             docSnap = await getDoc(doc(db, "users", uid));
@@ -101,6 +108,7 @@ export default function Login() {
             case 'student': navigate('/student'); break;
             case 'teacher': navigate('/teacher'); break;
             case 'institution': navigate('/institution'); break;
+            case 'admin': navigate('/admin'); break;
             default: navigate('/admission');
         }
     };
@@ -164,7 +172,7 @@ export default function Login() {
                 setError('Please fill in all required fields.');
                 return;
             }
-            if (role !== 'institution' && !gender) {
+            if (role !== 'institution' && role !== 'admin' && !gender) {
                 setError('Gender is required.');
                 return;
             }
@@ -211,7 +219,7 @@ export default function Login() {
                 }
 
                 // Generate Permanent ID (PID)
-                const prefix = role === 'student' ? 'ST' : (role === 'teacher' ? 'TE' : 'IN');
+                const prefix = role === 'student' ? 'ST' : (role === 'teacher' ? 'TE' : (role === 'institution' ? 'IN' : 'AD'));
                 const randomNum = Math.floor(100000 + Math.random() * 900000); // 6 digit random
                 const pid = `${prefix}-${randomNum}`;
 
@@ -301,6 +309,7 @@ export default function Login() {
                         <option value="student">Student</option>
                         <option value="teacher">Teacher</option>
                         <option value="institution">Institution</option>
+                        <option value="admin">Admin</option>
                     </select>
 
                     {!isLogin && (
@@ -308,13 +317,13 @@ export default function Login() {
                             <input
                                 type="text"
                                 className="input-field"
-                                placeholder={role === 'institution' ? "Institution Name" : "Name"}
+                                placeholder={role === 'institution' ? "Institution Name" : (role === 'admin' ? "Admin Name" : "Name")}
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 required
                             />
 
-                            {role !== 'institution' && (
+                            {role !== 'institution' && role !== 'admin' && (
                                 <select
                                     className="input-field"
                                     value={gender}
