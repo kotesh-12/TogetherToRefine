@@ -19,23 +19,22 @@ export default function AdminDashboard() {
 
     useEffect(() => {
         const fetchGlobalStats = async () => {
-            // Parallel Fetch for Speed
             try {
+                // Ensure auth before fetch (optional, handled by ProtectedRoute)
                 const [usersSnap, instSnap, teacherSnap, feedbackSnap] = await Promise.all([
-                    getDocs(collection(db, "users")), // Mostly students
+                    getDocs(collection(db, "users")),
                     getDocs(collection(db, "institutions")),
                     getDocs(collection(db, "teachers")),
                     getDocs(collection(db, "general_feedback"))
                 ]);
 
                 setStats({
-                    students: usersSnap.size, // Approximation as 'users' holds students
+                    students: usersSnap.size,
                     teachers: teacherSnap.size,
                     institutions: instSnap.size,
                     feedbacks: feedbackSnap.size
                 });
 
-                // Pending Institutions Logic (if we had an 'approved' field)
                 const pending = [];
                 instSnap.forEach(d => {
                     const data = d.data();
@@ -66,10 +65,12 @@ export default function AdminDashboard() {
         }
     };
 
+    if (loading) return <div className="container" style={{ textAlign: 'center', marginTop: '50px' }}>Loading Admin Dashboard...</div>;
+
     return (
-        <div className="page-wrapper" style={{ background: '#f1f2f6', minHeight: '100vh' }}>
+        <div className="page-wrapper" style={{ background: '#f1f2f6', minHeight: '100vh', paddingBottom: '20px' }}>
             <AIBadge />
-            <AnnouncementBar title="Administrator Dashboard" />
+            <AnnouncementBar title="Administrator Dashboard" leftIcon="home" />
 
             <div className="container" style={{ maxWidth: '1100px', margin: '30px auto' }}>
 
