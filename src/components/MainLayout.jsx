@@ -12,7 +12,7 @@ export default function MainLayout() {
     // BUT user wants SPA feel, so persistent nav is good.
     // Let's hide it on Login ('/') and Details ('/details')
     const hideNavRoutes = ['/', '/details', '/login', '/signup'];
-    const showNav = !hideNavRoutes.includes(location.pathname) && userData;
+    const showNav = !hideNavRoutes.includes(location.pathname) && userData && userData.role !== 'admin';
 
     return (
         <div style={{ paddingBottom: '80px' }}> {/* Add padding so content doesn't hide behind fixed nav */}
