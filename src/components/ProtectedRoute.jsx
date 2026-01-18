@@ -27,10 +27,7 @@ const ProtectedRoute = ({ allowedRoles }) => {
     if (allowedRoles && !isAuthorized) {
         // Unauthorized. 
         console.warn(`Access Denied: Role '${userRole}' is not in [${allowedRoles}]`);
-        if (userData.role === 'student') return <Navigate to="/student" replace />;
-        if (userData.role === 'teacher') return <Navigate to="/teacher" replace />;
-        if (userData.role === 'institution') return <Navigate to="/institution" replace />;
-        return <Navigate to="/" replace />;
+        return <Navigate to="/access-denied" replace />;
     }
 
     // APPROVAL CHECK (Bug Fix)

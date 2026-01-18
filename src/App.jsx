@@ -5,6 +5,7 @@ import { UserProvider } from './context/UserContext';
 
 // Lazy loading components for better optimization
 const Login = lazy(() => import('./pages/Login'));
+const AccessDenied = lazy(() => import('./pages/AccessDenied'));
 const Student = lazy(() => import('./pages/Student'));
 const Teacher = lazy(() => import('./pages/Teacher'));
 const Institution = lazy(() => import('./pages/Institution'));
@@ -46,6 +47,7 @@ function App() {
             <Route path="/details" element={<Details />} />
             <Route path="/pending-approval" element={<PendingApproval />} />
             <Route path="/download" element={<DownloadApp />} />
+            <Route path="/access-denied" element={<AccessDenied />} />
 
             <Route element={<MainLayout />}>
               {/* Common Routes (Accessible to all authenticated users) */}
