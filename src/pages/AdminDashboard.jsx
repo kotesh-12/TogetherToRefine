@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../firebase';
-import { collection, getDocs, query, orderBy, where, doc, updateDoc, deleteDoc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, where, doc, updateDoc, deleteDoc, getDoc, addDoc } from 'firebase/firestore';
 import AnnouncementBar from '../components/AnnouncementBar';
 import AIBadge from '../components/AIBadge';
 import { useNavigate } from 'react-router-dom';
@@ -20,6 +20,7 @@ export default function AdminDashboard() {
     const [showInstModal, setShowInstModal] = useState(false);
     const [showFeedbackModal, setShowFeedbackModal] = useState(false);
     const [allFeedbacks, setAllFeedbacks] = useState([]);
+    const [message, setMessage] = useState('');
 
     // Fetch Feedbacks when Modal Opens
     useEffect(() => {
@@ -197,6 +198,43 @@ export default function AdminDashboard() {
                                 🔧 Site Settings (Coming Soon)
                             </button>
                         </div>
+                    </div>
+                </div>
+
+                {/* Announcement Poster */}
+                <div className="card" style={{ marginTop: '20px' }}>
+                    <h3>📢 Post Global Announcement</h3>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <input
+                            placeholder="Type announcement here..."
+                            style={{ flex: 1, padding: '10px', borderRadius: '5px', border: '1px solid #ddd' }}
+                            id="announcementInput"
+                            value={message}
+                            onChange={(e) => setMessage(e.target.value)}
+                        />
+                        <button
+                            className="btn"
+                            style={{ background: '#0984e3' }}
+                            onClick={async () => {
+                                const text = message.trim(); // Use state variable
+                                if (!text) return alert("Please enter text.");
+                                try {
+                                    await addDoc(collection(db, "announcements"), {
+                                        text,
+                                        createdAt: new Date(),
+                                        authorName: "Admin",
+                                        type: 'global'
+                                    });
+                                    alert("Announcement Posted!");
+                                    setMessage(''); // Clear state variable
+                                } catch (e) {
+                                    console.error(e);
+                                    alert("Error posting.");
+                                }
+                            }}
+                        >
+                            Post
+                        </button>
                     </div>
                 </div>
 
