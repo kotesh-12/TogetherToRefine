@@ -4,8 +4,11 @@ import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/
 import { useNavigate } from 'react-router-dom';
 import AnnouncementBar from '../components/AnnouncementBar';
 
+import { useUser } from '../context/UserContext';
+
 export default function FacultyFeedback() {
     const navigate = useNavigate();
+    const { userData } = useUser();
     const [teachers, setTeachers] = useState([]);
     const [selectedTeacher, setSelectedTeacher] = useState(null);
     const [feedbacks, setFeedbacks] = useState([]);
@@ -14,18 +17,23 @@ export default function FacultyFeedback() {
 
     useEffect(() => {
         const fetchTeachers = async () => {
+            if (!userData) return;
+
             try {
-                // Fetch teachers from teacher_allotments or users collection
-                // Assuming we want to see all teachers linked to this institution?
-                // For now, let's fetch all 'teacher' roles. In production, filter by Institution ID.
-                const q = query(collection(db, "teacher_allotments")); // Actually, better to fetch unique teachers
-                // Or assuming Institution Dashboard links here, we can fetch all teachers who are targets of feedback?
-                // Let's fetch all teachers first to show the list.
-                const teacherQ = query(collection(db, "teacher_allotments"));
-                const snap = await getDocs(teacherQ);
+                // Include Institution (Self) in the list
+                const selfEntry = { id: userData.uid, name: 'Institution (Me)', isInstitution: true };
+
+                // Fetch teachers from teacher_allotments 
+                // We should ideally filter by 'createdBy' == userData.uid
+                const q = query(collection(db, "teacher_allotments"), where("createdBy", "==", userData.uid));
+                const snap = await getDocs(q);
 
                 // Deduplicate teachers
                 const uniqueTeachers = new Map();
+
+                // Add Self first
+                uniqueTeachers.set(selfEntry.id, selfEntry);
+
                 snap.forEach(d => {
                     const data = d.data();
                     const name = data.name || data.teacherName;
@@ -44,7 +52,7 @@ export default function FacultyFeedback() {
             }
         };
         fetchTeachers();
-    }, []);
+    }, [userData]);
 
     const handleSelectTeacher = async (teacher) => {
         setSelectedTeacher(teacher);
