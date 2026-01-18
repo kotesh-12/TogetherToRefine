@@ -199,8 +199,8 @@ export default function InstitutionDetailsAdmin() {
                                 <tbody>
                                     {teacherList.map(t => (
                                         <tr key={t.id} style={{ borderBottom: '1px solid #eee' }}>
-                                            <td style={{ padding: '10px' }}>{t.name}</td>
-                                            <td style={{ padding: '10px' }}>{t.phone}</td>
+                                            <td style={{ padding: '10px' }}>{t.name || `${t.firstName || ''} ${t.secondName || ''}`.trim() || 'No Name'}</td>
+                                            <td style={{ padding: '10px' }}>{t.phone || t.phoneNumber || 'N/A'}</td>
                                             <td style={{ padding: '10px' }}>{t.subject}</td>
                                         </tr>
                                     ))}
@@ -221,9 +221,9 @@ export default function InstitutionDetailsAdmin() {
                                 <tbody>
                                     {studentList.map(s => (
                                         <tr key={s.id} style={{ borderBottom: '1px solid #eee' }}>
-                                            <td style={{ padding: '10px' }}>{s.name}</td>
-                                            <td style={{ padding: '10px' }}>{s.class} {s.section}</td>
-                                            <td style={{ padding: '10px' }}>{s.rollNumber}</td>
+                                            <td style={{ padding: '10px' }}>{s.name || `${s.firstName || ''} ${s.secondName || ''}`.trim() || 'No Name'}</td>
+                                            <td style={{ padding: '10px' }}>{s.assignedClass || s.class} {s.section}</td>
+                                            <td style={{ padding: '10px' }}>{s.rollNumber || 'N/A'}</td>
                                         </tr>
                                     ))}
                                 </tbody>
