@@ -187,6 +187,10 @@ export default function Student() {
                         <h3>🗓️ Timetable</h3>
                         <p style={{ fontSize: '13px', margin: '5px 0 0' }}>View weekly class schedule.</p>
                     </div>
+                    <div className="card" onClick={() => handleCardClick('/upid-history')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #636e72, #2d3436)', color: 'white' }}>
+                        <h3>🕵️ UPIDs (Private)</h3>
+                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>View your anonymous ID history.</p>
+                    </div>
                 </div>
 
                 {/* Exam Results Section (New) */}

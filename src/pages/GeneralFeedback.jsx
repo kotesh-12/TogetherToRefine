@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, limit, updateDoc, arrayUnion, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useUser } from '../context/UserContext';
 
@@ -186,16 +186,32 @@ export default function GeneralFeedback() {
 
         setLoading(true);
         try {
+            // Generate UPID for Student (or use existing behavior for others)
+            let finalPid = userData.pid || 'Anonymous';
+            let isAnonymousSubmission = false;
+
+            // Logic: Higher Authorities ALWAYS reveal name. Students can choose.
+            // Requirement: "submit by a upid... linked to student id... list of previous upids"
+            // This implies we generate a NEW UPID for this submission if it is anonymous/student.
+
+            if (userData.role === 'student' && !revealName) {
+                // Generate a Random 4-char hex string
+                const randomPart = Math.floor(Math.random() * 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+                finalPid = `UPID-${randomPart}`;
+                isAnonymousSubmission = true;
+            } else if (revealName) {
+                finalPid = null; // Will show Name
+            }
+
+            // 1. Submit Feedback
             await addDoc(collection(db, "general_feedback"), {
                 authorId: userData.uid,
-                // Logic: Higher Authorities (Institution/Teacher->Student) ALWAYS reveal name (pid: null)
-                // Students can choose to be anonymous (pid: exists)
-                authorPid: (userData.role === 'institution' || (userData.role === 'teacher' && targetPerson.type === 'Student') || revealName) ? null : (userData.pid || 'Anonymous'),
+                authorPid: finalPid, // Now uses the generated UPID
                 authorName: userData.name,
                 authorRole: userData.role,
                 targetId: targetPerson.id || targetPerson.uid,
                 targetName: targetPerson.name,
-                targetRole: targetPerson.type || 'User', // 'Student', 'Teacher'
+                targetRole: targetPerson.type || 'User',
                 behavior: r.behavior,
                 communication: r.communication,
                 bodyLanguage: r.bodyLanguage,
@@ -203,9 +219,24 @@ export default function GeneralFeedback() {
                 comment,
                 timestamp: serverTimestamp()
             });
-            alert("Feedback Submitted Successfully!");
-            // Switch to Read tab to see if we received anything? Or just go home.
-            // User flow: usually goes back.
+
+            // 2. If it was a Generated UPID, save to Student History
+            if (isAnonymousSubmission && userData.role === 'student') {
+                try {
+                    const userRef = doc(db, "users", userData.uid);
+                    await updateDoc(userRef, {
+                        upidHistory: arrayUnion({
+                            upid: finalPid,
+                            target: targetPerson.name,
+                            date: new Date() // Client timestamp for history display
+                        })
+                    });
+                } catch (histErr) {
+                    console.error("Failed to update UPID history", histErr);
+                }
+            }
+
+            alert("Feedback Submitted Successfully!" + (isAnonymousSubmission ? `\nYour Private ID: ${finalPid}` : ""));
             navigate(-1);
         } catch (e) {
             console.error(e);

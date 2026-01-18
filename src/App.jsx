@@ -29,8 +29,9 @@ const SelectFeedbackTarget = lazy(() => import('./pages/SelectFeedbackTarget'));
 const Notification = lazy(() => import('./pages/Notification'));
 const Timetable = lazy(() => import('./pages/Timetable'));
 const DownloadApp = lazy(() => import('./pages/DownloadApp'));
-import ProtectedRoute from './components/ProtectedRoute';
+const UpidHistory = lazy(() => import('./pages/UpidHistory'));
 
+import ProtectedRoute from './components/ProtectedRoute';
 const MainLayout = lazy(() => import('./components/MainLayout'));
 
 function App() {
@@ -67,12 +68,12 @@ function App() {
               {/* Student Only */}
               <Route element={<ProtectedRoute allowedRoles={['student']} />}>
                 <Route path="/student" element={<Student />} />
+                <Route path="/upid-history" element={<UpidHistory />} />
               </Route>
 
               {/* Teacher Only */}
               <Route element={<ProtectedRoute allowedRoles={['teacher']} />}>
                 <Route path="/teacher" element={<Teacher />} />
-
                 <Route path="/feedback-overview" element={<FeedbackOverview />} />
               </Route>
 
