@@ -62,17 +62,42 @@ export default function FacultyFeedback() {
             const oneYearAgo = new Date();
             oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
-            // REMOVED orderBy to prevent Index Errors (Missing Composite Index)
-            const q = query(
-                collection(db, "general_feedback"),
-                where("targetId", "==", teacher.id)
-            );
+            const queries = [
+                getDocs(query(collection(db, "general_feedback"), where("targetId", "==", teacher.id)))
+            ];
 
-            const snap = await getDocs(q);
-            const list = snap.docs
-                .map(d => ({ id: d.id, ...d.data() }))
-                .filter(f => f.timestamp && f.timestamp.toDate() >= oneYearAgo)
-                .sort((a, b) => b.timestamp?.seconds - a.timestamp?.seconds); // Client-side Sort
+            // If viewing Institution, also fetch Emergency Reports
+            if (teacher.isInstitution) {
+                queries.push(
+                    getDocs(query(collection(db, "emergency_reports"), where("institutionId", "==", teacher.id)))
+                );
+            }
+
+            const snapshots = await Promise.all(queries);
+            const feedbackSnap = snapshots[0];
+            const reportSnap = snapshots[1]; // Undefined if not institution
+
+            let list = feedbackSnap.docs
+                .map(d => ({ id: d.id, ...d.data(), isReport: false }))
+                .filter(f => f.timestamp && f.timestamp.toDate() >= oneYearAgo);
+
+            if (reportSnap) {
+                const reports = reportSnap.docs.map(d => ({
+                    id: d.id,
+                    ...d.data(),
+                    isReport: true,
+                    timestamp: d.data().createdAt // normalize timestamp for sort
+                }));
+                // Filter reports by date too if needed? Let's show all recent ones.
+                list = [...list, ...reports];
+            }
+
+            // Client-side Sort
+            list.sort((a, b) => {
+                const tA = a.timestamp?.seconds || 0;
+                const tB = b.timestamp?.seconds || 0;
+                return tB - tA;
+            });
 
             setFeedbacks(list);
         } catch (e) {
@@ -132,40 +157,82 @@ export default function FacultyFeedback() {
                                         <div className="text-center" style={{ padding: '40px', color: '#b2bec3' }}>No feedback received in the last year.</div>
                                     ) : (
                                         <div className="list-container">
-                                            {feedbacks.map(f => (
-                                                <div key={f.id} style={{
-                                                    padding: '15px', borderBottom: '1px solid #f1f2f6',
-                                                    display: 'flex', flexDirection: 'column', gap: '10px'
-                                                }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
-                                                        <div>
-                                                            <span style={{ fontWeight: 'bold', color: '#0984e3' }}>
-                                                                {f.authorPid ? (<span>🕵️ {f.authorPid}</span>) : (<span>👤 {f.authorName}</span>)}
-                                                            </span>
-                                                            <span style={{ color: '#636e72', marginLeft: '5px' }}>({f.authorRole})</span>
-                                                        </div>
-                                                        <div style={{ color: '#b2bec3', fontSize: '12px' }}>
-                                                            {f.timestamp?.toDate().toLocaleDateString()}
-                                                        </div>
-                                                    </div>
-
-                                                    <div style={{ display: 'flex', gap: '15px', fontSize: '13px', color: '#2d3436' }}>
-                                                        <span><strong>Behavior:</strong> {f.behavior?.stars}★</span>
-                                                        <span><strong>Comm:</strong> {f.communication?.stars}★</span>
-                                                        <span><strong>Body Lang:</strong> {f.bodyLanguage?.stars}★</span>
-                                                        <span><strong>Hardwork:</strong> {f.hardworking?.stars}★</span>
-                                                    </div>
-
-                                                    {f.comment && (
-                                                        <div style={{
-                                                            background: '#fff3cd', padding: '10px', borderRadius: '6px',
-                                                            fontSize: '13px', color: '#856404', fontStyle: 'italic'
+                                            {feedbacks.map(f => {
+                                                if (f.isReport) {
+                                                    return (
+                                                        <div key={f.id} style={{
+                                                            padding: '20px', border: '2px solid #ff7675', marginBottom: '15px',
+                                                            borderRadius: '12px', background: '#fff0f0'
                                                         }}>
-                                                            "{f.comment}"
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                                                <div>
+                                                                    <strong style={{ color: '#d63031', fontSize: '16px' }}>
+                                                                        {f.type === 'sexual_harassment' ? '🚨 SEXUAL HARASSMENT REPORT' : '⚠️ MISBEHAVIOR REPORT'}
+                                                                    </strong>
+                                                                    <span style={{ display: 'block', fontSize: '13px', color: '#636e72', marginTop: '4px' }}>
+                                                                        From: {f.authorName || 'Anonymous'} ({f.authorRole || 'Student'})
+                                                                    </span>
+                                                                </div>
+                                                                <span style={{ fontSize: '12px', color: '#b2bec3' }}>
+                                                                    {f.timestamp?.seconds ? new Date(f.timestamp.seconds * 1000).toLocaleDateString() : 'Just now'}
+                                                                </span>
+                                                            </div>
+
+                                                            <div style={{ marginBottom: '10px', fontSize: '14px', color: '#2d3436' }}>
+                                                                <span style={{ fontWeight: 'bold' }}>Accused:</span> {f.accusedName}
+                                                            </div>
+                                                            <div style={{ marginBottom: '10px', fontSize: '14px', color: '#2d3436' }}>
+                                                                <span style={{ fontWeight: 'bold' }}>Location:</span> {f.location}
+                                                            </div>
+
+                                                            <p style={{ margin: '5px 0', background: 'white', padding: '10px', border: '1px solid #ffdcdc', borderRadius: '5px', color: '#d63031' }}>
+                                                                "{f.description}"
+                                                            </p>
+
+                                                            {f.evidence && (
+                                                                <div style={{ marginTop: '10px' }}>
+                                                                    <a href={f.evidence} target="_blank" rel="noreferrer" style={{ color: '#0984e3', textDecoration: 'underline', fontSize: '14px' }}>View Evidence</a>
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                    )}
-                                                </div>
-                                            ))}
+                                                    );
+                                                } else {
+                                                    return (
+                                                        <div key={f.id} style={{
+                                                            padding: '15px', borderBottom: '1px solid #f1f2f6',
+                                                            display: 'flex', flexDirection: 'column', gap: '10px'
+                                                        }}>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                                                                <div>
+                                                                    <span style={{ fontWeight: 'bold', color: '#0984e3' }}>
+                                                                        {f.authorPid ? (<span>🕵️ {f.authorPid}</span>) : (<span>👤 {f.authorName}</span>)}
+                                                                    </span>
+                                                                    <span style={{ color: '#636e72', marginLeft: '5px' }}>({f.authorRole})</span>
+                                                                </div>
+                                                                <div style={{ color: '#b2bec3', fontSize: '12px' }}>
+                                                                    {f.timestamp?.toDate().toLocaleDateString()}
+                                                                </div>
+                                                            </div>
+
+                                                            <div style={{ display: 'flex', gap: '15px', fontSize: '13px', color: '#2d3436' }}>
+                                                                <span><strong>Behavior:</strong> {f.behavior?.stars}★</span>
+                                                                <span><strong>Comm:</strong> {f.communication?.stars}★</span>
+                                                                <span><strong>Body Lang:</strong> {f.bodyLanguage?.stars}★</span>
+                                                                <span><strong>Hardwork:</strong> {f.hardworking?.stars}★</span>
+                                                            </div>
+
+                                                            {f.comment && (
+                                                                <div style={{
+                                                                    background: '#fff3cd', padding: '10px', borderRadius: '6px',
+                                                                    fontSize: '13px', color: '#856404', fontStyle: 'italic'
+                                                                }}>
+                                                                    "{f.comment}"
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                }
+                                            })}
                                         </div>
                                     )}
                                 </>
