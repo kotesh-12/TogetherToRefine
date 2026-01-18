@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function Report({ type }) { // type: 'sexual_harassment' or 'misbehavior'
     const navigate = useNavigate();
+    const location = useLocation();
+
     const [formData, setFormData] = useState({
         incidentDate: '',
         location: '',
@@ -17,16 +19,15 @@ export default function Report({ type }) { // type: 'sexual_harassment' or 'misb
     });
 
     useEffect(() => {
-        // Since we are moving to React, we generally fetch user details from Context or Firestore
-        // For now, we simulate legacy behavior of reading local storage if available, or defaulting
-        // In a real app, use auth context.
-        setFormData(prev => ({
-            ...prev,
-            // Mock data or read from a user profile state if we had it globally
-            age: '',
-            gender: ''
-        }));
-    }, []);
+        // Pre-fill if target passed via navigation
+        if (location.state?.target) {
+            const t = location.state.target;
+            setFormData(prev => ({
+                ...prev,
+                accusedName: t.name || t.targetName || t.personName || ''
+            }));
+        }
+    }, [location.state]);
 
     const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
