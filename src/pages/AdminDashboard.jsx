@@ -18,6 +18,41 @@ export default function AdminDashboard() {
     const [activeTab, setActiveTab] = useState('overview');
     const [allInstitutions, setAllInstitutions] = useState([]);
     const [showInstModal, setShowInstModal] = useState(false);
+    const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+    const [allFeedbacks, setAllFeedbacks] = useState([]);
+
+    // Fetch Feedbacks when Modal Opens
+    useEffect(() => {
+        if (!showFeedbackModal) return;
+
+        const fetchAllFeedbacks = async () => {
+            // 1. Fetch General Feedbacks
+            // 2. Fetch Emergency Reports
+            try {
+                const [fbSnap, repSnap] = await Promise.all([
+                    getDocs(query(collection(db, "general_feedback"), orderBy("timestamp", "desc"))),
+                    getDocs(query(collection(db, "emergency_reports"), orderBy("createdAt", "desc")))
+                ]);
+
+                let merged = [];
+                fbSnap.forEach(d => merged.push({ id: d.id, isReport: false, ...d.data() }));
+                repSnap.forEach(d => merged.push({ id: d.id, isReport: true, ...d.data(), timestamp: d.data().createdAt }));
+
+                // Sort merged list
+                merged.sort((a, b) => {
+                    const tA = a.timestamp?.seconds || 0;
+                    const tB = b.timestamp?.seconds || 0;
+                    return tB - tA;
+                });
+
+                setAllFeedbacks(merged);
+            } catch (e) {
+                console.error("Error fetching all feedbacks", e);
+            }
+        };
+
+        fetchAllFeedbacks();
+    }, [showFeedbackModal]);
 
     useEffect(() => {
         const fetchGlobalStats = async () => {
@@ -117,10 +152,16 @@ export default function AdminDashboard() {
                         <span style={{ color: '#636e72' }}>Institutions</span>
                         <div style={{ fontSize: '12px', color: '#b2bec3', marginTop: '5px' }}>Click to view details</div>
                     </div>
-                    <div className="card text-center" style={{ padding: '30px', borderLeft: '5px solid #fdcb6e' }}>
+                    <div className="card text-center"
+                        onClick={() => setShowFeedbackModal(true)}
+                        style={{ padding: '30px', borderLeft: '5px solid #fdcb6e', cursor: 'pointer', transition: 'transform 0.2s' }}
+                        onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                        onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                    >
                         <div style={{ fontSize: '40px', color: '#fdcb6e' }}>💬</div>
                         <h2 style={{ margin: '10px 0', fontSize: '30px' }}>{stats.feedbacks}</h2>
                         <span style={{ color: '#636e72' }}>Total Feedbacks</span>
+                        <div style={{ fontSize: '12px', color: '#b2bec3', marginTop: '5px' }}>Click to view all</div>
                     </div>
                 </div>
 
@@ -151,9 +192,7 @@ export default function AdminDashboard() {
                     <div className="card" style={{ flex: 1 }}>
                         <h3>System Tools</h3>
                         <div style={{ display: 'grid', gap: '10px' }}>
-                            <button className="btn" style={{ background: '#636e72' }} onClick={() => navigate('/general-feedback')}>
-                                📄 View Global Feedbacks
-                            </button>
+                            {/* Removed generic view button as the card is now clickable */}
                             <button className="btn" style={{ background: '#2d3436' }}>
                                 🔧 Site Settings (Coming Soon)
                             </button>
@@ -162,6 +201,80 @@ export default function AdminDashboard() {
                 </div>
 
             </div>
+
+            {/* Feedback List Modal */}
+            {showFeedbackModal && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.8)', zIndex: 2000,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                    <div className="card" style={{ width: '90%', maxWidth: '900px', maxHeight: '85vh', overflowY: 'auto', position: 'relative' }}>
+                        <button
+                            onClick={() => setShowFeedbackModal(false)}
+                            style={{
+                                position: 'absolute', top: '15px', right: '15px',
+                                background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer'
+                            }}
+                        >
+                            &times;
+                        </button>
+                        <h2 style={{ marginTop: 0, borderBottom: '1px solid #eee', paddingBottom: '15px' }}>Global Feedback & Reports</h2>
+
+                        <div style={{ display: 'grid', gap: '15px', marginTop: '20px' }}>
+                            {allFeedbacks.length === 0 ? <p className="text-center text-muted">Loading or No Feedbacks...</p> : allFeedbacks.map(f => {
+                                if (f.isReport) {
+                                    // Emergency Report Card
+                                    return (
+                                        <div key={f.id} style={{ padding: '20px', border: '2px solid #ff7675', borderRadius: '12px', background: '#fff0f0' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                                <div>
+                                                    <strong style={{ color: '#d63031', fontSize: '16px' }}>
+                                                        {f.type === 'sexual_harassment' ? '🚨 SEXUAL HARASSMENT REPORT' : '⚠️ MISBEHAVIOR REPORT'}
+                                                    </strong>
+                                                    <span style={{ display: 'block', fontSize: '13px', color: '#636e72', marginTop: '4px' }}>
+                                                        From: {f.authorName || 'Anonymous'} | Inst: {f.institutionName || 'Unknown'}
+                                                    </span>
+                                                </div>
+                                                <span style={{ fontSize: '12px', color: '#b2bec3' }}>{f.createdAt?.seconds ? new Date(f.createdAt.seconds * 1000).toLocaleDateString() : 'Just now'}</span>
+                                            </div>
+
+                                            <div style={{ marginBottom: '5px' }}><strong>Accused:</strong> {f.accusedName}</div>
+                                            <div style={{ marginBottom: '10px' }}><strong>Location:</strong> {f.location}</div>
+
+                                            <p style={{ margin: '5px 0', background: 'white', padding: '10px', border: '1px solid #ffdcdc', borderRadius: '5px', color: '#d63031' }}>
+                                                "{f.description}"
+                                            </p>
+                                        </div>
+                                    );
+                                } else {
+                                    // Standard Feedback Card
+                                    return (
+                                        <div key={f.id} style={{ padding: '20px', border: '1px solid #eee', borderRadius: '12px', background: '#f9f9f9' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                                <div>
+                                                    <strong>{f.authorName || "Anonymous"}</strong> <span style={{ fontSize: '12px', color: '#636e72' }}> to {f.targetName || 'Institution'}</span>
+                                                </div>
+                                                <span style={{ fontSize: '12px', color: '#b2bec3' }}>{f.timestamp?.seconds ? new Date(f.timestamp.seconds * 1000).toLocaleDateString() : 'Just now'}</span>
+                                            </div>
+
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
+                                                {['behavior', 'communication', 'bodyLanguage', 'hardworking'].map(cat => f[cat] ? (
+                                                    <span key={cat} style={{ fontSize: '12px', background: '#e3f2fd', padding: '5px 10px', borderRadius: '15px' }}>
+                                                        {cat.charAt(0).toUpperCase() + cat.slice(1)}: <strong>{f[cat].stars}★</strong>
+                                                    </span>
+                                                ) : null)}
+                                            </div>
+
+                                            {f.comment && <p style={{ margin: '5px 0', fontStyle: 'italic', color: '#2d3436' }}>"{f.comment}"</p>}
+                                        </div>
+                                    );
+                                }
+                            })}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Institution List Modal */}
             {showInstModal && (
