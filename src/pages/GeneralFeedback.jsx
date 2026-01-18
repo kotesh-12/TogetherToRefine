@@ -310,6 +310,17 @@ export default function GeneralFeedback() {
                     >
                         📝 Give Feedback
                     </button>
+                    <button
+                        onClick={() => navigate('/report-misbehavior', { state: { target: targetPerson } })}
+                        style={{
+                            flex: 1, padding: '12px', borderRadius: '10px', border: 'none',
+                            background: '#ff7675',
+                            boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+                            fontWeight: 'bold', cursor: 'pointer', color: 'white'
+                        }}
+                    >
+                        ⚠️ Misbehavior
+                    </button>
                 </div>
 
                 {activeTab === 'write' ? (
