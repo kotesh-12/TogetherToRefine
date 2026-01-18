@@ -26,6 +26,7 @@ export default function InstitutionDetailsAdmin() {
         const fetchData = async () => {
             try {
                 // 1. Fetch Institution Profile
+                console.log("Fetching Institution:", id);
                 const instRef = doc(db, "institutions", id);
                 const instSnap = await getDoc(instRef);
                 if (!instSnap.exists()) {
@@ -33,38 +34,42 @@ export default function InstitutionDetailsAdmin() {
                     navigate('/admin');
                     return;
                 }
-                setInstData(instSnap.data());
+                const iData = instSnap.data();
+                setInstData(iData);
 
-                // 2. Fetch Related Data (Parallel)
-                // Assuming 'institutionId' field exists in users and teachers collections
-                const [studentsSnap, teachersSnap, feedbacksSnap] = await Promise.all([
-                    getDocs(query(collection(db, "users"), where("institutionId", "==", id))),
-                    getDocs(query(collection(db, "teachers"), where("institutionId", "==", id))),
-                    getDocs(query(collection(db, "general_feedback"), where("targetId", "==", id))) // Assuming feedbacks target institution
-                ]);
+                // 2. Fetch Students
+                try {
+                    const studentsSnap = await getDocs(query(collection(db, "users"), where("institutionId", "==", id)));
+                    setStats(prev => ({ ...prev, students: studentsSnap.size }));
+                    const sList = [];
+                    studentsSnap.forEach(d => sList.push({ id: d.id, ...d.data() }));
+                    setStudentList(sList);
+                } catch (e) { console.error("Error fetching students:", e); }
 
-                // Process Students
-                setStats(prev => ({ ...prev, students: studentsSnap.size }));
-                const sList = [];
-                studentsSnap.forEach(d => sList.push({ id: d.id, ...d.data() }));
-                setStudentList(sList);
+                // 3. Fetch Teachers
+                try {
+                    const teachersSnap = await getDocs(query(collection(db, "teachers"), where("institutionId", "==", id)));
+                    setStats(prev => ({ ...prev, teachers: teachersSnap.size }));
+                    const tList = [];
+                    teachersSnap.forEach(d => tList.push({ id: d.id, ...d.data() }));
+                    setTeacherList(tList);
+                } catch (e) { console.error("Error fetching teachers:", e); }
 
-                // Process Teachers
-                setStats(prev => ({ ...prev, teachers: teachersSnap.size }));
-                const tList = [];
-                teachersSnap.forEach(d => tList.push({ id: d.id, ...d.data() }));
-                setTeacherList(tList);
-
-                // Process Feedbacks
-                setStats(prev => ({ ...prev, feedbacks: feedbacksSnap.size }));
-                const fList = [];
-                feedbacksSnap.forEach(d => fList.push({ id: d.id, ...d.data() }));
-                // Sort client-side
-                fList.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
-                setFeedbackList(fList);
+                // 4. Fetch Feedbacks (Directly targeting this Institution)
+                try {
+                    console.log("Fetching Feedback for Target ID:", id);
+                    const feedbacksSnap = await getDocs(query(collection(db, "general_feedback"), where("targetId", "==", id)));
+                    console.log("Feedback Count:", feedbacksSnap.size);
+                    setStats(prev => ({ ...prev, feedbacks: feedbacksSnap.size }));
+                    const fList = [];
+                    feedbacksSnap.forEach(d => fList.push({ id: d.id, ...d.data() }));
+                    // Client-side Sort
+                    fList.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+                    setFeedbackList(fList);
+                } catch (e) { console.error("Error fetching feedback:", e); }
 
             } catch (e) {
-                console.error("Error fetching details:", e);
+                console.error("Error in main fetch:", e);
             } finally {
                 setLoading(false);
             }
