@@ -442,12 +442,14 @@ export default function Attendance() {
         }
     };
 
+    const backPath = role === 'student' ? '/student' : (role === 'teacher' ? '/teacher' : (role === 'institution' ? '/institution' : '/'));
+
     // --- STUDENT VIEW ---
     if (role === 'student') {
         return (
             <div className="page-wrapper">
                 <AIBadge />
-                <AnnouncementBar title="My Attendance" leftIcon="back" />
+                <AnnouncementBar title="My Attendance" leftIcon="back" backPath={backPath} />
                 <div className="container" style={{ maxWidth: '800px', margin: '20px auto' }}>
 
                     {/* Overall Score Card */}
@@ -487,7 +489,7 @@ export default function Attendance() {
     return (
         <div className="page-wrapper">
             <AIBadge />
-            <AnnouncementBar title={role === 'institution' ? "Institution Attendance" : "Attendance Manager"} leftIcon="back" />
+            <AnnouncementBar title={role === 'institution' ? "Institution Attendance" : "Attendance Manager"} leftIcon="back" backPath={backPath} />
 
             <div className="container" style={{ maxWidth: '900px', margin: '20px auto' }}>
 
