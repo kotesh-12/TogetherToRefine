@@ -4,7 +4,8 @@ import { auth, db } from '../firebase';
 import { doc, getDoc, collection, getDocs, addDoc, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import AnnouncementBar from '../components/AnnouncementBar';
-
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { useUser } from '../context/UserContext';
 
 export default function TTRAI() {
     const navigate = useNavigate();
@@ -14,6 +15,10 @@ export default function TTRAI() {
     const [userContext, setUserContext] = useState(null);
     const messagesEndRef = useRef(null);
     const [currentUser, setCurrentUser] = useState(null);
+
+    // Initialize Gemini Client
+    const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+    const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 
     // Cleanup Speech on Unmount
     useEffect(() => {
@@ -31,51 +36,92 @@ export default function TTRAI() {
     }, [messages]);
 
     // 1. Auth & Context Loading
+    // 1. Auth & Context Loading
+    const { userData } = useUser();
+
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (user) {
                 setCurrentUser(user);
-                // Fetch User Context for the AI
-                let context = {};
-                let userDoc = await getDoc(doc(db, "users", user.uid));
 
-                if (!userDoc.exists()) {
-                    userDoc = await getDoc(doc(db, "institutions", user.uid));
-                }
+                // Build Context
+                let context = {
+                    role: 'User',
+                    name: 'User',
+                    class: 'N/A',
+                    gender: 'N/A',
+                    upcomingEvents: [],
+                    adminData: null
+                };
 
-                // Fallback check for teachers if not found in users/institutions
-                if (!userDoc.exists()) {
-                    userDoc = await getDoc(doc(db, "teachers", user.uid));
-                }
-
-                if (userDoc.exists()) {
-                    const data = userDoc.data();
-
-                    // Fetch upcoming exams/opportunities
-                    const eventsSnap = await getDocs(collection(db, "opportunities"));
-                    const events = [];
-                    eventsSnap.forEach(e => events.push(e.data()));
-
+                // Use UserData from Context if available
+                if (userData) {
                     context = {
-                        role: data.role || 'unknown',
-                        class: data.class || 'N/A',
-                        gender: data.gender || 'N/A',
-                        name: data.name || data.schoolName || 'User',
-                        upcomingEvents: events
+                        role: userData.role || 'User',
+                        name: userData.name || userData.schoolName || userData.principalName || 'User',
+                        class: userData.class || 'N/A',
+                        gender: userData.gender || 'N/A',
+                        upcomingEvents: [],
+                        adminData: null
                     };
+                } else {
+                    // Fallback for Admin or specialized roles
+                    if (user.email === 'admin@ttr.com' || userData?.role === 'admin') {
+                        context.role = 'System Admin';
+                        context.name = 'Admin';
+                    }
                 }
+
+                try {
+                    // 1. Fetch upcoming exams (for students)
+                    if (context.role !== 'System Admin' && context.role !== 'admin') {
+                        const eventsSnap = await getDocs(collection(db, "opportunities"));
+                        const events = [];
+                        eventsSnap.forEach(e => events.push(e.data()));
+                        context.upcomingEvents = events;
+                    }
+
+                    // 2. ADMIN SPECIAL: Fetch Feedback & Reports for "Monitoring"
+                    if (context.role === 'System Admin' || context.role === 'admin') {
+                        // Fetch latest feedback/reports to feed to AI
+                        const feedSnap = await getDocs(query(collection(db, "general_feedback"), orderBy("timestamp", "desc"), limit(5)));
+                        const repSnap = await getDocs(query(collection(db, "emergency_reports"), orderBy("createdAt", "desc"), limit(5)));
+
+                        const feedbacks = feedSnap.docs.map(d => {
+                            const data = d.data();
+                            return `- Feedback from ${data.authorName} (${data.role}): "${data.comment || "No text"}" (Type: ${data.type || 'General'})`;
+                        });
+                        const reports = repSnap.docs.map(d => {
+                            const data = d.data();
+                            return `- URGENT REPORT: ${data.description} (Location: ${data.location})`;
+                        });
+
+                        context.adminData = {
+                            recentActivity: [...feedbacks, ...reports],
+                            stats: {
+                                feedbackCount: feedSnap.size,
+                                reportCount: repSnap.size
+                            }
+                        };
+                    }
+
+                } catch (e) {
+                    console.log("Could not fetch context data", e);
+                }
+
                 setUserContext(context);
             } else {
                 navigate('/');
             }
         });
         return () => unsubscribe();
-    }, [navigate]);
+    }, [navigate, userData]);
 
     // 2. Chat History Listener
     useEffect(() => {
         if (!currentUser) return;
 
+        // Admin or any user chat history
         const q = query(
             collection(db, 'ai_chats', currentUser.uid, 'messages'),
             orderBy('createdAt', 'desc'),
@@ -83,15 +129,19 @@ export default function TTRAI() {
         );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const loadedMsgs = snapshot.docs.map(doc => doc.data()).reverse(); // Reverse because we fetched DESC
+            const loadedMsgs = snapshot.docs.map(doc => doc.data()).reverse();
 
             if (loadedMsgs.length === 0) {
                 setMessages([
-                    { text: "Hello! I am TTR AI. I'm here to help you with your educational journey. How can I assist you today?", sender: 'ai' }
+                    { text: "Hello! I am TTR AI. How can I assist you today?", sender: 'ai' }
                 ]);
             } else {
                 setMessages(loadedMsgs);
             }
+        }, (error) => {
+            console.error("Chat History Error:", error);
+            // If permission denied or other error, fallback to empty
+            setMessages([{ text: "Welcome! (Chat history unavailable)", sender: 'ai' }]);
         });
 
         return () => unsubscribe();
@@ -99,6 +149,39 @@ export default function TTRAI() {
 
 
     const generateSystemPrompt = (context) => {
+        // --- ADMIN PERSONA ---
+        if (context?.role === 'System Admin' || context?.role === 'admin') {
+            return `
+            You are the "TTR Co-Pilot", a Chief Technology & Strategy Assistant for "TogetherToRefine".
+            You are speaking to the Administrator/Owner of the platform.
+
+            **Your Core Capabilities & Guidelines:**
+            
+            1. **System Health & Monitoring**:
+               - I have provided you the latest user reports below. Use them to "monitor" the platform status.
+               - IF users report bugs, assume them as technical priorities and suggest potential code fixes or investigations.
+               - IF reports are serious (harassment), advise immediately.
+            
+            2. **Growth & Promotion Strategist**:
+               - Suggest actionable ways to promote TTR to Schools, Teachers, and Students in India.
+               - Create marketing copy or social media campaign ideas if asked.
+
+            3. **Feature Innovation**:
+               - Propose new features to keep TTR competitive (Gamification, AI Tutors, Parent Portals, etc.).
+               - Prioritize features that drive engagement.
+            
+            4. **Bug Fixing Partner**:
+               - If the admin describes a bug or pastes code, YOU MUST ACT AS A SENIOR DEVELOPER.
+               - Analyze the issue, explain the root cause, and provide the EXACT code fix or steps to resolve it.
+            
+            **Current System Status (monitor logs):**
+            - Recent Feedbacks/Reports:
+              ${context.adminData?.recentActivity?.length > 0 ? context.adminData.recentActivity.join('\n') : "No recent critical reports logged."}
+            
+            **Tone**: Strategic, Technical, and Leadership-oriented. You are a partner, not just a support bot.
+            `;
+        }
+
         return `
             You are TTR AI, an intelligent educational assistant.
             
@@ -188,6 +271,7 @@ export default function TTRAI() {
         if (isListening) {
             setIsListening(false);
             return;
+            // Voice Input Continued
         }
 
         const recognition = new window.webkitSpeechRecognition();
@@ -239,19 +323,17 @@ export default function TTRAI() {
         }
     };
 
-    // Initialize Gemini AI Client: REMOVED (Reverting to Backend)
-    // const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-
-    // ... (restored code)
 
     const handleSend = async () => {
         if (!input.trim() && !selectedImage) return;
         if (!currentUser) return;
 
         let finalInput = input;
+
+        // System Prompt Construction
         let systemCtx = generateSystemPrompt(userContext);
 
-        // 1. Link Analysis (Smart Notes)
+        // 1. Link Analysis (Smart Notes) - Backend Proxy Fallback
         const urlRegex = /(https?:\/\/[^\s]+)/g;
         const urls = input.match(urlRegex);
 
@@ -277,7 +359,8 @@ export default function TTRAI() {
         setLoading(true);
 
         try {
-            // If URL found, fetch content (Backend Proxy)
+            // If URL found, Try fetch content (Backend Proxy)
+            // If backend is down, this will fail silently and we proceed with just text
             if (urls && urls.length > 0) {
                 const url = urls[0];
                 try {
@@ -286,13 +369,14 @@ export default function TTRAI() {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ url: urls[0] })
                     });
-                    const fetchData = await fetchRes.json();
-
-                    if (fetchData.content) {
-                        systemCtx += `\n\n**CONTEXT FROM LINK (${urls[0]})**:\n"${fetchData.content}"\n\nUser Question: ${finalInput}\n(Answer based on the link content if relevant)`;
+                    if (fetchRes.ok) {
+                        const fetchData = await fetchRes.json();
+                        if (fetchData.content) {
+                            systemCtx += `\n\n**CONTEXT FROM LINK (${urls[0]})**:\n"${fetchData.content}"\n\nUser Question: ${finalInput}\n(Answer based on the link content if relevant)`;
+                        }
                     }
                 } catch (e) {
-                    console.error("Link fetch failed", e);
+                    console.warn("Link fetch skipped: Backend may be offline.", e);
                 }
             }
 
@@ -304,60 +388,62 @@ export default function TTRAI() {
                 `;
             }
 
-            // BUILD HISTORY FROM PREVIOUS MESSAGES (Filter errors)
-            const previousHistory = messages
+            // --- CLIENT SIDE GENERATION ---
+            if (!genAI) {
+                throw new Error("API Key Not Found. Please check .env file.");
+            }
+
+            // Use gemini-1.5-flash for speed and reliability, or gemini-2.0-flash-exp if validated
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+
+            // Construct History for Client SDK
+            const history = messages
                 .filter(m => !m.isError)
-                .slice(-10)
+                .slice(-10) // Limit context
                 .map(m => ({
                     role: m.sender === 'user' ? 'user' : 'model',
                     parts: [{ text: m.text }]
                 }));
 
-            const history = [
-                { role: "user", parts: [{ text: systemCtx }] },
-                { role: "model", parts: [{ text: "Understood. I am ready." }] },
-                ...previousHistory
-            ];
+            // Add System Prompt as the first history item or as a separate systemInstruction if model supports it
+            // Gemini 1.5 supports systemInstruction.
 
-            // ... inside handleSend ...
+            const chatValues = {
+                history: history,
+                systemInstruction: systemCtx
+            };
 
-            try {
-                const response = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        history: history,
-                        message: finalInput || "Explain this image",
-                        image: imageToSend ? imageToSend.split(',')[1] : null,
-                        mimeType: imageToSend ? imageToSend.split(';')[0].split(':')[1] : null
-                    })
+            const chat = model.startChat(chatValues);
+
+            let parts = [{ text: finalInput || " " }];
+
+            // Handle Image
+            if (imageToSend) {
+                // imageToSend is "data:image/jpeg;base64,......"
+                // Extract base64 and mimeType
+                const [header, base64Data] = imageToSend.split(',');
+                const mimeType = header.match(/:(.*?);/)[1];
+
+                parts.push({
+                    inlineData: {
+                        data: base64Data,
+                        mimeType: mimeType
+                    }
                 });
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error("Backend Error: " + errorText);
-                }
-                const data = await response.json();
-                saveMessage({ text: data.text, sender: 'ai' });
-
-            } catch (backendError) {
-                console.error("AI Request Failed:", backendError);
-                let errorMsg = "Unable to connect to AI Server. Please ensure the backend server is running on port 5000.";
-
-                // If it's a backend error (e.g. 500), show that instead
-                if (backendError.message.includes("Backend Error")) {
-                    errorMsg = backendError.message;
-                }
-
-                setMessages(prev => [...prev, {
-                    text: `Error: ${errorMsg}`,
-                    sender: 'ai',
-                    isError: true
-                }]);
             }
+
+            const result = await chat.sendMessage(parts);
+            const responseText = result.response.text();
+
+            saveMessage({ text: responseText, sender: 'ai' });
+
         } catch (error) {
-            console.error("General Error:", error);
-            setMessages(prev => [...prev, { text: "Error: " + error.message, sender: 'ai', isError: true }]);
+            console.error("AI Error:", error);
+            let errorMsg = "I'm having trouble connecting right now. Please try again later.";
+            if (error.message.includes("API Key")) errorMsg = "Configuration Error: API Key missing.";
+
+            setMessages(prev => [...prev, { text: `Error: ${errorMsg} (${error.message})`, sender: 'ai', isError: true }]);
         } finally {
             setLoading(false);
         }

@@ -7,7 +7,7 @@ import { useUser } from '../context/UserContext';
 export default function TopBar({ title, leftIcon = 'home', backPath }) {
     const navigate = useNavigate();
     const location = useLocation();
-    const { userData } = useUser();
+    const { userData, user } = useUser();
     const [announcement, setAnnouncement] = useState('Welcome to TTR!');
 
 
@@ -28,21 +28,80 @@ export default function TopBar({ title, leftIcon = 'home', backPath }) {
     };
 
     useEffect(() => {
-        const q = query(collection(db, "announcements"), orderBy("createdAt", "desc"), limit(1));
+        if (!userData) return;
+
+        // Fetch multiple recent announcements to filter client-side
+        const q = query(collection(db, "announcements"), orderBy("createdAt", "desc"), limit(20));
+
         const unsubscribe = onSnapshot(q, (snapshot) => {
             if (!snapshot.empty) {
-                const data = snapshot.docs[0].data();
-                // Filter by Target Class/Section if user is student
-                // (Simplified display logic for now)
-                let text = data.text;
-                if (data.authorName) text = `${data.authorName}: ${text}`;
-                setAnnouncement(text);
+                const announcements = snapshot.docs.map(d => d.data());
 
+                // Find the first relevant announcement
+                const relevant = announcements.find(a => {
+                    // Global announcements are for everyone
+                    if (a.type === 'global') return true;
 
+                    // Filtering based on Role
+                    // Filtering based on Role
+                    if ((userData && userData.role === 'admin') || (user && user.email === 'admin@ttr.com')) {
+                        return false;
+                    }
+
+                    if (userData.role === 'student') {
+                        // Matches Class AND (Section is 'All' OR Section Matches)
+                        // Cast to string for comparison safety
+                        const userClass = userData.class?.toString();
+                        const targetClass = a.targetClass?.toString();
+
+                        if (a.targetClass === 'All' || targetClass === userClass) {
+                            if (a.targetSection === 'All' || a.targetSection === userData.section) {
+                                return true;
+                            }
+                        }
+                        return false;
+                    }
+
+                    if (userData.role === 'teacher') {
+                        // Teachers see announcements for their assigned class or from their institution
+                        // Or simply all announcements from their institution?
+                        // For now, let's allow them to see what their students see + Institution posts
+                        if (a.role === 'institution') return true;
+
+                        // Own announcements?
+                        if (a.authorId === userData.uid) return true;
+
+                        return false;
+                    }
+
+                    if (userData.role === 'institution') {
+                        // Institution sees what they posted
+                        if (a.authorId === userData.uid) return true;
+                        return false;
+                    }
+
+                    return false;
+                });
+
+                if (relevant) {
+                    let text = relevant.text;
+                    if (relevant.authorName) text = `${relevant.authorName}: ${text}`;
+                    setAnnouncement(text);
+                } else {
+                    // Fallback to latest GLobal if none found, or default
+                    const latestGlobal = announcements.find(a => a.type === 'global');
+                    if (latestGlobal) {
+                        let text = latestGlobal.text;
+                        if (latestGlobal.authorName) text = `${latestGlobal.authorName}: ${text}`;
+                        setAnnouncement(text);
+                    } else {
+                        setAnnouncement('Welcome to TTR!');
+                    }
+                }
             }
         });
         return () => unsubscribe();
-    }, []);
+    }, [userData, user]);
 
     // Check if running in standalone mode (already installed)
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
