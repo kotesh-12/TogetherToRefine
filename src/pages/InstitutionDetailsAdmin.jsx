@@ -129,12 +129,18 @@ export default function InstitutionDetailsAdmin() {
                             <div style={{ marginBottom: '15px' }}>
                                 <div style={{ fontSize: '12px', color: '#b2bec3' }}>Principal</div>
                                 <div style={{ fontSize: '16px', fontWeight: 'bold' }}>{instData.principalName}</div>
-                                <div style={{ fontSize: '14px' }}>{instData.principalPhone || 'No Phone'}</div>
+                                <div style={{ fontSize: '14px' }}>
+                                    {instData.principalPhone || instData.phoneNumber || 'No Phone'}
+                                    {instData.principalLink && <a href={instData.principalLink} target="_blank" rel="noreferrer" style={{ display: 'block', fontSize: '12px' }}>View Profile</a>}
+                                </div>
                             </div>
                             <div style={{ marginBottom: '15px' }}>
                                 <div style={{ fontSize: '12px', color: '#b2bec3' }}>Chairman</div>
                                 <div style={{ fontSize: '16px', fontWeight: 'bold' }}>{instData.chairmanName || 'N/A'}</div>
-                                <div style={{ fontSize: '14px' }}>{instData.chairmanPhone || 'No Phone'}</div>
+                                <div style={{ fontSize: '14px' }}>
+                                    {instData.chairmanPhone || instData.phoneNumber || 'No Phone'}
+                                    {instData.chairmanLink && <a href={instData.chairmanLink} target="_blank" rel="noreferrer" style={{ display: 'block', fontSize: '12px' }}>View Profile</a>}
+                                </div>
                             </div>
                         </div>
 
@@ -150,7 +156,13 @@ export default function InstitutionDetailsAdmin() {
                             </div>
                             <div style={{ marginBottom: '15px' }}>
                                 <div style={{ fontSize: '12px', color: '#b2bec3' }}>Nearest Police Station</div>
-                                <div>{instData.policeStation || 'Not Listed'}</div>
+                                <div>{instData.localPoliceName || instData.policeStation || 'Not Listed'}</div>
+                                <div>{instData.localPolicePhone}</div>
+                            </div>
+                            <div style={{ marginBottom: '15px' }}>
+                                <div style={{ fontSize: '12px', color: '#b2bec3' }}>Official Contact</div>
+                                <div>Ph: {instData.phoneNumber}</div>
+                                {instData.whatsappNumber && <div>WA: {instData.whatsappNumber}</div>}
                             </div>
                         </div>
 
@@ -171,6 +183,10 @@ export default function InstitutionDetailsAdmin() {
                         </div>
                     </div>
                 )}
+
+                {/* ... (Teachers & Students blocks remain same, skipping them in replacement if possible, but MultiReplace might need exact chunks) */}
+                {/* I will use the MultiReplace tool logic effectively or just replace the Overview and Feedback blocks separately if they were contiguous, but they are not. */}
+                {/* Actually, I handle 'overview' above. I'll handle 'feedback' in a separate chunk or same tool call. */}
 
                 {activeTab === 'teachers' && (
                     <div className="card">
@@ -220,15 +236,25 @@ export default function InstitutionDetailsAdmin() {
                     <div className="card">
                         <h3>💬 Institution Feedback ({feedbackList.length})</h3>
                         {feedbackList.length === 0 ? <p>No feedback received yet.</p> : (
-                            <div>
+                            <div style={{ display: 'grid', gap: '15px' }}>
                                 {feedbackList.map(f => (
-                                    <div key={f.id} style={{ padding: '15px', borderBottom: '1px solid #eee' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                                            <strong>{f.authorName || "Anonymous"}</strong>
-                                            <span style={{ fontSize: '12px', color: '#b2bec3' }}>{new Date(f.timestamp?.seconds * 1000).toLocaleDateString()}</span>
+                                    <div key={f.id} style={{ padding: '20px', border: '1px solid #eee', borderRadius: '12px', background: '#fff' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                            <div>
+                                                <strong>{f.authorName || "Anonymous"}</strong> <span style={{ fontSize: '12px', color: '#636e72' }}>({f.authorRole || 'User'})</span>
+                                            </div>
+                                            <span style={{ fontSize: '12px', color: '#b2bec3' }}>{f.timestamp?.seconds ? new Date(f.timestamp.seconds * 1000).toLocaleDateString() : 'Just now'}</span>
                                         </div>
-                                        <p style={{ margin: '5px 0' }}>{f.comment}</p>
-                                        <div style={{ fontSize: '12px', color: '#0984e3' }}>Rating: {f.rating}/5</div>
+
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
+                                            {['behavior', 'communication', 'bodyLanguage', 'hardworking'].map(cat => f[cat] ? (
+                                                <span key={cat} style={{ fontSize: '12px', background: '#f1f2f6', padding: '5px 10px', borderRadius: '15px' }}>
+                                                    {cat.charAt(0).toUpperCase() + cat.slice(1)}: <strong>{f[cat].stars}★</strong>
+                                                </span>
+                                            ) : null)}
+                                        </div>
+
+                                        {f.comment && <p style={{ margin: '5px 0', fontStyle: 'italic', color: '#2d3436' }}>"{f.comment}"</p>}
                                     </div>
                                 ))}
                             </div>
