@@ -110,6 +110,29 @@ export default function Details() {
             return;
         }
 
+        // STRICT VALIDATION: Ensure critical fields are filled based on role
+        if (!role) {
+            alert("Please select a role.");
+            return;
+        }
+
+        if (role === 'student') {
+            if (!formData.firstName || !formData.class || !formData.institutionId || !formData.dob) {
+                alert("Please fill all required fields (Name, Class, Institution, DOB).");
+                return;
+            }
+        } else if (role === 'teacher') {
+            if (!formData.firstName || !formData.subject || !formData.institutionId) {
+                alert("Please fill all required fields (Name, Subject, Institution).");
+                return;
+            }
+        } else if (role === 'institution') {
+            if (!formData.schoolName || !formData.phoneNumber) {
+                alert("Please fill all required fields (School Name, Phone).");
+                return;
+            }
+        }
+
         try {
             // Cleanup: If we are saving as Teacher or Institution, ensure we don't have a record in 'users' that blocks correct login
             if (role === 'teacher' || role === 'institution') {
@@ -175,8 +198,8 @@ export default function Details() {
                     navigate('/pending-approval');
                     return;
                 } else {
-                    // If no institution selected (e.g. independent), approve immediately?
-                    // Currently required field, but safe fallback:
+                    // Valid case: No institution selected (if allowed). But we made it required above.
+                    // Fallback to approved
                     await setDoc(doc(db, collectionName, userId), { approved: true }, { merge: true });
                 }
             } else {
