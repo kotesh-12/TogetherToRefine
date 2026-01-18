@@ -233,7 +233,13 @@ export default function SelectFeedbackTarget() {
             }
             return true;
         })
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => {
+            // Pin Institution to Top
+            if (a.type === 'Institution' && b.type !== 'Institution') return -1;
+            if (b.type === 'Institution' && a.type !== 'Institution') return 1;
+            // Alphabetical Sort
+            return a.name.localeCompare(b.name);
+        });
 
     return (
         <div className="page-wrapper">
