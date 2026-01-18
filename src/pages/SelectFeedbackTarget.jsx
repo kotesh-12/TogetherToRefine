@@ -31,7 +31,25 @@ export default function SelectFeedbackTarget() {
 
             try {
                 if (role === 'student') {
-                    setTitle("Select Teacher for Feedback");
+                    setTitle("Select Feedback Target"); // Changed title to generic
+                    // 1. Add Institution
+                    if (userData.institutionId) {
+                        try {
+                            const instDoc = await getDoc(doc(db, "institutions", userData.institutionId));
+                            if (instDoc.exists()) {
+                                list.push({
+                                    id: instDoc.id,
+                                    ...instDoc.data(),
+                                    type: 'Institution',
+                                    name: instDoc.data().schoolName || instDoc.data().name || 'Your School'
+                                });
+                            }
+                        } catch (e) {
+                            console.error("Error fetching institution for student", e);
+                        }
+                    }
+
+                    // 2. Add Teachers
                     const userClass = userData.class || userData.assignedClass;
                     const userSection = userData.section || userData.assignedSection;
 
@@ -42,18 +60,18 @@ export default function SelectFeedbackTarget() {
                             where("section", "==", userSection)
                         );
                         const snap = await getDocs(q);
-                        list = snap.docs.map(d => ({ id: d.id, ...d.data(), type: 'Teacher' })); // Teacher ID is usually user ID? Wait. allotments have 'teacherId' field. We should use THAT as actual ID for feedback.
-                        // Actually, allotments have 'teacherId' (User UID) and 'teacherName'.
-                        // We should map 'id' to 'teacherId' for consistency, OR handle it downstream.
-                        // Previous logic used d.id (allotment ID). This might be WRONG for feedback target (User ID).
-                        // Let's fix this silently: `id: d.data().teacherId || d.id`
-                        list = list.map(item => ({ ...item, id: item.teacherId || item.id, type: 'Teacher' }));
+                        const teachers = snap.docs.map(d => ({
+                            ...d.data(),
+                            id: d.data().teacherId || d.id,
+                            type: 'Teacher'
+                        }));
+                        list = [...list, ...teachers];
                     }
                 }
                 else if (role === 'teacher') {
                     setTitle("Select Feedback Target");
 
-                    let instId = userData.createdBy;
+                    let instId = userData.createdBy || userData.institutionId;
                     let teacherClasses = [];
 
                     // 1. Fetch Teacher Allotments (Find Institution ID & My Classes)
@@ -83,20 +101,26 @@ export default function SelectFeedbackTarget() {
 
                     } catch (e) { console.error("Error fetching teacher allotments", e); }
 
-                    // 2. Fetch Students (Strategy A: By Institution)
+                    // 2. Fetch Students (Strategy A: By Institution) & Add Institution Target
                     if (instId) {
                         try {
-                            // Add Institution as Target
-                            const instDoc = await getDoc(doc(db, "users", instId));
+                            // Add Institution as Target (Updated to 'institutions' collection)
+                            const instDoc = await getDoc(doc(db, "institutions", instId));
                             if (instDoc.exists()) {
-                                setInstitutionTarget({ id: instDoc.id, ...instDoc.data(), type: 'Institution', name: instDoc.data().name || 'Institution' });
+                                setInstitutionTarget({ id: instDoc.id, ...instDoc.data(), type: 'Institution', name: instDoc.data().schoolName || instDoc.data().name || 'Institution' });
+                            } else {
+                                // Fallback to 'users' if old data
+                                const instDocOld = await getDoc(doc(db, "users", instId));
+                                if (instDocOld.exists()) {
+                                    setInstitutionTarget({ id: instDocOld.id, ...instDocOld.data(), type: 'Institution', name: instDocOld.data().name || 'Institution' });
+                                }
                             }
 
                             // Fetch All Students from Institution
                             const q = query(collection(db, "student_allotments"), where("createdBy", "==", instId));
                             const snap = await getDocs(q);
                             list = snap.docs.map(d => ({ id: d.data().userId || d.data().studentId || d.id, ...d.data(), type: 'Student' }));
-                        } catch (e) { }
+                        } catch (e) { console.error("Error fetching institution/students", e); }
                     }
 
                     // Fallback: Use User Profile if Allotments missing (Critical for Legacy Teachers)
@@ -105,24 +129,20 @@ export default function SelectFeedbackTarget() {
                     }
 
                     // 3. Fetch Students (Strategy B: By Allotted Class - Always Merge)
-                    // We fetch specific class students to ensure they are visible even if Institution link isn't perfect
                     if (teacherClasses.length > 0) {
                         try {
                             const studentPromises = teacherClasses.map(tc => {
-                                // Variant Logic: Handle Types (String vs Number) and Suffixes
                                 const variants = [tc.cls];
                                 if (!isNaN(parseFloat(tc.cls))) {
                                     const n = parseInt(tc.cls, 10);
                                     const s = ["th", "st", "nd", "rd"];
                                     const v = n % 100;
                                     const suf = s[(v - 20) % 10] || s[v] || s[0];
-                                    variants.push(`${n}${suf}`); // "5th"
-                                    variants.push(`${n}`);     // "5"
-                                    variants.push(n);          // 5 (Number)
+                                    variants.push(`${n}${suf}`);
+                                    variants.push(`${n}`);
+                                    variants.push(n);
                                 }
                                 const uniqueVars = [...new Set(variants)];
-
-                                // Relaxed Query: Removed strict section check to ensure Students appear. Client filter handles 'section'.
                                 const qS = query(collection(db, "student_allotments"), where("classAssigned", "in", uniqueVars));
                                 return getDocs(qS);
                             });
@@ -290,8 +310,8 @@ export default function SelectFeedbackTarget() {
                     <div className="text-center">Loading List...</div>
                 ) : (
                     <div style={{ display: 'grid', gap: '15px' }}>
-                        {/* Institution Card for Teachers */}
-                        {userData?.role === 'teacher' && institutionTarget && (
+                        {/* Institution Card for Teachers and Students */}
+                        {(userData?.role === 'teacher' || userData?.role === 'student') && institutionTarget && (
                             <div
                                 onClick={() => handleSelect(institutionTarget)}
                                 className="card"
