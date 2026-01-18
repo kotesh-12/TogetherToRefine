@@ -29,7 +29,8 @@ export default function FacultyFeedback() {
                 snap.forEach(d => {
                     const data = d.data();
                     const name = data.name || data.teacherName;
-                    const id = data.userId || data.teacherId || d.id;
+                    // FIX: Prioritize teacherId to match SelectFeedbackTarget logic
+                    const id = data.teacherId || data.userId || d.id;
                     if (name && !uniqueTeachers.has(id)) {
                         uniqueTeachers.set(id, { id, name });
                     }
@@ -53,16 +54,17 @@ export default function FacultyFeedback() {
             const oneYearAgo = new Date();
             oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
+            // REMOVED orderBy to prevent Index Errors (Missing Composite Index)
             const q = query(
                 collection(db, "general_feedback"),
-                where("targetId", "==", teacher.id),
-                orderBy("timestamp", "desc")
+                where("targetId", "==", teacher.id)
             );
 
             const snap = await getDocs(q);
             const list = snap.docs
                 .map(d => ({ id: d.id, ...d.data() }))
-                .filter(f => f.timestamp && f.timestamp.toDate() >= oneYearAgo); // Client-side date filter if compound index is missing
+                .filter(f => f.timestamp && f.timestamp.toDate() >= oneYearAgo)
+                .sort((a, b) => b.timestamp?.seconds - a.timestamp?.seconds); // Client-side Sort
 
             setFeedbacks(list);
         } catch (e) {
