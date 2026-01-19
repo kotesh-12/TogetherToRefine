@@ -407,7 +407,14 @@ export default function TTRAI() {
                         </button>
 
                         <div style={{ marginBottom: '10px' }}>
-                            <button onClick={() => navigate(userData?.role === 'student' ? '/student' : userData?.role === 'teacher' ? '/teacher' : '/institution')} className="btn" style={{ width: '100%', background: '#2193b0' }}>
+                            <button onClick={() => {
+                                const r = userData?.role?.toLowerCase();
+                                if (r === 'admin' || authUser?.email === 'admin@ttr.com') navigate('/admin');
+                                else if (r === 'teacher') navigate('/teacher');
+                                else if (r === 'institution') navigate('/institution');
+                                else if (r === 'student') navigate('/student');
+                                else navigate('/details'); // Fallback if role is missing/unknown
+                            }} className="btn" style={{ width: '100%', background: '#2193b0' }}>
                                 🏠 Go to Dashboard
                             </button>
                         </div>
