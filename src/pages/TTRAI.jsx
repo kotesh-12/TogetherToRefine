@@ -279,7 +279,7 @@ export default function TTRAI() {
             } catch (e) {
                 console.warn("Server failed, using client fallback", e);
                 // Client Side Fallback
-                if (!genAI) throw new Error("No API Key");
+                if (!genAI) throw new Error("API Key Missing! Add VITE_GEMINI_API_KEY to your .env or Vercel Config.");
                 const model = genAI.getGenerativeModel({ model: "gemini-flash-latest", systemInstruction: sysPrompt });
                 const chat = model.startChat();
                 const result = await chat.sendMessage(text || "image");
@@ -363,6 +363,29 @@ export default function TTRAI() {
                 </div>
             )}
 
+            {/* API KEY ERROR MODAL */}
+            {messages.some(m => m.isError && m.text.includes("API Key Missing")) && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 4000, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+                    <div style={{ background: 'white', padding: '30px', borderRadius: '15px', maxWidth: '400px', textAlign: 'center', border: '2px solid red' }}>
+                        <h2 style={{ color: 'red' }}>⚠️ Action Required</h2>
+                        <p style={{ fontSize: '14px', marginBottom: '15px' }}>The AI brain works locally but is missing its key on this website.</p>
+
+                        <div style={{ background: '#f5f5f5', padding: '10px', borderRadius: '5px', textAlign: 'left', fontSize: '12px', marginBottom: '15px' }}>
+                            <strong>How to fix (for Admin):</strong><br />
+                            1. Go to your Vercel/Netlify Dashboard.<br />
+                            2. Settings &rarr; Environment Variables.<br />
+                            3. Add New Variable:<br />
+                            4. Key: <code style={{ color: 'blue' }}>VITE_GEMINI_API_KEY</code><br />
+                            5. Value: <em>(Your Google AI Key)</em>
+                        </div>
+
+                        <button onClick={() => setMessages(prev => prev.filter(m => !m.text.includes("API Key Missing")))} className="btn" style={{ background: '#333' }}>
+                            Okay, I'll Fix It
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* SIDEBAR MENU */}
             {showSidebar && (
                 <div className="sidebar-overlay">
@@ -373,6 +396,12 @@ export default function TTRAI() {
                         <button onClick={startNewChat} className="btn" style={{ width: '100%', marginBottom: '20px', background: '#333' }}>
                             + New Chat
                         </button>
+
+                        <div style={{ marginBottom: '10px' }}>
+                            <button onClick={() => navigate(userData?.role === 'student' ? '/student' : userData?.role === 'teacher' ? '/teacher' : '/institution')} className="btn" style={{ width: '100%', background: '#2193b0' }}>
+                                🏠 Go to Dashboard
+                            </button>
+                        </div>
 
                         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             {sessions.length === 0 && <p style={{ color: '#666', fontStyle: 'italic' }}>No history yet.</p>}
