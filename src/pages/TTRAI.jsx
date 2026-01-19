@@ -259,34 +259,31 @@ export default function TTRAI() {
             let responseText = "";
 
             try {
-                // Server Side Call (Primary)
-                const payload = {
-                    message: text,
-                    history: messages.slice(-5).map(m => ({ role: m.sender === 'user' ? 'user' : 'model', parts: [{ text: m.text }] })),
-                    systemInstruction: sysPrompt
-                };
+                // FORCE CLIENT-SIDE ONLY (Fixes 404 API Errors)
+                if (!genAI) throw new Error("API Key logic failed. Contact Admin.");
+                const model = genAI.getGenerativeModel({ model: MODEL_NAME, systemInstruction: sysPrompt });
+
+                const chat = model.startChat({
+                    history: messages.slice(-10).map(m => ({
+                        role: m.sender === 'user' ? 'user' : 'model',
+                        parts: [{ text: m.text || "" }]
+                    }))
+                });
+
+                let msgParts = text;
                 if (selectedImage) {
-                    payload.image = selectedImage.split(',')[1];
-                    payload.mimeType = selectedImage.match(/:(.*?);/)?.[1];
+                    msgParts = [
+                        { text: text || "Analyze this image" },
+                        { inlineData: { mimeType: selectedImage.match(/:(.*?);/)?.[1] || "image/jpeg", data: selectedImage.split(',')[1] } }
+                    ];
                 }
 
-                const res = await fetch('/api/chat', {
-                    method: 'POST',
-                    body: JSON.stringify(payload),
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                if (!res.ok) throw new Error("Server Failed");
-                const data = await res.json();
-                responseText = data.text;
+                const result = await chat.sendMessage(msgParts);
+                responseText = result.response.text();
 
             } catch (e) {
-                console.warn("Server failed, using client fallback", e);
-                // Client Side Fallback
-                if (!genAI) throw new Error("API Key Missing! Add VITE_GEMINI_API_KEY to your .env or Vercel Config.");
-                const model = genAI.getGenerativeModel({ model: MODEL_NAME, systemInstruction: sysPrompt });
-                const chat = model.startChat();
-                const result = await chat.sendMessage(text || "image");
-                responseText = result.response.text();
+                console.error("AI Generation Error", e);
+                throw e; // Pass to outer catch
             }
 
             const aiMsg = { text: responseText, sender: 'ai', createdAt: new Date() };
