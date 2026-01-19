@@ -35,7 +35,7 @@ export default function Report({ type }) { // type: 'sexual_harassment' or 'misb
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (formData.description.length < 20) return alert("Please provide more details in description.");
+        if (formData.description.length < 50) return alert("Please provide more details (min 50 characters) to help us investigate.");
 
         try {
             // Save to secure collection
@@ -157,7 +157,10 @@ export default function Report({ type }) { // type: 'sexual_harassment' or 'misb
                     <label>Location of Incident</label>
                     <input name="location" value={formData.location} onChange={handleChange} className="input-field" required placeholder="Where did it happen? (e.g. Corridor, Bus)" />
 
-                    <label>Detailed Description *</label>
+                    <label style={{ color: '#d63031', fontWeight: 'bold' }}>Detailed Description *</label>
+                    <div style={{ fontSize: '12px', color: '#e74c3c', marginBottom: '5px' }}>
+                        Please describe the incident in detail (min 50 characters). This report goes directly to the administration.
+                    </div>
                     <textarea
                         name="description"
                         value={formData.description}
@@ -165,7 +168,7 @@ export default function Report({ type }) { // type: 'sexual_harassment' or 'misb
                         className="input-field"
                         style={{ height: '100px', resize: 'vertical' }}
                         required
-                        placeholder="Please describe exactly what happened. Be as specific as possible."
+                        placeholder="I want to report an incident regarding..."
                     ></textarea>
 
                     <label>Evidence Link (Optional)</label>

@@ -28,9 +28,12 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { history, message, image, mimeType } = req.body;
+        const { history, message, image, mimeType, systemInstruction } = req.body;
         const genAI = new GoogleGenerativeAI(API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const model = genAI.getGenerativeModel({
+            model: "gemini-flash-latest",
+            systemInstruction: systemInstruction
+        });
 
         const chat = model.startChat({
             history: history || []

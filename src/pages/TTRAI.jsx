@@ -33,79 +33,85 @@ export default function TTRAI() {
     const fileInputRef = useRef(null);
 
     // 1. Auth & Context Loading
-    const { userData } = useUser();
+    const { user: authUser, userData } = useUser();
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                setCurrentUser(user);
+        if (!authUser) return;
 
-                // Build Context
-                let context = {
-                    role: 'User',
-                    name: 'User',
-                    class: 'N/A',
-                    gender: 'N/A',
-                    upcomingEvents: [],
-                    adminData: null
-                };
+        setCurrentUser(authUser);
 
-                if (userData) {
-                    context = {
-                        role: userData.role || 'User',
-                        name: userData.name || userData.schoolName || userData.principalName || 'User',
-                        class: userData.class || 'N/A',
-                        gender: userData.gender || 'N/A',
-                        upcomingEvents: [],
-                        adminData: null
-                    };
-                } else {
-                    if (user.email === 'admin@ttr.com' || userData?.role === 'admin') {
-                        context.role = 'System Admin';
-                        context.name = 'Admin';
-                    }
-                }
+        // Build Context
+        let context = {
+            role: 'User',
+            name: 'User',
+            class: 'N/A',
+            gender: 'N/A',
+            upcomingEvents: [],
+            adminData: null
+        };
 
-                try {
-                    // Fetch upcoming exams (students)
-                    if (context.role !== 'System Admin' && context.role !== 'admin') {
-                        const eventsSnap = await getDocs(collection(db, "opportunities"));
-                        const events = [];
-                        eventsSnap.forEach(e => events.push(e.data()));
-                        context.upcomingEvents = events;
-                    }
-
-                    // ADMIN SPECIAL: Fetch Feedback & Reports
-                    if (context.role === 'System Admin' || context.role === 'admin') {
-                        const feedSnap = await getDocs(query(collection(db, "general_feedback"), orderBy("timestamp", "desc"), limit(5)));
-                        const repSnap = await getDocs(query(collection(db, "emergency_reports"), orderBy("createdAt", "desc"), limit(5)));
-
-                        const feedbacks = feedSnap.docs.map(d => {
-                            const data = d.data();
-                            return `- Feedback from ${data.authorName} (${data.role}): "${data.comment || "No text"}" (Type: ${data.type || 'General'})`;
-                        });
-                        const reports = repSnap.docs.map(d => {
-                            const data = d.data();
-                            return `- URGENT REPORT: ${data.description} (Location: ${data.location})`;
-                        });
-
-                        context.adminData = {
-                            recentActivity: [...feedbacks, ...reports],
-                            stats: { feedbackCount: feedSnap.size, reportCount: repSnap.size }
-                        };
-                    }
-
-                } catch (e) {
-                    console.log("Could not fetch context data", e);
-                }
-
-                setUserContext(context);
-            } else {
-                navigate('/');
+        if (userData) {
+            context = {
+                role: userData.role || 'User',
+                name: userData.name || userData.schoolName || userData.principalName || 'User',
+                class: userData.class || 'N/A',
+                gender: userData.gender || 'N/A',
+                upcomingEvents: [],
+                adminData: null
+            };
+        } else {
+            // Fallback if userData isn't loaded yet but authUser is present
+            if (authUser.email === 'admin@ttr.com') { // Basic check
+                context.role = 'System Admin';
+                context.name = 'Admin';
             }
-        });
-        return () => unsubscribe();
-    }, [navigate, userData]);
+        }
+
+        // Admin Override from userData
+        if (userData?.role === 'admin') {
+            context.role = 'System Admin';
+            context.name = 'Admin';
+        }
+
+        const fetchContextData = async () => {
+            try {
+                // Fetch upcoming exams (students)
+                if (context.role !== 'System Admin' && context.role !== 'admin') {
+                    const eventsSnap = await getDocs(collection(db, "opportunities"));
+                    const events = [];
+                    eventsSnap.forEach(e => events.push(e.data()));
+                    context.upcomingEvents = events;
+                }
+
+                // ADMIN SPECIAL: Fetch Feedback & Reports
+                if (context.role === 'System Admin' || context.role === 'admin') {
+                    const feedSnap = await getDocs(query(collection(db, "general_feedback"), orderBy("timestamp", "desc"), limit(5)));
+                    const repSnap = await getDocs(query(collection(db, "emergency_reports"), orderBy("createdAt", "desc"), limit(5)));
+
+                    const feedbacks = feedSnap.docs.map(d => {
+                        const data = d.data();
+                        return `- Feedback from ${data.authorName} (${data.role}): "${data.comment || "No text"}" (Type: ${data.type || 'General'})`;
+                    });
+                    const reports = repSnap.docs.map(d => {
+                        const data = d.data();
+                        return `- URGENT REPORT: ${data.description} (Location: ${data.location})`;
+                    });
+
+                    context.adminData = {
+                        recentActivity: [...feedbacks, ...reports],
+                        stats: { feedbackCount: feedSnap.size, reportCount: repSnap.size }
+                    };
+                }
+
+            } catch (e) {
+                console.log("Could not fetch context data", e);
+            }
+            setUserContext(context);
+        };
+
+        fetchContextData();
+
+    }, [authUser, userData, navigate]);
 
     // 2. Chat History Listener
     useEffect(() => {
@@ -230,21 +236,37 @@ export default function TTRAI() {
         }
     };
 
-    // --- MAIN SEND HANDLER (FIXED) ---
+    // --- MAIN SEND HANDLER (OPTIMIZED) ---
     const handleSend = async () => {
         if (!input.trim() && !selectedImage) return;
         if (!currentUser) { setStatusLog("Error: No User Found"); return; }
 
         setStatusLog("Starting Request...");
-        let finalInput = input;
+        const finalInput = input;
+        const userImage = selectedImage;
 
-        // Reset state
+        // 1. Optimistic UI Update (Show User Message Immediately)
+        const userMsg = { text: finalInput || "Image Uploaded", image: userImage, sender: 'user', createdAt: new Date() };
+        setMessages(prev => [...prev, userMsg]);
+
+        // Reset Input State
         setInput('');
         setSelectedImage(null);
         setLoading(true);
 
         try {
-            // System Prompt Construction with Safety
+            // 2. API Key Check
+            if (!genAI) {
+                throw new Error("Configuration Error: API Key (VITE_GEMINI_API_KEY) is missing. Please check your .env file.");
+            }
+
+            // 3. Persist User Message (Background)
+            // We use 'void' to indicate we don't await this blocking the UI, 
+            // but we catch errors to ensure they don't crash logic.
+            saveMessage({ ...userMsg, image: (userImage && userImage.length > 1000000) ? null : userImage })
+                .catch(e => console.error("Message Persistence Failed:", e));
+
+            // System Prompt
             setStatusLog("Generating System Prompt...");
             let systemCtx = "";
             try {
@@ -254,20 +276,9 @@ export default function TTRAI() {
                 systemCtx = "You are a helpful AI assistant.";
             }
 
-            // Link Analysis
+            // Link Analysis & Fetching
             const urlRegex = /(https?:\/\/[^\s]+)/g;
             const urls = finalInput.match(urlRegex);
-            const userMsg = { text: finalInput || "Image Uploaded", image: selectedImage, sender: 'user' };
-
-            // Save to DB
-            const dbMsg = { ...userMsg };
-            if (selectedImage && selectedImage.length > 1000000) { delete dbMsg.image; dbMsg.text += " [Image too large to save]"; }
-            saveMessage(dbMsg);
-
-            if (selectedImage && selectedImage.length > 5000000) throw new Error("Image is too large (<5MB).");
-            const imageToSend = selectedImage;
-
-            // Link Fetching
             if (urls && urls.length > 0) {
                 setStatusLog("Checking Link...");
                 try {
@@ -281,58 +292,117 @@ export default function TTRAI() {
                 } catch (e) { console.warn("Link fetch skipped", e); }
             }
 
-            if (imageToSend) systemCtx += `\n\n**IMAGE INPUT**: user uploaded image. Respond in 'Teacher Style'.`;
+            if (userImage) systemCtx += `\n\n**IMAGE INPUT**: user uploaded image. Respond in 'Teacher Style'.`;
 
-            // Client Side Generation
-            setStatusLog("Checking API Key...");
-            if (!genAI) throw new Error("API Key Not Found. Please check .env file.");
+            // Gemini API Call
+            setStatusLog("Connecting to Gemini API...");
 
-            const model = genAI.getGenerativeModel({
-                model: "gemini-1.5-flash",
-                safetySettings: [
-                    { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
-                    { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
-                    { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
-                    { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
-                ]
-            });
+            // 5. ATTEMPT 1: Server-Side API (Recommended for Production/Vercel)
+            // This hides the API key and ensures CORS compliance.
+            setStatusLog("Contacting Server...");
 
-            const history = messages.filter(m => !m.isError).slice(-10).map(m => ({
+            // Generate History and sanitize it
+            let historyForApi = messages.filter(m => !m.isError && m.text).slice(-10).map(m => ({
                 role: m.sender === 'user' ? 'user' : 'model',
                 parts: [{ text: m.text }]
             }));
 
-            const chatValues = { history: history, systemInstruction: systemCtx };
-
-            setStatusLog("Connecting to Gemini API...");
-            const chat = model.startChat(chatValues);
-
-            let parts = [{ text: finalInput || " " }];
-            if (imageToSend) {
-                const [header, base64Data] = imageToSend.split(',');
-                parts.push({ inlineData: { data: base64Data, mimeType: header.match(/:(.*?);/)[1] } });
+            // GEMINI RULE: History must ALWAYS start with 'user'
+            // We remove any leading 'model' messages (like the Welcome message)
+            while (historyForApi.length > 0 && historyForApi[0].role !== 'user') {
+                historyForApi.shift();
             }
 
-            // TIMEOUT WRAPPER (15 Seconds)
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Request Timed Out (15s)")), 15000));
-            const aiPromise = chat.sendMessage(parts);
+            let responseText = "";
+            let usedFallback = false;
 
-            const result = await Promise.race([aiPromise, timeoutPromise]);
-            const responseText = result.response.text();
+            try {
+                // Prepare API Payload
+                const apiPayload = {
+                    message: finalInput,
+                    history: historyForApi,
+                    systemInstruction: systemCtx
+                };
 
-            setStatusLog("Response Received!");
-            saveMessage({ text: responseText, sender: 'ai' });
+                if (userImage) {
+                    const [header, base64Data] = userImage.split(',');
+                    apiPayload.image = base64Data;
+                    apiPayload.mimeType = header.match(/:(.*?);/)?.[1] || 'image/jpeg';
+                }
+
+                // 20s Timeout for fetch
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+                const apiResponse = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(apiPayload),
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+
+                if (!apiResponse.ok) {
+                    // If 404/500, throw to trigger fallback
+                    throw new Error(`Server Error: ${apiResponse.status}`);
+                }
+
+                const data = await apiResponse.json();
+                if (data.error) throw new Error(data.error);
+                responseText = data.text;
+
+            } catch (serverError) {
+                console.warn("Server API Failed, switching to Client Fallback:", serverError);
+                setStatusLog("Server failed. Trying Client Mode...");
+                usedFallback = true;
+
+                // 6. ATTEMPT 2: Client-Side Fallback (Localhost / Direct Key)
+                if (!genAI) throw new Error("Server failed and Client API Key (VITE_GEMINI_API_KEY) is missing.");
+
+                const model = genAI.getGenerativeModel({
+                    model: "gemini-flash-latest",
+                    systemInstruction: systemCtx, // Pass system instruction here for better compatibility
+                    safetySettings: [
+                        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
+                        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
+                        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
+                        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
+                    ]
+                });
+
+                const chat = model.startChat({ history: historyForApi });
+
+                let parts = [{ text: finalInput || "Analyze this image" }];
+                if (userImage) {
+                    const [header, base64Data] = userImage.split(',');
+                    const mimeType = header.match(/:(.*?);/)?.[1] || 'image/jpeg';
+                    parts.push({ inlineData: { data: base64Data, mimeType } });
+                }
+
+                const result = await chat.sendMessage(parts);
+                responseText = result.response.text();
+            }
+
+            setStatusLog(usedFallback ? "Response (Client-Side)" : "Response (Server-Side)");
+
+            // 4. Optimistic UI Update (Show AI Response Immediately)
+            const aiMsg = { text: responseText, sender: 'ai', createdAt: new Date() };
+            setMessages(prev => [...prev, aiMsg]);
+
+            // Persist AI Message
+            saveMessage(aiMsg).catch(e => console.error("AI Message Persistence Failed:", e));
 
         } catch (error) {
             console.error("AI Error:", error);
             setStatusLog(`Error: ${error.message}`);
-            let errorMsg = "I'm having trouble connecting right now.";
-            if (error.message.includes("API Key")) errorMsg = "Configuration Error: API Key missing in .env file.";
-            if (error.message.includes("SAFETY")) errorMsg = "Response blocked due to safety/content settings.";
-            if (error.message.includes("429")) errorMsg = "AI System Overloaded. Please try again in a minute.";
-            if (error.message.includes("Timed Out")) errorMsg = "Connection Timed Out. Please check your internet.";
 
-            if (userContext?.role !== 'student') errorMsg += ` (Tech Error: ${error.message})`;
+            // Show detailed error to help debugging
+            let errorMsg = `Connection Failed: ${error.message}`;
+
+            if (error.message.includes("API Key")) errorMsg = error.message;
+            else if (error.message.includes("SAFETY")) errorMsg = "Response blocked due to safety settings.";
+            else if (error.message.includes("Timed Out")) errorMsg = "Connection Timed Out. Please check your internet.";
+
             setMessages(prev => [...prev, { text: `Error: ${errorMsg}`, sender: 'ai', isError: true }]);
         } finally {
             setLoading(false);

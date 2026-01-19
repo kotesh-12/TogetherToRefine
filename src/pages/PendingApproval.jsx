@@ -3,31 +3,32 @@ import { useNavigate } from 'react-router-dom';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, collection, query, where, getDocs, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { useUser } from '../context/UserContext';
 
 export default function PendingApproval() {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [statusMsg, setStatusMsg] = useState('');
 
+    const { user, loading: userLoading } = useUser();
+
     // Auto-check on mount
     useEffect(() => {
-        // Wait a bit for auth to initialize if needed, or checkStatus handles it?
-        // checkStatus relies on getAuth().currentUser. 
-        // Better to wait for onAuthStateChanged or just try.
-        // Actually, we should check logic. 
-        checkStatus();
-    }, []);
+        if (!userLoading) {
+            checkStatus();
+        }
+    }, [userLoading, user]);
 
     const checkStatus = async () => {
-        setLoading(true);
-        setStatusMsg('Checking logic...');
-        const auth = getAuth();
-        const user = auth.currentUser;
-
         if (!user) {
-            navigate('/');
+            if (!userLoading) navigate('/');
             return;
         }
+
+        setLoading(true);
+        setStatusMsg('Checking logic...');
+        // user is already available from context scope, but for function scope we can use 'user' from closure or context
+
 
 
 

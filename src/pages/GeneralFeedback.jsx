@@ -184,6 +184,18 @@ export default function GeneralFeedback() {
             return alert("Please fill all ratings (Stars & Options).");
         }
 
+        // Fix Empty/Spam comments
+        const cleanComment = comment.trim();
+        if (cleanComment.length > 0 && cleanComment.length < 5) {
+            return alert("Please provide a more detailed comment (min 5 chars) or leave it empty.");
+        }
+        // If they left it strictly empty, maybe that is allowed? 
+        // The AI report said "Logging Noise.. content 'No text'". 
+        // If the backend logs "No text" when empty, that's fine, but user submissions with just "  " should be blocked.
+        if (cleanComment.length === 0 && comment.length > 0) {
+            return alert("Comment cannot be just spaces.");
+        }
+
         setLoading(true);
         try {
             // Generate UPID for Student (or use existing behavior for others)
