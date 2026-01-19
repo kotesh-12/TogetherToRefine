@@ -263,11 +263,20 @@ export default function TTRAI() {
                 if (!genAI) throw new Error("API Key logic failed. Contact Admin.");
                 const model = genAI.getGenerativeModel({ model: MODEL_NAME, systemInstruction: sysPrompt });
 
+                // Fix: Google Gemini mandates that history MUST start with 'user' role.
+                // We filter the history to ensure this sequence.
+                let historyForApi = messages.slice(-10).map(m => ({
+                    role: m.sender === 'user' ? 'user' : 'model',
+                    parts: [{ text: m.text || "" }]
+                }));
+
+                // Ensure the first message is strictly from 'user'
+                while (historyForApi.length > 0 && historyForApi[0].role !== 'user') {
+                    historyForApi.shift();
+                }
+
                 const chat = model.startChat({
-                    history: messages.slice(-10).map(m => ({
-                        role: m.sender === 'user' ? 'user' : 'model',
-                        parts: [{ text: m.text || "" }]
-                    }))
+                    history: historyForApi
                 });
 
                 let msgParts = text;
