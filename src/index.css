@@ -266,8 +266,8 @@ body {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
-  padding-bottom: 100px;
-  /* Space for input area */
+  padding-bottom: 70px;
+  /* Reduced space */
   display: flex;
   flex-direction: column;
 }
