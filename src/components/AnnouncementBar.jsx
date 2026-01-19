@@ -4,7 +4,7 @@ import { db } from '../firebase';
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { useUser } from '../context/UserContext';
 
-export default function TopBar({ title, leftIcon = 'home', backPath }) {
+export default function TopBar({ title, leftIcon = 'home', backPath, onMenuClick }) {
     const navigate = useNavigate();
     const location = useLocation();
     const { userData, user } = useUser();
@@ -164,6 +164,18 @@ export default function TopBar({ title, leftIcon = 'home', backPath }) {
 
                 {/* Right: Install & Profile */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px', zIndex: 100 }}>
+
+                    {/* Optional 3-Line Menu Button */}
+                    {/* Passed via prop for custom actions like opening a sidebar */}
+                    {onMenuClick && (
+                        <div
+                            onClick={onMenuClick}
+                            style={{ fontSize: '24px', cursor: 'pointer', userSelect: 'none' }}
+                            title="Menu"
+                        >
+                            ☰
+                        </div>
+                    )}
 
                     {/* Direct Install/Download Button - Hidden in Standalone Mode */}
                     {!isStandalone && (

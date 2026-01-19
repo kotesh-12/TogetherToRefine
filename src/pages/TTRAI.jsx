@@ -23,6 +23,7 @@ export default function TTRAI() {
     const [selectedImage, setSelectedImage] = useState(null);
     const [isListening, setIsListening] = useState(false);
     const [isSpeaking, setIsSpeaking] = useState(false);
+    const [showSidebar, setShowSidebar] = useState(false);
 
     // Permissions
     const [micPermission, setMicPermission] = useState(false);
@@ -33,6 +34,10 @@ export default function TTRAI() {
     // Context Loading
     const [userContext, setUserContext] = useState(null);
     const [currentUser, setCurrentUser] = useState(null);
+
+    // Session State
+    const [sessions, setSessions] = useState([]);
+    const [currentSessionId, setCurrentSessionId] = useState(null);
 
     // 1. Auth & Context Loading
     useEffect(() => {
@@ -71,41 +76,115 @@ export default function TTRAI() {
         fetchContext();
     }, [authUser, userData]);
 
-    // 2. Chat History Listener (Direct, No Sessions)
+    // 2. Fetch Sessions List (History)
     useEffect(() => {
         if (!currentUser) return;
-        const q = query(collection(db, 'ai_chats', currentUser.uid, 'messages'), orderBy('createdAt', 'desc'), limit(50));
+        const q = query(collection(db, 'ai_chats', currentUser.uid, 'sessions'), orderBy('updatedAt', 'desc'), limit(20));
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const loadedMsgs = snapshot.docs.map(doc => doc.data()).reverse();
-            if (loadedMsgs.length === 0) {
-                setMessages([{ text: "Hello! I am TTR AI. How can I assist you today?", sender: 'ai' }]);
-            } else {
-                setMessages(loadedMsgs);
-            }
-        }, (error) => {
-            console.error("Chat History Error:", error);
-            setMessages([{ text: "Welcome! (Chat history unavailable)", sender: 'ai' }]);
+            setSessions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         });
         return () => unsubscribe();
     }, [currentUser]);
+
+    // 3. Chat Messages Listener (Dependent on Session)
+    useEffect(() => {
+        if (!currentUser) return;
+
+        // If no session is selected, clear messages or show welcome
+        if (!currentSessionId) {
+            setMessages([{ text: "Hello! I am TTR AI. Ask me anything!", sender: 'ai' }]);
+            return;
+        }
+
+        const q = query(collection(db, 'ai_chats', currentUser.uid, 'sessions', currentSessionId, 'messages'), orderBy('createdAt', 'asc'));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const loadedMsgs = snapshot.docs.map(doc => doc.data());
+            if (loadedMsgs.length === 0) {
+                // Keep the welcome message if it's a fresh session that hasn't synced yet (optimistic updates handle this usually)
+            } else {
+                setMessages(loadedMsgs);
+            }
+        });
+        return () => unsubscribe();
+    }, [currentUser, currentSessionId]);
 
     const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     useEffect(() => scrollToBottom(), [messages]);
 
     // System Prompt Generator
     const generateSystemPrompt = (context) => {
+        const now = new Date();
+        const dateTimeString = now.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: 'full', timeStyle: 'medium' });
+
         if (context?.role === 'System Admin' || context?.role === 'admin') {
-            return `You are TTR Co-Pilot, Admin Assistant. Reports: ${JSON.stringify(context.adminData)}`;
+            return `You are TTR Co-Pilot, Admin Assistant. Current Date: ${dateTimeString}. Reports: ${JSON.stringify(context.adminData)}`;
         }
-        return `You are TTR AI. User: ${context?.name}, Role: ${context?.role}. Help with education only.`;
+
+        // Student/Teacher Context
+        const userClass = context?.class || 'General';
+        const userGender = context?.gender || 'Student'; // Contextual usage if needed for voice/examples
+
+        return `
+        You are TTR AI, an expert educational mentor designed to spark curiosity and love for learning.
+        
+        **Current Context:**
+        - Date: ${dateTimeString}
+        - User Name: ${context?.name}
+        - Role: ${context?.role}
+        - Class/Grade: ${userClass}
+        - Gender: ${userGender}
+
+        **Your Core Directives:**
+
+        1. **Strictly Educational & Productive:**
+           - **Non-Educational/Gossip/Entertainment:** If the user asks about trivial things (movies, actors, gossip, games) that are not linked to their studies, give a boring, short answer and explicitly mention: "Focusing on this won't help you build your future. Let's not waste time." Then immediately pivot to a related educational fact.
+           - **General Knowledge:** If they ask about current events or general facts, answer it but *immediately connect it to a school subject* (Science, Math, History) to make it educational.
+
+        2. **Adapt to Grade Level (CRITICAL):**
+           - **Class 1-5:** Explain like I'm 8 years old. Use magic, storytelling, and simple fun analogies.
+           - **Class 6-8:** Use relatable real-world examples.
+           - **Class 9-12:** Provide structured, academically accurate answers suitable for exams.
+
+        3. **The "Indian Context" Strategy (For Complex Concepts Only):**
+           - **Trigger:** If the concept is very hard, abstract, or the user says they are "suffering" or "confused".
+           - **Action:** Explain the concept using an analogy from **Indian Mythology** (e.g., Mahabharata strategies, Ramayana ethics) or **Popular Indian Movies/Heroes** (e.g., Baahubali's strength for physics, a hero's determination). 
+           - **Goal:** Make them feel good, motivated, and understand the logic through familiar culture.
+
+        4. **The "Struggle for Success" Narrative (For Inventors/Scientists):**
+           - **Trigger:** Questions about inventors, scientists, or successful figures (e.g., "Who is Einstein?", "Tell me about Edison").
+           - **Action:** Do NOT just list inventions. You MUST highlight their **failures, rejections, and years of struggle** before they succeeded.
+           - **Goal:** Build mental resilience ("thick skin") in students. Show them that great minds struggled too.
+           - **Example:** "Before Thomas Edison gave us the lightbulb, he failed 1,000 times. He didn't give up; he learned 1,000 ways how *not* to make a bulb. That is true intelligence."
+
+        5. **Build Curiosity:**
+           - Always end your response with a "Did you know?" fact or a "What do you think...?" question.
+
+        **Example Behaviors:**
+        - User: "Who is J.J. Thomson?" -> AI: "J.J. Thomson is famous for discovering the electron, but it wasn't easy! For years, people thought atoms were solid balls. He had to go against the whole world's belief and faced many failed experiments. His persistence changed science forever. He taught us that even when the world doubts you, evidence speaks. Did you know he also won a Nobel Prize?"
+        - User: "Who is the best actor?" -> AI: "Opinions vary, but debating this is a waste of your precious study time. Instead, did you know that cinema works on the principle of 'Persistence of Vision'? Let's learn about the eye."
+        - User (Class 10): "I can't understand Newton's Third Law, it's too hard!" -> AI: "Don't worry! Remember in *Baahubali* when the team pulls the statue? Every pull had an equal reaction! Or think of Karma in mythology—what you give returns back. Simply: Action = Reaction. Now, let's look at the formula..."
+
+        Answer strictly based on these rules.
+        `;
     };
 
     // Helper functions
-    const saveMessage = async (msgObj) => {
-        if (!currentUser) return;
+    // Helper functions
+    const saveMessage = async (msgObj, sessionId) => {
+        if (!currentUser || !sessionId) return;
         try {
-            await addDoc(collection(db, 'ai_chats', currentUser.uid, 'messages'), { ...msgObj, createdAt: new Date() });
+            await addDoc(collection(db, 'ai_chats', currentUser.uid, 'sessions', sessionId, 'messages'), { ...msgObj, createdAt: new Date() });
+            // Update session timestamp & preview
+            // (Optional: update title if it's the first message)
         } catch (e) { console.error("Error saving message", e); }
+    };
+
+    // Create new session helper
+    const startNewChat = () => {
+        setCurrentSessionId(null);
+        setMessages([{ text: "Hello! I am TTR AI. Ask me anything!", sender: 'ai' }]);
+        setInput('');
+        setShowSidebar(false);
     };
 
     const speakText = (text) => {
@@ -149,14 +228,28 @@ export default function TTRAI() {
         setLoading(true);
         setStatusLog("Processing...");
 
+        // Optimistic UI Update
         const userMsg = { text: text || "Image Uploaded", image: selectedImage, sender: 'user', createdAt: new Date() };
         setMessages(prev => [...prev, userMsg]);
 
         try {
             if (!currentUser) throw new Error("User not found");
 
+            // Ensure Session Exists
+            let activeSessionId = currentSessionId;
+            if (!activeSessionId) {
+                // Create new session
+                const sessionRef = await addDoc(collection(db, 'ai_chats', currentUser.uid, 'sessions'), {
+                    title: text.substring(0, 30) || "New Chat",
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                });
+                activeSessionId = sessionRef.id;
+                setCurrentSessionId(activeSessionId);
+            }
+
             // Save User Msg
-            saveMessage(userMsg);
+            await saveMessage(userMsg, activeSessionId);
 
             // Generate AI Response
             let sysPrompt = generateSystemPrompt(userContext);
@@ -194,8 +287,14 @@ export default function TTRAI() {
             }
 
             const aiMsg = { text: responseText, sender: 'ai', createdAt: new Date() };
-            setMessages(prev => [...prev, aiMsg]);
-            saveMessage(aiMsg);
+            // Optimistic Update (Listener will fix duplicates if any, but usually we rely on listener)
+            if (!currentSessionId) {
+                // If we just created the session, logic might be tricky with listener timing
+                // Use optimistic for now, listener filters later
+                setMessages(prev => [...prev, aiMsg]);
+            }
+
+            await saveMessage(aiMsg, activeSessionId);
 
         } catch (error) {
             console.error(error);
@@ -207,7 +306,7 @@ export default function TTRAI() {
 
     return (
         <div className="ttr-ai-container">
-            <AnnouncementBar title="TTR AI Assistant" leftIcon="back" />
+            <AnnouncementBar title="TTR AI Assistant" leftIcon="back" onMenuClick={() => setShowSidebar(true)} />
 
             <div className="chat-area">
                 {messages.map((msg, idx) => (
@@ -260,6 +359,46 @@ export default function TTRAI() {
                             if (permissionModal === 'camera') setCameraPermission(true);
                             setPermissionModal(null);
                         }}>Allow</button>
+                    </div>
+                </div>
+            )}
+
+            {/* SIDEBAR MENU */}
+            {showSidebar && (
+                <div className="sidebar-overlay">
+                    <div className="sidebar-backdrop" onClick={() => setShowSidebar(false)} />
+                    <div className="sidebar-content">
+                        <h2>History</h2>
+
+                        <button onClick={startNewChat} className="btn" style={{ width: '100%', marginBottom: '20px', background: '#333' }}>
+                            + New Chat
+                        </button>
+
+                        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {sessions.length === 0 && <p style={{ color: '#666', fontStyle: 'italic' }}>No history yet.</p>}
+                            {sessions.map(sess => (
+                                <div
+                                    key={sess.id}
+                                    onClick={() => { setCurrentSessionId(sess.id); setShowSidebar(false); }}
+                                    style={{
+                                        padding: '10px',
+                                        background: currentSessionId === sess.id ? '#e3f2fd' : '#f5f5f5',
+                                        borderRadius: '8px',
+                                        cursor: 'pointer',
+                                        fontSize: '14px'
+                                    }}
+                                >
+                                    {sess.title || "Chat"}
+                                    <div style={{ fontSize: '10px', color: '#888' }}>
+                                        {sess.updatedAt?.toDate ? sess.updatedAt.toDate().toLocaleDateString() : ""}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div style={{ marginTop: 'auto' }}>
+                            <button onClick={() => setShowSidebar(false)} className="btn" style={{ background: '#ddd', color: '#333', width: '100%' }}>Close</button>
+                        </div>
                     </div>
                 </div>
             )}

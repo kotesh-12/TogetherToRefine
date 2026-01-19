@@ -253,20 +253,18 @@ body {
 /* TTR AI Styles */
 .ttr-ai-container {
   height: 100vh;
-  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
-  background-color: #1ef;
+  background: var(--bg-gradient);
   position: relative;
+  overflow: hidden;
 }
-
-
 
 .chat-area {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
-  padding-bottom: 70px;
   /* Reduced space */
   display: flex;
   flex-direction: column;
@@ -300,14 +298,15 @@ body {
 }
 
 .input-area {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 15px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 10px 5px 10px;
   z-index: 1000;
   background: transparent;
-  /* Seamless look */
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .input-controls {
@@ -315,6 +314,7 @@ body {
   align-items: center;
   gap: 10px;
   width: 100%;
+  max-width: 800px;
   background: white;
   /* Floating Box */
   padding: 8px 15px;
