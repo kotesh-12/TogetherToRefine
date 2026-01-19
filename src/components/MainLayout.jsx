@@ -11,7 +11,7 @@ export default function MainLayout() {
     // We generally want it on dashboard-like pages, not necessarily on specific detail pages or login
     // BUT user wants SPA feel, so persistent nav is good.
     // Let's hide it on Login ('/') and Details ('/details')
-    const hideNavRoutes = ['/', '/details', '/login', '/signup'];
+    const hideNavRoutes = ['/', '/details', '/login', '/signup', '/ttr-ai'];
     const showNav = !hideNavRoutes.includes(location.pathname) && userData && userData.role !== 'admin';
 
     return (
