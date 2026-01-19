@@ -18,8 +18,11 @@ export default function TTRAI() {
     const [statusLog, setStatusLog] = useState("Ready");
 
     // AI & UI State
-    const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+    // Hardcoded fallback to ensure it works on all devices immediately as requested
+    const ENV_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+    const API_KEY = ENV_KEY || "AIzaSyAOrTRtIZZL1J_GTdc_XEe3m9vzgGJWzOE";
     const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
+    const MODEL_NAME = "gemini-1.5-flash";
     const [selectedImage, setSelectedImage] = useState(null);
     const [isListening, setIsListening] = useState(false);
     const [isSpeaking, setIsSpeaking] = useState(false);
@@ -280,7 +283,7 @@ export default function TTRAI() {
                 console.warn("Server failed, using client fallback", e);
                 // Client Side Fallback
                 if (!genAI) throw new Error("API Key Missing! Add VITE_GEMINI_API_KEY to your .env or Vercel Config.");
-                const model = genAI.getGenerativeModel({ model: "gemini-flash-latest", systemInstruction: sysPrompt });
+                const model = genAI.getGenerativeModel({ model: MODEL_NAME, systemInstruction: sysPrompt });
                 const chat = model.startChat();
                 const result = await chat.sendMessage(text || "image");
                 responseText = result.response.text();
