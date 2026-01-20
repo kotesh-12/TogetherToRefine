@@ -200,37 +200,40 @@ export default function TTRAI() {
         setShowSidebar(false);
     };
 
+    const utteranceRef = useRef(null); // Prevent GC bug
+
     const speakText = (text) => {
         if (!('speechSynthesis' in window)) return;
 
-        // Clean Markdown
         const cleanText = text.replace(/[*#_`]/g, '');
+        if (!cleanText.trim()) return;
+
+        window.speechSynthesis.cancel(); // Always cancel previous
 
         if (speakingText === text) {
-            window.speechSynthesis.cancel();
             setSpeakingText(null);
             return;
         }
 
-        window.speechSynthesis.cancel();
-
         const utterance = new SpeechSynthesisUtterance(cleanText);
+        utteranceRef.current = utterance; // Keep reference to prevent Garbage Collection
 
-        const preferredVoice = voices.find(v => v.name.includes("Google US English"))
-            || voices.find(v => v.name.includes("Zira"))
-            || voices.find(v => v.name.includes("Natural"))
-            || voices.find(v => v.lang === "en-US");
+        // Try to get voices directly
+        const allVoices = window.speechSynthesis.getVoices();
+        const preferredVoice = allVoices.find(v => v.name.includes("Google US English"))
+            || allVoices.find(v => v.name.includes("Zira"))
+            || allVoices.find(v => v.name.includes("Natural"));
 
         if (preferredVoice) utterance.voice = preferredVoice;
 
-        utterance.pitch = 1.05;
+        utterance.pitch = 1.0;
         utterance.rate = 1.0;
 
         utterance.onend = () => setSpeakingText(null);
-        utterance.onerror = () => setSpeakingText(null);
+        utterance.onerror = (e) => { console.error("TTS Error", e); setSpeakingText(null); };
 
-        window.speechSynthesis.speak(utterance);
         setSpeakingText(text);
+        window.speechSynthesis.speak(utterance);
     };
 
     const toggleVoiceInput = () => {
