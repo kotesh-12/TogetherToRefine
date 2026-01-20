@@ -83,18 +83,22 @@ export default function FourWayLearning() {
     const [voices, setVoices] = useState([]);
 
     useEffect(() => {
+        window.speechSynthesis.cancel(); // Cleanup on mount
         const loadVoices = () => {
             const v = window.speechSynthesis.getVoices();
             setVoices(v);
         };
         window.speechSynthesis.onvoiceschanged = loadVoices;
         loadVoices();
+
+        return () => window.speechSynthesis.cancel(); // Cleanup on unmount
     }, []);
 
     const utteranceRef = useRef(null);
 
     const speakText = (text) => {
         if (!('speechSynthesis' in window)) return;
+        if (!text) return; // Safety check
 
         const cleanText = text.replace(/[*#_`]/g, '');
         if (!cleanText.trim()) return;
@@ -119,7 +123,7 @@ export default function FourWayLearning() {
 
             utterance.rate = 1.0;
             utterance.onend = () => setSpeakingText(null);
-            utterance.onerror = () => setSpeakingText(null);
+            utterance.onerror = (e) => { console.error("TTS Error", e); setSpeakingText(null); };
 
             setSpeakingText(text);
             window.speechSynthesis.speak(utterance);
