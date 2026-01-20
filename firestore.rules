@@ -1,1 +1,53 @@
-﻿rules_version = '2'; service cloud.firestore { match /databases/{database}/documents { match /{document=**} { allow read, write: if true; } } }
+﻿rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check if user is signed in
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if user is accessing their own document
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Helper function to check if the user is an Admin
+    // We check the 'users' collection for the 'admin' role.
+    // Note: In strict systems, we might use Custom Claims, but for this setup we read the doc.
+    function isAdmin() {
+      return isSignedIn() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         get(/databases/$(database)/documents/teachers/$(request.auth.uid)).data.role == 'admin' ||
+         get(/databases/$(database)/documents/institutions/$(request.auth.uid)).data.role == 'admin');
+    }
+
+    // --- COLLECTION RULES ---
+
+    // 1. USERS Collection (Students/General)
+    match /users/{userId} {
+      // Admin can read/write everything
+      // Owner can read/write their own data 
+      allow read: if isSignedIn() && (isOwner(userId) || isAdmin());
+      allow write: if isSignedIn() && (isOwner(userId) || isAdmin());
+    }
+
+    // 2. TEACHERS Collection
+    match /teachers/{teacherId} {
+      allow read: if isSignedIn(); // Teachers list might be visible to institutions/students? limiting for now.
+      // actually, students need to see teachers? Let's allow read for auth users for now.
+      allow write: if isSignedIn() && (isOwner(teacherId) || isAdmin());
+    }
+
+    // 3. INSTITUTIONS Collection
+    match /institutions/{instId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (isOwner(instId) || isAdmin());
+    }
+
+    // 4. Default Lock (everything else)
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}
