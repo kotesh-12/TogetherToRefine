@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import ReactMarkdown from 'react-markdown';
 import { db } from '../firebase';
 import { collection, addDoc, query, orderBy, onSnapshot, limit, serverTimestamp, where, doc, updateDoc } from 'firebase/firestore';
 
@@ -314,11 +315,14 @@ export default function FourWayLearning() {
                         borderBottomRightRadius: msg.role === 'user' ? '2px' : '12px',
                         borderBottomLeftRadius: msg.role === 'ai' ? '2px' : '12px',
                         boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
-                        lineHeight: '1.5', whiteSpace: 'pre-wrap',
+                        lineHeight: '1.5',
                         position: 'relative' // For absolute positioning of button if needed, but flex is safer inside div
                     }}>
                         {msg.image && <img src={msg.image} alt="User" style={{ maxWidth: '100%', borderRadius: '8px', marginBottom: '10px' }} />}
-                        {msg.text}
+                        {/* TEXT CONTENT (Markdown Rendered) */}
+                        <div className="markdown-content">
+                            <ReactMarkdown>{msg.text}</ReactMarkdown>
+                        </div>
 
                         {/* SPEAKER BUTTON */}
                         {msg.role === 'ai' && (
