@@ -22,7 +22,7 @@ export default function TTRAI() {
     const ENV_KEY = import.meta.env.VITE_GEMINI_API_KEY;
     const API_KEY = ENV_KEY || "AIzaSyAOrTRtIZZL1J_GTdc_XEe3m9vzgGJWzOE";
     const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
-    const MODEL_NAME = "gemini-1.5-flash";
+    const MODEL_NAME = "gemini-flash-latest";
     const [selectedImage, setSelectedImage] = useState(null);
     const [isListening, setIsListening] = useState(false);
     const [isSpeaking, setIsSpeaking] = useState(false);
