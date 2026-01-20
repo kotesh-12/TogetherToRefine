@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export default function FourWayLearning() {
     const navigate = useNavigate();
@@ -117,6 +118,11 @@ export default function FourWayLearning() {
         }
     }, [chats[activeTab], activeTab]);
 
+    // AI Helper
+    const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+    const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
+    const MODEL_NAME = "gemini-flash-latest";
+
     const handleGenerate = async () => {
         const currentInput = inputs[activeTab];
         if (!currentInput.trim() && !selectedImage) return;
@@ -133,6 +139,8 @@ export default function FourWayLearning() {
         setLoading(true);
 
         try {
+            if (!genAI) throw new Error("API Key Missing! Please configure VITE_GEMINI_API_KEY.");
+
             let promptText = "";
             let topic = currentInput || "Explain this image";
 
@@ -152,30 +160,42 @@ export default function FourWayLearning() {
                 promptText = `Tell a story that revolves around "${topic}". The story should be engaging and the topic should be central to the plot, helping the reader understand naturally through the narrative flow.`;
             }
 
-            // Prepare History (only for context, keep it light)
-            const apiHistory = chats[activeTab].map(msg => ({
-                role: msg.role === 'user' ? 'user' : 'model',
-                parts: [{ text: msg.text }]
-            })).slice(-6); // Limit context window
+            const model = genAI.getGenerativeModel({ model: MODEL_NAME });
 
-            const response = await fetch('/api/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    history: apiHistory,
-                    message: promptText,
-                    image: newUserMsg.image ? newUserMsg.image.split(',')[1] : null,
-                    mimeType: newUserMsg.image ? newUserMsg.image.split(';')[0].split(':')[1] : null
-                })
+            // Prepare History
+            // Fix: Ensure history starts with 'user'
+            let historyForApi = chats[activeTab].map(msg => ({
+                role: msg.role === 'user' ? 'user' : 'model',
+                parts: [{ text: msg.text || "" }]
+            })).slice(-6);
+
+            while (historyForApi.length > 0 && historyForApi[0].role !== 'user') {
+                historyForApi.shift();
+            }
+
+            const chat = model.startChat({
+                history: historyForApi
             });
 
-            const data = await response.json();
-            if (data.error) throw new Error(data.error);
+            // Prepare Message Parts
+            let msgParts = [promptText];
+            if (newUserMsg.image) {
+                // Remove header "data:image/jpeg;base64,"
+                const base64Data = newUserMsg.image.split(',')[1];
+                const mimeType = newUserMsg.image.match(/:(.*?);/)?.[1] || "image/jpeg";
+                msgParts = [
+                    promptText,
+                    { inlineData: { mimeType: mimeType, data: base64Data } }
+                ];
+            }
+
+            const result = await chat.sendMessage(msgParts);
+            const responseText = result.response.text();
 
             // Add AI Response
             setChats(prev => ({
                 ...prev,
-                [activeTab]: [...prev[activeTab], { role: 'ai', text: data.text }]
+                [activeTab]: [...prev[activeTab], { role: 'ai', text: responseText }]
             }));
 
         } catch (error) {
