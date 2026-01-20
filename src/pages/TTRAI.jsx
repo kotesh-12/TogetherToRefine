@@ -260,7 +260,7 @@ export default function TTRAI() {
 
             try {
                 // FORCE CLIENT-SIDE ONLY (Fixes 404 API Errors)
-                if (!genAI) throw new Error("API Key logic failed. Contact Admin.");
+                if (!genAI) throw new Error("API Key Missing. Please configure VITE_GEMINI_API_KEY.");
                 const model = genAI.getGenerativeModel({ model: MODEL_NAME, systemInstruction: sysPrompt });
 
                 // Fix: Google Gemini mandates that history MUST start with 'user' role.
@@ -385,7 +385,8 @@ export default function TTRAI() {
                             2. Settings &rarr; Environment Variables.<br />
                             3. Add New Variable:<br />
                             4. Key: <code style={{ color: 'blue' }}>VITE_GEMINI_API_KEY</code><br />
-                            5. Value: <em>(Your Google AI Key)</em>
+                            5. Value: <em>(Your Google AI Key)</em><br />
+                            6. <strong>IMPORTANT: Redeploy the project!</strong>
                         </div>
 
                         <button onClick={() => setMessages(prev => prev.filter(m => !m.text.includes("API Key Missing")))} className="btn" style={{ background: '#333' }}>
