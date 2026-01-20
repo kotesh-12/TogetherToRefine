@@ -2,15 +2,17 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { db } from '../firebase';
+import { collection, addDoc, query, orderBy, onSnapshot, limit, serverTimestamp, where, doc, updateDoc } from 'firebase/firestore';
 
 export default function FourWayLearning() {
     const navigate = useNavigate();
-    const { userData } = useUser();
+    const { user: authUser, userData } = useUser();
 
-    // Default to 'conceptual' or null? User implies a stable view, so starting with 'conceptual' is good.
+    // Active Mode Tab
     const [activeTab, setActiveTab] = useState('conceptual');
 
-    // Store chat history for each mode independently
+    // Chat Content (View Layer)
     const [chats, setChats] = useState({
         conceptual: [],
         fictional: [],
@@ -18,7 +20,18 @@ export default function FourWayLearning() {
         teaching: []
     });
 
-    // Store input text for each mode independently
+    // Active Sessions (Persistence Layer) - Maps Mode -> SessionID
+    const [activeSessionIds, setActiveSessionIds] = useState({
+        conceptual: null,
+        fictional: null,
+        storytelling: null,
+        teaching: null
+    });
+
+    // History List
+    const [sessions, setSessions] = useState([]);
+
+    // Inputs
     const [inputs, setInputs] = useState({
         conceptual: '',
         fictional: '',
@@ -27,124 +40,132 @@ export default function FourWayLearning() {
     });
 
     const [loading, setLoading] = useState(false);
-
-    // Teaching Mode Extras
     const [motherTongue, setMotherTongue] = useState('Hindi');
     const [selectedImage, setSelectedImage] = useState(null);
+    const [showSidebar, setShowSidebar] = useState(false);
 
     const chatContainerRef = useRef(null);
-
-    const userClass = userData?.class || "Grade 10"; // Default to 10th if unknown
+    const userClass = userData?.class || "Grade 10";
 
     const modes = [
         {
             id: 'conceptual',
             title: '🧠 Conceptual',
-            fullTitle: 'Conceptual Learning',
             desc: 'Understand the "Why" and "How" with deep conceptual clarity.',
-            prompt: (topic) => `
-                You are a Conceptual Tutor for a student in ${userClass}.
-                Task: Explain "${topic}" strictly conceptually.
-                Guidelines:
-                1. Focus ONLY on the core principles, definitions, and underlying logic.
-                2. Do NOT use fictional stories or analogies here. Stick to the facts.
-                3. Structure the answer logically: Definition -> Core Mechanism -> Real World Application.
-                4. Match the complexity to a ${userClass} level.
-            `
         },
         {
             id: 'fictional',
             title: '🚀 Fictional',
-            fullTitle: 'Fictional Learning',
             desc: 'Learn through analogies using Indian Mythology, History, or Sci-Fi.',
-            prompt: (topic) => `
-                You are a Creative Educational Storyteller for a student in ${userClass}.
-                Task: Explain "${topic}" by creating a fictional analogy or story using iconic characters.
-                
-                Character Preference (Priority Order):
-                1. **Indian Mythology/History**: Use characters from Mahabharata (e.g., Arjuna, Krishna, Bhima), Ramayana (e.g., Hanuman, Rama), or great Kings (e.g., Chhatrapati Shivaji Maharaj).
-                   - Example: Explain 'Force' using Bhima's strength or 'Focus' using Arjuna.
-                2. **Superheroes/Sci-Fi**: If (and only if) Indian characters don't fit the concept well, use Superheroes (e.g., Iron Man) or Aliens.
-
-                Guidelines:
-                1. Select the character set that best analogizes the concept.
-                2. The characters' actions and interactions must mirror the scientific/logical concept exactly.
-                3. Keep the tone respectful yet engaging for a ${userClass} student.
-                4. Start by introducing the characters involved in this specific analogy.
-            `
         },
         {
             id: 'storytelling',
             title: '📖 Story',
-            fullTitle: 'Story Telling',
             desc: 'Weave the topic into a compelling narrative.',
-            prompt: (topic) => `
-                You are a Storyteller for a student in ${userClass}.
-                Task: Tell an engaging short story where "${topic}" is the central plot device.
-                Guidelines:
-                1. Start with "Once upon a time..." or a strong hook.
-                2. The protagonist should encounter a problem that is solved understanding "${topic}".
-                3. The story should flow naturally, teaching the concept subconsciously.
-            `
         },
         {
             id: 'teaching',
             title: '👩‍🏫 Teaching',
-            fullTitle: 'Teacher Style (Dialogue)',
             desc: 'Interactive 2-way communication dialogue between Teacher and Student.',
-            prompt: (topic, lang) => `
-                Act as a Friendly Teacher teaching a student in ${userClass}.
-                Task: Explain "${topic}" using a 2-Way Communication (Dialogue) format.
-                Language: Explain primarily in ${lang} (or Hinglish if Hindi).
-                
-                Format:
-                **Teacher:** [Introductory question or simple definition]
-                **Student:** [Asks a common doubt or curious question specific to ${userClass} level]
-                **Teacher:** [Explains clearly using an example]
-                **Student:** [Has an "Aha!" moment or asks for clarification]
-                **Teacher:** [Final summary]
-                
-                Keep the tone encouraging and conversational.
-            `
         }
     ];
 
     const currentMode = modes.find(m => m.id === activeTab);
-
-    // Auto-scroll to bottom of chat
-    useEffect(() => {
-        if (chatContainerRef.current) {
-            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-        }
-    }, [chats[activeTab], activeTab]);
 
     // AI Helper
     const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
     const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
     const MODEL_NAME = "gemini-flash-latest";
 
+    // 1. Fetch User's History (Sessions)
+    useEffect(() => {
+        if (!authUser) return;
+        // Fetch all 4-Way sessions sorted by new
+        const q = query(
+            collection(db, 'users', authUser.uid, 'four_way_sessions'),
+            orderBy('updatedAt', 'desc'),
+            limit(50)
+        );
+        const unsub = onSnapshot(q, (snap) => {
+            setSessions(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        });
+        return () => unsub();
+    }, [authUser]);
+
+    // 2. Listen to Active Session Messages (Only for current tab to save bandwidth)
+    useEffect(() => {
+        if (!authUser) return;
+        const currentId = activeSessionIds[activeTab];
+
+        if (!currentId) {
+            // No session active for this tab, clear view (or keep local optimistic if we just started?)
+            // We'll keep local state if it exists, otherwise empty
+            return;
+        }
+
+        const q = query(
+            collection(db, 'users', authUser.uid, 'four_way_sessions', currentId, 'messages'),
+            orderBy('createdAt', 'asc')
+        );
+
+        const unsub = onSnapshot(q, (snap) => {
+            const msgs = snap.docs.map(d => d.data());
+            setChats(prev => ({ ...prev, [activeTab]: msgs }));
+        });
+
+        return () => unsub();
+    }, [activeTab, activeSessionIds, authUser]); // Refetch when tab or session ID changes
+
+    // Auto-scroll
+    useEffect(() => {
+        if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+    }, [chats[activeTab], activeTab]);
+
+
     const handleGenerate = async () => {
         const currentInput = inputs[activeTab];
         if (!currentInput.trim() && !selectedImage) return;
 
-        // Add User Message
-        const newUserMsg = { role: 'user', text: currentInput, image: selectedImage };
-        setChats(prev => ({
-            ...prev,
-            [activeTab]: [...prev[activeTab], newUserMsg]
-        }));
-        setInputs(prev => ({ ...prev, [activeTab]: '' })); // Clear input
-        if (activeTab === 'teaching') setSelectedImage(null); // Clear image after send
-
         setLoading(true);
+        const newUserMsg = { role: 'user', text: currentInput, image: selectedImage, createdAt: serverTimestamp() };
+
+        // Optimistic UI
+        setChats(prev => ({ ...prev, [activeTab]: [...prev[activeTab], { ...newUserMsg, createdAt: new Date() }] }));
+
+        setInputs(prev => ({ ...prev, [activeTab]: '' }));
+        if (activeTab === 'teaching') setSelectedImage(null);
 
         try {
             if (!genAI) throw new Error("API Key Missing! Please configure VITE_GEMINI_API_KEY.");
+            if (!authUser) throw new Error("Please login.");
 
+            // 1. Ensure Persistent Session Exists
+            let sessionId = activeSessionIds[activeTab];
+            if (!sessionId) {
+                const sessRef = await addDoc(collection(db, 'users', authUser.uid, 'four_way_sessions'), {
+                    mode: activeTab,
+                    title: currentInput.substring(0, 30) || "Image Query",
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                });
+                sessionId = sessRef.id;
+                setActiveSessionIds(prev => ({ ...prev, [activeTab]: sessionId }));
+            } else {
+                // Update timestamp/title
+                updateDoc(doc(db, 'users', authUser.uid, 'four_way_sessions', sessionId), {
+                    updatedAt: serverTimestamp()
+                });
+            }
+
+            // 2. Save User Msg
+            await addDoc(collection(db, 'users', authUser.uid, 'four_way_sessions', sessionId, 'messages'), newUserMsg);
+
+            // 3. AI Generation
             let promptText = "";
             let topic = currentInput || "Explain this image";
 
-            // Custom Prompt Construction
             if (activeTab === 'teaching') {
                 promptText = `
                     Act as a Teacher teaching a student. 
@@ -162,41 +183,33 @@ export default function FourWayLearning() {
 
             const model = genAI.getGenerativeModel({ model: MODEL_NAME });
 
-            // Prepare History
-            // Fix: Ensure history starts with 'user'
+            // History for API
             let historyForApi = chats[activeTab].map(msg => ({
                 role: msg.role === 'user' ? 'user' : 'model',
                 parts: [{ text: msg.text || "" }]
-            })).slice(-6);
+            })).slice(-10); // Context window
 
-            while (historyForApi.length > 0 && historyForApi[0].role !== 'user') {
-                historyForApi.shift();
-            }
+            // Ensure starts with user
+            while (historyForApi.length > 0 && historyForApi[0].role !== 'user') historyForApi.shift();
 
-            const chat = model.startChat({
-                history: historyForApi
-            });
+            const chat = model.startChat({ history: historyForApi });
 
-            // Prepare Message Parts
             let msgParts = [promptText];
             if (newUserMsg.image) {
-                // Remove header "data:image/jpeg;base64,"
                 const base64Data = newUserMsg.image.split(',')[1];
                 const mimeType = newUserMsg.image.match(/:(.*?);/)?.[1] || "image/jpeg";
-                msgParts = [
-                    promptText,
-                    { inlineData: { mimeType: mimeType, data: base64Data } }
-                ];
+                msgParts = [promptText, { inlineData: { mimeType, data: base64Data } }];
             }
 
             const result = await chat.sendMessage(msgParts);
             const responseText = result.response.text();
 
-            // Add AI Response
-            setChats(prev => ({
-                ...prev,
-                [activeTab]: [...prev[activeTab], { role: 'ai', text: responseText }]
-            }));
+            // 4. Save AI Msg
+            await addDoc(collection(db, 'users', authUser.uid, 'four_way_sessions', sessionId, 'messages'), {
+                role: 'ai',
+                text: responseText,
+                createdAt: serverTimestamp()
+            });
 
         } catch (error) {
             console.error(error);
@@ -218,12 +231,14 @@ export default function FourWayLearning() {
         }
     };
 
-    // Sidebar State
-    const [showSidebar, setShowSidebar] = useState(false);
-    const { user: authUser } = useUser();
+    const loadSession = (session) => {
+        setActiveTab(session.mode);
+        setActiveSessionIds(prev => ({ ...prev, [session.mode]: session.id }));
+        setShowSidebar(false);
+    };
 
-    // Reset Chat Function
-    const resetChat = () => {
+    const resetCurrentChat = () => {
+        setActiveSessionIds(prev => ({ ...prev, [activeTab]: null }));
         setChats(prev => ({ ...prev, [activeTab]: [] }));
         setShowSidebar(false);
     };
@@ -231,46 +246,30 @@ export default function FourWayLearning() {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#f5f6fa', fontFamily: "'Segoe UI', sans-serif" }}>
 
-            {/* 1. STICKY HEADER & TABS */}
+            {/* HEADER */}
             <div style={{ background: 'white', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', zIndex: 10 }}>
-                {/* Top Row: Back & Title */}
                 <div style={{ display: 'flex', alignItems: 'center', padding: '15px 20px', borderBottom: '1px solid #eee' }}>
-                    {/* MENU BUTTON (Left) */}
                     <button
                         onClick={() => setShowSidebar(true)}
                         style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', marginRight: '15px', color: '#2d3436' }}
                     >
                         ☰
                     </button>
-
-                    <button
-                        className="btn-back-marker" // Using your standardized class
-                        onClick={() => navigate(-1)} // Explicit exit
-                    >
-                        Back
-                    </button>
-                    <h1 style={{ margin: '0 0 0 15px', fontSize: '20px', color: '#2d3436' }}>
-                        Four-Way Learning
-                    </h1>
+                    <button className="btn-back-marker" onClick={() => navigate(-1)}>Back</button>
+                    <h1 style={{ margin: '0 0 0 15px', fontSize: '20px', color: '#2d3436' }}>Four-Way Learning</h1>
                 </div>
 
-                {/* Tab Bar */}
                 <div style={{ display: 'flex', overflowX: 'auto', padding: '0 10px' }}>
                     {modes.map(m => (
                         <button
                             key={m.id}
                             onClick={() => setActiveTab(m.id)}
                             style={{
-                                flex: 1,
-                                padding: '15px 10px',
-                                background: 'none',
-                                border: 'none',
+                                flex: 1, padding: '15px 10px', background: 'none', border: 'none',
                                 borderBottom: activeTab === m.id ? '3px solid #6c5ce7' : '3px solid transparent',
                                 color: activeTab === m.id ? '#6c5ce7' : '#636e72',
                                 fontWeight: activeTab === m.id ? 'bold' : 'normal',
-                                cursor: 'pointer',
-                                whiteSpace: 'nowrap',
-                                transition: 'all 0.2s'
+                                cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s'
                             }}
                         >
                             {m.title}
@@ -279,21 +278,15 @@ export default function FourWayLearning() {
                 </div>
             </div>
 
-            {/* 2. SCROLLABLE CHAT AREA */}
-            <div
-                ref={chatContainerRef}
-                style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}
-            >
-                {/* Welcome / Empty State */}
+            {/* CHAT AREA */}
+            <div ref={chatContainerRef} style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 {chats[activeTab].length === 0 && (
                     <div style={{ textAlign: 'center', color: '#b2bec3', marginTop: '50px' }}>
                         <div style={{ fontSize: '40px', marginBottom: '10px' }}>✨</div>
-                        <p>{currentMode.desc}</p>
+                        <p>{currentMode?.desc}</p>
                         <p style={{ fontSize: '13px' }}>Ask anything to start learning!</p>
                     </div>
                 )}
-
-                {/* Messages */}
                 {chats[activeTab].map((msg, idx) => (
                     <div key={idx} style={{
                         alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
@@ -305,30 +298,20 @@ export default function FourWayLearning() {
                         borderBottomRightRadius: msg.role === 'user' ? '2px' : '12px',
                         borderBottomLeftRadius: msg.role === 'ai' ? '2px' : '12px',
                         boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
-                        lineHeight: '1.5',
-                        whiteSpace: 'pre-wrap'
+                        lineHeight: '1.5', whiteSpace: 'pre-wrap'
                     }}>
                         {msg.image && <img src={msg.image} alt="User" style={{ maxWidth: '100%', borderRadius: '8px', marginBottom: '10px' }} />}
                         {msg.text}
                     </div>
                 ))}
-
-                {loading && (
-                    <div style={{ alignSelf: 'flex-start', background: 'white', padding: '10px 20px', borderRadius: '20px', color: '#666', fontSize: '14px' }}>
-                        Thinking...
-                    </div>
-                )}
+                {loading && <div style={{ alignSelf: 'flex-start', background: 'white', padding: '10px 20px', borderRadius: '20px', color: '#666' }}>Thinking...</div>}
             </div>
 
-            {/* 3. INPUT AREA (Fixed Bottom) */}
+            {/* INPUT AREA */}
             <div style={{ padding: '15px', background: 'white', borderTop: '1px solid #eee' }}>
                 {activeTab === 'teaching' && (
                     <div style={{ marginBottom: '10px', display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <select
-                            value={motherTongue}
-                            onChange={(e) => setMotherTongue(e.target.value)}
-                            style={{ padding: '8px', borderRadius: '5px', border: '1px solid #ddd' }}
-                        >
+                        <select value={motherTongue} onChange={(e) => setMotherTongue(e.target.value)} style={{ padding: '8px', borderRadius: '5px', border: '1px solid #ddd' }}>
                             <option value="Hindi">Hindi</option>
                             <option value="Telugu">Telugu</option>
                             <option value="Tamil">Tamil</option>
@@ -342,43 +325,45 @@ export default function FourWayLearning() {
                         {selectedImage && <button onClick={() => setSelectedImage(null)} style={{ border: 'none', background: 'none', color: 'red', cursor: 'pointer' }}>✕</button>}
                     </div>
                 )}
-
                 <div style={{ display: 'flex', gap: '10px' }}>
-                    <input
-                        type="text"
-                        value={inputs[activeTab]}
-                        onChange={(e) => setInputs(prev => ({ ...prev, [activeTab]: e.target.value }))}
-                        onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
-                        placeholder={`Ask in ${currentMode.title} mode...`}
-                        style={{ flex: 1, padding: '12px 15px', borderRadius: '25px', border: '1px solid #dfe6e9', outline: 'none' }}
-                    />
-                    <button
-                        onClick={handleGenerate}
-                        disabled={loading || (!inputs[activeTab] && !selectedImage)}
-                        style={{
-                            width: '50px', height: '50px', borderRadius: '50%',
-                            background: '#6c5ce7', color: 'white', border: 'none',
-                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: '20px'
-                        }}
-                    >
-                        ➤
-                    </button>
+                    <input type="text" value={inputs[activeTab]} onChange={(e) => setInputs(prev => ({ ...prev, [activeTab]: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && handleGenerate()} placeholder={`Ask in ${currentMode?.title} mode...`} style={{ flex: 1, padding: '12px 15px', borderRadius: '25px', border: '1px solid #dfe6e9', outline: 'none' }} />
+                    <button onClick={handleGenerate} disabled={loading || (!inputs[activeTab] && !selectedImage)} style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#6c5ce7', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>➤</button>
                 </div>
             </div>
 
-            {/* SIDEBAR OVERLAY */}
+            {/* SIDEBAR HISTORY */}
             {showSidebar && (
                 <div className="sidebar-overlay">
                     <div className="sidebar-backdrop" onClick={() => setShowSidebar(false)} />
                     <div className="sidebar-content">
-                        <h2>Learning Menu</h2>
+                        <h2>History</h2>
+                        <button onClick={resetCurrentChat} className="btn" style={{ width: '100%', marginBottom: '15px', background: '#333' }}>+ New {currentMode?.title} Chat</button>
 
-                        <div style={{ marginTop: '20px' }}>
-                            <button onClick={resetChat} className="btn" style={{ width: '100%', marginBottom: '15px', background: '#e17055' }}>
-                                🗑️ Clear This Chat
-                            </button>
+                        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {sessions.length === 0 && <p style={{ color: '#666', fontStyle: 'italic' }}>No history yet.</p>}
+                            {sessions.map(sess => (
+                                <div key={sess.id} onClick={() => loadSession(sess)} style={{
+                                    padding: '10px',
+                                    background: activeSessionIds[sess.mode] === sess.id ? '#e3f2fd' : '#f5f5f5',
+                                    borderRadius: '8px', cursor: 'pointer', fontSize: '14px', borderLeft: `4px solid ${sess.mode === 'conceptual' ? '#ff7675' :
+                                            sess.mode === 'fictional' ? '#74b9ff' :
+                                                sess.mode === 'storytelling' ? '#55efc4' : '#a29bfe'
+                                        }`
+                                }}>
+                                    <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                                        {sess.mode === 'conceptual' ? '🧠 Conceptual' :
+                                            sess.mode === 'fictional' ? '🚀 Fictional' :
+                                                sess.mode === 'storytelling' ? '📖 Story' : '👩‍🏫 Teaching'}
+                                    </div>
+                                    {sess.title}
+                                    <div style={{ fontSize: '10px', color: '#999', marginTop: '4px' }}>
+                                        {sess.updatedAt?.toDate ? sess.updatedAt.toDate().toLocaleDateString() : 'Just now'}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
 
+                        <div style={{ marginTop: '10px' }}>
                             <button onClick={() => {
                                 const r = userData?.role?.toLowerCase();
                                 if (r === 'admin' || authUser?.email === 'admin@ttr.com') navigate('/admin');
@@ -389,10 +374,6 @@ export default function FourWayLearning() {
                             }} className="btn" style={{ width: '100%', background: '#2193b0' }}>
                                 🏠 Go to Dashboard
                             </button>
-                        </div>
-
-                        <div style={{ marginTop: 'auto' }}>
-                            <button onClick={() => setShowSidebar(false)} className="btn" style={{ background: '#ddd', color: '#333', width: '100%' }}>Close</button>
                         </div>
                     </div>
                 </div>
