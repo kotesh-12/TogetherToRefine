@@ -49,8 +49,8 @@ export default function AccessDenied() {
                 <p style={{ color: '#636e72', marginBottom: '10px' }}>
                     You do not have permission to view this page.
                 </p>
-                {/* DEBUG: Button visible to help user regain access */}
-                {userData && (
+                {/* SECURITY: Only show this to the specific Admin Email */}
+                {userData && (userData.email === 'kotesh.business12@gmail.com' || userData.email === 'koteshbitra789@gmail.com') && (
                     <div style={{ marginTop: '20px', padding: '15px', background: '#f8f9fa', borderRadius: '8px', border: '1px solid #ddd', textAlign: 'left', maxWidth: '400px', margin: '20px auto' }}>
                         <p style={{ marginTop: 0 }}><strong>Debug Info:</strong></p>
                         <p><strong>Current Role:</strong> <code>{userData.role}</code></p>
