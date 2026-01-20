@@ -79,7 +79,7 @@ export default function FourWayLearning() {
     const MODEL_NAME = "gemini-flash-latest";
 
     // Text to Speech Helper
-    const [isSpeaking, setIsSpeaking] = useState(false);
+    const [speakingText, setSpeakingText] = useState(null);
     const [voices, setVoices] = useState([]);
 
     useEffect(() => {
@@ -92,32 +92,36 @@ export default function FourWayLearning() {
     }, []);
 
     const speakText = (text) => {
-        if ('speechSynthesis' in window) {
-            if (window.speechSynthesis.speaking) {
-                window.speechSynthesis.cancel();
-                setIsSpeaking(false);
-                return;
-            }
-            const utterance = new SpeechSynthesisUtterance(text);
+        if (!('speechSynthesis' in window)) return;
 
-            // Voice Selection Strategy: Prioritize "Natural" / "Google" / "Female" voices
-            const preferredVoice = voices.find(v => v.name.includes("Google US English"))
-                || voices.find(v => v.name.includes("Zira")) // Windows Nice Female
-                || voices.find(v => v.name.includes("Natural")) // Safari/Edge Natural
-                || voices.find(v => v.lang === "en-US");
+        // Clean Markdown
+        const cleanText = text.replace(/[*#_`]/g, '');
 
-            if (preferredVoice) {
-                utterance.voice = preferredVoice;
-            }
-
-            // Tuning for "Attractiveness"
-            utterance.pitch = 1.05; // Slightly softer/higher
-            utterance.rate = 1.0;   // Normal speed
-
-            utterance.onstart = () => setIsSpeaking(true);
-            utterance.onend = () => setIsSpeaking(false);
-            window.speechSynthesis.speak(utterance);
+        if (speakingText === text) {
+            window.speechSynthesis.cancel();
+            setSpeakingText(null);
+            return;
         }
+
+        window.speechSynthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+
+        const preferredVoice = voices.find(v => v.name.includes("Google US English"))
+            || voices.find(v => v.name.includes("Zira"))
+            || voices.find(v => v.name.includes("Natural"))
+            || voices.find(v => v.lang === "en-US");
+
+        if (preferredVoice) utterance.voice = preferredVoice;
+
+        utterance.pitch = 1.05;
+        utterance.rate = 1.0;
+
+        utterance.onend = () => setSpeakingText(null);
+        utterance.onerror = () => setSpeakingText(null);
+
+        window.speechSynthesis.speak(utterance);
+        setSpeakingText(text);
     };
 
     // 1. Fetch User's History (Sessions)
@@ -353,7 +357,7 @@ export default function FourWayLearning() {
                         {/* SPEAKER BUTTON */}
                         {msg.role === 'ai' && (
                             <button onClick={() => speakText(msg.text)} className="speak-button">
-                                {isSpeaking ? '🔇' : '🔊'}
+                                {speakingText === msg.text ? '🔇' : '🔊'}
                             </button>
                         )}
                     </div>

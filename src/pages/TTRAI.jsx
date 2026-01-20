@@ -24,7 +24,7 @@ export default function TTRAI() {
     const MODEL_NAME = "gemini-flash-latest";
     const [selectedImage, setSelectedImage] = useState(null);
     const [isListening, setIsListening] = useState(false);
-    const [isSpeaking, setIsSpeaking] = useState(false);
+    const [speakingText, setSpeakingText] = useState(null);
     const [showSidebar, setShowSidebar] = useState(false);
 
     // Permissions
@@ -201,29 +201,36 @@ export default function TTRAI() {
     };
 
     const speakText = (text) => {
-        if ('speechSynthesis' in window) {
-            if (window.speechSynthesis.speaking) {
-                window.speechSynthesis.cancel();
-                setIsSpeaking(false);
-                return;
-            }
-            const utterance = new SpeechSynthesisUtterance(text);
+        if (!('speechSynthesis' in window)) return;
 
-            // Pick Best Voice
-            const preferredVoice = voices.find(v => v.name.includes("Google US English"))
-                || voices.find(v => v.name.includes("Zira"))
-                || voices.find(v => v.name.includes("Natural"))
-                || voices.find(v => v.lang === "en-US");
+        // Clean Markdown
+        const cleanText = text.replace(/[*#_`]/g, '');
 
-            if (preferredVoice) utterance.voice = preferredVoice;
-
-            utterance.pitch = 1.05; // Softer
-            utterance.rate = 1.0;
-
-            utterance.onstart = () => setIsSpeaking(true);
-            utterance.onend = () => setIsSpeaking(false);
-            window.speechSynthesis.speak(utterance);
+        if (speakingText === text) {
+            window.speechSynthesis.cancel();
+            setSpeakingText(null);
+            return;
         }
+
+        window.speechSynthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+
+        const preferredVoice = voices.find(v => v.name.includes("Google US English"))
+            || voices.find(v => v.name.includes("Zira"))
+            || voices.find(v => v.name.includes("Natural"))
+            || voices.find(v => v.lang === "en-US");
+
+        if (preferredVoice) utterance.voice = preferredVoice;
+
+        utterance.pitch = 1.05;
+        utterance.rate = 1.0;
+
+        utterance.onend = () => setSpeakingText(null);
+        utterance.onerror = () => setSpeakingText(null);
+
+        window.speechSynthesis.speak(utterance);
+        setSpeakingText(text);
     };
 
     const toggleVoiceInput = () => {
@@ -352,7 +359,7 @@ export default function TTRAI() {
                         </div>
                         {msg.sender === 'ai' && (
                             <button onClick={() => speakText(msg.text)} className="speak-button">
-                                {isSpeaking ? '🔇' : '🔊'}
+                                {speakingText === msg.text ? '🔇' : '🔊'}
                             </button>
                         )}
                     </div>
