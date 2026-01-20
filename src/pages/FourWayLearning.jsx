@@ -218,6 +218,16 @@ export default function FourWayLearning() {
         }
     };
 
+    // Sidebar State
+    const [showSidebar, setShowSidebar] = useState(false);
+    const { user: authUser } = useUser();
+
+    // Reset Chat Function
+    const resetChat = () => {
+        setChats(prev => ({ ...prev, [activeTab]: [] }));
+        setShowSidebar(false);
+    };
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#f5f6fa', fontFamily: "'Segoe UI', sans-serif" }}>
 
@@ -225,9 +235,17 @@ export default function FourWayLearning() {
             <div style={{ background: 'white', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', zIndex: 10 }}>
                 {/* Top Row: Back & Title */}
                 <div style={{ display: 'flex', alignItems: 'center', padding: '15px 20px', borderBottom: '1px solid #eee' }}>
+                    {/* MENU BUTTON (Left) */}
+                    <button
+                        onClick={() => setShowSidebar(true)}
+                        style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', marginRight: '15px', color: '#2d3436' }}
+                    >
+                        ☰
+                    </button>
+
                     <button
                         className="btn-back-marker" // Using your standardized class
-                        onClick={() => navigate('/student-dashboard')} // Explicit exit
+                        onClick={() => navigate(-1)} // Explicit exit
                     >
                         Back
                     </button>
@@ -349,6 +367,36 @@ export default function FourWayLearning() {
                 </div>
             </div>
 
+            {/* SIDEBAR OVERLAY */}
+            {showSidebar && (
+                <div className="sidebar-overlay">
+                    <div className="sidebar-backdrop" onClick={() => setShowSidebar(false)} />
+                    <div className="sidebar-content">
+                        <h2>Learning Menu</h2>
+
+                        <div style={{ marginTop: '20px' }}>
+                            <button onClick={resetChat} className="btn" style={{ width: '100%', marginBottom: '15px', background: '#e17055' }}>
+                                🗑️ Clear This Chat
+                            </button>
+
+                            <button onClick={() => {
+                                const r = userData?.role?.toLowerCase();
+                                if (r === 'admin' || authUser?.email === 'admin@ttr.com') navigate('/admin');
+                                else if (r === 'teacher') navigate('/teacher');
+                                else if (r === 'institution') navigate('/institution');
+                                else if (r === 'student') navigate('/student');
+                                else navigate('/details');
+                            }} className="btn" style={{ width: '100%', background: '#2193b0' }}>
+                                🏠 Go to Dashboard
+                            </button>
+                        </div>
+
+                        <div style={{ marginTop: 'auto' }}>
+                            <button onClick={() => setShowSidebar(false)} className="btn" style={{ background: '#ddd', color: '#333', width: '100%' }}>Close</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
