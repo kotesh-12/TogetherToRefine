@@ -340,8 +340,11 @@ export default function FourWayLearning() {
                         <button onClick={resetCurrentChat} className="btn" style={{ width: '100%', marginBottom: '15px', background: '#333' }}>+ New {currentMode?.title} Chat</button>
 
                         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            {sessions.length === 0 && <p style={{ color: '#666', fontStyle: 'italic' }}>No history yet.</p>}
-                            {sessions.map(sess => (
+                            {sessions.filter(s => s.mode === activeTab).length === 0 && (
+                                <p style={{ color: '#666', fontStyle: 'italic' }}>No {currentMode?.title} history yet.</p>
+                            )}
+
+                            {sessions.filter(s => s.mode === activeTab).map(sess => (
                                 <div key={sess.id} onClick={() => loadSession(sess)} style={{
                                     padding: '10px',
                                     background: activeSessionIds[sess.mode] === sess.id ? '#e3f2fd' : '#f5f5f5',
@@ -351,11 +354,9 @@ export default function FourWayLearning() {
                                         }`
                                 }}>
                                     <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#666', marginBottom: '4px' }}>
-                                        {sess.mode === 'conceptual' ? '🧠 Conceptual' :
-                                            sess.mode === 'fictional' ? '🚀 Fictional' :
-                                                sess.mode === 'storytelling' ? '📖 Story' : '👩‍🏫 Teaching'}
+                                        {/* No need to show mode label since list is filtered, but title is active */}
+                                        {sess.title}
                                     </div>
-                                    {sess.title}
                                     <div style={{ fontSize: '10px', color: '#999', marginTop: '4px' }}>
                                         {sess.updatedAt?.toDate ? sess.updatedAt.toDate().toLocaleDateString() : 'Just now'}
                                     </div>
