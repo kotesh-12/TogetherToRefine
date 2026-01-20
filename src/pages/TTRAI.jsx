@@ -200,7 +200,7 @@ export default function TTRAI() {
         setShowSidebar(false);
     };
 
-    const utteranceRef = useRef(null); // Prevent GC bug
+    const utteranceRef = useRef(null);
 
     const speakText = (text) => {
         if (!('speechSynthesis' in window)) return;
@@ -208,32 +208,32 @@ export default function TTRAI() {
         const cleanText = text.replace(/[*#_`]/g, '');
         if (!cleanText.trim()) return;
 
-        window.speechSynthesis.cancel(); // Always cancel previous
+        window.speechSynthesis.cancel();
 
         if (speakingText === text) {
             setSpeakingText(null);
             return;
         }
 
-        const utterance = new SpeechSynthesisUtterance(cleanText);
-        utteranceRef.current = utterance; // Keep reference to prevent Garbage Collection
+        // Delay to prevent race condition
+        setTimeout(() => {
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+            utteranceRef.current = utterance;
 
-        // Try to get voices directly
-        const allVoices = window.speechSynthesis.getVoices();
-        const preferredVoice = allVoices.find(v => v.name.includes("Google US English"))
-            || allVoices.find(v => v.name.includes("Zira"))
-            || allVoices.find(v => v.name.includes("Natural"));
+            const voices = window.speechSynthesis.getVoices();
+            const preferredVoice = voices.find(v => v.name.includes("Google") && v.lang.includes("en"))
+                || voices.find(v => v.name.includes("Microsoft") && v.lang.includes("en"))
+                || voices.find(v => v.lang.startsWith("en"));
 
-        if (preferredVoice) utterance.voice = preferredVoice;
+            if (preferredVoice) utterance.voice = preferredVoice;
 
-        utterance.pitch = 1.0;
-        utterance.rate = 1.0;
+            utterance.rate = 1.0;
+            utterance.onend = () => setSpeakingText(null);
+            utterance.onerror = (e) => { console.error("TTS Error", e); setSpeakingText(null); };
 
-        utterance.onend = () => setSpeakingText(null);
-        utterance.onerror = (e) => { console.error("TTS Error", e); setSpeakingText(null); };
-
-        setSpeakingText(text);
-        window.speechSynthesis.speak(utterance);
+            setSpeakingText(text);
+            window.speechSynthesis.speak(utterance);
+        }, 50);
     };
 
     const toggleVoiceInput = () => {

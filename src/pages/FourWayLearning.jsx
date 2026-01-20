@@ -91,7 +91,7 @@ export default function FourWayLearning() {
         loadVoices();
     }, []);
 
-    const utteranceRef = useRef(null); // Prevent GC bug
+    const utteranceRef = useRef(null);
 
     const speakText = (text) => {
         if (!('speechSynthesis' in window)) return;
@@ -106,24 +106,24 @@ export default function FourWayLearning() {
             return;
         }
 
-        const utterance = new SpeechSynthesisUtterance(cleanText);
-        utteranceRef.current = utterance; // Keep reference
+        setTimeout(() => {
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+            utteranceRef.current = utterance;
 
-        const allVoices = window.speechSynthesis.getVoices();
-        const preferredVoice = allVoices.find(v => v.name.includes("Google US English"))
-            || allVoices.find(v => v.name.includes("Zira"))
-            || allVoices.find(v => v.name.includes("Natural"));
+            const voices = window.speechSynthesis.getVoices();
+            const preferredVoice = voices.find(v => v.name.includes("Google") && v.lang.includes("en"))
+                || voices.find(v => v.name.includes("Microsoft") && v.lang.includes("en"))
+                || voices.find(v => v.lang.startsWith("en"));
 
-        if (preferredVoice) utterance.voice = preferredVoice;
+            if (preferredVoice) utterance.voice = preferredVoice;
 
-        utterance.pitch = 1.0;
-        utterance.rate = 1.0;
+            utterance.rate = 1.0;
+            utterance.onend = () => setSpeakingText(null);
+            utterance.onerror = () => setSpeakingText(null);
 
-        utterance.onend = () => setSpeakingText(null);
-        utterance.onerror = () => setSpeakingText(null);
-
-        setSpeakingText(text);
-        window.speechSynthesis.speak(utterance);
+            setSpeakingText(text);
+            window.speechSynthesis.speak(utterance);
+        }, 50);
     };
 
     // 1. Fetch User's History (Sessions)
