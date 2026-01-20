@@ -80,6 +80,17 @@ export default function FourWayLearning() {
 
     // Text to Speech Helper
     const [isSpeaking, setIsSpeaking] = useState(false);
+    const [voices, setVoices] = useState([]);
+
+    useEffect(() => {
+        const loadVoices = () => {
+            const v = window.speechSynthesis.getVoices();
+            setVoices(v);
+        };
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+        loadVoices();
+    }, []);
+
     const speakText = (text) => {
         if ('speechSynthesis' in window) {
             if (window.speechSynthesis.speaking) {
@@ -88,6 +99,21 @@ export default function FourWayLearning() {
                 return;
             }
             const utterance = new SpeechSynthesisUtterance(text);
+
+            // Voice Selection Strategy: Prioritize "Natural" / "Google" / "Female" voices
+            const preferredVoice = voices.find(v => v.name.includes("Google US English"))
+                || voices.find(v => v.name.includes("Zira")) // Windows Nice Female
+                || voices.find(v => v.name.includes("Natural")) // Safari/Edge Natural
+                || voices.find(v => v.lang === "en-US");
+
+            if (preferredVoice) {
+                utterance.voice = preferredVoice;
+            }
+
+            // Tuning for "Attractiveness"
+            utterance.pitch = 1.05; // Slightly softer/higher
+            utterance.rate = 1.0;   // Normal speed
+
             utterance.onstart = () => setIsSpeaking(true);
             utterance.onend = () => setIsSpeaking(false);
             window.speechSynthesis.speak(utterance);
