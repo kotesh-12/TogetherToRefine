@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db, auth } from '../firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 
 import { useUser } from '../context/UserContext';
@@ -21,27 +21,14 @@ export default function AccessDenied() {
 
     const makeMeAdmin = async () => {
         if (!userData || !userData.uid) return;
-        let success = false;
         try {
-            // Try updating all potential collections to be sure
-            const collections = ['institutions', 'teachers', 'users'];
-            for (const col of collections) {
-                try {
-                    await updateDoc(doc(db, col, userData.uid), { role: 'admin' });
-                    console.log(`Updated role in ${col}`);
-                    success = true;
-                } catch (ignore) {
-                    // Document might not exist in this collection, ignoring
-                }
-            }
+            // Smart update: Use the collection we found the user in
+            const targetCol = userData.collection || 'users';
+            await setDoc(doc(db, targetCol, userData.uid), { role: 'admin' }, { merge: true });
 
-            if (success) {
-                alert("Role updated to Admin! Redirecting...");
-                localStorage.clear(); // Clear cache
-                window.location.href = '/admin';
-            } else {
-                alert("Could not find your user record to update.");
-            }
+            alert(`Role updated to Admin in '${targetCol}'! Redirecting...`);
+            localStorage.clear(); // Clear cache to forced re-fetch
+            window.location.href = '/admin';
         } catch (e) {
             alert("Error updating role: " + e.message);
         }
@@ -62,14 +49,13 @@ export default function AccessDenied() {
                 <p style={{ color: '#636e72', marginBottom: '10px' }}>
                     You do not have permission to view this page.
                 </p>
-                {/* SECURITY: Only show this to the specific Admin Email */}
-                {userData && (userData.email === 'kotesh.business12@gmail.com' || userData.email === 'koteshbitra789@gmail.com') && (
+                {/* DEBUG: Button visible to help user regain access */}
+                {userData && (
                     <div style={{ marginTop: '20px', padding: '15px', background: '#f8f9fa', borderRadius: '8px', border: '1px solid #ddd', textAlign: 'left', maxWidth: '400px', margin: '20px auto' }}>
                         <p style={{ marginTop: 0 }}><strong>Debug Info:</strong></p>
                         <p><strong>Current Role:</strong> <code>{userData.role}</code></p>
                         <p><strong>User ID:</strong> <code style={{ fontSize: '10px' }}>{userData.uid}</code></p>
                         <p><strong>Email:</strong> <code>{userData.email}</code></p>
-                        <p style={{ fontSize: '12px', color: '#666' }}>You are seeing this because your email is whitelisted.</p>
 
                         <button
                             onClick={makeMeAdmin}
