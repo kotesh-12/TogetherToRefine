@@ -77,6 +77,22 @@ export default function FourWayLearning() {
     const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
     const MODEL_NAME = "gemini-flash-latest";
 
+    // Text to Speech Helper
+    const [isSpeaking, setIsSpeaking] = useState(false);
+    const speakText = (text) => {
+        if ('speechSynthesis' in window) {
+            if (window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel();
+                setIsSpeaking(false);
+                return;
+            }
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.onstart = () => setIsSpeaking(true);
+            utterance.onend = () => setIsSpeaking(false);
+            window.speechSynthesis.speak(utterance);
+        }
+    };
+
     // 1. Fetch User's History (Sessions)
     useEffect(() => {
         if (!authUser) return;
@@ -168,7 +184,7 @@ export default function FourWayLearning() {
 
             if (activeTab === 'teaching') {
                 promptText = `
-                    Act as a Teacher teaching a student. 
+                    Act as a Teacher teaching a student.
                     Step 1: Write a formal, academic paragraph defining/explaining "${topic}".
                     Step 2: Act as if you are now explaining that paragraph to a student in their mother tongue (${motherTongue}).
                     Break it down, use casual/spoken tone in ${motherTongue} (e.g. Hinglish if Hindi, or just ${motherTongue}), and make it super easy to grasp.
@@ -298,10 +314,18 @@ export default function FourWayLearning() {
                         borderBottomRightRadius: msg.role === 'user' ? '2px' : '12px',
                         borderBottomLeftRadius: msg.role === 'ai' ? '2px' : '12px',
                         boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
-                        lineHeight: '1.5', whiteSpace: 'pre-wrap'
+                        lineHeight: '1.5', whiteSpace: 'pre-wrap',
+                        position: 'relative' // For absolute positioning of button if needed, but flex is safer inside div
                     }}>
                         {msg.image && <img src={msg.image} alt="User" style={{ maxWidth: '100%', borderRadius: '8px', marginBottom: '10px' }} />}
                         {msg.text}
+
+                        {/* SPEAKER BUTTON */}
+                        {msg.role === 'ai' && (
+                            <button onClick={() => speakText(msg.text)} className="speak-button">
+                                {isSpeaking ? '🔇' : '🔊'}
+                            </button>
+                        )}
                     </div>
                 ))}
                 {loading && <div style={{ alignSelf: 'flex-start', background: 'white', padding: '10px 20px', borderRadius: '20px', color: '#666' }}>Thinking...</div>}
@@ -349,8 +373,8 @@ export default function FourWayLearning() {
                                     padding: '10px',
                                     background: activeSessionIds[sess.mode] === sess.id ? '#e3f2fd' : '#f5f5f5',
                                     borderRadius: '8px', cursor: 'pointer', fontSize: '14px', borderLeft: `4px solid ${sess.mode === 'conceptual' ? '#ff7675' :
-                                            sess.mode === 'fictional' ? '#74b9ff' :
-                                                sess.mode === 'storytelling' ? '#55efc4' : '#a29bfe'
+                                        sess.mode === 'fictional' ? '#74b9ff' :
+                                            sess.mode === 'storytelling' ? '#55efc4' : '#a29bfe'
                                         }`
                                 }}>
                                     <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#666', marginBottom: '4px' }}>
