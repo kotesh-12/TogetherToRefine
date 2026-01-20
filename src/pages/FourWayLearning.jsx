@@ -97,37 +97,26 @@ export default function FourWayLearning() {
     const utteranceRef = useRef(null);
 
     const speakText = (text) => {
-        if (!('speechSynthesis' in window)) return;
-        if (!text) return; // Safety check
-
-        const cleanText = text.replace(/[*#_`]/g, '');
-        if (!cleanText.trim()) return;
-
-        window.speechSynthesis.cancel();
+        if (!('speechSynthesis' in window) || !text) return;
 
         if (speakingText === text) {
+            window.speechSynthesis.cancel();
             setSpeakingText(null);
             return;
         }
 
-        setTimeout(() => {
-            const utterance = new SpeechSynthesisUtterance(cleanText);
-            utteranceRef.current = utterance;
+        window.speechSynthesis.cancel();
 
-            const voices = window.speechSynthesis.getVoices();
-            const preferredVoice = voices.find(v => v.name.includes("Google") && v.lang.includes("en"))
-                || voices.find(v => v.name.includes("Microsoft") && v.lang.includes("en"))
-                || voices.find(v => v.lang.startsWith("en"));
+        const clean = text.replace(/[*#_`]/g, '');
+        const utterance = new SpeechSynthesisUtterance(clean);
+        utteranceRef.current = utterance;
 
-            if (preferredVoice) utterance.voice = preferredVoice;
+        utterance.rate = 1.0;
+        utterance.onend = () => setSpeakingText(null);
+        utterance.onerror = (e) => { console.error("TTS Error", e); setSpeakingText(null); };
 
-            utterance.rate = 1.0;
-            utterance.onend = () => setSpeakingText(null);
-            utterance.onerror = (e) => { console.error("TTS Error", e); setSpeakingText(null); };
-
-            setSpeakingText(text);
-            window.speechSynthesis.speak(utterance);
-        }, 50);
+        setSpeakingText(text);
+        window.speechSynthesis.speak(utterance);
     };
 
     // 1. Fetch User's History (Sessions)
