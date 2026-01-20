@@ -18,9 +18,9 @@ export default function TTRAI() {
     const [statusLog, setStatusLog] = useState("Ready");
 
     // AI & UI State
-    // Hardcoded fallback to ensure it works on all devices immediately as requested
-    const ENV_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-    const API_KEY = ENV_KEY || "AIzaSyAOrTRtIZZL1J_GTdc_XEe3m9vzgGJWzOE";
+    // REMOVED HARDCODED FALLBACK FOR SECURITY
+    // You MUST add VITE_GEMINI_API_KEY to your Vercel/Netlify Environment Variables
+    const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
     const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
     const MODEL_NAME = "gemini-flash-latest";
     const [selectedImage, setSelectedImage] = useState(null);
