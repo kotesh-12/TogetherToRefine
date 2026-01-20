@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
-import { doc, getDoc, collection, getDocs, addDoc, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
+import { doc, collection, getDocs, addDoc, updateDoc, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
 import AnnouncementBar from '../components/AnnouncementBar';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { useUser } from '../context/UserContext';
+import ReactMarkdown from 'react-markdown';
 
 export default function TTRAI() {
     const navigate = useNavigate();
@@ -18,8 +19,6 @@ export default function TTRAI() {
     const [statusLog, setStatusLog] = useState("Ready");
 
     // AI & UI State
-    // REMOVED HARDCODED FALLBACK FOR SECURITY
-    // You MUST add VITE_GEMINI_API_KEY to your Vercel/Netlify Environment Variables
     const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
     const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
     const MODEL_NAME = "gemini-flash-latest";
@@ -33,6 +32,7 @@ export default function TTRAI() {
     const [cameraPermission, setCameraPermission] = useState(false);
     const [permissionModal, setPermissionModal] = useState(null);
     const fileInputRef = useRef(null);
+    const [voices, setVoices] = useState([]); // Voice state
 
     // Context Loading
     const [userContext, setUserContext] = useState(null);
@@ -41,6 +41,13 @@ export default function TTRAI() {
     // Session State
     const [sessions, setSessions] = useState([]);
     const [currentSessionId, setCurrentSessionId] = useState(null);
+
+    // Load Voices
+    useEffect(() => {
+        const loadVoices = () => setVoices(window.speechSynthesis.getVoices());
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+        loadVoices();
+    }, []);
 
     // 1. Auth & Context Loading
     useEffect(() => {
@@ -172,13 +179,16 @@ export default function TTRAI() {
     };
 
     // Helper functions
-    // Helper functions
     const saveMessage = async (msgObj, sessionId) => {
         if (!currentUser || !sessionId) return;
         try {
+            // Save Message
             await addDoc(collection(db, 'ai_chats', currentUser.uid, 'sessions', sessionId, 'messages'), { ...msgObj, createdAt: new Date() });
-            // Update session timestamp & preview
-            // (Optional: update title if it's the first message)
+
+            // Update Session Timestamp (Bumps to top of list)
+            await updateDoc(doc(db, 'ai_chats', currentUser.uid, 'sessions', sessionId), {
+                updatedAt: new Date()
+            });
         } catch (e) { console.error("Error saving message", e); }
     };
 
@@ -192,8 +202,24 @@ export default function TTRAI() {
 
     const speakText = (text) => {
         if ('speechSynthesis' in window) {
-            if (window.speechSynthesis.speaking) { window.speechSynthesis.cancel(); setIsSpeaking(false); return; }
+            if (window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel();
+                setIsSpeaking(false);
+                return;
+            }
             const utterance = new SpeechSynthesisUtterance(text);
+
+            // Pick Best Voice
+            const preferredVoice = voices.find(v => v.name.includes("Google US English"))
+                || voices.find(v => v.name.includes("Zira"))
+                || voices.find(v => v.name.includes("Natural"))
+                || voices.find(v => v.lang === "en-US");
+
+            if (preferredVoice) utterance.voice = preferredVoice;
+
+            utterance.pitch = 1.05; // Softer
+            utterance.rate = 1.0;
+
             utterance.onstart = () => setIsSpeaking(true);
             utterance.onend = () => setIsSpeaking(false);
             window.speechSynthesis.speak(utterance);
@@ -321,7 +347,9 @@ export default function TTRAI() {
                 {messages.map((msg, idx) => (
                     <div key={idx} className={`message-bubble ${msg.sender === 'user' ? 'message-user' : 'message-ai'}`}>
                         {msg.image && <img src={msg.image} alt="User Upload" className="message-image" />}
-                        {msg.text}
+                        <div className="markdown-content">
+                            <ReactMarkdown>{msg.text}</ReactMarkdown>
+                        </div>
                         {msg.sender === 'ai' && (
                             <button onClick={() => speakText(msg.text)} className="speak-button">
                                 {isSpeaking ? '🔇' : '🔊'}
