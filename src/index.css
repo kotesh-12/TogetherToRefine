@@ -256,7 +256,8 @@ body {
   height: 100dvh;
   display: flex;
   flex-direction: column;
-  background: var(--bg-gradient);
+  background-color: #f0f2f5;
+  /* Changed from variable gradient to static light grey */
   position: relative;
   overflow: hidden;
 }
