@@ -34,11 +34,15 @@ export function UserProvider({ children }) {
                     const userRef = doc(db, "users", currentUser.uid);
 
                     try {
-                        const [instSnap, teachSnap, userSnap] = await Promise.all([
+                        const results = await Promise.allSettled([
                             getDoc(instRef),
                             getDoc(teachRef),
                             getDoc(userRef)
                         ]);
+
+                        const instSnap = results[0].status === 'fulfilled' ? results[0].value : { exists: () => false };
+                        const teachSnap = results[1].status === 'fulfilled' ? results[1].value : { exists: () => false };
+                        const userSnap = results[2].status === 'fulfilled' ? results[2].value : { exists: () => false };
 
                         if (instSnap.exists()) {
                             unsubscribeSnapshot = onSnapshot(instRef, (d) => {
