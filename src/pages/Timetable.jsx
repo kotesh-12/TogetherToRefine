@@ -273,9 +273,21 @@ export default function Timetable() {
     const fetchTimetable = async () => {
         setLoading(true);
         try {
-            const docId = `${selectedClass}_${selectedSection}`;
-            const docRef = doc(db, "timetables", docId);
-            const docSnap = await getDoc(docRef);
+            // Normalize class: "10th" -> "10", "1st" -> "1"
+            const rawCls = selectedClass || '';
+            const normalizedCls = rawCls.replace(/(\d+)(st|nd|rd|th)/i, '$1');
+
+            // Try standard ID first (e.g. "10_A")
+            let docId = `${normalizedCls}_${selectedSection}`;
+            let docRef = doc(db, "timetables", docId);
+            let docSnap = await getDoc(docRef);
+
+            // Fallback: If not found, try raw class (e.g. "10th_A" in case it was saved that way)
+            if (!docSnap.exists() && normalizedCls !== rawCls) {
+                docId = `${rawCls}_${selectedSection}`; // e.g. "10th_A"
+                docRef = doc(db, "timetables", docId);
+                docSnap = await getDoc(docRef);
+            }
 
             if (docSnap.exists()) {
                 const data = docSnap.data();

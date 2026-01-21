@@ -24,6 +24,7 @@ export default function Attendance() {
     const [myOverallStats, setMyOverallStats] = useState({ present: 0, total: 0, percent: 0 });
     const [myHistory, setMyHistory] = useState([]); // New: History State
     const [teacherClasses, setTeacherClasses] = useState([]); // Restricted classes for Teacher
+    const [debugLogs, setDebugLogs] = useState([]); // Debug Logs
 
     useEffect(() => {
         if (role === 'teacher' && userData?.uid) {
@@ -89,9 +90,15 @@ export default function Attendance() {
             const seenIds = new Set();
             const attendanceQueries = []; // Holds promises for parallel fetching
 
+            const uClass = userData.assignedClass || userData.class;
+            const uSection = userData.assignedSection || userData.section;
+            setDebugLogs(prev => [`Starting Fetch for ${userData.name} (${uClass}-${uSection})...`]);
+
             // 1. Fetch by correct User UID
             const q1 = query(collection(db, "attendance"), where("userId", "==", userData.uid));
             const snap1 = await getDocs(q1);
+            setDebugLogs(prev => [...prev, `Direct UID Match: Found ${snap1.size} records.`]);
+
             snap1.forEach(d => {
                 if (!seenIds.has(d.id)) {
                     seenIds.add(d.id);
@@ -110,13 +117,7 @@ export default function Attendance() {
                     for (const altId of tAllotmentIds) {
                         if (altId !== userData.uid) {
                             const q2 = query(collection(db, "attendance"), where("userId", "==", altId));
-                            const snap2 = await getDocs(q2);
-                            snap2.forEach(d => {
-                                if (!seenIds.has(d.id)) {
-                                    seenIds.add(d.id);
-                                    mergedDocs.push(d);
-                                }
-                            });
+                            attendanceQueries.push(getDocs(q2));
                         }
                     }
                 } catch (err) {
@@ -134,13 +135,7 @@ export default function Attendance() {
                             // Fetch attendance for this Allotment ID
                             if (altId !== userData.uid) {
                                 const q3 = query(collection(db, "attendance"), where("userId", "==", altId));
-                                const snap3 = await getDocs(q3);
-                                snap3.forEach(d => {
-                                    if (!seenIds.has(d.id)) {
-                                        seenIds.add(d.id);
-                                        mergedDocs.push(d);
-                                    }
-                                });
+                                attendanceQueries.push(getDocs(q3));
                             }
 
                             // SELF-HEALING: Link allotment to User UID via 'userId' field
@@ -158,14 +153,15 @@ export default function Attendance() {
             }
 
             // 3. Student Fallback: Fetch by Allotment ID (Legacy/Bug fix/Self-Healing)
-            const uClass = userData.assignedClass || userData.class;
-            const uSection = userData.assignedSection || userData.section;
+            // const uClass = userData.assignedClass || userData.class; // Already defined above
+            // const uSection = userData.assignedSection || userData.section; // Already defined above
 
             try {
                 // A. Explicit Link Match: Allotments already linked to this User UID
                 // (This catches cases where name might be different but ID is linked)
                 const linkedAllotQ = query(collection(db, "student_allotments"), where("userId", "==", userData.uid));
                 const linkedSnap = await getDocs(linkedAllotQ);
+                setDebugLogs(prev => [...prev, `Linked Allotments (by UID): Found ${linkedSnap.size}.`]);
 
                 linkedSnap.forEach(d => {
                     if (d.id !== userData.uid) {
@@ -191,26 +187,56 @@ export default function Attendance() {
                 if (normalizedClass && uSection && rawName) {
 
                     // Fetch ALL students in this class/section
+                    // Robust fetch: Check both "10" and "10th" to find allotments
+                    const classVariants = [normalizedClass];
+                    if (uClass && uClass !== normalizedClass) classVariants.push(uClass);
+
+                    // Remove 'section' from Firestore query to avoid Index issues and handle case sensitivity client-side
                     const altQ = query(collection(db, "student_allotments"),
-                        where("classAssigned", "==", normalizedClass),
-                        where("section", "==", uSection)
+                        where("classAssigned", "in", classVariants)
                     );
                     const altSnap = await getDocs(altQ);
 
+                    setDebugLogs(prev => [...prev, `Scanning ${altSnap.size} allotments in Class ${normalizedClass}/${uClass} ...`]);
+
                     const targetName = rawName.toLowerCase().replace(/\s+/g, ''); // normalize spaces
+                    // Robust Section Matching: Handle "A", "A ", "a"
+                    const targetSec = (uSection || '').trim().toLowerCase();
+                    let nameMatches = 0;
 
                     altSnap.forEach(d => {
                         const data = d.data();
+
+                        // 1. Check Name Match FIRST (most specific)
                         const allotmentName = (data.name || "").toLowerCase().replace(/\s+/g, '');
+                        const isNameMatch = allotmentName.includes(targetName) || targetName.includes(allotmentName);
 
-                        // Check for lenient match (contains)
-                        const isMatch = allotmentName.includes(targetName) || targetName.includes(allotmentName);
+                        if (!isNameMatch) return; // Skip if name doesn't match at all
 
-                        if (d.id !== userData.uid && isMatch) {
+                        // 2. Name Matched! Now check Section
+                        const docSec = (data.section || '').trim().toLowerCase();
+
+                        if (docSec !== targetSec) {
+                            setDebugLogs(prev => [...prev, `Found Name match "${data.name}" but Section mismatch: Doc="${data.section}" vs User="${uSection}"`]);
+                            return;
+                        }
+
+                        // 3. Match Found!
+                        if (d.id !== userData.uid) {
+                            nameMatches++;
+
+                            // SELF-HEALING: Link this allotment to my UID so next time it's instant
+                            if (!data.userId) {
+                                updateDoc(doc(db, "student_allotments", d.id), { userId: userData.uid })
+                                    .then(() => console.log("Self-healed student link"))
+                                    .catch(e => console.warn("Heal failed", e));
+                            }
+
                             const q3 = query(collection(db, "attendance"), where("userId", "==", d.id));
                             attendanceQueries.push(getDocs(q3));
                         }
                     });
+                    setDebugLogs(prev => [...prev, `Name & Section Matches: ${nameMatches}`]);
                 }
 
                 // Execute all legacy/fallback queries
@@ -223,9 +249,11 @@ export default function Attendance() {
                         }
                     });
                 });
+                setDebugLogs(prev => [...prev, `Total Attendance Docs Merged: ${mergedDocs.length}`]);
 
             } catch (err) {
                 console.warn("Legacy attendance fetch failed", err);
+                setDebugLogs(prev => [...prev, `Error: ${err.message}`]);
             }
 
             const subjectsObj = {};
@@ -271,6 +299,7 @@ export default function Attendance() {
 
         } catch (e) {
             console.error("Error fetching stats", e);
+            setDebugLogs(prev => [...prev, `Critical Error: ${e.message}`]);
         }
     };
 
@@ -479,6 +508,27 @@ export default function Attendance() {
                         )) : (
                             <p className="text-muted" style={{ padding: '20px' }}>No subject records found yet.</p>
                         )}
+                    </div>
+
+                    {/* Debug Console for Students */}
+                    <div style={{ marginTop: '30px', borderTop: '1px solid #eee', paddingTop: '20px' }}>
+                        <details>
+                            <summary style={{ cursor: 'pointer', color: '#636e72', fontSize: '13px' }}>
+                                🛠️ Troubleshooting (Click if Attendance is 0%)
+                            </summary>
+                            <div style={{ background: '#f1f2f6', padding: '15px', borderRadius: '8px', marginTop: '10px', fontSize: '12px', fontFamily: 'monospace' }}>
+                                <p><b>Debug Logs:</b></p>
+                                <ul style={{ paddingLeft: '20px', margin: 0 }}>
+                                    {debugLogs.map((log, i) => <li key={i}>{log}</li>)}
+                                </ul>
+                                <button
+                                    onClick={fetchMyStats}
+                                    style={{ marginTop: '10px', padding: '5px 10px', background: '#2d3436', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                                >
+                                    🔄 Global Refresh
+                                </button>
+                            </div>
+                        </details>
                     </div>
                 </div>
             </div>

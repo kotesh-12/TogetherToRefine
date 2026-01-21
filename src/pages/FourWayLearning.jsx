@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
-import { GoogleGenerativeAI } from "@google/generative-ai";
+// import { GoogleGenerativeAI } from "@google/generative-ai"; // Removed for Security
+import { useSpeech } from '../hooks/useSpeech';
 import ReactMarkdown from 'react-markdown';
 import { db } from '../firebase';
 import { collection, addDoc, query, orderBy, onSnapshot, limit, serverTimestamp, where, doc, updateDoc } from 'firebase/firestore';
@@ -73,50 +74,22 @@ export default function FourWayLearning() {
 
     const currentMode = modes.find(m => m.id === activeTab);
 
-    // AI Helper
-    const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-    const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
+    // AI Helper - MOVED TO BACKEND (/api/chat) for Security
     const MODEL_NAME = "gemini-flash-latest";
 
-    // Text to Speech Helper
-    const [speakingText, setSpeakingText] = useState(null);
-    const [voices, setVoices] = useState([]);
+    // Speech Hook
+    const { speak, listen, isListening, speakingText } = useSpeech();
 
-    useEffect(() => {
-        window.speechSynthesis.cancel(); // Cleanup on mount
-        const loadVoices = () => {
-            const v = window.speechSynthesis.getVoices();
-            setVoices(v);
-        };
-        window.speechSynthesis.onvoiceschanged = loadVoices;
-        loadVoices();
-
-        return () => window.speechSynthesis.cancel(); // Cleanup on unmount
-    }, []);
-
-    const utteranceRef = useRef(null);
-
-    const speakText = (text) => {
-        if (!('speechSynthesis' in window) || !text) return;
-
-        if (speakingText === text) {
-            window.speechSynthesis.cancel();
-            setSpeakingText(null);
-            return;
+    const handleMicClick = () => {
+        let lang = 'en-US';
+        if (activeTab === 'teaching') {
+            const map = { 'Hindi': 'hi-IN', 'Telugu': 'te-IN', 'Tamil': 'ta-IN', 'Spanish': 'es-ES', 'French': 'fr-FR' };
+            lang = map[motherTongue] || 'en-US';
         }
 
-        window.speechSynthesis.cancel();
-
-        const clean = text.replace(/[*#_`]/g, '');
-        const utterance = new SpeechSynthesisUtterance(clean);
-        utteranceRef.current = utterance;
-
-        utterance.rate = 1.0;
-        utterance.onend = () => setSpeakingText(null);
-        utterance.onerror = (e) => { console.error("TTS Error", e); setSpeakingText(null); };
-
-        setSpeakingText(text);
-        window.speechSynthesis.speak(utterance);
+        listen((text) => {
+            setInputs(prev => ({ ...prev, [activeTab]: (prev[activeTab] + ' ' + text).trim() }));
+        }, lang);
     };
 
     // 1. Fetch User's History (Sessions)
@@ -180,7 +153,6 @@ export default function FourWayLearning() {
         if (activeTab === 'teaching') setSelectedImage(null);
 
         try {
-            if (!genAI) throw new Error("API Key Missing! Please configure VITE_GEMINI_API_KEY.");
             if (!authUser) throw new Error("Please login.");
 
             // 1. Ensure Persistent Session Exists
@@ -195,7 +167,6 @@ export default function FourWayLearning() {
                 sessionId = sessRef.id;
                 setActiveSessionIds(prev => ({ ...prev, [activeTab]: sessionId }));
             } else {
-                // Update timestamp/title
                 updateDoc(doc(db, 'users', authUser.uid, 'four_way_sessions', sessionId), {
                     updatedAt: serverTimestamp()
                 });
@@ -204,7 +175,7 @@ export default function FourWayLearning() {
             // 2. Save User Msg
             await addDoc(collection(db, 'users', authUser.uid, 'four_way_sessions', sessionId, 'messages'), newUserMsg);
 
-            // 3. AI Generation
+            // 3. AI Generation ( VIA SECURE BACKEND )
             let promptText = "";
             let topic = currentInput || "Explain this image";
 
@@ -223,8 +194,6 @@ export default function FourWayLearning() {
                 promptText = `Tell a story that revolves around "${topic}". The story should be engaging and the topic should be central to the plot, helping the reader understand naturally through the narrative flow.`;
             }
 
-            const model = genAI.getGenerativeModel({ model: MODEL_NAME });
-
             // History for API
             let historyForApi = chats[activeTab].map(msg => ({
                 role: msg.role === 'user' ? 'user' : 'model',
@@ -234,17 +203,27 @@ export default function FourWayLearning() {
             // Ensure starts with user
             while (historyForApi.length > 0 && historyForApi[0].role !== 'user') historyForApi.shift();
 
-            const chat = model.startChat({ history: historyForApi });
+            // CALL BACKEND
+            const payload = {
+                history: historyForApi,
+                message: promptText,
+                image: newUserMsg.image ? newUserMsg.image.split(',')[1] : null,
+                mimeType: newUserMsg.image ? newUserMsg.image.match(/:(.*?);/)?.[1] : null
+            };
 
-            let msgParts = [promptText];
-            if (newUserMsg.image) {
-                const base64Data = newUserMsg.image.split(',')[1];
-                const mimeType = newUserMsg.image.match(/:(.*?);/)?.[1] || "image/jpeg";
-                msgParts = [promptText, { inlineData: { mimeType, data: base64Data } }];
+            const res = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.error || "Server Error (Backend offline?)");
             }
 
-            const result = await chat.sendMessage(msgParts);
-            const responseText = result.response.text();
+            const data = await res.json();
+            const responseText = data.text;
 
             // 4. Save AI Msg
             await addDoc(collection(db, 'users', authUser.uid, 'four_way_sessions', sessionId, 'messages'), {
@@ -351,7 +330,7 @@ export default function FourWayLearning() {
 
                         {/* SPEAKER BUTTON */}
                         {msg.role === 'ai' && (
-                            <button onClick={() => speakText(msg.text)} className="speak-button">
+                            <button onClick={() => speak(msg.text)} className="speak-button">
                                 {speakingText === msg.text ? '🔇' : '🔊'}
                             </button>
                         )}
@@ -379,6 +358,21 @@ export default function FourWayLearning() {
                     </div>
                 )}
                 <div style={{ display: 'flex', gap: '10px' }}>
+                    {/* MIC BUTTON */}
+                    <button
+                        onClick={handleMicClick}
+                        style={{
+                            width: '50px', height: '50px', borderRadius: '50%', border: 'none', cursor: 'pointer',
+                            background: isListening ? '#ff7675' : '#f1f2f6',
+                            color: isListening ? 'white' : '#636e72',
+                            fontSize: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            transition: 'all 0.2s', animation: isListening ? 'pulse 1.5s infinite' : 'none'
+                        }}
+                        title="Click to Speak"
+                    >
+                        {isListening ? '⏹️' : '🎙️'}
+                    </button>
+
                     <input type="text" value={inputs[activeTab]} onChange={(e) => setInputs(prev => ({ ...prev, [activeTab]: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && handleGenerate()} placeholder={`Ask in ${currentMode?.title} mode...`} style={{ flex: 1, padding: '12px 15px', borderRadius: '25px', border: '1px solid #dfe6e9', outline: 'none' }} />
                     <button onClick={handleGenerate} disabled={loading || (!inputs[activeTab] && !selectedImage)} style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#6c5ce7', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>➤</button>
                 </div>

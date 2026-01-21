@@ -5,10 +5,25 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const API_KEY = process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
 
 export default async function handler(req, res) {
-    // CORS Handling
+    // Security: Restrict Access to Your Domains Only
+    const allowedOrigins = [
+        'http://localhost:5173',
+        'http://localhost:5000',
+        'https://together-to-refine.vercel.app' // Replace with your actual Vercel domain
+    ];
+
+    const origin = req.headers.origin;
+
+    // Allow requests from allowed origins or Server-to-Server (no origin)
+    if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app'))) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+        // Default to safe fail - usually we don't set header, but for explictness/debugging:
+        // res.setHeader('Access-Control-Allow-Origin', 'null'); 
+    }
+
     res.setHeader('Access-Control-Allow-Credentials', true);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
     res.setHeader(
         'Access-Control-Allow-Headers',
         'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
@@ -30,31 +45,39 @@ export default async function handler(req, res) {
     try {
         const { history, message, image, mimeType, systemInstruction } = req.body;
         const genAI = new GoogleGenerativeAI(API_KEY);
-        const model = genAI.getGenerativeModel({
-            model: "gemini-flash-latest",
-            systemInstruction: systemInstruction
-        });
 
-        const chat = model.startChat({
-            history: history || []
-        });
+        // Helper to run chat
+        const runChat = async (modelName) => {
+            const model = genAI.getGenerativeModel({
+                model: modelName,
+                systemInstruction: systemInstruction
+            });
 
-        let msgParts = message;
-        if (image) {
-            msgParts = [
-                { text: message },
-                {
+            const chat = model.startChat({ history: history || [] });
+
+            let msgParts = [{ text: message || " " }];
+            if (image) {
+                msgParts.push({
                     inlineData: {
                         mimeType: mimeType || "image/jpeg",
                         data: image
                     }
-                }
-            ];
-        }
+                });
+            }
 
-        const result = await chat.sendMessage(msgParts);
-        const response = await result.response;
-        const text = response.text();
+            const result = await chat.sendMessage(msgParts);
+            const response = await result.response;
+            return response.text();
+        };
+
+        let text;
+        try {
+            console.log("Using primary model: gemini-2.0-flash");
+            text = await runChat("gemini-2.0-flash");
+        } catch (primaryError) {
+            console.warn("Primary Model Failed, switching to fallback:", primaryError.message);
+            text = await runChat("gemini-flash-latest");
+        }
 
         res.status(200).json({ text });
     } catch (error) {

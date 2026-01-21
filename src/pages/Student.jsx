@@ -63,11 +63,18 @@ export default function Student() {
 
             try {
                 setLoadingGroups(true);
-                // Query Groups matching this Class & Section
+
+                // Normalization for robust matching
+                const rawCls = userClass;
+                const normalizedCls = rawCls.replace(/(\d+)(st|nd|rd|th)/i, '$1');
+
+                const variants = [rawCls];
+                if (normalizedCls !== rawCls) variants.push(normalizedCls);
+
+                // Query Groups matching this Class variants
                 const q = query(
                     collection(db, "groups"),
-                    where("className", "==", userClass)
-                    // We can add section filter if groups are section-specific, usually yes
+                    where("className", "in", variants)
                 );
 
                 const snap = await getDocs(q);

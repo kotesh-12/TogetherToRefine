@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 
 const ProtectedRoute = ({ allowedRoles }) => {
     const { user, userData, loading } = useUser();
+    const location = useLocation();
     const [isOk, setIsOk] = useState(false);
 
     if (loading) return <div style={{ padding: '20px', textAlign: 'center' }}>Verifying Access...</div>;
@@ -34,6 +35,13 @@ const ProtectedRoute = ({ allowedRoles }) => {
     // If they are allowed by role, but NOT approved yet, send to pending.
     if ((userData.role === 'student' || userData.role === 'teacher') && userData.approved === false) {
         return <Navigate to="/pending-approval" replace />;
+    }
+
+    // ONBOARDING CHECK
+    // If user is logged in but hasn't done setup, send to Onboarding
+    // Exception: If already there, allow it.
+    if (!localStorage.getItem('ttr_setup_done') && location.pathname !== '/onboarding') {
+        return <Navigate to="/onboarding" replace />;
     }
 
     return <Outlet />;

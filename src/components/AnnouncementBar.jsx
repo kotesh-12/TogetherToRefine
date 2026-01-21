@@ -103,15 +103,7 @@ export default function TopBar({ title, leftIcon = 'home', backPath, onMenuClick
         return () => unsubscribe();
     }, [userData, user]);
 
-    // Check if running in standalone mode (already installed)
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
 
-    const handleDownloadClick = () => {
-        if (location.pathname === '/download') {
-            return; // Do nothing if already on the page
-        }
-        navigate('/download');
-    };
 
     return (
         <div style={{ position: 'sticky', top: 0, zIndex: 999, backgroundColor: '#f0f2f5' }}>
@@ -177,31 +169,7 @@ export default function TopBar({ title, leftIcon = 'home', backPath, onMenuClick
                         </div>
                     )}
 
-                    {/* Direct Install/Download Button - Hidden in Standalone Mode */}
-                    {!isStandalone && (
-                        <div style={{ display: 'block' }}>
-                            <button
-                                onClick={handleDownloadClick}
-                                style={{
-                                    background: '#00b894', // Green for download
-                                    color: 'white',
-                                    border: '2px solid white',
-                                    borderRadius: '50px',
-                                    padding: '8px 16px',
-                                    fontSize: '13px',
-                                    cursor: 'pointer',
-                                    fontWeight: 'bold',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '5px',
-                                    boxShadow: '0 4px 6px rgba(0,0,0,0.2)',
-                                    whiteSpace: 'nowrap'
-                                }}
-                            >
-                                ⬇️ Install App
-                            </button>
-                        </div>
-                    )}
+
 
                     <div className="profile-pic" onClick={() => navigate('/profile')} style={{ cursor: 'pointer', width: '35px', height: '35px', position: 'relative', right: 'auto' }}>
                         {userData?.profileImageURL ? (

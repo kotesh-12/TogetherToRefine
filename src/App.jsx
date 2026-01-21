@@ -34,13 +34,18 @@ const UpidHistory = lazy(() => import('./pages/UpidHistory'));
 const FacultyFeedback = lazy(() => import('./pages/FacultyFeedback'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const InstitutionDetailsAdmin = lazy(() => import('./pages/InstitutionDetailsAdmin'));
+const Onboarding = lazy(() => import('./pages/Onboarding'));
+
 
 import ProtectedRoute from './components/ProtectedRoute';
 const MainLayout = lazy(() => import('./components/MainLayout'));
 
+import UpdateManager from './components/UpdateManager';
+
 function App() {
   return (
     <UserProvider>
+      <UpdateManager />
       <Router>
         <Suspense fallback={<div className="container" style={{ textAlign: 'center', marginTop: '50px' }}>Loading...</div>}>
           <Routes>
@@ -52,7 +57,10 @@ function App() {
 
             <Route element={<MainLayout />}>
               {/* Common Routes (Accessible to all authenticated users) */}
+
+
               <Route element={<ProtectedRoute allowedRoles={['student', 'teacher', 'institution', 'admin']} />}>
+                <Route path="/onboarding" element={<Onboarding />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/profileview" element={<ProfileView />} />
                 <Route path="/group" element={<Group />} />

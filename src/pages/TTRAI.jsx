@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, collection, getDocs, addDoc, updateDoc, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
 import AnnouncementBar from '../components/AnnouncementBar';
-import { GoogleGenerativeAI } from "@google/generative-ai";
+// import { GoogleGenerativeAI } from "@google/generative-ai"; // Removed for Security
+import { useSpeech } from '../hooks/useSpeech';
 import { useUser } from '../context/UserContext';
 import ReactMarkdown from 'react-markdown';
 
@@ -19,20 +20,19 @@ export default function TTRAI() {
     const [statusLog, setStatusLog] = useState("Ready");
 
     // AI & UI State
-    const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-    const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
+    // AI & UI State
+    // const API_KEY = import.meta.env.VITE_GEMINI_API_KEY; // Managed by Backend
+    // const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
     const MODEL_NAME = "gemini-flash-latest";
     const [selectedImage, setSelectedImage] = useState(null);
-    const [isListening, setIsListening] = useState(false);
-    const [speakingText, setSpeakingText] = useState(null);
     const [showSidebar, setShowSidebar] = useState(false);
 
+    // Speech Hook (Replaces local logic)
+    const { speak, listen, isListening, speakingText } = useSpeech();
+
     // Permissions
-    const [micPermission, setMicPermission] = useState(false);
-    const [cameraPermission, setCameraPermission] = useState(false);
     const [permissionModal, setPermissionModal] = useState(null);
     const fileInputRef = useRef(null);
-    const [voices, setVoices] = useState([]); // Voice state
 
     // Context Loading
     const [userContext, setUserContext] = useState(null);
@@ -41,13 +41,6 @@ export default function TTRAI() {
     // Session State
     const [sessions, setSessions] = useState([]);
     const [currentSessionId, setCurrentSessionId] = useState(null);
-
-    // Load Voices
-    useEffect(() => {
-        const loadVoices = () => setVoices(window.speechSynthesis.getVoices());
-        window.speechSynthesis.onvoiceschanged = loadVoices;
-        loadVoices();
-    }, []);
 
     // 1. Auth & Context Loading
     useEffect(() => {
@@ -200,54 +193,9 @@ export default function TTRAI() {
         setShowSidebar(false);
     };
 
-    const utteranceRef = useRef(null);
+    // Speech functions handled by useSpeech hook now.
+    const handleCameraClick = () => { fileInputRef.current?.click(); };
 
-    const speakText = (text) => {
-        if (!('speechSynthesis' in window)) return;
-
-        const cleanText = text.replace(/[*#_`]/g, '');
-        if (!cleanText.trim()) return;
-
-        window.speechSynthesis.cancel();
-
-        if (speakingText === text) {
-            setSpeakingText(null);
-            return;
-        }
-
-        // Delay to prevent race condition
-        setTimeout(() => {
-            const utterance = new SpeechSynthesisUtterance(cleanText);
-            utteranceRef.current = utterance;
-
-            const voices = window.speechSynthesis.getVoices();
-            const preferredVoice = voices.find(v => v.name.includes("Google") && v.lang.includes("en"))
-                || voices.find(v => v.name.includes("Microsoft") && v.lang.includes("en"))
-                || voices.find(v => v.lang.startsWith("en"));
-
-            if (preferredVoice) utterance.voice = preferredVoice;
-
-            utterance.rate = 1.0;
-            utterance.onend = () => setSpeakingText(null);
-            utterance.onerror = (e) => { console.error("TTS Error", e); setSpeakingText(null); };
-
-            setSpeakingText(text);
-            window.speechSynthesis.speak(utterance);
-        }, 50);
-    };
-
-    const toggleVoiceInput = () => {
-        if (!('webkitSpeechRecognition' in window)) return alert("Use Chrome for Voice.");
-        if (!micPermission) { setPermissionModal('mic'); return; }
-        if (isListening) { setIsListening(false); return; }
-        const r = new window.webkitSpeechRecognition();
-        r.onstart = () => setIsListening(true);
-        r.onend = () => setIsListening(false);
-        r.onresult = (e) => setInput(prev => prev + ' ' + e.results[0][0].transcript);
-        r.start();
-    };
-
-    const handleCameraClick = () => { !cameraPermission ? setPermissionModal('camera') : fileInputRef.current?.click(); };
     const handleImageChange = (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -290,41 +238,40 @@ export default function TTRAI() {
             // Save User Msg
             await saveMessage(userMsg, activeSessionId);
 
-            // Generate AI Response
+            // Generate AI Response (Backend Proxy)
             let sysPrompt = generateSystemPrompt(userContext);
             let responseText = "";
 
             try {
-                // FORCE CLIENT-SIDE ONLY (Fixes 404 API Errors)
-                if (!genAI) throw new Error("API Key Missing. Please configure VITE_GEMINI_API_KEY.");
-                const model = genAI.getGenerativeModel({ model: MODEL_NAME, systemInstruction: sysPrompt });
-
-                // Fix: Google Gemini mandates that history MUST start with 'user' role.
-                // We filter the history to ensure this sequence.
+                // Fix history format for Backend
                 let historyForApi = messages.slice(-10).map(m => ({
                     role: m.sender === 'user' ? 'user' : 'model',
                     parts: [{ text: m.text || "" }]
                 }));
+                // Ensure starts with user
+                while (historyForApi.length > 0 && historyForApi[0].role !== 'user') historyForApi.shift();
 
-                // Ensure the first message is strictly from 'user'
-                while (historyForApi.length > 0 && historyForApi[0].role !== 'user') {
-                    historyForApi.shift();
-                }
+                const payload = {
+                    history: historyForApi,
+                    message: text,
+                    systemInstruction: sysPrompt,
+                    image: selectedImage ? selectedImage.split(',')[1] : null,
+                    mimeType: selectedImage ? selectedImage.match(/:(.*?);/)?.[1] : null
+                };
 
-                const chat = model.startChat({
-                    history: historyForApi
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
                 });
 
-                let msgParts = text;
-                if (selectedImage) {
-                    msgParts = [
-                        { text: text || "Analyze this image" },
-                        { inlineData: { mimeType: selectedImage.match(/:(.*?);/)?.[1] || "image/jpeg", data: selectedImage.split(',')[1] } }
-                    ];
+                if (!res.ok) {
+                    const d = await res.json();
+                    throw new Error(d.error || "Backend Error");
                 }
 
-                const result = await chat.sendMessage(msgParts);
-                responseText = result.response.text();
+                const data = await res.json();
+                responseText = data.text;
 
             } catch (e) {
                 console.error("AI Generation Error", e);
@@ -361,7 +308,7 @@ export default function TTRAI() {
                             <ReactMarkdown>{msg.text}</ReactMarkdown>
                         </div>
                         {msg.sender === 'ai' && (
-                            <button onClick={() => speakText(msg.text)} className="speak-button">
+                            <button onClick={() => speak(msg.text)} className="speak-button">
                                 {speakingText === msg.text ? '🔇' : '🔊'}
                             </button>
                         )}
@@ -381,7 +328,7 @@ export default function TTRAI() {
                 <div className="input-controls">
                     <button className="icon-button" onClick={handleCameraClick} title="Upload">📷</button>
                     <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageChange} style={{ display: 'none' }} />
-                    <button onClick={toggleVoiceInput} className={`voice-button ${isListening ? 'listening' : ''}`} title="Voice">
+                    <button onClick={() => listen((val) => setInput(prev => prev + ' ' + val))} className={`voice-button ${isListening ? 'listening' : ''}`} title="Voice">
                         {isListening ? '🛑' : '🎙️'}
                     </button>
                     <input
@@ -396,35 +343,20 @@ export default function TTRAI() {
                 </div>
             </div>
 
-            {/* PERMISSION MODAL */}
-            {permissionModal && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ background: 'white', padding: '25px', borderRadius: '15px', maxWidth: '300px', textAlign: 'center' }}>
-                        <p>Permission Required for {permissionModal}</p>
-                        <button onClick={() => {
-                            if (permissionModal === 'mic') setMicPermission(true);
-                            if (permissionModal === 'camera') setCameraPermission(true);
-                            setPermissionModal(null);
-                        }}>Allow</button>
-                    </div>
-                </div>
-            )}
+
 
             {/* API KEY ERROR MODAL */}
             {messages.some(m => m.isError && m.text.includes("API Key Missing")) && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 4000, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
                     <div style={{ background: 'white', padding: '30px', borderRadius: '15px', maxWidth: '400px', textAlign: 'center', border: '2px solid red' }}>
-                        <h2 style={{ color: 'red' }}>⚠️ Action Required</h2>
-                        <p style={{ fontSize: '14px', marginBottom: '15px' }}>The AI brain works locally but is missing its key on this website.</p>
+                        <h2 style={{ color: 'red' }}>⚠️ AI Service Error</h2>
+                        <p style={{ fontSize: '14px', marginBottom: '15px' }}>The AI brain is having trouble connecting.</p>
 
                         <div style={{ background: '#f5f5f5', padding: '10px', borderRadius: '5px', textAlign: 'left', fontSize: '12px', marginBottom: '15px' }}>
-                            <strong>How to fix (for Admin):</strong><br />
-                            1. Go to your Vercel/Netlify Dashboard.<br />
-                            2. Settings &rarr; Environment Variables.<br />
-                            3. Add New Variable:<br />
-                            4. Key: <code style={{ color: 'blue' }}>VITE_GEMINI_API_KEY</code><br />
-                            5. Value: <em>(Your Google AI Key)</em><br />
-                            6. <strong>IMPORTANT: Redeploy the project!</strong>
+                            <strong>Troubleshooting:</strong><br />
+                            1. <strong>Localhost:</strong> Ensure <code>node server.js</code> is running.<br />
+                            2. <strong>Production:</strong> Check Vercel Logs for API errors.<br />
+                            3. Ensure <code>GEMINI_API_KEY</code> is set in Server Environment.<br />
                         </div>
 
                         <button onClick={() => setMessages(prev => prev.filter(m => !m.text.includes("API Key Missing")))} className="btn" style={{ background: '#333' }}>
