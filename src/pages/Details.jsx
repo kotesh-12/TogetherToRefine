@@ -221,15 +221,18 @@ export default function Details() {
                 console.log("Generated New PID:", finalPid);
             }
 
+            // Calculate formatted name for the main document
+            const newDisplayName = role === 'institution' ? formData.schoolName : `${formData.firstName} ${formData.secondName}`;
+
             await setDoc(doc(db, collectionName, userId), {
                 ...formData,
+                name: newDisplayName, // Explicitly save the combined name
                 pid: finalPid,
                 profileCompleted: true,
                 updatedAt: new Date()
             }, { merge: true });
 
             // CASCADE UPDATES (Update name in other collections)
-            const newDisplayName = role === 'institution' ? formData.schoolName : `${formData.firstName} ${formData.secondName}`;
             await propagateUserUpdates(userId, role, newDisplayName);
 
             // OPTIMISTIC UPDATE: Update Context immediately so Dashboard reflects changes
