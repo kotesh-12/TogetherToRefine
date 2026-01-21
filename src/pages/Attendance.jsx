@@ -412,22 +412,38 @@ export default function Attendance() {
                 attendanceMap[d.data().userId] = d.data().status;
             });
 
-            // Calculate Stats (Example: Consistency)
+            // Calculate Stats (Subject-wise or Overall)
             const stats = await Promise.all(fetched.map(async (p) => {
                 try {
-                    const allAtt = await getDocs(query(collection(db, "attendance"), where("userId", "==", p.id)));
+                    let qStats;
+                    // Dynamically filter stats by subject if one is selected in the UI
+                    if (view === 'students' && subject) {
+                        qStats = query(collection(db, "attendance"), where("userId", "==", p.id), where("subject", "==", subject));
+                    } else {
+                        qStats = query(collection(db, "attendance"), where("userId", "==", p.id));
+                    }
+
+                    const allAtt = await getDocs(qStats);
                     let total = 0, present = 0;
                     allAtt.forEach(doc => { total++; if (doc.data().status === 'present') present++; });
-                    return { userId: p.id, percent: total > 0 ? ((present / total) * 100).toFixed(0) : 0 };
-                } catch { return { userId: p.id, percent: 0 }; }
+
+                    return {
+                        userId: p.id,
+                        percent: total > 0 ? ((present / total) * 100).toFixed(0) : 0,
+                        present,
+                        total
+                    };
+                } catch { return { userId: p.id, percent: 0, present: 0, total: 0 }; }
             }));
+
             const statsMap = {};
-            stats.forEach(s => statsMap[s.userId] = s.percent);
+            stats.forEach(s => statsMap[s.userId] = s);
 
             const merged = fetched.map(p => ({
                 ...p,
                 status: attendanceMap[p.id] || 'pending',
-                percentage: statsMap[p.id] || 0
+                percentage: statsMap[p.id]?.percent || 0,
+                statsData: statsMap[p.id] || { present: 0, total: 0 }
             }));
 
             setList(merged);
@@ -759,9 +775,14 @@ export default function Attendance() {
                                         ) : (
                                             /* Normal Attendance Buttons (Teachers or Institution->Teachers) */
                                             <>
-                                                {/* Overall Consistency */}
-                                                <div style={{ fontSize: '12px', marginRight: '10px', color: '#888' }} title="Overall Attendance">
-                                                    {item.percentage}%
+                                                {/* Actual Stats Display */}
+                                                <div style={{ textAlign: 'center', marginRight: '15px', minWidth: '50px' }}>
+                                                    <div style={{ fontWeight: 'bold', fontSize: '14px', color: item.percentage < 75 ? '#d63031' : '#00b894' }}>
+                                                        {item.percentage}%
+                                                    </div>
+                                                    <div style={{ fontSize: '10px', color: '#636e72', fontWeight: '500' }}>
+                                                        {item.statsData?.present || 0} / {item.statsData?.total || 0} classes
+                                                    </div>
                                                 </div>
 
                                                 <button
