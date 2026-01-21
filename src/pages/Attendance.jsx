@@ -401,7 +401,7 @@ export default function Attendance() {
 
                 // Allow filtering teachers by Subject
                 if (subject) {
-                    fetched = fetched.filter(t => t.subject === subject);
+                    fetched = fetched.filter(t => (t.subject || '').toLowerCase().includes(subject.toLowerCase()));
                 }
             }
 
@@ -769,7 +769,7 @@ export default function Attendance() {
                                                 {item.name}
                                                 {suspended && <span style={{ fontSize: '10px', background: '#d63031', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>SUSPENDED</span>}
                                             </div>
-                                            <div style={{ fontSize: '13px', color: '#636e72' }}>{item.classAssigned}</div>
+                                            <div style={{ fontSize: '13px', color: '#636e72' }}>{item.classAssigned} {item.subject ? `• ${item.subject}` : ''}</div>
                                         </div>
                                     </div>
 
