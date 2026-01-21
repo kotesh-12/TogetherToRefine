@@ -398,6 +398,11 @@ export default function Attendance() {
                     }
                 });
                 fetched = Array.from(uniqueMap.values());
+
+                // Allow filtering teachers by Subject
+                if (subject) {
+                    fetched = fetched.filter(t => t.subject === subject);
+                }
             }
 
             // Fetch Attendance for Date
@@ -493,11 +498,7 @@ export default function Attendance() {
     };
 
     const markAttendance = async (id, status) => {
-        // Validation: If marking students, Subject is required
-        if (view === 'students' && !subject) {
-            alert("Please enter/select a Subject first.");
-            return;
-        }
+        // Validation Removed: Subject is now optional (defaults to General)
 
         const person = list.find(l => l.id === id);
         if (!person) return;
@@ -708,29 +709,30 @@ export default function Attendance() {
                                     ))}
                                 </select>
 
-                                {/* Subject Input */}
-                                <input
-                                    className="input-field"
-                                    placeholder="Subject (e.g. Maths)"
-                                    value={subject}
-                                    onChange={(e) => setSubject(e.target.value)}
-                                    style={{ width: '180px', margin: 0 }}
-                                    list="subjects-list"
-                                />
-                                <datalist id="subjects-list">
-                                    <option value="Telugu" />
-                                    <option value="Hindi" />
-                                    <option value="English" />
-                                    <option value="Mathematics" />
-                                    <option value="Science" />
-                                    <option value="Social Studies" />
-                                    <option value="Physical Science" />
-                                    <option value="Natural Science" />
-                                    <option value="Environmental Science (EVS)" />
-                                    <option value="Sanskrit" />
-                                </datalist>
                             </>
                         )}
+
+                        {/* Subject Input (Available for BOTH Students and Teachers view) */}
+                        <input
+                            className="input-field"
+                            placeholder={view === 'teachers' ? "Filter by Subject" : "Subject (Optional)"}
+                            value={subject}
+                            onChange={(e) => setSubject(e.target.value)}
+                            style={{ width: '180px', margin: 0 }}
+                            list="subjects-list"
+                        />
+                        <datalist id="subjects-list">
+                            <option value="Telugu" />
+                            <option value="Hindi" />
+                            <option value="English" />
+                            <option value="Mathematics" />
+                            <option value="Science" />
+                            <option value="Social Studies" />
+                            <option value="Physical Science" />
+                            <option value="Natural Science" />
+                            <option value="Environmental Science (EVS)" />
+                            <option value="Sanskrit" />
+                        </datalist>
 
                         {role === 'institution' && (
                             <div style={{ display: 'flex', gap: '5px' }}>
@@ -745,7 +747,7 @@ export default function Attendance() {
                         {loading && <p className="text-center">Loading...</p>}
                         {!loading && list.length === 0 && (
                             <div className="text-center text-muted">
-                                {view === 'students' && (!cls || !subject) ? "Select a Class & Subject." : "No records found."}
+                                {view === 'students' && !cls ? "Select a Class." : "No records found."}
                             </div>
                         )}
 
