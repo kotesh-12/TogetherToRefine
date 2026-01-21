@@ -259,11 +259,22 @@ export default function TTRAI() {
                     mimeType: selectedImage ? selectedImage.match(/:(.*?);/)?.[1] : null
                 };
 
-                const res = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+                let res;
+                try {
+                    res = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                } catch (netErr) {
+                    // Fallback for strict local CORS or network issues
+                    console.warn("Primary fetch failed, trying direct local...", netErr);
+                    res = await fetch('http://localhost:5000/api/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                }
 
                 if (!res.ok) {
                     const d = await res.json();
