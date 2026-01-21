@@ -24,7 +24,7 @@ export default function Attendance() {
     const [myOverallStats, setMyOverallStats] = useState({ present: 0, total: 0, percent: 0 });
     const [myHistory, setMyHistory] = useState([]); // New: History State
     const [teacherClasses, setTeacherClasses] = useState([]); // Restricted classes for Teacher
-    const [debugLogs, setDebugLogs] = useState([]); // Debug Logs
+    const [showSubjects, setShowSubjects] = useState(false); // Toggle state for subject dropdown
 
     useEffect(() => {
         if (role === 'teacher' && userData?.uid) {
@@ -712,27 +712,56 @@ export default function Attendance() {
                             </>
                         )}
 
-                        {/* Subject Input (Available for BOTH Students and Teachers view) */}
-                        <input
-                            className="input-field"
-                            placeholder={view === 'teachers' ? "Filter by Subject" : "Subject (Optional)"}
-                            value={subject}
-                            onChange={(e) => setSubject(e.target.value)}
-                            style={{ width: '180px', margin: 0 }}
-                            list="subjects-list"
-                        />
-                        <datalist id="subjects-list">
-                            <option value="Telugu" />
-                            <option value="Hindi" />
-                            <option value="English" />
-                            <option value="Mathematics" />
-                            <option value="Science" />
-                            <option value="Social Studies" />
-                            <option value="Physical Science" />
-                            <option value="Natural Science" />
-                            <option value="Environmental Science (EVS)" />
-                            <option value="Sanskrit" />
-                        </datalist>
+                        {/* Custom Subject Dropdown */}
+                        <div style={{ position: 'relative' }}>
+                            <div style={{ position: 'relative' }}>
+                                <input
+                                    className="input-field"
+                                    placeholder={view === 'teachers' ? "Filter by Subject" : "Subject (Optional)"}
+                                    value={subject}
+                                    onChange={(e) => setSubject(e.target.value)}
+                                    onClick={() => setShowSubjects(!showSubjects)}
+                                    style={{ width: '180px', margin: 0, paddingRight: '30px' }}
+                                />
+                                <span
+                                    onClick={() => setShowSubjects(!showSubjects)}
+                                    style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: '#888', fontSize: '10px' }}
+                                >
+                                    {showSubjects ? '▲' : '▼'}
+                                </span>
+                            </div>
+
+                            {showSubjects && (
+                                <div style={{
+                                    position: 'absolute', top: '105%', left: 0, width: '100%',
+                                    background: 'white', border: '1px solid #ddd', borderRadius: '8px',
+                                    maxHeight: '200px', overflowY: 'auto', zIndex: 100, boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
+                                }}>
+                                    {['Telugu', 'Hindi', 'English', 'Maths', 'Science', 'Social Studies', 'Physical Science', 'Natural Science', 'Environmental Science (EVS)', 'Sanskrit']
+                                        .filter(s => s.toLowerCase().includes(subject.toLowerCase()))
+                                        .map(s => (
+                                            <div
+                                                key={s}
+                                                onClick={() => { setSubject(s); setShowSubjects(false); }}
+                                                style={{ padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid #f1f1f1', fontSize: '13px', color: '#2d3436' }}
+                                                onMouseEnter={(e) => e.target.style.background = '#f8f9fa'}
+                                                onMouseLeave={(e) => e.target.style.background = 'white'}
+                                            >
+                                                {s}
+                                            </div>
+                                        ))}
+                                    {/* Option to clear */}
+                                    <div
+                                        onClick={() => { setSubject(''); setShowSubjects(false); }}
+                                        style={{ padding: '10px 12px', cursor: 'pointer', fontSize: '13px', color: '#d63031', fontStyle: 'italic' }}
+                                        onMouseEnter={(e) => e.target.style.background = '#fff5f5'}
+                                        onMouseLeave={(e) => e.target.style.background = 'white'}
+                                    >
+                                        Clear Selection
+                                    </div>
+                                </div>
+                            )}
+                        </div>
 
                         {role === 'institution' && (
                             <div style={{ display: 'flex', gap: '5px' }}>
