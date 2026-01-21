@@ -3,10 +3,12 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { collection, getDocs, doc, setDoc, getDoc, addDoc, deleteDoc, query, where, updateDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import { useUser } from '../context/UserContext';
 
 export default function Details() {
     const navigate = useNavigate();
     const location = useLocation();
+    const { setUserData } = useUser();
 
     // Check if role was passed from Login/Signup page (PRIORITY)
     const passedRole = location.state?.role;
@@ -85,7 +87,7 @@ export default function Details() {
                 if (passedRole) {
                     setRole(passedRole);
                     setLoading(false);
-                    // Note: We don't lock here because it passed from nav state, likely initial signup
+                    setIsRoleLocked(true); // LOCK THE ROLE to prevent changing
                     return;
                 }
 
@@ -229,6 +231,16 @@ export default function Details() {
             // CASCADE UPDATES (Update name in other collections)
             const newDisplayName = role === 'institution' ? formData.schoolName : `${formData.firstName} ${formData.secondName}`;
             await propagateUserUpdates(userId, role, newDisplayName);
+
+            // OPTIMISTIC UPDATE: Update Context immediately so Dashboard reflects changes
+            setUserData(prev => ({
+                ...prev,
+                ...formData,
+                role: role,
+                name: newDisplayName,
+                institutionName: role === 'institution' ? formData.schoolName : (formData.institutionName || prev?.institutionName),
+                collection: role === 'teacher' ? 'teachers' : (role === 'institution' ? 'institutions' : 'users')
+            }));
 
             // Logic for Student/Teacher admissions
             if ((role === 'student' || role === 'teacher')) {
