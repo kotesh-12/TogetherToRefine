@@ -271,15 +271,6 @@ body {
   padding: 20px;
   display: flex;
   flex-direction: column;
-  scrollbar-width: none;
-  /* Firefox */
-  -ms-overflow-style: none;
-  /* IE 10+ */
-}
-
-.chat-area::-webkit-scrollbar {
-  display: none;
-  /* Chrome/Safari */
 }
 
 .message-bubble {
