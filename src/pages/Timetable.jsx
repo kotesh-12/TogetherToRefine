@@ -268,10 +268,10 @@ export default function Timetable() {
 
                             if (targetP) {
                                 const existing = aggSchedule[day][targetP.id];
-                                const newContent = `${cls}-${sec} (${cellObj.subject})`;
+                                const newContent = `Class ${cls}-${sec}\n${cellObj.subject}`;
 
                                 aggSchedule[day][targetP.id] = {
-                                    subject: existing ? `${existing.subject}\n${newContent}` : newContent,
+                                    subject: existing ? `${existing.subject}\n\n${newContent}` : newContent,
                                     span: Math.max(existing?.span || 1, cellObj.span || 1)
                                 };
                             }
@@ -347,22 +347,42 @@ export default function Timetable() {
     const checkConflict = (day, pId, val) => {
         if (!overviewData || overviewData.length === 0) return null;
 
-        // Extract name inside parens: "Maths (Kotesh)" -> "Kotesh"
         const match = val && val.match(/\((.*?)\)/);
         if (!match) return null;
         const teacherName = match[1].trim().toLowerCase();
         if (teacherName.length < 3) return null;
 
-        // Scan all other timetables
+        // Check Conflict
+        let conflictClass = null;
         for (const clsData of overviewData) {
-            // Skip current class
             if (String(clsData.class) === String(selectedClass) && String(clsData.section) === String(selectedSection)) continue;
 
             const otherCell = clsData.schedule?.[day]?.[pId];
             const otherVal = typeof otherCell === 'object' ? otherCell.subject : otherCell;
             if (otherVal && String(otherVal).toLowerCase().includes(teacherName)) {
-                return `Busy in ${clsData.class}-${clsData.section}`;
+                conflictClass = `${clsData.class}-${clsData.section}`;
+                break;
             }
+        }
+
+        if (conflictClass) {
+            // Calculate Free Slots
+            const busyPeriods = new Set();
+            overviewData.forEach(d => {
+                const sch = d.schedule?.[day] || {};
+                Object.keys(sch).forEach(pid => {
+                    const cell = sch[pid];
+                    const cVal = typeof cell === 'object' ? cell.subject : cell;
+                    if (cVal && String(cVal).toLowerCase().includes(teacherName)) {
+                        busyPeriods.add(pid);
+                    }
+                });
+            });
+            // Use defaultPeriodConfig for period names (Assuming robust standardization)
+            const allPeriods = defaultPeriodConfig.filter(p => p.type === 'class');
+            const free = allPeriods.filter(p => !busyPeriods.has(p.id)).map(p => p.name);
+
+            return `Busy in ${conflictClass}. Free: ${free.length > 0 ? free.join(', ') : 'None'}`;
         }
         return null;
     };
