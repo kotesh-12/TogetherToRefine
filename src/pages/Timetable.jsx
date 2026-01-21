@@ -38,6 +38,7 @@ export default function Timetable() {
     const [mySchedule, setMySchedule] = useState({});
     const [allotmentCount, setAllotmentCount] = useState(0); // Restore
     const [overviewData, setOverviewData] = useState([]);
+    const [conflicts, setConflicts] = useState({}); // Stores conflict msgs: "Monday_p1" -> "Busy in 10-A"
 
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']; // Restore
 
@@ -228,16 +229,26 @@ export default function Timetable() {
 
                         if (!cellText) return;
 
-                        // CHECK MATCH
-                        const nameMatch = userData.name && cellText.includes(userData.name.toLowerCase());
+                        // IMPROVED MATCHING LOGIC
+                        // 1. Name Match: Token-based (matches "Kotesh" in "Maths (Kotesh Kumar)")
+                        const userTokens = userData.name ? userData.name.toLowerCase().split(/\s+/) : [];
+                        const cellTokens = cellText.split(/[\s().-]+/); // Split by space, dot, parens
 
+                        // Check if any significant partial of the User's name is in the cell
+                        const nameMatch = userTokens.some(t => {
+                            if (t.length < 3) return false; // Skip "mr", "dr" etc if short
+                            return cellText.includes(t);
+                        });
+
+                        // 2. Subject Match (Check both directions: Cell includes Subject OR Subject includes Cell)
                         const subjectMatch = mySubjectsHere.some(sub => {
                             if (!sub) return false;
-                            return cellText.includes(sub) || sub.includes(cellText);
+                            const s = sub.toLowerCase();
+                            return cellText.includes(s) || s.includes(cellText);
                         });
 
                         if (nameMatch || subjectMatch) {
-                            // Mapping Logic
+                            // Mapping Logic (Existing...)
                             const periodIndex = tbPeriods.findIndex(p => p.id === pId);
                             const periodDef = tbPeriods[periodIndex];
 
@@ -333,6 +344,29 @@ export default function Timetable() {
 
     // --- Content Handlers ---
 
+    const checkConflict = (day, pId, val) => {
+        if (!overviewData || overviewData.length === 0) return null;
+
+        // Extract name inside parens: "Maths (Kotesh)" -> "Kotesh"
+        const match = val && val.match(/\((.*?)\)/);
+        if (!match) return null;
+        const teacherName = match[1].trim().toLowerCase();
+        if (teacherName.length < 3) return null;
+
+        // Scan all other timetables
+        for (const clsData of overviewData) {
+            // Skip current class
+            if (String(clsData.class) === String(selectedClass) && String(clsData.section) === String(selectedSection)) continue;
+
+            const otherCell = clsData.schedule?.[day]?.[pId];
+            const otherVal = typeof otherCell === 'object' ? otherCell.subject : otherCell;
+            if (otherVal && String(otherVal).toLowerCase().includes(teacherName)) {
+                return `Busy in ${clsData.class}-${clsData.section}`;
+            }
+        }
+        return null;
+    };
+
     const handleCellChange = (day, periodId, field, value) => {
         setTimetable(prev => ({
             ...prev,
@@ -344,6 +378,11 @@ export default function Timetable() {
                 }
             }
         }));
+
+        if (field === 'subject' && isInstitution) {
+            const msg = checkConflict(day, periodId, value);
+            setConflicts(prev => ({ ...prev, [`${day}_${periodId}`]: msg }));
+        }
     };
 
     // --- Structure Handlers ---
@@ -521,7 +560,7 @@ export default function Timetable() {
 
                             <button
                                 className="btn"
-                                onClick={isEditing ? saveTimetable : () => setIsEditing(true)}
+                                onClick={isEditing ? saveTimetable : () => { setIsEditing(true); if (isInstitution) fetchAllTimetables(); }}
                                 style={{ background: isEditing ? '#00b894' : '#0984e3', minWidth: '120px' }}
                                 disabled={loading}
                             >
@@ -695,6 +734,11 @@ export default function Timetable() {
                                                                         fontSize: '14px', outline: 'none', background: 'transparent'
                                                                     }}
                                                                 />
+                                                                {conflicts && conflicts[`${day}_${p.id}`] && (
+                                                                    <div style={{ color: '#d63031', fontSize: '10px', fontWeight: 'bold', margin: '2px 5px', background: '#ffeaa7', padding: '3px', borderRadius: '4px', border: '1px solid #fab1a0' }}>
+                                                                        ⚠ {conflicts[`${day}_${p.id}`]}
+                                                                    </div>
+                                                                )}
                                                                 {/* Merge Control */}
                                                                 <div style={{ background: '#f1f2f6', padding: '2px 5px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', color: '#636e72' }}>
                                                                     <span>Span:</span>
