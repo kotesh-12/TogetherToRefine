@@ -42,6 +42,7 @@ export function UserProvider({ children }) {
 
                         if (instSnap.exists()) {
                             unsubscribeSnapshot = onSnapshot(instRef, (d) => {
+                                if (!d.exists()) { detectFull(); return; }
                                 const data = d.data();
                                 if (!data.pid) {
                                     const pid = `IN-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -55,6 +56,7 @@ export function UserProvider({ children }) {
                             });
                         } else if (teachSnap.exists()) {
                             unsubscribeSnapshot = onSnapshot(teachRef, (d) => {
+                                if (!d.exists()) { detectFull(); return; }
                                 const data = d.data();
                                 if (!data.pid) {
                                     const pid = `TE-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -68,6 +70,7 @@ export function UserProvider({ children }) {
                             });
                         } else if (userSnap.exists()) {
                             unsubscribeSnapshot = onSnapshot(userRef, (d) => {
+                                if (!d.exists()) { detectFull(); return; }
                                 const data = d.data();
                                 const normalizedRole = (data.role || 'student').trim().toLowerCase();
                                 if (!data.pid) {
