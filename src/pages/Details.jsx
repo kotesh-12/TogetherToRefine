@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { collection, getDocs, doc, setDoc, getDoc, addDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, getDoc, addDoc, deleteDoc, query, where, updateDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -19,6 +19,62 @@ export default function Details() {
 
     // Form states
     const [formData, setFormData] = useState({});
+
+    // DATA PROPAGATION HELPER (DML-like Cascading Update)
+    const propagateUserUpdates = async (uid, userRole, newName) => {
+        console.log(`🔄 Propagating updates for ${userRole}: ${newName}`);
+        const promises = [];
+
+        try {
+            // 1. Update Admissions (Student/Teacher)
+            if (userRole === 'student' || userRole === 'teacher') {
+                const q = query(collection(db, "admissions"), where("userId", "==", uid));
+                const snap = await getDocs(q);
+                snap.forEach(d => {
+                    promises.push(updateDoc(d.ref, { name: newName }));
+                });
+            }
+
+            // 2. Update Teacher Allotments (Teacher only)
+            if (userRole === 'teacher') {
+                const q = query(collection(db, "teacher_allotments"), where("userId", "==", uid));
+                const snap = await getDocs(q);
+                snap.forEach(d => {
+                    // Update both name fields to be safe
+                    promises.push(updateDoc(d.ref, { name: newName, teacherName: newName }));
+                });
+            }
+
+            // 3. Institution Name Propagation
+            if (userRole === 'institution') {
+                // Update Students/Teachers linked to this Institution
+                const q = query(collection(db, "users"), where("institutionId", "==", uid));
+                const snap = await getDocs(q);
+                snap.forEach(d => {
+                    promises.push(updateDoc(d.ref, { institutionName: newName }));
+                });
+                const q2 = query(collection(db, "teachers"), where("institutionId", "==", uid));
+                const snap2 = await getDocs(q2);
+                snap2.forEach(d => {
+                    promises.push(updateDoc(d.ref, { institutionName: newName }));
+                });
+
+                // Update Admissions linked to this Inst
+                const q3 = query(collection(db, "admissions"), where("institutionId", "==", uid));
+                const snap3 = await getDocs(q3);
+                snap3.forEach(d => {
+                    promises.push(updateDoc(d.ref, { institutionName: newName }));
+                });
+            }
+
+            if (promises.length > 0) {
+                await Promise.all(promises);
+                console.log(`✅ Updated ${promises.length} related documents.`);
+            }
+        } catch (e) {
+            console.error("Propagation Error:", e);
+        }
+    };
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -169,6 +225,10 @@ export default function Details() {
                 profileCompleted: true,
                 updatedAt: new Date()
             }, { merge: true });
+
+            // CASCADE UPDATES (Update name in other collections)
+            const newDisplayName = role === 'institution' ? formData.schoolName : `${formData.firstName} ${formData.secondName}`;
+            await propagateUserUpdates(userId, role, newDisplayName);
 
             // Logic for Student/Teacher admissions
             if ((role === 'student' || role === 'teacher')) {
