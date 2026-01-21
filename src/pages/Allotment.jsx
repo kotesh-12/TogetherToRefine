@@ -122,23 +122,30 @@ export default function Allotment() {
 
             // Update Profile Link (For both Waiting List and Manual Selection)
             if (finalUserId) {
-                // Trust 'users' collection for manual selection, or respect legacy logic if waiting list
-                const userColl = (personToAllot?.role === 'teacher') ? 'teachers' : 'users';
+                try {
+                    // Trust 'users' collection for manual selection, or respect legacy logic if waiting list
+                    const userColl = (personToAllot?.role === 'teacher') ? 'teachers' : 'users';
 
-                await setDoc(doc(db, userColl, finalUserId), {
-                    approved: true,
-                    assignedClass: cls,
-                    assignedSection: sec,
-                    class: cls,
-                    section: sec,
-                    ...(role === 'teacher' ? { subject: extra } : { age: extra }),
-                    updatedAt: new Date()
-                }, { merge: true });
+                    await setDoc(doc(db, userColl, finalUserId), {
+                        approved: true,
+                        assignedClass: cls,
+                        assignedSection: sec,
+                        class: cls,
+                        section: sec,
+                        ...(role === 'teacher' ? { subject: extra } : { age: extra }),
+                        updatedAt: new Date()
+                    }, { merge: true });
+                } catch (profErr) {
+                    console.warn("Could not update original user profile. Allotment created regardless.", profErr);
+                    // Do not block the flow
+                }
             }
 
             // If this was from waiting list, update the admission status!
             if (personToAllot) {
-                await updateDoc(doc(db, "admissions", personToAllot.id), {
+                const admRef = doc(db, "admissions", personToAllot.id);
+                // Verify doc exists before update - though checking ID is usually enough
+                await updateDoc(admRef, {
                     status: 'allotted',
                     assignedClass: cls,
                     assignedSection: sec,

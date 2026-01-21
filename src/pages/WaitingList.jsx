@@ -105,10 +105,22 @@ export default function WaitingList() {
                         try {
                             // Try both collections
                             await updateDoc(doc(db, "users", uid), { approved: true, updatedAt: new Date() });
+
+                            // Cleanup Waiting List
+                            const q = query(collection(db, "admissions"), where("userId", "==", uid), where("status", "==", "waiting"));
+                            const snap = await getDocs(q);
+                            snap.forEach(d => updateDoc(d.ref, { status: 'allotted', completedAt: new Date() }));
+
                             alert(`✅ Validated student ${uid}. They should now be able to login.`);
                         } catch (e) {
                             try {
                                 await updateDoc(doc(db, "teachers", uid), { approved: true, updatedAt: new Date() });
+
+                                // Cleanup Waiting List
+                                const q = query(collection(db, "admissions"), where("userId", "==", uid), where("status", "==", "waiting"));
+                                const snap = await getDocs(q);
+                                snap.forEach(d => updateDoc(d.ref, { status: 'allotted', completedAt: new Date() }));
+
                                 alert(`✅ Validated teacher ${uid}. They should now be able to login.`);
                             } catch (e2) {
                                 alert("❌ Failed. Ensure UID is correct and user exists in Firestore 'users' or 'teachers'. " + e2.message);
