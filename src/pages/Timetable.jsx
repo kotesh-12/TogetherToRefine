@@ -236,8 +236,12 @@ export default function Timetable() {
 
                         // Check if any significant partial of the User's name is in the cell
                         const nameMatch = userTokens.some(t => {
-                            if (t.length < 3) return false; // Skip "mr", "dr" etc if short
-                            return cellText.includes(t);
+                            if (t.length >= 3) {
+                                return cellText.includes(t);
+                            } else {
+                                // For short names (<3 chars), require exact token match (e.g. "v" in "Maths (v)")
+                                return cellTokens.includes(t);
+                            }
                         });
 
                         // 2. Subject Match (Check both directions: Cell includes Subject OR Subject includes Cell)
