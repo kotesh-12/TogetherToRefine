@@ -4,12 +4,14 @@ import { db } from '../firebase';
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { useUser } from '../context/UserContext';
 
+import QRCode from 'react-qr-code';
+
 export default function TopBar({ title, leftIcon = 'home', backPath, onMenuClick }) {
     const navigate = useNavigate();
     const location = useLocation();
     const { userData, user } = useUser();
     const [announcement, setAnnouncement] = useState('Welcome to TTR!');
-
+    const [showQR, setShowQR] = useState(false); // QR Modal State
 
     const handleLeftClick = () => {
         if (leftIcon === 'back') {
@@ -42,7 +44,6 @@ export default function TopBar({ title, leftIcon = 'home', backPath, onMenuClick
                     // Global announcements are for everyone
                     if (a.type === 'global') return true;
 
-                    // Filtering based on Role
                     // Filtering based on Role
                     if ((userData && userData.role === 'admin') || (user && user.email === 'admin@ttr.com')) {
                         return false;
@@ -103,12 +104,9 @@ export default function TopBar({ title, leftIcon = 'home', backPath, onMenuClick
         return () => unsubscribe();
     }, [userData, user]);
 
-
-
     return (
         <div style={{ position: 'sticky', top: 0, zIndex: 999, backgroundColor: '#f0f2f5' }}>
 
-            {/* Main Header with Home & Profile */}
             {/* Main Header with Home & Profile */}
             <header className="app-header" style={{
                 marginBottom: 0,
@@ -157,8 +155,16 @@ export default function TopBar({ title, leftIcon = 'home', backPath, onMenuClick
                 {/* Right: Install & Profile */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px', zIndex: 100 }}>
 
+                    {/* QR Code Share Button */}
+                    <div
+                        onClick={() => setShowQR(true)}
+                        style={{ fontSize: '20px', cursor: 'pointer' }}
+                        title="Share App (QR Code)"
+                    >
+                        🔗
+                    </div>
+
                     {/* Optional 3-Line Menu Button */}
-                    {/* Passed via prop for custom actions like opening a sidebar */}
                     {onMenuClick && (
                         <div
                             onClick={onMenuClick}
@@ -169,8 +175,6 @@ export default function TopBar({ title, leftIcon = 'home', backPath, onMenuClick
                         </div>
                     )}
 
-
-
                     <div className="profile-pic" onClick={() => navigate('/profile')} style={{ cursor: 'pointer', width: '35px', height: '35px', position: 'relative', right: 'auto' }}>
                         {userData?.profileImageURL ? (
                             <img src={userData.profileImageURL} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
@@ -180,6 +184,38 @@ export default function TopBar({ title, leftIcon = 'home', backPath, onMenuClick
                     </div>
                 </div>
             </header>
+
+            {/* QR CODE MODAL */}
+            {showQR && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+                    background: 'rgba(0,0,0,0.8)', zIndex: 10000,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }} onClick={() => setShowQR(false)}>
+                    <div style={{
+                        background: 'white', padding: '30px', borderRadius: '15px',
+                        textAlign: 'center', maxWidth: '300px', boxShadow: '0 10px 25px rgba(0,0,0,0.3)'
+                    }} onClick={e => e.stopPropagation()}>
+                        <h3 style={{ margin: '0 0 20px 0', color: '#2d3436' }}>Scan to Join Class</h3>
+                        <div style={{ background: 'white', padding: '10px', display: 'inline-block' }}>
+                            <QRCode value={window.location.origin} size={200} />
+                        </div>
+                        <p style={{ marginTop: '15px', fontSize: '13px', color: '#636e72' }}>
+                            Share this with your students.<br />
+                            <b>{window.location.host}</b>
+                        </p>
+                        <button
+                            onClick={() => setShowQR(false)}
+                            style={{
+                                marginTop: '15px', padding: '8px 20px',
+                                background: '#e17055', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer'
+                            }}
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <style>
                 {`
