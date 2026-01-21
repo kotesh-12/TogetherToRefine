@@ -41,8 +41,8 @@ export default function VideoLibrary() {
             const videoRef = collection(db, "videos");
 
             if (role === 'student') {
-                // Students see videos for their class
-                const rawClass = userData.class || userData.assignedClass;
+                // Robust Fetch for Students: Handle "10-A" vs "10th-A"
+                const rawClass = userData.class || userData.assignedClass || '';
                 const section = userData.section || userData.assignedSection || 'A';
 
                 if (!rawClass) {
@@ -50,13 +50,19 @@ export default function VideoLibrary() {
                     return;
                 }
 
-                let classNum = rawClass.toString();
-                if (parseInt(classNum)) {
-                    classNum = parseInt(classNum).toString();
+                // Generate Variants: ["10-A", "10th-A"]
+                const variants = [];
+                // 1. Raw Format (e.g., "10th")
+                variants.push(`${rawClass}-${section}`);
+
+                // 2. Normalized Format (e.g., "10")
+                const normalizedClass = rawClass.toString().replace(/(\d+)(st|nd|rd|th)/i, '$1');
+                if (normalizedClass !== rawClass.toString()) {
+                    variants.push(`${normalizedClass}-${section}`);
                 }
 
-                const targetString = `${classNum}-${section}`;
-                q = query(videoRef, where("targetClass", "==", targetString));
+                // Query
+                q = query(videoRef, where("targetClass", "in", variants));
             } else {
                 // Teachers/Institution: Filter by Selected Class if any
                 if (filterClass && filterClass !== 'All') {
@@ -74,12 +80,17 @@ export default function VideoLibrary() {
                 list = list.filter(v => v.subject === filterSubject);
             }
 
-            // Client-side sort by date descending (since we didn't add compound index for student query)
-            list.sort((a, b) => b.timestamp - a.timestamp);
+            // Client-side sort by date descending (safe for 'in' queries)
+            // Handle Firestore Timestamps or Fallback
+            list.sort((a, b) => {
+                const tA = a.timestamp?.seconds || 0;
+                const tB = b.timestamp?.seconds || 0;
+                return tB - tA;
+            });
 
             setVideos(list);
         } catch (e) {
-            console.error(e);
+            console.error("Fetch Videos Error:", e);
         } finally {
             setLoading(false);
         }
