@@ -439,20 +439,72 @@ export default function Attendance() {
         }
     };
 
+    // --- ACTIONS ---
+
+    const handleSuspend = async (studentId, currentSuspension) => {
+        const daysStr = prompt("Enter suspension duration in days (0 to lift):", "3");
+        if (daysStr === null) return;
+        const days = parseInt(daysStr, 10);
+        if (isNaN(days)) return alert("Invalid number");
+
+        const until = new Date();
+        until.setDate(until.getDate() + days); // Add days
+
+        try {
+            // Update Student Allotment
+            await updateDoc(doc(db, "student_allotments", studentId), {
+                suspendedUntil: days > 0 ? until : null
+            });
+            // Update local state
+            setList(prev => prev.map(item => item.id === studentId ? {
+                ...item,
+                suspendedUntil: days > 0 ? { seconds: until.getTime() / 1000 } : null
+            } : item));
+            alert(days > 0 ? `Student suspended for ${days} days.` : "Suspension lifted.");
+        } catch (e) {
+            console.error("Suspension failed", e);
+            alert("Error updating suspension.");
+        }
+    };
+
     const markAttendance = async (id, status) => {
-        // Validation: If marking students, Subject is required (User Request)
+        // Validation: If marking students, Subject is required
         if (view === 'students' && !subject) {
-            alert("Please enter/select a Subject first (e.g., Maths, Science).");
+            alert("Please enter/select a Subject first.");
             return;
         }
 
-        const studentRec = list.find(l => l.id === id);
-        // CRITICAL FIX: Use the linked User UID if available, otherwise fallback to Allotment ID
-        // This ensures the Student Dashboard (which queries by their UID) can see the record.
-        const targetId = studentRec?.userId || id;
+        const person = list.find(l => l.id === id);
+        if (!person) return;
+
+        // 1. Suspension Check (Teachers)
+        if (view === 'students' && role === 'teacher') {
+            if (person.suspendedUntil) {
+                const suspendDate = new Date(person.suspendedUntil.seconds * 1000);
+                if (suspendDate > new Date()) {
+                    alert(`🚫 Cannot mark attendance. Student is suspended until ${suspendDate.toLocaleDateString()}`);
+                    return;
+                }
+            }
+        }
+
+        // 2. Institution Restriction Check
+        if (view === 'students' && role === 'institution') {
+            alert("Institutions cannot mark Student Attendance directly. Use suspension controls only.");
+            return;
+        }
+
+        // 3. "Only 1 Time" Rule (Duplicate Check)
+        if (person.status !== 'pending') {
+            alert("⚠️ Attendance already marked for this subject today! updates are not allowed.");
+            return;
+        }
+
+        // CRITICAL FIX: Use the linked User UID if available
+        const targetId = person.userId || id;
 
         try {
-            const finalSubject = view === 'teachers' ? 'General' : subject; // Teachers don't have subject-wise attendance usually
+            const finalSubject = view === 'teachers' ? 'General' : subject;
             const docId = `${selectedDate}_${targetId}_${finalSubject}`;
 
             await setDoc(doc(db, "attendance", docId), {
@@ -462,6 +514,7 @@ export default function Attendance() {
                 status: status,
                 role: view === 'teachers' ? 'teacher' : 'student',
                 updater: userData.uid,
+                updaterName: userData.name || "Unknown Staff", // Store name for student view
                 timestamp: new Date()
             });
             setList(prev => prev.map(item => item.id === id ? { ...item, status } : item));
@@ -470,6 +523,16 @@ export default function Attendance() {
             alert("Error marking attendance");
         }
     };
+
+    // Helper to check suspension status for UI
+    const isSuspended = (person) => {
+        if (!person.suspendedUntil) return false;
+        // Compare dates
+        const now = new Date();
+        const susp = new Date(person.suspendedUntil.seconds * 1000);
+        return susp > now;
+    };
+
 
     const backPath = role === 'student' ? '/student' : (role === 'teacher' ? '/teacher' : (role === 'institution' ? '/institution' : '/'));
 
@@ -508,6 +571,34 @@ export default function Attendance() {
                         )) : (
                             <p className="text-muted" style={{ padding: '20px' }}>No subject records found yet.</p>
                         )}
+                    </div>
+
+                    {/* Recent History with Feedback Giver */}
+                    <div className="card" style={{ marginTop: '30px' }}>
+                        <h3>📅 Recent History</h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {myHistory.map(h => (
+                                <div key={h.id} style={{
+                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                    padding: '12px', borderBottom: '1px solid #eee'
+                                }}>
+                                    <div>
+                                        <div style={{ fontWeight: '600' }}>{h.subject}</div>
+                                        <div style={{ fontSize: '12px', color: '#888' }}>
+                                            {h.date} • by {h.updaterName || "Teacher"}
+                                        </div>
+                                    </div>
+                                    <span style={{
+                                        fontWeight: 'bold',
+                                        padding: '4px 8px', borderRadius: '4px',
+                                        background: h.status === 'present' ? '#e6ffec' : '#ffe6e6',
+                                        color: h.status === 'present' ? '#00b894' : '#d63031'
+                                    }}>
+                                        {h.status.toUpperCase()}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
                     {/* Debug Console for Students */}
@@ -633,47 +724,72 @@ export default function Attendance() {
                             </div>
                         )}
 
-                        {list.map(item => (
-                            <div key={item.id} style={{
-                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                padding: '12px', borderBottom: '1px solid #eee',
-                                background: item.status === 'present' ? '#e6ffec' : (item.status === 'absent' ? '#ffe6e6' : 'white')
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#dfe6e9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
-                                        {item.name.charAt(0)}
+                        {list.map(item => {
+                            const suspended = isSuspended(item);
+                            return (
+                                <div key={item.id} style={{
+                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                    padding: '12px', borderBottom: '1px solid #eee',
+                                    background: suspended ? '#f3a683' : (item.status === 'present' ? '#e6ffec' : (item.status === 'absent' ? '#ffe6e6' : 'white')),
+                                    opacity: suspended && role === 'teacher' ? 0.6 : 1
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#dfe6e9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                                            {item.name.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <div style={{ fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                {item.name}
+                                                {suspended && <span style={{ fontSize: '10px', background: '#d63031', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>SUSPENDED</span>}
+                                            </div>
+                                            <div style={{ fontSize: '13px', color: '#636e72' }}>{item.classAssigned}</div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <div style={{ fontWeight: '600' }}>{item.name}</div>
-                                        <div style={{ fontSize: '13px', color: '#636e72' }}>{item.classAssigned}</div>
+
+                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+
+                                        {/* Institution Suspends Students */}
+                                        {role === 'institution' && view === 'students' ? (
+                                            <button
+                                                onClick={() => handleSuspend(item.id, item.suspendedUntil)}
+                                                style={{ border: 'none', background: '#d63031', color: 'white', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+                                            >
+                                                {suspended ? 'Lift Suspension' : 'Suspend ⛔'}
+                                            </button>
+                                        ) : (
+                                            /* Normal Attendance Buttons (Teachers or Institution->Teachers) */
+                                            <>
+                                                {/* Overall Consistency */}
+                                                <div style={{ fontSize: '12px', marginRight: '10px', color: '#888' }} title="Overall Attendance">
+                                                    {item.percentage}%
+                                                </div>
+
+                                                <button
+                                                    disabled={suspended}
+                                                    onClick={() => markAttendance(item.id, 'present')}
+                                                    style={{
+                                                        padding: '6px 14px', borderRadius: '6px', border: 'none',
+                                                        cursor: suspended ? 'not-allowed' : 'pointer',
+                                                        background: item.status === 'present' ? '#00b894' : '#ecf0f1', color: item.status === 'present' ? 'white' : '#2d3436'
+                                                    }}>
+                                                    P
+                                                </button>
+                                                <button
+                                                    disabled={suspended}
+                                                    onClick={() => markAttendance(item.id, 'absent')}
+                                                    style={{
+                                                        padding: '6px 14px', borderRadius: '6px', border: 'none',
+                                                        cursor: suspended ? 'not-allowed' : 'pointer',
+                                                        background: item.status === 'absent' ? '#d63031' : '#ecf0f1', color: item.status === 'absent' ? 'white' : '#2d3436'
+                                                    }}>
+                                                    A
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
-
-                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                    {/* Overall Consistency (Optional to show here) */}
-                                    <div style={{ fontSize: '12px', marginRight: '10px', color: '#888' }} title="Overall Attendance">
-                                        {item.percentage}%
-                                    </div>
-
-                                    <button
-                                        onClick={() => markAttendance(item.id, 'present')}
-                                        style={{
-                                            padding: '6px 14px', borderRadius: '6px', border: 'none', cursor: 'pointer',
-                                            background: item.status === 'present' ? '#00b894' : '#ecf0f1', color: item.status === 'present' ? 'white' : '#2d3436'
-                                        }}>
-                                        P
-                                    </button>
-                                    <button
-                                        onClick={() => markAttendance(item.id, 'absent')}
-                                        style={{
-                                            padding: '6px 14px', borderRadius: '6px', border: 'none', cursor: 'pointer',
-                                            background: item.status === 'absent' ? '#d63031' : '#ecf0f1', color: item.status === 'absent' ? 'white' : '#2d3436'
-                                        }}>
-                                        A
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
 
                     {list.length > 0 && (
