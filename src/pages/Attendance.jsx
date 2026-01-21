@@ -764,6 +764,16 @@ export default function Attendance() {
 
                                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
 
+                                        {/* Actual Stats Display (Visible to Everyone) */}
+                                        <div style={{ textAlign: 'center', marginRight: '15px', minWidth: '50px' }}>
+                                            <div style={{ fontWeight: 'bold', fontSize: '14px', color: item.percentage < 75 ? '#d63031' : '#00b894' }}>
+                                                {item.percentage}%
+                                            </div>
+                                            <div style={{ fontSize: '10px', color: '#636e72', fontWeight: '500' }}>
+                                                {item.statsData?.present || 0} / {item.statsData?.total || 0} classes
+                                            </div>
+                                        </div>
+
                                         {/* Institution Suspends Students */}
                                         {role === 'institution' && view === 'students' ? (
                                             <button
@@ -775,16 +785,6 @@ export default function Attendance() {
                                         ) : (
                                             /* Normal Attendance Buttons (Teachers or Institution->Teachers) */
                                             <>
-                                                {/* Actual Stats Display */}
-                                                <div style={{ textAlign: 'center', marginRight: '15px', minWidth: '50px' }}>
-                                                    <div style={{ fontWeight: 'bold', fontSize: '14px', color: item.percentage < 75 ? '#d63031' : '#00b894' }}>
-                                                        {item.percentage}%
-                                                    </div>
-                                                    <div style={{ fontSize: '10px', color: '#636e72', fontWeight: '500' }}>
-                                                        {item.statsData?.present || 0} / {item.statsData?.total || 0} classes
-                                                    </div>
-                                                </div>
-
                                                 <button
                                                     disabled={suspended}
                                                     onClick={() => markAttendance(item.id, 'present')}
