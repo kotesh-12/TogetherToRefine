@@ -415,12 +415,17 @@ export default function Attendance() {
             // Calculate Stats (Subject-wise or Overall)
             const stats = await Promise.all(fetched.map(async (p) => {
                 try {
+                    // CRITICAL FIX: Match the ID used during 'markAttendance'
+                    // If the allotment is linked to a user (p.userId), we query by that UID.
+                    // Otherwise we fallback to the allotment ID (p.id).
+                    const targetId = p.userId || p.id;
+
                     let qStats;
                     // Dynamically filter stats by subject if one is selected in the UI
                     if (view === 'students' && subject) {
-                        qStats = query(collection(db, "attendance"), where("userId", "==", p.id), where("subject", "==", subject));
+                        qStats = query(collection(db, "attendance"), where("userId", "==", targetId), where("subject", "==", subject));
                     } else {
-                        qStats = query(collection(db, "attendance"), where("userId", "==", p.id));
+                        qStats = query(collection(db, "attendance"), where("userId", "==", targetId));
                     }
 
                     const allAtt = await getDocs(qStats);
@@ -428,7 +433,7 @@ export default function Attendance() {
                     allAtt.forEach(doc => { total++; if (doc.data().status === 'present') present++; });
 
                     return {
-                        userId: p.id,
+                        userId: p.id, // Keep this as p.id to map back to the 'list' item easily
                         percent: total > 0 ? ((present / total) * 100).toFixed(0) : 0,
                         present,
                         total
@@ -439,12 +444,16 @@ export default function Attendance() {
             const statsMap = {};
             stats.forEach(s => statsMap[s.userId] = s);
 
-            const merged = fetched.map(p => ({
-                ...p,
-                status: attendanceMap[p.id] || 'pending',
-                percentage: statsMap[p.id]?.percent || 0,
-                statsData: statsMap[p.id] || { present: 0, total: 0 }
-            }));
+            const merged = fetched.map(p => {
+                const targetId = p.userId || p.id;
+                return {
+                    ...p,
+                    // Check attendance using the same ID logic
+                    status: attendanceMap[targetId] || 'pending',
+                    percentage: statsMap[p.id]?.percent || 0,
+                    statsData: statsMap[p.id] || { present: 0, total: 0 }
+                };
+            });
 
             setList(merged);
 
