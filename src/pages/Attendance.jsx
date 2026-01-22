@@ -208,6 +208,7 @@ export default function Attendance() {
                     const altSnap = await getDocs(altQ);
 
                     setDebugLogs(prev => [...prev, `Scanning ${altSnap.size} allotments in Class Variants: ${uniqueVariants.join(', ')}`]);
+                    setDebugLogs(prev => [...prev, `Class Roster: ${altSnap.docs.map(d => d.data().name).join(', ')}`]);
 
                     const targetName = rawName.toLowerCase().replace(/\s+/g, ''); // normalize spaces
                     // Robust Section Matching: Handle "A", "A ", "a"
@@ -225,6 +226,16 @@ export default function Attendance() {
                         if (allotmentName === targetName) isNameMatch = true;
                         else if (targetName.length > 3 && allotmentName.includes(targetName)) isNameMatch = true;
                         else if (allotmentName.length > 3 && targetName.includes(allotmentName)) isNameMatch = true;
+
+                        // Fallback: Part Matching
+                        if (!isNameMatch) {
+                            const ap = (data.name || "").toLowerCase().split(/\s+/).filter(p => p.length > 2);
+                            const tp = rawName.toLowerCase().split(/\s+/).filter(p => p.length > 2);
+                            if (tp.length > 0 && ap.length > 0) {
+                                const overlap = tp.filter(t => ap.some(a => a.includes(t) || t.includes(a)));
+                                if (overlap.length > 0) isNameMatch = true;
+                            }
+                        }
 
                         if (!isNameMatch) return; // Skip if name doesn't match at all
 
