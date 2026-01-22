@@ -233,7 +233,12 @@ export default function FourWayLearning() {
                 mimeType: newUserMsg.image ? newUserMsg.image.match(/:(.*?);/)?.[1] : null
             };
 
-            const res = await fetch('/api/chat', {
+            // Connect to Production Server if on Localhost
+            const API_URL = window.location.hostname === 'localhost'
+                ? 'https://together-to-refine.vercel.app/api/chat'
+                : '/api/chat';
+
+            const res = await fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -368,19 +373,40 @@ export default function FourWayLearning() {
             {/* INPUT AREA */}
             <div style={{ padding: '15px', background: 'white', borderTop: '1px solid #eee' }}>
                 {activeTab === 'teaching' && (
-                    <div style={{ marginBottom: '10px', display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <select value={motherTongue} onChange={(e) => setMotherTongue(e.target.value)} style={{ padding: '8px', borderRadius: '5px', border: '1px solid #ddd' }}>
-                            <option value="Hindi">Hindi</option>
-                            <option value="Telugu">Telugu</option>
-                            <option value="Tamil">Tamil</option>
-                            <option value="Spanish">Spanish</option>
-                            <option value="French">French</option>
-                        </select>
-                        <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', color: '#6c5ce7', fontSize: '14px' }}>
-                            <input type="file" accept="image/*" onChange={handleImageChange} style={{ display: 'none' }} />
-                            📷 {selectedImage ? 'Image Added' : 'Add Image'}
-                        </label>
-                        {selectedImage && <button onClick={() => setSelectedImage(null)} style={{ border: 'none', background: 'none', color: 'red', cursor: 'pointer' }}>✕</button>}
+                    <div style={{ marginBottom: '10px', display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <select value={motherTongue} onChange={(e) => setMotherTongue(e.target.value)} style={{ padding: '8px', borderRadius: '5px', border: '1px solid #ddd' }}>
+                                <option value="Hindi">Hindi</option>
+                                <option value="Telugu">Telugu</option>
+                                <option value="Tamil">Tamil</option>
+                                <option value="Spanish">Spanish</option>
+                                <option value="French">French</option>
+                            </select>
+                            <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', color: '#6c5ce7', fontSize: '14px' }}>
+                                <input type="file" accept="image/*" onChange={handleImageChange} style={{ display: 'none' }} />
+                                📷 {selectedImage ? 'Image Added' : 'Add Image'}
+                            </label>
+                            {selectedImage && <button onClick={() => setSelectedImage(null)} style={{ border: 'none', background: 'none', color: 'red', cursor: 'pointer' }}>✕</button>}
+                        </div>
+                        {/* SERVER STATUS BADGE */}
+                        <div style={{
+                            fontSize: '10px', color: '#138808', fontWeight: 'bold',
+                            display: 'flex', alignItems: 'center', gap: '4px'
+                        }}>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#138808', display: 'inline-block' }}></span>
+                            TTR Server Connected
+                        </div>
+                    </div>
+                )}
+                {activeTab !== 'teaching' && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '5px' }}>
+                        <div style={{
+                            fontSize: '10px', color: '#138808', fontWeight: 'bold',
+                            display: 'flex', alignItems: 'center', gap: '4px'
+                        }}>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#138808', display: 'inline-block' }}></span>
+                            TTR Server Connected
+                        </div>
                     </div>
                 )}
                 <div style={{ display: 'flex', gap: '10px' }}>

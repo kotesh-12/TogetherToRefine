@@ -259,22 +259,17 @@ export default function TTRAI() {
                     mimeType: selectedImage ? selectedImage.match(/:(.*?);/)?.[1] : null
                 };
 
-                let res;
-                try {
-                    res = await fetch('/api/chat', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                } catch (netErr) {
-                    // Fallback for strict local CORS or network issues
-                    console.warn("Primary fetch failed, trying direct local...", netErr);
-                    res = await fetch('http://localhost:5000/api/chat', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                }
+
+                // Determine API URL: Use Production Server if on Localhost, otherwise relative path
+                const API_URL = window.location.hostname === 'localhost'
+                    ? 'https://together-to-refine.vercel.app/api/chat'
+                    : '/api/chat';
+
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
 
                 if (!res.ok) {
                     const d = await res.json();
@@ -336,7 +331,16 @@ export default function TTRAI() {
                         <button onClick={() => setSelectedImage(null)} className="remove-image-button">✕</button>
                     </div>
                 )}
-                <div className="input-controls">
+                <div className="input-controls" style={{ position: 'relative' }}>
+                    {/* SERVER STATUS BADGE */}
+                    <div style={{
+                        position: 'absolute', top: '-25px', right: '10px',
+                        fontSize: '10px', color: '#138808', fontWeight: 'bold',
+                        display: 'flex', alignItems: 'center', gap: '4px'
+                    }}>
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#138808', display: 'inline-block' }}></span>
+                        Connected to Server (TTR Brain)
+                    </div>
                     <button className="icon-button" onClick={handleCameraClick} title="Upload">📷</button>
                     <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageChange} style={{ display: 'none' }} />
                     <button onClick={() => listen((val) => setInput(prev => prev + ' ' + val))} className={`voice-button ${isListening ? 'listening' : ''}`} title="Voice">
@@ -365,9 +369,9 @@ export default function TTRAI() {
 
                         <div style={{ background: '#f5f5f5', padding: '10px', borderRadius: '5px', textAlign: 'left', fontSize: '12px', marginBottom: '15px' }}>
                             <strong>Troubleshooting:</strong><br />
-                            1. <strong>Localhost:</strong> Ensure <code>node server.js</code> is running.<br />
-                            2. <strong>Production:</strong> Check Vercel Logs for API errors.<br />
-                            3. Ensure <code>GEMINI_API_KEY</code> is set in Server Environment.<br />
+                            1. <strong>Check Internet:</strong> Ensure you are connected to the internet.<br />
+                            2. <strong>Server Status:</strong> The Vercel server might be sleeping or down.<br />
+                            3. <strong>Refresh:</strong> Try refreshing the page.<br />
                         </div>
 
                         <button onClick={() => setMessages(prev => prev.filter(m => !m.text.includes("API Key Missing")))} className="btn" style={{ background: '#333' }}>
