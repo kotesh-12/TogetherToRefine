@@ -691,26 +691,7 @@ export default function Attendance() {
                         </div>
                     </div>
 
-                    {/* Debug Console for Students */}
-                    <div style={{ marginTop: '30px', borderTop: '1px solid #eee', paddingTop: '20px' }}>
-                        <details>
-                            <summary style={{ cursor: 'pointer', color: '#636e72', fontSize: '13px' }}>
-                                🛠️ Troubleshooting (Click if Attendance is 0%)
-                            </summary>
-                            <div style={{ background: '#f1f2f6', padding: '15px', borderRadius: '8px', marginTop: '10px', fontSize: '12px', fontFamily: 'monospace' }}>
-                                <p><b>Debug Logs:</b></p>
-                                <ul style={{ paddingLeft: '20px', margin: 0 }}>
-                                    {debugLogs.map((log, i) => <li key={i}>{log}</li>)}
-                                </ul>
-                                <button
-                                    onClick={fetchMyStats}
-                                    style={{ marginTop: '10px', padding: '5px 10px', background: '#2d3436', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                                >
-                                    🔄 Global Refresh
-                                </button>
-                            </div>
-                        </details>
-                    </div>
+
                 </div>
             </div>
         );
@@ -755,18 +736,7 @@ export default function Attendance() {
                     </div>
                 )}
 
-                {/* Debug Console for Teachers */}
-                {role === 'teacher' && (
-                    <div style={{ margin: '20px 0', border: '1px solid #dcdde1', borderRadius: '8px', padding: '15px', background: '#f5f6fa' }}>
-                        <details>
-                            <summary style={{ cursor: 'pointer', color: '#7f8c8d' }}>🛠️ Troubleshooting Logs</summary>
-                            <ul style={{ maxHeight: '200px', overflowY: 'auto', fontSize: '12px', fontFamily: 'monospace', listStyle: 'none', padding: '10px 0 0 0', margin: 0 }}>
-                                {debugLogs.map((log, i) => <li key={i} style={{ marginBottom: '4px', borderBottom: '1px solid #eee' }}>{log}</li>)}
-                            </ul>
-                            <button onClick={fetchMyStats} style={{ marginTop: '10px', fontSize: '12px', padding: '5px 10px' }}>Refresh Data</button>
-                        </details>
-                    </div>
-                )}
+
 
                 <div className="card">
                     <h3 className="text-center" style={{ marginBottom: '20px' }}>Manage Attendance</h3>
