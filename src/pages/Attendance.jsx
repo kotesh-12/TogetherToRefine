@@ -520,6 +520,9 @@ export default function Attendance() {
                 };
             });
 
+            // Sort Alphabetically by Name
+            merged.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
             setList(merged);
 
         } catch (e) {
@@ -827,7 +830,7 @@ export default function Attendance() {
                             </div>
                         )}
 
-                        {list.map(item => {
+                        {list.map((item, index) => {
                             const suspended = isSuspended(item);
                             return (
                                 <div key={item.id} style={{
@@ -837,6 +840,10 @@ export default function Attendance() {
                                     opacity: suspended && role === 'teacher' ? 0.6 : 1
                                 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                        {/* Number Count */}
+                                        <div style={{ fontWeight: 'bold', color: '#636e72', fontSize: '14px', width: '25px' }}>
+                                            {index + 1}.
+                                        </div>
                                         <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#dfe6e9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
                                             {item.name.charAt(0)}
                                         </div>
