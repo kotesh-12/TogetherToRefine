@@ -1,8 +1,8 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Initialize AI Access
-// Check both Vercel env var and standard env var
-const API_KEY = process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+// Secure Server-Side Key Only
+const API_KEY = process.env.GEMINI_API_KEY;
 
 export default async function handler(req, res) {
     // Security: Restrict Access to Your Domains Only

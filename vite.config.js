@@ -33,6 +33,7 @@ export default defineConfig({
     })
   ],
   server: {
+    host: true, // Allow external access (e.g. mobile testing)
     proxy: {
       '/api': {
         target: 'http://localhost:5000',

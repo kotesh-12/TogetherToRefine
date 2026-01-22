@@ -15,7 +15,7 @@ export function useSpeech() {
     }, []);
 
     // Text-to-Speech (TTS)
-    const speak = (text) => {
+    const speak = (text, langCode = 'en-US') => {
         if (!('speechSynthesis' in window) || !text) return;
 
         window.speechSynthesis.cancel(); // Stop valid current speech
@@ -26,15 +26,30 @@ export function useSpeech() {
             return;
         }
 
-        const cleanText = text.replace(/[*#_`]/g, ''); // Remove Markdown chars
+        const cleanText = text.replace(/[*#_`\[\]]/g, ''); // Remove Markdown chars more aggressively
         const utterance = new SpeechSynthesisUtterance(cleanText);
         utteranceRef.current = utterance;
 
-        // Try to pick a better voice
+        // Try to pick a better voice based on language
         const voices = window.speechSynthesis.getVoices();
-        const preferredVoice = voices.find(v => v.name.includes("Google") && v.lang.includes("en"))
-            || voices.find(v => v.lang.startsWith("en"));
-        if (preferredVoice) utterance.voice = preferredVoice;
+        let targetVoice = null;
+
+        if (langCode && langCode !== 'en-US') {
+            // Try to find a voice for the specific language (e.g., 'hi-IN')
+            targetVoice = voices.find(v => v.lang.includes(langCode))
+                || voices.find(v => v.lang.startsWith(langCode.split('-')[0]));
+        }
+
+        // Fallback or Default to English preferences if no specific lang found/requested
+        if (!targetVoice) {
+            targetVoice = voices.find(v => v.name.includes("Google") && v.lang.includes("en"))
+                || voices.find(v => v.lang.startsWith("en"));
+        }
+
+        if (targetVoice) {
+            utterance.voice = targetVoice;
+            utterance.lang = targetVoice.lang; // Ensure utterance lang matches voice
+        }
 
         utterance.onend = () => setSpeakingText(null);
         utterance.onerror = () => setSpeakingText(null);

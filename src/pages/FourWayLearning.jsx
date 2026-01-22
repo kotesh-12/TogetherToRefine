@@ -330,7 +330,11 @@ export default function FourWayLearning() {
 
                         {/* SPEAKER BUTTON */}
                         {msg.role === 'ai' && (
-                            <button onClick={() => speak(msg.text)} className="speak-button">
+                            <button onClick={() => {
+                                const langMap = { 'Hindi': 'hi-IN', 'Telugu': 'te-IN', 'Tamil': 'ta-IN', 'Spanish': 'es-ES', 'French': 'fr-FR' };
+                                const lang = activeTab === 'teaching' ? (langMap[motherTongue] || 'en-US') : 'en-US';
+                                speak(msg.text, lang);
+                            }} className="speak-button">
                                 {speakingText === msg.text ? '🔇' : '🔊'}
                             </button>
                         )}
