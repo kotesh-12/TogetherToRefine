@@ -166,12 +166,17 @@ export default function Attendance() {
                 setDebugLogs(prev => [...prev, `Linked Allotments (by UID): Found ${linkedSnap.size}.`]);
 
                 linkedSnap.forEach(d => {
+                    // For each linked allotment (e.g. "Pradeep's Allotment"), verify if attendance is stored under the Allotment ID...
                     if (d.id !== userData.uid) {
-                        // This is an allotment doc ID that belongs to me
-                        // Fetch attendance marked against this Allotment ID
                         const q2 = query(collection(db, "attendance"), where("userId", "==", d.id));
-                        // We will execute these properly
                         attendanceQueries.push(getDocs(q2));
+                    }
+
+                    // ...OR under the User ID itself (data.userId) if it was ever used directly
+                    const data = d.data();
+                    if (data.userId && data.userId !== d.id) {
+                        const q3 = query(collection(db, "attendance"), where("userId", "==", data.userId));
+                        attendanceQueries.push(getDocs(q3));
                     }
                 });
 
