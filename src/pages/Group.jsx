@@ -127,7 +127,9 @@ export default function Group() {
             const snapT = await getDocs(qTeachers);
             const teachers = snapT.docs.map(d => ({ ...d.data(), type: 'Teacher' }));
 
-            setMembers([...teachers, ...students]);
+            const allMembers = [...teachers, ...students];
+            allMembers.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+            setMembers(allMembers);
         } catch (e) {
             console.error("Error fetching members", e);
         }
@@ -361,7 +363,7 @@ export default function Group() {
                                     {m.name?.[0] || '?'}
                                 </div>
                                 <div>
-                                    <div style={{ fontWeight: 'bold' }}>{m.name} {m.type === 'Teacher' && '⭐'}</div>
+                                    <div style={{ fontWeight: 'bold' }}>{i + 1}. {m.name} {m.type === 'Teacher' && '⭐'}</div>
                                     <div style={{ fontSize: '12px', color: '#666' }}>
                                         {m.type === 'Teacher' ? `Teacher • ${m.subject || 'General'}` : `Student • ${m.rollNumber || 'N/A'}`}
                                     </div>

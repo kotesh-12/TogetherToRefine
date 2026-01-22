@@ -43,6 +43,7 @@ export default function InstitutionDetailsAdmin() {
                     setStats(prev => ({ ...prev, students: studentsSnap.size }));
                     const sList = [];
                     studentsSnap.forEach(d => sList.push({ id: d.id, ...d.data() }));
+                    sList.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
                     setStudentList(sList);
                 } catch (e) { console.error("Error fetching students:", e); }
 
@@ -52,6 +53,7 @@ export default function InstitutionDetailsAdmin() {
                     setStats(prev => ({ ...prev, teachers: teachersSnap.size }));
                     const tList = [];
                     teachersSnap.forEach(d => tList.push({ id: d.id, ...d.data() }));
+                    tList.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
                     setTeacherList(tList);
                 } catch (e) { console.error("Error fetching teachers:", e); }
 
@@ -233,11 +235,12 @@ export default function InstitutionDetailsAdmin() {
                         {teacherList.length === 0 ? <p>No teachers found.</p> : (
                             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                 <thead>
-                                    <tr style={{ textAlign: 'left', background: '#f8f9fa' }}><th style={{ padding: '10px' }}>Name</th><th style={{ padding: '10px' }}>Phone</th><th style={{ padding: '10px' }}>Subject</th></tr>
+                                    <tr style={{ textAlign: 'left', background: '#f8f9fa' }}><th style={{ padding: '10px', width: '40px' }}>#</th><th style={{ padding: '10px' }}>Name</th><th style={{ padding: '10px' }}>Phone</th><th style={{ padding: '10px' }}>Subject</th></tr>
                                 </thead>
                                 <tbody>
-                                    {teacherList.map(t => (
+                                    {teacherList.map((t, index) => (
                                         <tr key={t.id} style={{ borderBottom: '1px solid #eee' }}>
+                                            <td style={{ padding: '10px', color: '#636e72', fontWeight: 'bold' }}>{index + 1}</td>
                                             <td style={{ padding: '10px' }}>{t.name || `${t.firstName || ''} ${t.secondName || ''}`.trim() || 'No Name'}</td>
                                             <td style={{ padding: '10px' }}>{t.phone || t.phoneNumber || 'N/A'}</td>
                                             <td style={{ padding: '10px' }}>{t.subject}</td>
@@ -255,11 +258,12 @@ export default function InstitutionDetailsAdmin() {
                         {studentList.length === 0 ? <p>No students found.</p> : (
                             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                 <thead>
-                                    <tr style={{ textAlign: 'left', background: '#f8f9fa' }}><th style={{ padding: '10px' }}>Name</th><th style={{ padding: '10px' }}>Class</th><th style={{ padding: '10px' }}>Roll No</th></tr>
+                                    <tr style={{ textAlign: 'left', background: '#f8f9fa' }}><th style={{ padding: '10px', width: '40px' }}>#</th><th style={{ padding: '10px' }}>Name</th><th style={{ padding: '10px' }}>Class</th><th style={{ padding: '10px' }}>Roll No</th></tr>
                                 </thead>
                                 <tbody>
-                                    {studentList.map(s => (
+                                    {studentList.map((s, index) => (
                                         <tr key={s.id} style={{ borderBottom: '1px solid #eee' }}>
+                                            <td style={{ padding: '10px', color: '#636e72', fontWeight: 'bold' }}>{index + 1}</td>
                                             <td style={{ padding: '10px' }}>{s.name || `${s.firstName || ''} ${s.secondName || ''}`.trim() || 'No Name'}</td>
                                             <td style={{ padding: '10px' }}>{s.assignedClass || s.class} {s.section}</td>
                                             <td style={{ padding: '10px' }}>{s.rollNumber || 'N/A'}</td>

@@ -103,8 +103,8 @@ export default function AdminDashboard() {
                         pending.push({ id: d.id, ...data });
                     }
                 });
-                setPendingInstitutions(pending);
-                setAllInstitutions(allInst);
+                setPendingInstitutions(pending.sort((a, b) => (a.schoolName || a.name || "").localeCompare(b.schoolName || b.name || "")));
+                setAllInstitutions(allInst.sort((a, b) => (a.schoolName || a.name || "").localeCompare(b.schoolName || b.name || "")));
 
             } catch (e) {
                 console.error("Admin stats error:", e);
@@ -215,14 +215,17 @@ export default function AdminDashboard() {
                             <p style={{ color: '#b2bec3' }}>No pending institutions to approve.</p>
                         ) : (
                             <div>
-                                {pendingInstitutions.map(inst => (
+                                {pendingInstitutions.map((inst, index) => (
                                     <div key={inst.id} style={{
                                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                                         padding: '15px', borderBottom: '1px solid #eee'
                                     }}>
-                                        <div>
-                                            <strong>{inst.schoolName || inst.name}</strong>
-                                            <div style={{ fontSize: '12px' }}>{inst.principalName}</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                            <span style={{ fontWeight: 'bold', color: '#636e72', minWidth: '20px' }}>{index + 1}.</span>
+                                            <div>
+                                                <strong>{inst.schoolName || inst.name}</strong>
+                                                <div style={{ fontSize: '12px' }}>{inst.principalName}</div>
+                                            </div>
                                         </div>
                                         <button className="btn" style={{ padding: '5px 15px', fontSize: '12px' }} onClick={() => approveInstitution(inst.id)}>Approve</button>
                                     </div>
@@ -377,6 +380,7 @@ export default function AdminDashboard() {
                         <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '15px' }}>
                             <thead>
                                 <tr style={{ background: '#f8f9fa', textAlign: 'left' }}>
+                                    <th style={{ padding: '10px', width: '40px' }}>#</th>
                                     <th style={{ padding: '10px' }}>Name</th>
                                     <th style={{ padding: '10px' }}>Principal</th>
                                     <th style={{ padding: '10px' }}>Est. Year</th>
@@ -385,8 +389,9 @@ export default function AdminDashboard() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {allInstitutions.map(inst => (
+                                {allInstitutions.map((inst, index) => (
                                     <tr key={inst.id} style={{ borderBottom: '1px solid #eee' }}>
+                                        <td style={{ padding: '10px', color: '#636e72', fontWeight: 'bold' }}>{index + 1}</td>
                                         <td style={{ padding: '10px' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                                 {inst.profileImageURL ? (

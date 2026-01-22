@@ -726,9 +726,9 @@ export default function Attendance() {
                         <div style={{ background: 'rgba(255,255,255,0.2)', padding: '10px', borderRadius: '8px' }}>
                             <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', borderBottom: '1px solid rgba(255,255,255,0.3)', paddingBottom: '5px' }}>Recent History</h4>
                             <div style={{ maxHeight: '150px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                {myHistory.length > 0 ? myHistory.map(h => (
+                                {myHistory.length > 0 ? myHistory.map((h, index) => (
                                     <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', background: 'rgba(255,255,255,0.1)', padding: '5px 10px', borderRadius: '4px' }}>
-                                        <span>{h.date}</span>
+                                        <span>{index + 1}. {h.date}</span>
                                         <span style={{ fontWeight: 'bold', color: h.status === 'present' ? '#55efc4' : '#fab1a0' }}>
                                             {h.status.toUpperCase()}
                                         </span>

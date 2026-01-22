@@ -262,7 +262,7 @@ export default function TTRAI() {
 
                 // Determine API URL: Use Production Server if on Localhost, otherwise relative path
                 const API_URL = window.location.hostname === 'localhost'
-                    ? 'https://together-to-refine.vercel.app/api/chat'
+                    ? 'http://localhost:5000/api/chat'
                     : '/api/chat';
 
                 const res = await fetch(API_URL, {

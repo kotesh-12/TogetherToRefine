@@ -68,13 +68,13 @@ export default function FeedbackOverview() {
             {loading && <p className="text-center">Loading Data...</p>}
 
             <div style={{ display: 'grid', gap: '20px' }}>
-                {filtered.map(item => {
+                {filtered.map((item, index) => {
                     const score = getScore(item);
                     return (
                         <div key={item.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
                                 <div>
-                                    <h3 style={{ margin: 0 }}>{item.targetPerson || "Unknown User"}</h3>
+                                    <h3 style={{ margin: 0 }}>{index + 1}. {item.targetPerson || "Unknown User"}</h3>
                                     <div style={{ fontSize: '12px', color: '#888' }}>
                                         {item.timestamp ? new Date(item.timestamp.seconds * 1000).toLocaleDateString() : 'N/A'}
                                     </div>
