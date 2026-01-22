@@ -161,135 +161,152 @@ export default function Attendance() {
             }
 
 
-            // 3. Student Fallback: Fetch by Allotment ID (Legacy/Bug fix/Self-Healing)
-            // const uClass = userData.assignedClass || userData.class; // Already defined above
-            // const uSection = userData.assignedSection || userData.section; // Already defined above
+            // 3. Student Fallback: Fetch by Allotment ID
+            if (userData.role === 'student') {
+                try {
+                    // A. Explicit Link Match: Allotments already linked to this User UID
+                    // (This catches cases where name might be different but ID is linked)
+                    const linkedAllotQ = query(collection(db, "student_allotments"), where("userId", "==", userData.uid));
+                    const linkedSnap = await getDocs(linkedAllotQ);
+                    setDebugLogs(prev => [...prev, `Linked Allotments (by UID): Found ${linkedSnap.size}.`]);
 
-            try {
-                // A. Explicit Link Match: Allotments already linked to this User UID
-                // (This catches cases where name might be different but ID is linked)
-                const linkedAllotQ = query(collection(db, "student_allotments"), where("userId", "==", userData.uid));
-                const linkedSnap = await getDocs(linkedAllotQ);
-                setDebugLogs(prev => [...prev, `Linked Allotments (by UID): Found ${linkedSnap.size}.`]);
-
-                linkedSnap.forEach(d => {
-                    // For each linked allotment (e.g. "Pradeep's Allotment"), verify if attendance is stored under the Allotment ID...
-                    if (d.id !== userData.uid) {
-                        const q2 = query(collection(db, "attendance"), where("userId", "==", d.id));
-                        attendanceQueries.push(getDocs(q2));
-                    }
-
-                    // ...OR under the User ID itself (data.userId) if it was ever used directly
-                    const data = d.data();
-                    if (data.userId && data.userId !== d.id) {
-                        const q3 = query(collection(db, "attendance"), where("userId", "==", data.userId));
-                        attendanceQueries.push(getDocs(q3));
-                    }
-                });
-
-                // B. Legacy Name Match: Allotments matching Name/Class (if not linked)
-                // DATA NORMALIZATION FIX:
-                // 1. Construct Name: If 'name' is missing, combine first/second strings.
-                // 2. Normalize Class: Convert '10th' -> '10', '1st' -> '1', etc to match Allotment format.
-
-                const rawName = userData.name || `${userData.firstName || ''} ${userData.secondName || ''}`.trim();
-
-                // Remove non-numeric characters from class (e.g. "10th" -> "10") to match Allotment's simpler format
-                // If it's "Nursery"/"LKG"/"UKG", it stays the same.
-                const normalizedClass = (uClass || '').replace(/(\d+)(st|nd|rd|th)/i, '$1');
-
-                if (normalizedClass && uSection && rawName) {
-
-                    // Fetch ALL students in this class/section
-                    // Robust fetch: Check multiple class formats: "5", "5th", "05", "Class 5"
-                    const classVariants = [
-                        normalizedClass,
-                        uClass,
-                        `${normalizedClass}th`,
-                        normalizedClass.replace(/^0+/, ''), // Remove leading zeros
-                        `Class ${normalizedClass}`
-                    ].filter(Boolean); // Remove null/undefined
-
-                    // Remove duplicates
-                    const uniqueVariants = [...new Set(classVariants)];
-
-                    // Remove 'section' from Firestore query to avoid Index issues and handle case sensitivity client-side
-                    const altQ = query(collection(db, "student_allotments"),
-                        where("classAssigned", "in", uniqueVariants)
-                    );
-                    const altSnap = await getDocs(altQ);
-
-                    setDebugLogs(prev => [...prev, `Scanning ${altSnap.size} allotments in Class Variants: ${uniqueVariants.join(', ')}`]);
-                    setDebugLogs(prev => [...prev, `Class Roster: ${altSnap.docs.map(d => d.data().name).join(', ')}`]);
-
-                    const targetName = rawName.toLowerCase().replace(/\s+/g, ''); // normalize spaces
-                    // Robust Section Matching: Handle "A", "A ", "a"
-                    const targetSec = (uSection || '').trim().toLowerCase();
-                    let nameMatches = 0;
-
-                    altSnap.forEach(d => {
-                        const data = d.data();
-
-                        // 1. Check Name Match FIRST (most specific)
-                        // Allow partial matches if the name is long enough (>3 chars) to avoid false positives on "Al", "Jo" etc.
-                        const allotmentName = (data.name || "").toLowerCase().replace(/\s+/g, '');
-
-                        let isNameMatch = false;
-                        if (allotmentName === targetName) isNameMatch = true;
-                        else if (targetName.length > 3 && allotmentName.includes(targetName)) isNameMatch = true;
-                        else if (allotmentName.length > 3 && targetName.includes(allotmentName)) isNameMatch = true;
-
-                        // Fallback: Part Matching
-                        if (!isNameMatch) {
-                            const ap = (data.name || "").toLowerCase().split(/\s+/).filter(p => p.length > 2);
-                            const tp = rawName.toLowerCase().split(/\s+/).filter(p => p.length > 2);
-                            if (tp.length > 0 && ap.length > 0) {
-                                const overlap = tp.filter(t => ap.some(a => a.includes(t) || t.includes(a)));
-                                if (overlap.length > 0) isNameMatch = true;
-                            }
-                        }
-
-                        if (!isNameMatch) return; // Skip if name doesn't match at all
-
-                        // 2. Name Matched! Now check Section
-                        const docSec = (data.section || '').trim().toLowerCase();
-
-                        if (docSec !== targetSec) {
-                            setDebugLogs(prev => [...prev, `Found Name match "${data.name}" but Section mismatch: Doc="${data.section}" vs User="${uSection}"`]);
-                            return;
-                        }
-
-                        // 3. Match Found!
+                    linkedSnap.forEach(d => {
+                        // For each linked allotment (e.g. "Pradeep's Allotment"), verify if attendance is stored under the Allotment ID...
                         if (d.id !== userData.uid) {
-                            nameMatches++;
+                            const q2 = query(collection(db, "attendance"), where("userId", "==", d.id));
+                            attendanceQueries.push(getDocs(q2));
+                        }
 
-                            // SELF-HEALING: Link this allotment to my UID so next time it's instant
-                            if (!data.userId) {
-                                console.log(`Self-healing Link: Linking Allotment ${d.id} (${data.name}) to User ${userData.uid}`);
-                                updateDoc(doc(db, "student_allotments", d.id), { userId: userData.uid })
-                                    .then(() => setDebugLogs(prev => [...prev, " Self-healed student link successfully."]))
-                                    .catch(e => console.warn("Heal failed", e));
-                            } else if (data.userId !== userData.uid) {
-                                // If linked to WRONG user (rare but possible during testing), minimal log
-                                console.warn(`Allotment ${d.id} linked to other user ${data.userId}`);
-                            }
-
-                            const q3 = query(collection(db, "attendance"), where("userId", "==", d.id)); // Attendance marked against Allotment ID
+                        // ...OR under the User ID itself (data.userId) if it was ever used directly
+                        const data = d.data();
+                        if (data.userId && data.userId !== d.id) {
+                            const q3 = query(collection(db, "attendance"), where("userId", "==", data.userId));
                             attendanceQueries.push(getDocs(q3));
-
-                            // ALSO check for attendance marked against the USER ID if the teacher just started using the new system
-                            if (data.userId) { // If it was already linked
-                                const q4 = query(collection(db, "attendance"), where("userId", "==", data.userId));
-                                attendanceQueries.push(getDocs(q4));
-                            }
                         }
                     });
-                    setDebugLogs(prev => [...prev, `Name & Section Matches: ${nameMatches}`]);
-                }
 
-                // Execute all legacy/fallback queries
-                const fallbackResults = await Promise.all(attendanceQueries);
-                fallbackResults.forEach(snap => {
+                    // B. Legacy Name Match: Allotments matching Name/Class (if not linked)
+                    // DATA NORMALIZATION FIX:
+                    // 1. Construct Name: If 'name' is missing, combine first/second strings.
+                    // 2. Normalize Class: Convert '10th' -> '10', '1st' -> '1', etc to match Allotment format.
+
+                    const rawName = userData.name || `${userData.firstName || ''} ${userData.secondName || ''}`.trim();
+
+                    // Remove non-numeric characters from class (e.g. "10th" -> "10") to match Allotment's simpler format
+                    // If it's "Nursery"/"LKG"/"UKG", it stays the same.
+                    const normalizedClass = (uClass || '').replace(/(\d+)(st|nd|rd|th)/i, '$1');
+
+                    if (normalizedClass && uSection && rawName) {
+
+                        // Fetch ALL students in this class/section
+                        // Robust fetch: Check multiple class formats: "5", "5th", "05", "Class 5"
+                        const classVariants = [
+                            normalizedClass,
+                            uClass,
+                            `${normalizedClass}th`,
+                            normalizedClass.replace(/^0+/, ''), // Remove leading zeros
+                            `Class ${normalizedClass}`
+                        ].filter(Boolean); // Remove null/undefined
+
+                        // Remove duplicates
+                        const uniqueVariants = [...new Set(classVariants)];
+
+                        // Remove 'section' from Firestore query to avoid Index issues and handle case sensitivity client-side
+                        const altQ = query(collection(db, "student_allotments"),
+                            where("classAssigned", "in", uniqueVariants)
+                        );
+                        const altSnap = await getDocs(altQ);
+
+                        setDebugLogs(prev => [...prev, `Scanning ${altSnap.size} allotments in Class Variants: ${uniqueVariants.join(', ')}`]);
+                        setDebugLogs(prev => [...prev, `Class Roster: ${altSnap.docs.map(d => d.data().name).join(', ')}`]);
+
+                        const targetName = rawName.toLowerCase().replace(/\s+/g, ''); // normalize spaces
+                        // Robust Section Matching: Handle "A", "A ", "a"
+                        const targetSec = (uSection || '').trim().toLowerCase();
+                        let nameMatches = 0;
+
+                        altSnap.forEach(d => {
+                            const data = d.data();
+
+                            // 1. Check Name Match FIRST (most specific)
+                            // Allow partial matches if the name is long enough (>3 chars) to avoid false positives on "Al", "Jo" etc.
+                            const allotmentName = (data.name || "").toLowerCase().replace(/\s+/g, '');
+
+                            let isNameMatch = false;
+                            if (allotmentName === targetName) isNameMatch = true;
+                            else if (targetName.length > 3 && allotmentName.includes(targetName)) isNameMatch = true;
+                            else if (allotmentName.length > 3 && targetName.includes(allotmentName)) isNameMatch = true;
+
+                            // Fallback: Part Matching
+                            if (!isNameMatch) {
+                                const ap = (data.name || "").toLowerCase().split(/\s+/).filter(p => p.length > 2);
+                                const tp = rawName.toLowerCase().split(/\s+/).filter(p => p.length > 2);
+                                if (tp.length > 0 && ap.length > 0) {
+                                    const overlap = tp.filter(t => ap.some(a => a.includes(t) || t.includes(a)));
+                                    if (overlap.length > 0) isNameMatch = true;
+                                }
+                            }
+
+                            if (!isNameMatch) return; // Skip if name doesn't match at all
+
+                            // 2. Name Matched! Now check Section
+                            const docSec = (data.section || '').trim().toLowerCase();
+
+                            if (docSec !== targetSec) {
+                                setDebugLogs(prev => [...prev, `Found Name match "${data.name}" but Section mismatch: Doc="${data.section}" vs User="${uSection}"`]);
+                                return;
+                            }
+
+                            // 3. Match Found!
+                            if (d.id !== userData.uid) {
+                                nameMatches++;
+
+                                // SELF-HEALING: Link this allotment to my UID so next time it's instant
+                                if (!data.userId) {
+                                    console.log(`Self-healing Link: Linking Allotment ${d.id} (${data.name}) to User ${userData.uid}`);
+                                    updateDoc(doc(db, "student_allotments", d.id), { userId: userData.uid })
+                                        .then(() => setDebugLogs(prev => [...prev, " Self-healed student link successfully."]))
+                                        .catch(e => console.warn("Heal failed", e));
+                                } else if (data.userId !== userData.uid) {
+                                    // If linked to WRONG user (rare but possible during testing), minimal log
+                                    console.warn(`Allotment ${d.id} linked to other user ${data.userId}`);
+                                }
+
+                                const q3 = query(collection(db, "attendance"), where("userId", "==", d.id)); // Attendance marked against Allotment ID
+                                attendanceQueries.push(getDocs(q3));
+
+                                // ALSO check for attendance marked against the USER ID if the teacher just started using the new system
+                                if (data.userId) { // If it was already linked
+                                    const q4 = query(collection(db, "attendance"), where("userId", "==", data.userId));
+                                    attendanceQueries.push(getDocs(q4));
+                                }
+                            }
+                        });
+                        setDebugLogs(prev => [...prev, `Name & Section Matches: ${nameMatches}`]);
+                    }
+
+                    // Execute all legacy/fallback queries
+                    const fallbackResults = await Promise.all(attendanceQueries);
+                    fallbackResults.forEach(snap => {
+                        snap.forEach(d => {
+                            if (!seenIds.has(d.id)) {
+                                seenIds.add(d.id);
+                                mergedDocs.push(d);
+                            }
+                        });
+                    });
+                    setDebugLogs(prev => [...prev, `Total Attendance Docs Merged: ${mergedDocs.length}`]);
+
+                } catch (err) {
+                    console.warn("Legacy attendance fetch failed", err);
+                    setDebugLogs(prev => [...prev, `Error: ${err.message}`]);
+                }
+            } // End Student If
+
+            // 4. SHARED EXECUTION (Ensures Teacher Queries Run)
+            if (attendanceQueries.length > 0) {
+                const finalRes = await Promise.all(attendanceQueries);
+                finalRes.forEach(snap => {
                     snap.forEach(d => {
                         if (!seenIds.has(d.id)) {
                             seenIds.add(d.id);
@@ -297,11 +314,6 @@ export default function Attendance() {
                         }
                     });
                 });
-                setDebugLogs(prev => [...prev, `Total Attendance Docs Merged: ${mergedDocs.length}`]);
-
-            } catch (err) {
-                console.warn("Legacy attendance fetch failed", err);
-                setDebugLogs(prev => [...prev, `Error: ${err.message}`]);
             }
 
             const subjectsObj = {};
