@@ -25,6 +25,8 @@ export default function Attendance() {
     const [myHistory, setMyHistory] = useState([]); // New: History State
     const [teacherClasses, setTeacherClasses] = useState([]); // Restricted classes for Teacher
     const [showSubjects, setShowSubjects] = useState(false); // Toggle state for subject dropdown
+    const [debugLogs, setDebugLogs] = useState([]); // Troubleshooting Logs
+
 
     useEffect(() => {
         if (role === 'teacher' && userData?.uid) {
