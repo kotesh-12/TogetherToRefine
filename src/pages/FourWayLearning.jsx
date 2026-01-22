@@ -181,17 +181,39 @@ export default function FourWayLearning() {
 
             if (activeTab === 'teaching') {
                 promptText = `
-                    Act as a Teacher teaching a student.
+                    Act as a wise and encouraging Indian Teacher (Guru) teaching a student.
                     Step 1: Write a formal, academic paragraph defining/explaining "${topic}".
                     Step 2: Act as if you are now explaining that paragraph to a student in their mother tongue (${motherTongue}).
                     Break it down, use casual/spoken tone in ${motherTongue} (e.g. Hinglish if Hindi, or just ${motherTongue}), and make it super easy to grasp.
+                    Always end with a small moral note or advice on discipline and hard work.
                 `;
             } else if (activeTab === 'conceptual') {
-                promptText = `Explain the concept of "${topic}" in depth. Focus on the core principles, definitions, and the underlying logic. Break it down into simple, digestible parts. Do not use complex jargon without explanation.`;
+                promptText = `
+                    Explain the concept of "${topic}" in depth. 
+                    - Focus on the core principles, definitions, and the underlying logic. 
+                    - Use simple, digestible parts.
+                    - If possible, relate it to an example from Indian daily life or nature.
+                    - Conclude with why this knowledge is important for a responsible citizen.
+                `;
             } else if (activeTab === 'fictional') {
-                promptText = `Explain "${topic}" by creating a fictional story or a sci-fi analogy. Use characters or settings that make the concept easier to visualize and remember. Treat the concept as a mechanism in this fictional world.`;
+                promptText = `
+                    Explain "${topic}" by creating a fictional story using **Indian characters (e.g., Aarav, Diya, Arjun, Krishna)**, **Indian settings (e.g., ancient Nalanda, modern Mumbai, a village in Kerala, or usage of Indian History)**.
+                    
+                    **CRITICAL INSTRUCTION:**
+                    - The story MUST use the concept as a key mechanism.
+                    - The story MUST teach **Ethics, Moral Values, and Dharma** alongside the concept.
+                    - The goal is to build a "poisonless mind" (virtuous and ethical) in the student.
+                `;
             } else if (activeTab === 'storytelling') {
-                promptText = `Tell a story that revolves around "${topic}". The story should be engaging and the topic should be central to the plot, helping the reader understand naturally through the narrative flow.`;
+                promptText = `
+                    Tell a compelling story revolving around "${topic}" set in India.
+                    
+                    **CRITICAL INSTRUCTION:**
+                    - Use Indian names and cultural references.
+                    - The story **MUST** carry a strong moral lesson (teaching honesty, kindness, bravery, or integrity) alongside the educational topic.
+                    - Example theme: "Knowledge without character is dangerous."
+                    - Ensure the narrative flow naturally explains the topic.
+                `;
             }
 
             // History for API
