@@ -566,38 +566,42 @@ export default function Attendance() {
 
     // --- STUDENT VIEW ---
     if (role === 'student') {
+        if (!userData) return <div className="text-center p-4">Loading Data...</div>;
+
         return (
-            <div className="page-wrapper">
+            <div className="page-wrapper" style={{ minHeight: '100vh', background: '#f5f7fa' }}>
                 <AIBadge />
                 <AnnouncementBar title="My Attendance" leftIcon="back" backPath={backPath} />
-                <div className="container" style={{ maxWidth: '800px', margin: '20px auto' }}>
+                <div className="container" style={{ maxWidth: '800px', margin: '20px auto', paddingBottom: '50px' }}>
 
                     {/* Overall Score Card */}
-                    <div className="card text-center" style={{ padding: '30px', marginBottom: '20px', background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)', color: 'white' }}>
+                    <div className="card text-center" style={{ padding: '30px', marginBottom: '20px', background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)', color: 'white', borderRadius: '15px' }}>
                         <h2 style={{ margin: 0, color: 'white' }}>Overall Attendance</h2>
                         <div style={{ fontSize: '3.5rem', fontWeight: 'bold', margin: '10px 0' }}>
-                            {myOverallStats.percent}%
+                            {myOverallStats?.percent || 0}%
                         </div>
                         <p style={{ opacity: 0.9 }}>
-                            {myOverallStats.present} / {myOverallStats.total} Classes Attended
+                            {myOverallStats?.present || 0} / {myOverallStats?.total || 0} Classes Attended
                         </p>
                     </div>
 
                     {/* Subject-Wise Breakdown */}
-                    <h3 style={{ marginLeft: '10px' }}>Subject-Wise Breakdown</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '15px' }}>
-                        {mySubjectStats.length > 0 ? mySubjectStats.map((stat, idx) => (
-                            <div key={idx} className="card" style={{ padding: '20px', textAlign: 'center' }}>
-                                <div style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '10px', color: '#2d3436' }}>{stat.subject}</div>
-                                <div style={{ fontSize: '2rem', fontWeight: 'bold', color: stat.percent >= 75 ? '#00b894' : '#d63031' }}>
-                                    {stat.percent}%
+                    <h3 style={{ marginLeft: '10px', color: '#2d3436' }}>Subject-Wise Breakdown</h3>
+                    <div className="responsive-grid" style={{ marginTop: '10px' }}>
+                        {mySubjectStats && mySubjectStats.length > 0 ? mySubjectStats.map((stat, idx) => (
+                            <div key={idx} className="card" style={{ padding: '20px', textAlign: 'center', borderRadius: '12px' }}>
+                                <div style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '10px', color: '#2d3436' }}>
+                                    {stat?.subject || 'Subject'}
+                                </div>
+                                <div style={{ fontSize: '2rem', fontWeight: 'bold', color: parseInt(stat.percent) >= 75 ? '#00b894' : '#d63031' }}>
+                                    {stat?.percent || 0}%
                                 </div>
                                 <div style={{ fontSize: '0.9rem', color: '#636e72', marginTop: '5px' }}>
-                                    {stat.present} / {stat.total} Classes
+                                    {stat?.present || 0} / {stat?.total || 0} Classes
                                 </div>
                             </div>
                         )) : (
-                            <p className="text-muted" style={{ padding: '20px' }}>No subject records found yet.</p>
+                            <p className="text-muted" style={{ padding: '20px', width: '100%' }}>No subject records found yet.</p>
                         )}
                     </div>
 
