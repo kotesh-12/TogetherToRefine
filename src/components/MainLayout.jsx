@@ -40,14 +40,14 @@ export default function MainLayout() {
 
     return (
         <div style={{ paddingBottom: '80px' }}> {/* Add padding so content doesn't hide behind fixed nav */}
+
             {showUpdateBtn && (
                 <button
                     onClick={handleForceUpdate}
                     style={{
                         position: 'fixed',
-                        top: '10px',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
+                        top: '105px', // Below Header + Announcement Bar
+                        left: '10px',
                         zIndex: 10000,
                         backgroundColor: '#2563eb',
                         color: 'white',
