@@ -18,44 +18,61 @@ export function useSpeech() {
     const speak = (text, langCode = 'en-US') => {
         if (!('speechSynthesis' in window) || !text) return;
 
-        window.speechSynthesis.cancel(); // Stop valid current speech
+        window.speechSynthesis.cancel(); // Clears queue
 
         if (speakingText === text) {
-            // Toggle off if clicking same text
             setSpeakingText(null);
             return;
         }
 
-        const cleanText = text.replace(/[*#_`\[\]]/g, ''); // Remove Markdown chars more aggressively
-        const utterance = new SpeechSynthesisUtterance(cleanText);
-        utteranceRef.current = utterance;
+        const cleanText = text.replace(/[*#_`\[\]]/g, '');
 
-        // Try to pick a better voice based on language
+        // Chunking logic for Mobile stability
+        // Split by reasonable punctuation or length
+        const chunks = cleanText.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [cleanText];
+
+        // Refine chunks if still too long (fallback split by simple length)
+        const safeChunks = [];
+        chunks.forEach(chunk => {
+            if (chunk.length > 180) {
+                const subChunks = chunk.match(/.{1,180}(\s|$)/g) || [chunk];
+                safeChunks.push(...subChunks);
+            } else {
+                safeChunks.push(chunk);
+            }
+        });
+
+        // Determine voice ONCE
         const voices = window.speechSynthesis.getVoices();
         let targetVoice = null;
-
         if (langCode && langCode !== 'en-US') {
-            // Try to find a voice for the specific language (e.g., 'hi-IN')
             targetVoice = voices.find(v => v.lang.includes(langCode))
                 || voices.find(v => v.lang.startsWith(langCode.split('-')[0]));
         }
-
-        // Fallback or Default to English preferences if no specific lang found/requested
         if (!targetVoice) {
             targetVoice = voices.find(v => v.name.includes("Google") && v.lang.includes("en"))
                 || voices.find(v => v.lang.startsWith("en"));
         }
 
-        if (targetVoice) {
-            utterance.voice = targetVoice;
-            utterance.lang = targetVoice.lang; // Ensure utterance lang matches voice
-        }
+        // Queue utterances
+        safeChunks.forEach((chunkText, index) => {
+            const utterance = new SpeechSynthesisUtterance(chunkText);
 
-        utterance.onend = () => setSpeakingText(null);
-        utterance.onerror = () => setSpeakingText(null);
+            if (targetVoice) {
+                utterance.voice = targetVoice;
+                utterance.lang = targetVoice.lang;
+            }
+
+            // Only clear state on the very last chunk
+            if (index === safeChunks.length - 1) {
+                utterance.onend = () => setSpeakingText(null);
+                utterance.onerror = () => setSpeakingText(null);
+            }
+
+            window.speechSynthesis.speak(utterance);
+        });
 
         setSpeakingText(text);
-        window.speechSynthesis.speak(utterance);
     };
 
     // Speech-to-Text (STT)
