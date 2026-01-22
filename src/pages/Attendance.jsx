@@ -189,17 +189,25 @@ export default function Attendance() {
                 if (normalizedClass && uSection && rawName) {
 
                     // Fetch ALL students in this class/section
-                    // Robust fetch: Check both "10" and "10th" to find allotments
-                    const classVariants = [normalizedClass];
-                    if (uClass && uClass !== normalizedClass) classVariants.push(uClass);
+                    // Robust fetch: Check multiple class formats: "5", "5th", "05", "Class 5"
+                    const classVariants = [
+                        normalizedClass,
+                        uClass,
+                        `${normalizedClass}th`,
+                        normalizedClass.replace(/^0+/, ''), // Remove leading zeros
+                        `Class ${normalizedClass}`
+                    ].filter(Boolean); // Remove null/undefined
+
+                    // Remove duplicates
+                    const uniqueVariants = [...new Set(classVariants)];
 
                     // Remove 'section' from Firestore query to avoid Index issues and handle case sensitivity client-side
                     const altQ = query(collection(db, "student_allotments"),
-                        where("classAssigned", "in", classVariants)
+                        where("classAssigned", "in", uniqueVariants)
                     );
                     const altSnap = await getDocs(altQ);
 
-                    setDebugLogs(prev => [...prev, `Scanning ${altSnap.size} allotments in Class ${normalizedClass}/${uClass} ...`]);
+                    setDebugLogs(prev => [...prev, `Scanning ${altSnap.size} allotments in Class Variants: ${uniqueVariants.join(', ')}`]);
 
                     const targetName = rawName.toLowerCase().replace(/\s+/g, ''); // normalize spaces
                     // Robust Section Matching: Handle "A", "A ", "a"
@@ -210,8 +218,13 @@ export default function Attendance() {
                         const data = d.data();
 
                         // 1. Check Name Match FIRST (most specific)
+                        // Allow partial matches if the name is long enough (>3 chars) to avoid false positives on "Al", "Jo" etc.
                         const allotmentName = (data.name || "").toLowerCase().replace(/\s+/g, '');
-                        const isNameMatch = allotmentName.includes(targetName) || targetName.includes(allotmentName);
+
+                        let isNameMatch = false;
+                        if (allotmentName === targetName) isNameMatch = true;
+                        else if (targetName.length > 3 && allotmentName.includes(targetName)) isNameMatch = true;
+                        else if (allotmentName.length > 3 && targetName.includes(allotmentName)) isNameMatch = true;
 
                         if (!isNameMatch) return; // Skip if name doesn't match at all
 
@@ -229,13 +242,23 @@ export default function Attendance() {
 
                             // SELF-HEALING: Link this allotment to my UID so next time it's instant
                             if (!data.userId) {
+                                console.log(`Self-healing Link: Linking Allotment ${d.id} (${data.name}) to User ${userData.uid}`);
                                 updateDoc(doc(db, "student_allotments", d.id), { userId: userData.uid })
-                                    .then(() => console.log("Self-healed student link"))
+                                    .then(() => setDebugLogs(prev => [...prev, " Self-healed student link successfully."]))
                                     .catch(e => console.warn("Heal failed", e));
+                            } else if (data.userId !== userData.uid) {
+                                // If linked to WRONG user (rare but possible during testing), minimal log
+                                console.warn(`Allotment ${d.id} linked to other user ${data.userId}`);
                             }
 
-                            const q3 = query(collection(db, "attendance"), where("userId", "==", d.id));
+                            const q3 = query(collection(db, "attendance"), where("userId", "==", d.id)); // Attendance marked against Allotment ID
                             attendanceQueries.push(getDocs(q3));
+
+                            // ALSO check for attendance marked against the USER ID if the teacher just started using the new system
+                            if (data.userId) { // If it was already linked
+                                const q4 = query(collection(db, "attendance"), where("userId", "==", data.userId));
+                                attendanceQueries.push(getDocs(q4));
+                            }
                         }
                     });
                     setDebugLogs(prev => [...prev, `Name & Section Matches: ${nameMatches}`]);
