@@ -3,7 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import { useUser } from '../context/UserContext';
-// import BottomNav from './BottomNav'; // Replaced by Sidebar for Pro Look
+import BottomNav from './BottomNav';
 
 export default function MainLayout() {
     const { userData } = useUser();
@@ -44,9 +44,6 @@ export default function MainLayout() {
     const dashboardPaths = ['/student', '/teacher', '/institution', '/admin'];
     const showUpdateBtn = dashboardPaths.some(path => location.pathname.startsWith(path));
 
-    // Hide Layout on Login/Certain pages if needed, but App.jsx handles "Route element={MainLayout}"
-    // So this component ONLY renders for logged-in routes generally.
-
     return (
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
             {/* 1. Sticky Header */}
@@ -55,16 +52,13 @@ export default function MainLayout() {
             {/* 2. Flex Body */}
             <div style={{ display: 'flex', flex: 1 }}>
 
-                {/* 3. Sidebar (Left) */}
-                <Sidebar isOpen={isSidebarOpen} />
+                {/* 3. Sidebar (Left) - Desktop Only via CSS */}
+                <div className="sidebar-wrapper">
+                    <Sidebar isOpen={isSidebarOpen} />
+                </div>
 
                 {/* 4. Main Content (Right) */}
-                <main style={{
-                    flex: 1,
-                    padding: '24px',
-                    background: '#f9f9f9',
-                    overflowX: 'hidden'
-                }}>
+                <main className="main-content-area">
 
                     {/* Update Button (Floating) */}
                     {showUpdateBtn && (
@@ -93,6 +87,11 @@ export default function MainLayout() {
 
                     <Outlet />
                 </main>
+            </div>
+
+            {/* 5. Bottom Nav - Mobile Only via CSS */}
+            <div className="bottom-nav-wrapper">
+                <BottomNav />
             </div>
         </div>
     );

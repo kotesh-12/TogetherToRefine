@@ -8,31 +8,45 @@ export default function BottomNav() {
     // Style for the container
     const navStyle = {
         position: 'fixed',
-        bottom: '20px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        backdropFilter: 'blur(10px)',
-        borderRadius: '30px',
-        boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
-        padding: '10px 20px',
+        bottom: 0,
+        left: 0,
+        width: '100%',
+        backgroundColor: '#ffffff',
+        borderTop: '1px solid #dfe6e9',
+        padding: '10px 0',
         display: 'flex',
-        gap: '20px',
+        justifyContent: 'space-around',
+        alignItems: 'center',
         zIndex: 1000,
-        border: '1px solid rgba(255, 255, 255, 0.5)'
+        boxShadow: '0 -2px 10px rgba(0,0,0,0.05)',
+        height: '60px' // Explicit height
     };
 
     // Style for individual items
-    const itemStyle = {
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        cursor: 'pointer',
-        color: '#2d3436',
-        minWidth: '60px',
-        transition: 'transform 0.2s',
-        fontSize: '12px',
-        fontWeight: '600'
+    const isActive = (path) => location.pathname === path;
+
+    // Helper to render Item
+    const NavItem = ({ path, icon, label }) => {
+        const active = isActive(path);
+        return (
+            <div
+                onClick={() => handleNav(path)}
+                style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    cursor: 'pointer',
+                    color: active ? '#1a73e8' : '#5f6368',
+                    flex: 1,
+                    transition: 'color 0.2s',
+                    fontSize: '10px', // Mobile standard
+                    fontWeight: active ? '600' : '400'
+                }}
+            >
+                <div style={{ fontSize: '22px', marginBottom: '2px' }}>{icon}</div>
+                <span>{label}</span>
+            </div>
+        );
     };
 
     const handleNav = (path) => {
@@ -43,30 +57,11 @@ export default function BottomNav() {
 
     return (
         <div style={navStyle}>
-            <div style={itemStyle} onClick={() => handleNav('/health')} title="Health Report">
-                <span style={{ fontSize: '24px' }}>🏥</span>
-                <span>Health</span>
-            </div>
-
-            <div style={itemStyle} onClick={() => handleNav('/exam')} title="Exams & Opportunities">
-                <span style={{ fontSize: '24px' }}>📢</span>
-                <span>Exams</span>
-            </div>
-
-            <div style={itemStyle} onClick={() => handleNav('/group')} title="My Class Group">
-                <span style={{ fontSize: '24px' }}>🏫</span>
-                <span>Class</span>
-            </div>
-
-            <div style={itemStyle} onClick={() => handleNav('/attendance')} title="My Attendance">
-                <span style={{ fontSize: '24px' }}>📅</span>
-                <span>Attend.</span>
-            </div>
-
-            <div style={itemStyle} onClick={() => handleNav('/select-feedback-target')} title="Give Feedback">
-                <span style={{ fontSize: '24px' }}>🌟</span>
-                <span>Feedback</span>
-            </div>
+            <NavItem path="/" icon="🏠" label="Home" />
+            <NavItem path="/group" icon="🏫" label="Class" />
+            <NavItem path="/ttr-ai" icon="🤖" label="AI" />
+            <NavItem path="/attendance" icon="📅" label="Attend" />
+            <NavItem path="/profile" icon="👤" label="Profile" />
         </div>
     );
 }
