@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, collection, getDocs, addDoc, updateDoc, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
-import AnnouncementBar from '../components/AnnouncementBar';
-// import { GoogleGenerativeAI } from "@google/generative-ai"; // Removed for Security
+import Header from '../components/Header';
 import { useSpeech } from '../hooks/useSpeech';
 import { useUser } from '../context/UserContext';
 import ReactMarkdown from 'react-markdown';
@@ -20,14 +19,11 @@ export default function TTRAI() {
     const [statusLog, setStatusLog] = useState("Ready");
 
     // AI & UI State
-    // AI & UI State
-    // const API_KEY = import.meta.env.VITE_GEMINI_API_KEY; // Managed by Backend
-    // const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
     const MODEL_NAME = "gemini-flash-latest";
     const [selectedImage, setSelectedImage] = useState(null);
     const [showSidebar, setShowSidebar] = useState(false);
 
-    // Speech Hook (Replaces local logic)
+    // Speech Hook
     const { speak, listen, isListening, speakingText } = useSpeech();
 
     // Permissions
@@ -103,7 +99,7 @@ export default function TTRAI() {
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const loadedMsgs = snapshot.docs.map(doc => doc.data());
             if (loadedMsgs.length === 0) {
-                // Keep the welcome message if it's a fresh session that hasn't synced yet (optimistic updates handle this usually)
+                // Keep the welcome message if it's a fresh session that hasn't synced yet
             } else {
                 setMessages(loadedMsgs);
             }
@@ -125,7 +121,7 @@ export default function TTRAI() {
 
         // Student/Teacher Context
         const userClass = context?.class || 'General';
-        const userGender = context?.gender || 'Student'; // Contextual usage if needed for voice/examples
+        const userGender = context?.gender || 'Student';
 
         return `
         You are TTR AI, an expert educational mentor designed to spark curiosity and love for learning.
@@ -138,34 +134,19 @@ export default function TTRAI() {
         - Gender: ${userGender}
 
         **Your Core Directives:**
-
         1. **Strictly Educational & Productive:**
-           - **Non-Educational/Gossip/Entertainment:** If the user asks about trivial things (movies, actors, gossip, games) that are not linked to their studies, give a boring, short answer and explicitly mention: "Focusing on this won't help you build your future. Let's not waste time." Then immediately pivot to a related educational fact.
-           - **General Knowledge:** If they ask about current events or general facts, answer it but *immediately connect it to a school subject* (Science, Math, History) to make it educational.
-
-        2. **Adapt to Grade Level (CRITICAL):**
-           - **Class 1-5:** Explain like I'm 8 years old. Use magic, storytelling, and simple fun analogies.
-           - **Class 6-8:** Use relatable real-world examples.
-           - **Class 9-12:** Provide structured, academically accurate answers suitable for exams.
-
-        3. **The "Indian Context" Strategy (For Complex Concepts Only):**
-           - **Trigger:** If the concept is very hard, abstract, or the user says they are "suffering" or "confused".
-           - **Action:** Explain the concept using an analogy from **Indian Mythology** (e.g., Mahabharata strategies, Ramayana ethics) or **Popular Indian Movies/Heroes** (e.g., Baahubali's strength for physics, a hero's determination). 
-           - **Goal:** Make them feel good, motivated, and understand the logic through familiar culture.
-
-        4. **The "Struggle for Success" Narrative (For Inventors/Scientists):**
-           - **Trigger:** Questions about inventors, scientists, or successful figures (e.g., "Who is Einstein?", "Tell me about Edison").
-           - **Action:** Do NOT just list inventions. You MUST highlight their **failures, rejections, and years of struggle** before they succeeded.
-           - **Goal:** Build mental resilience ("thick skin") in students. Show them that great minds struggled too.
-           - **Example:** "Before Thomas Edison gave us the lightbulb, he failed 1,000 times. He didn't give up; he learned 1,000 ways how *not* to make a bulb. That is true intelligence."
-
+           - If user asks non-educational checks/gossip: "Focusing on this won't help you build your future. Let's not waste time." Pivot to education.
+           - General knowledge: Connect strictly to school subjects.
+        2. **Adapt to Grade Level:**
+           - Class 1-5: Simple, magic, stories.
+           - Class 6-8: Real world examples.
+           - Class 9-12: Academic, exam-oriented.
+        3. **Indian Context Strategy:**
+           - Use Indian Mythology or Movies (Baahubali, etc.) for hard concepts.
+        4. **Struggle for Success:**
+           - Highlight failures/struggles of scientists/inventors to build resilience.
         5. **Build Curiosity:**
-           - Always end your response with a "Did you know?" fact or a "What do you think...?" question.
-
-        **Example Behaviors:**
-        - User: "Who is J.J. Thomson?" -> AI: "J.J. Thomson is famous for discovering the electron, but it wasn't easy! For years, people thought atoms were solid balls. He had to go against the whole world's belief and faced many failed experiments. His persistence changed science forever. He taught us that even when the world doubts you, evidence speaks. Did you know he also won a Nobel Prize?"
-        - User: "Who is the best actor?" -> AI: "Opinions vary, but debating this is a waste of your precious study time. Instead, did you know that cinema works on the principle of 'Persistence of Vision'? Let's learn about the eye."
-        - User (Class 10): "I can't understand Newton's Third Law, it's too hard!" -> AI: "Don't worry! Remember in *Baahubali* when the team pulls the statue? Every pull had an equal reaction! Or think of Karma in mythology—what you give returns back. Simply: Action = Reaction. Now, let's look at the formula..."
+           - End with "Did you know?" or "What do you think?".
 
         Answer strictly based on these rules.
         `;
@@ -175,17 +156,13 @@ export default function TTRAI() {
     const saveMessage = async (msgObj, sessionId) => {
         if (!currentUser || !sessionId) return;
         try {
-            // Save Message
             await addDoc(collection(db, 'ai_chats', currentUser.uid, 'sessions', sessionId, 'messages'), { ...msgObj, createdAt: new Date() });
-
-            // Update Session Timestamp (Bumps to top of list)
             await updateDoc(doc(db, 'ai_chats', currentUser.uid, 'sessions', sessionId), {
                 updatedAt: new Date()
             });
         } catch (e) { console.error("Error saving message", e); }
     };
 
-    // Create new session helper
     const startNewChat = () => {
         setCurrentSessionId(null);
         setMessages([{ text: "Hello! I am TTR AI. Ask me anything!", sender: 'ai' }]);
@@ -193,7 +170,6 @@ export default function TTRAI() {
         setShowSidebar(false);
     };
 
-    // Speech functions handled by useSpeech hook now.
     const handleCameraClick = () => { fileInputRef.current?.click(); };
 
     const handleImageChange = (e) => {
@@ -205,7 +181,6 @@ export default function TTRAI() {
         }
     };
 
-    // --- MAIN SEND HANDLER ---
     const handleSend = async () => {
         const text = input.trim();
         if (!text && !selectedImage) return;
@@ -215,17 +190,14 @@ export default function TTRAI() {
         setLoading(true);
         setStatusLog("Processing...");
 
-        // Optimistic UI Update
         const userMsg = { text: text || "Image Uploaded", image: selectedImage, sender: 'user', createdAt: new Date() };
         setMessages(prev => [...prev, userMsg]);
 
         try {
             if (!currentUser) throw new Error("User not found");
 
-            // Ensure Session Exists
             let activeSessionId = currentSessionId;
             if (!activeSessionId) {
-                // Create new session
                 const sessionRef = await addDoc(collection(db, 'ai_chats', currentUser.uid, 'sessions'), {
                     title: text.substring(0, 30) || "New Chat",
                     createdAt: new Date(),
@@ -235,20 +207,16 @@ export default function TTRAI() {
                 setCurrentSessionId(activeSessionId);
             }
 
-            // Save User Msg
             await saveMessage(userMsg, activeSessionId);
 
-            // Generate AI Response (Backend Proxy)
             let sysPrompt = generateSystemPrompt(userContext);
             let responseText = "";
 
             try {
-                // Fix history format for Backend
                 let historyForApi = messages.slice(-10).map(m => ({
                     role: m.sender === 'user' ? 'user' : 'model',
                     parts: [{ text: m.text || "" }]
                 }));
-                // Ensure starts with user
                 while (historyForApi.length > 0 && historyForApi[0].role !== 'user') historyForApi.shift();
 
                 const payload = {
@@ -259,8 +227,6 @@ export default function TTRAI() {
                     mimeType: selectedImage ? selectedImage.match(/:(.*?);/)?.[1] : null
                 };
 
-
-                // Determine API URL: Use Production Server if on Localhost, otherwise relative path
                 const API_URL = window.location.hostname === 'localhost'
                     ? 'http://localhost:5000/api/chat'
                     : '/api/chat';
@@ -281,29 +247,23 @@ export default function TTRAI() {
 
             } catch (e) {
                 console.error("AI Generation Error", e);
-                throw e; // Pass to outer catch
+                throw e;
             }
 
             const aiMsg = { text: responseText, sender: 'ai', createdAt: new Date() };
-            // Optimistic Update (Listener will fix duplicates if any, but usually we rely on listener)
             if (!currentSessionId) {
-                // If we just created the session, logic might be tricky with listener timing
-                // Use optimistic for now, listener filters later
                 setMessages(prev => [...prev, aiMsg]);
             }
-
             await saveMessage(aiMsg, activeSessionId);
 
         } catch (error) {
             console.error(error);
             let errorMsg = error.message;
             let isConfigError = false;
-
             if (errorMsg.includes("API key") || errorMsg.includes("403") || errorMsg.includes("key not valid") || errorMsg.includes("expired")) {
                 errorMsg = "System Configuration Error: API Key is invalid or expired.";
                 isConfigError = true;
             }
-
             setMessages(prev => [...prev, {
                 text: "⚠️ **" + (isConfigError ? "Service Update" : "Error") + "**: " + errorMsg,
                 sender: 'ai',
@@ -356,13 +316,13 @@ export default function TTRAI() {
 
             {/* 2. MAIN CHAT AREA */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', background: '#ffffff' }}>
-                <AnnouncementBar title="" leftIcon="back" onMenuClick={() => setShowSidebar(true)} />
+                <Header onToggleSidebar={() => setShowSidebar(!showSidebar)} />
 
                 {/* Mobile History Toggle */}
                 <button
                     className="mobile-history-toggle"
                     onClick={() => setShowSidebar(true)}
-                    style={{ position: 'absolute', top: '70px', left: '10px', zIndex: 10, background: '#333', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', boxShadow: '0 2px 5px rgba(0,0,0,0.2)' }}
+                    style={{ position: 'absolute', top: '80px', left: '10px', zIndex: 90, background: '#333', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', boxShadow: '0 2px 5px rgba(0,0,0,0.2)' }}
                 >
                     📜 History
                 </button>
@@ -413,6 +373,7 @@ export default function TTRAI() {
                             onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                             placeholder={selectedImage ? "Add topic..." : "Ask TTR AI anything..."}
                             className="chat-input"
+                            autoComplete="off"
                         />
                         <button onClick={handleSend} disabled={loading} className="send-button">➤</button>
                     </div>
@@ -454,4 +415,3 @@ export default function TTRAI() {
         </div>
     );
 }
-
