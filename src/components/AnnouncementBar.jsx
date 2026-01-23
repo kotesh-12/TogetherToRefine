@@ -6,7 +6,7 @@ import { useUser } from '../context/UserContext';
 
 import QRCode from 'react-qr-code';
 
-export default function TopBar({ title, leftIcon = 'home', backPath, onMenuClick }) {
+export default function TopBar({ title, leftIcon = 'home', backPath, onMenuClick, hideRightOptions = false }) {
     const navigate = useNavigate();
     const location = useLocation();
     const { userData, user } = useUser();
@@ -155,36 +155,38 @@ export default function TopBar({ title, leftIcon = 'home', backPath, onMenuClick
                 </h1>
 
                 {/* Right: Install & Profile */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', zIndex: 100 }}>
+                {!hideRightOptions && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', zIndex: 100 }}>
 
-                    {/* QR Code Share Button */}
-                    <div
-                        onClick={() => setShowQR(true)}
-                        style={{ fontSize: '20px', cursor: 'pointer' }}
-                        title="Share App (QR Code)"
-                    >
-                        🔗
-                    </div>
-
-                    {/* Optional 3-Line Menu Button */}
-                    {onMenuClick && (
+                        {/* QR Code Share Button */}
                         <div
-                            onClick={onMenuClick}
-                            style={{ fontSize: '24px', cursor: 'pointer', userSelect: 'none' }}
-                            title="Menu"
+                            onClick={() => setShowQR(true)}
+                            style={{ fontSize: '20px', cursor: 'pointer' }}
+                            title="Share App (QR Code)"
                         >
-                            ☰
+                            🔗
                         </div>
-                    )}
 
-                    <div className="profile-pic" onClick={() => navigate('/profile')} style={{ cursor: 'pointer', width: '35px', height: '35px', position: 'relative', right: 'auto' }}>
-                        {userData?.profileImageURL ? (
-                            <img src={userData.profileImageURL} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-                        ) : (
-                            <span style={{ fontSize: '24px', lineHeight: '35px' }}>👤</span>
+                        {/* Optional 3-Line Menu Button */}
+                        {onMenuClick && (
+                            <div
+                                onClick={onMenuClick}
+                                style={{ fontSize: '24px', cursor: 'pointer', userSelect: 'none' }}
+                                title="Menu"
+                            >
+                                ☰
+                            </div>
                         )}
+
+                        <div className="profile-pic" onClick={() => navigate('/profile')} style={{ cursor: 'pointer', width: '35px', height: '35px', position: 'relative', right: 'auto' }}>
+                            {userData?.profileImageURL ? (
+                                <img src={userData.profileImageURL} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                            ) : (
+                                <span style={{ fontSize: '24px', lineHeight: '35px' }}>👤</span>
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
             </header>
 
             {/* QR CODE MODAL */}
@@ -230,7 +232,7 @@ export default function TopBar({ title, leftIcon = 'home', backPath, onMenuClick
             </style>
 
             {/* Announcement Bar attached below */}
-            <div className="announcement-bar" style={{ marginTop: 0, borderRadius: '0 0 10px 10px', position: 'relative', overflow: 'hidden' }}>
+            <div className="announcement-bar">
                 <div className="scrolling-text">{announcement}</div>
                 {isPatriotic(announcement) ? <PatrioticConfetti /> : (isFestival(announcement) && <SimpleConfetti />)}
             </div>

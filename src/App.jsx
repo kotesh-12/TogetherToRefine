@@ -68,7 +68,6 @@ function App() {
                 <Route path="/general-feedback" element={<GeneralFeedback />} />
                 <Route path="/report-harassment" element={<Report type="sexual_harassment" />} />
                 <Route path="/report-misbehavior" element={<Report type="misbehavior" />} />
-                <Route path="/ttr-ai" element={<TTRAI />} />
                 <Route path="/4-way-learning" element={<FourWayLearning />} />
                 <Route path="/health" element={<Health />} />
                 <Route path="/video-library" element={<VideoLibrary />} />
@@ -105,6 +104,11 @@ function App() {
                 <Route path="/notification" element={<Notification />} />
                 <Route path="/faculty-feedback" element={<FacultyFeedback />} />
               </Route>
+            </Route>
+
+            {/* Standalone AI Page (Custom Layout) */}
+            <Route element={<ProtectedRoute allowedRoles={['student', 'teacher', 'institution', 'admin']} />}>
+              <Route path="/ttr-ai" element={<TTRAI />} />
             </Route>
           </Routes>
         </Suspense>
