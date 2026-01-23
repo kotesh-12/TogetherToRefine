@@ -121,32 +121,35 @@ export default function Login() {
         const checkRedirect = async () => {
             if (!auth) return;
             try {
+                // Determine if we are returning from a redirect flow
                 const result = await getRedirectResult(auth);
-                if (result && isMounted) {
+                if (result) {
+                    console.log("Redirect Result Found:", result.user.email);
                     setLoading(true);
+
                     const user = result.user;
-                    console.log("Redirect result user:", user.email);
-
-                    // Check existing user role
                     const { role, isNew, approved } = await checkUserExists(user.uid);
-                    console.log("Redirect Auth Checked: ", role, isNew, approved);
 
-                    if (role && !isNew) {
-                        if (approved === false) {
-                            navigate('/pending-approval');
+                    if (isMounted) {
+                        if (role && !isNew) {
+                            if (approved === false) navigate('/pending-approval');
+                            else redirectToRolePage(role);
                         } else {
-                            redirectToRolePage(role);
+                            navigate('/details');
                         }
-                    } else {
-                        // New user or incomplete profile -> Details page
-                        navigate('/details');
                     }
-                    if (isMounted) setLoading(false);
+                } else {
+                    // No redirect result - just normal page load
                 }
             } catch (err) {
-                console.error("Redirect Error:", err);
+                console.error("Redirect Login Failed:", err);
                 if (isMounted) {
-                    setError(err.message);
+                    let msg = err.message;
+                    if (err.code === 'auth/unauthorized-domain') {
+                        msg = `DOMAIN ERROR: ${window.location.hostname} is not whitelisted in Firebase Console.`;
+                        alert(msg); // Force user to see this
+                    }
+                    setError(msg);
                     setLoading(false);
                 }
             }
@@ -278,15 +281,27 @@ export default function Login() {
             }
 
         } catch (err) {
-            console.error("Google Auth Error:", err);
-            // Handle 'popup-closed-by-user' gracefully
-            if (err.code === 'auth/popup-closed-by-user') {
-                setError('Sign-in cancelled.');
+            console.error("Popup Error:", err);
+
+            if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request' || err.code === 'auth/popup-closed-by-user') {
+                // Retry with Redirect for Mobile/Strict Browsers
+                console.log("Popup blocked/closed. Trying Redirect...");
+                try {
+                    await signInWithRedirect(auth, provider);
+                    // Page will unload, no further code execution here
+                } catch (redirErr) {
+                    setError("Redirect Failed: " + redirErr.message);
+                    setLoading(false);
+                }
+            } else if (err.code === 'auth/unauthorized-domain') {
+                const msg = `SETUP ERROR: Domain '${window.location.hostname}' is not authorized in Firebase.`;
+                setError(msg);
+                alert(msg); // Force visibility
+                setLoading(false);
             } else {
-                setError(err.message.replace('Firebase: ', ''));
+                setError("Login Error: " + err.message);
+                setLoading(false);
             }
-        } finally {
-            setLoading(false);
         }
     };
 

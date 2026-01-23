@@ -43,6 +43,14 @@ async function initAI() {
             } catch (ex) {
                 console.error("❌ Fallback failed:", ex.message);
             }
+        } else if (e.message.includes("expired") || e.message.includes("API key")) {
+            console.error("\n\n################################################");
+            console.error("# CRITICAL ERROR: YOUR API KEY HAS EXPIRED     #");
+            console.error("#                                              #");
+            console.error("# 1. Get a new key at aistudio.google.com      #");
+            console.error("# 2. Update .env file (GEMINI_API_KEY=...)     #");
+            console.error("# 3. Restart this server                       #");
+            console.error("################################################\n\n");
         }
     }
 }

@@ -296,7 +296,19 @@ export default function TTRAI() {
 
         } catch (error) {
             console.error(error);
-            setMessages(prev => [...prev, { text: "Error: " + error.message, sender: 'ai', isError: true }]);
+            let errorMsg = error.message;
+            let isConfigError = false;
+
+            if (errorMsg.includes("API key") || errorMsg.includes("403") || errorMsg.includes("key not valid") || errorMsg.includes("expired")) {
+                errorMsg = "System Configuration Error: API Key is invalid or expired.";
+                isConfigError = true;
+            }
+
+            setMessages(prev => [...prev, {
+                text: "⚠️ **" + (isConfigError ? "Service Update" : "Error") + "**: " + errorMsg,
+                sender: 'ai',
+                isError: true
+            }]);
         } finally {
             setLoading(false);
         }
@@ -361,21 +373,22 @@ export default function TTRAI() {
 
 
             {/* API KEY ERROR MODAL */}
-            {messages.some(m => m.isError && m.text.includes("API Key Missing")) && (
+            {messages.some(m => m.isError && (m.text.includes("API Key Missing") || m.text.includes("System Configuration Error"))) && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 4000, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
                     <div style={{ background: 'white', padding: '30px', borderRadius: '15px', maxWidth: '400px', textAlign: 'center', border: '2px solid red' }}>
-                        <h2 style={{ color: 'red' }}>⚠️ AI Service Error</h2>
-                        <p style={{ fontSize: '14px', marginBottom: '15px' }}>The AI brain is having trouble connecting.</p>
+                        <h2 style={{ color: 'red' }}>⚠️ AI Service Maintenance</h2>
+                        <p style={{ fontSize: '14px', marginBottom: '15px' }}>The AI Brain is updating its credentials.</p>
 
                         <div style={{ background: '#f5f5f5', padding: '10px', borderRadius: '5px', textAlign: 'left', fontSize: '12px', marginBottom: '15px' }}>
-                            <strong>Troubleshooting:</strong><br />
-                            1. <strong>Check Internet:</strong> Ensure you are connected to the internet.<br />
-                            2. <strong>Server Status:</strong> The Vercel server might be sleeping or down.<br />
-                            3. <strong>Refresh:</strong> Try refreshing the page.<br />
+                            <strong>Status:</strong><br />
+                            The application has a new API Key, but the <strong>Production Server</strong> hasn't received it yet.<br /><br />
+                            <strong>Solution:</strong><br />
+                            • <strong>Local Host:</strong> Update <code>GEMINI_API_KEY</code> in your <code>.env</code> file and restart the server.<br />
+                            • <strong>Production:</strong> Update Environment Variables in Vercel Dashboard and redeploy.
                         </div>
 
-                        <button onClick={() => setMessages(prev => prev.filter(m => !m.text.includes("API Key Missing")))} className="btn" style={{ background: '#333' }}>
-                            Okay, I'll Fix It
+                        <button onClick={() => setMessages(prev => prev.filter(m => !m.isError))} className="btn" style={{ background: '#333' }}>
+                            Close Message
                         </button>
                     </div>
                 </div>

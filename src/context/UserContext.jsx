@@ -133,11 +133,15 @@ export function UserProvider({ children }) {
                             });
                         };
 
-                        // Fast Path: Use Cache (DISABLED to fix role update issues)
-                        if (false && cachedCollection) {
-                            console.log("Using cached collection:", cachedCollection);
-                            unsubscribeSnapshot = subscribe(cachedCollection, cachedCollection === 'users' ? 'student' : (cachedCollection === 'institutions' ? 'institution' : 'teacher'));
-                            return;
+                        // Fast Path: Check Local Cache first for immediate feedback
+                        if (cachedCollection) {
+                            console.log("Using cached collection for speed:", cachedCollection);
+                            // Optimistically try to subscribe to cached collection
+                            // If it fails (doc doesn't exist), the subscribe function handles fallback to detectFull
+                            unsubscribeSnapshot = subscribe(cachedCollection, 'student'); // Default role 'student' if field missing
+                        } else {
+                            // No cache? Full scan.
+                            await detectFull();
                         }
 
                         // Slow Path: Full Detection

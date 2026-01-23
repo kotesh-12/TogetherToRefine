@@ -36,7 +36,7 @@ export default defineConfig({
     host: true, // Allow external access (e.g. mobile testing)
     proxy: {
       '/api': {
-        target: 'https://together-to-refine.vercel.app', // Connect to Live Cloud Server
+        target: 'http://localhost:5000', // Use Local Backend for Development
         changeOrigin: true,
         secure: false,
       },
