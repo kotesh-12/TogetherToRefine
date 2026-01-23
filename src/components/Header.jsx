@@ -76,18 +76,7 @@ export default function Header({ onToggleSidebar }) {
                     🔍
                 </button>
 
-                {/* Bell Notification */}
-                <button
-                    onClick={() => navigate('/notification')}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', position: 'relative' }}
-                    title="Notifications"
-                >
-                    🔔
-                    <span style={{
-                        position: 'absolute', top: -2, right: -2,
-                        width: '8px', height: '8px', background: '#d93025', borderRadius: '50%'
-                    }}></span>
-                </button>
+
 
                 {/* Profile Avatar */}
                 <div

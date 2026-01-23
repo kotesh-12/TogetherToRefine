@@ -158,14 +158,7 @@ export default function TopBar({ title, leftIcon = 'home', backPath, onMenuClick
                 {!hideRightOptions && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px', zIndex: 100 }}>
 
-                        {/* QR Code Share Button */}
-                        <div
-                            onClick={() => setShowQR(true)}
-                            style={{ fontSize: '20px', cursor: 'pointer' }}
-                            title="Share App (QR Code)"
-                        >
-                            🔗
-                        </div>
+
 
                         {/* Optional 3-Line Menu Button */}
                         {onMenuClick && (
