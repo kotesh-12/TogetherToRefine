@@ -6,6 +6,7 @@ import Header from '../components/Header';
 import { useSpeech } from '../hooks/useSpeech';
 import { useUser } from '../context/UserContext';
 import ReactMarkdown from 'react-markdown';
+import BottomNav from '../components/BottomNav';
 
 export default function TTRAI() {
     const navigate = useNavigate();
@@ -99,7 +100,6 @@ export default function TTRAI() {
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const loadedMsgs = snapshot.docs.map(doc => doc.data());
             if (loadedMsgs.length === 0) {
-                // Keep the welcome message if it's a fresh session that hasn't synced yet
             } else {
                 setMessages(loadedMsgs);
             }
@@ -119,7 +119,6 @@ export default function TTRAI() {
             return `You are TTR Co-Pilot, Admin Assistant. Current Date: ${dateTimeString}. Reports: ${JSON.stringify(context.adminData)}`;
         }
 
-        // Student/Teacher Context
         const userClass = context?.class || 'General';
         const userGender = context?.gender || 'Student';
 
@@ -152,7 +151,6 @@ export default function TTRAI() {
         `;
     };
 
-    // Helper functions
     const saveMessage = async (msgObj, sessionId) => {
         if (!currentUser || !sessionId) return;
         try {
@@ -389,6 +387,11 @@ export default function TTRAI() {
                         </div>
                     </div>
                 )}
+
+                {/* Mobile Bottom Nav */}
+                <div className="bottom-nav-wrapper">
+                    <BottomNav />
+                </div>
             </div>
 
             {/* Styles for Responsive Sidebar */}

@@ -8,10 +8,13 @@ export default function Header({ onToggleSidebar }) {
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
     const [menuOpen, setMenuOpen] = useState(false);
+    const [isSearchMode, setIsSearchMode] = useState(false); // YouTube-style search toggle
 
     const handleSearch = (e) => {
         if (e.key === 'Enter') {
             console.log("Searching for:", searchTerm);
+            // Implement actual search redirect or filter here if needed
+            // setIsSearchMode(false); // Optional: close on search
         }
     };
 
@@ -21,6 +24,29 @@ export default function Header({ onToggleSidebar }) {
         }
     };
 
+    // SEARCH MODE HEADER (YouTube Style)
+    if (isSearchMode) {
+        return (
+            <header className="app-header" style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'white' }}>
+                <button onClick={() => setIsSearchMode(false)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', padding: '0 10px' }}>
+                    ←
+                </button>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: '#f1f3f4', borderRadius: '20px', padding: '5px 15px' }}>
+                    <input
+                        autoFocus
+                        type="text"
+                        placeholder="Search..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onKeyPress={handleSearch}
+                        style={{ width: '100%', border: 'none', background: 'transparent', outline: 'none', fontSize: '16px' }}
+                    />
+                </div>
+            </header>
+        );
+    }
+
+    // DEFAULT HEADER
     return (
         <header className="app-header">
             {/* Left: Logo & Menu */}
@@ -36,66 +62,31 @@ export default function Header({ onToggleSidebar }) {
                 </div>
             </div>
 
-            {/* Center: Chrome-style Search */}
-            <div style={{ flex: 1, maxWidth: '600px', margin: '0 20px', display: 'flex' }}>
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    background: '#f1f3f4',
-                    borderRadius: '8px',
-                    padding: '8px 16px',
-                    width: '100%',
-                    border: '1px solid transparent',
-                    transition: 'all 0.2s'
-                }}>
-                    <span style={{ color: '#5f6368', marginRight: '10px' }}>🔍</span>
-                    <input
-                        type="text"
-                        placeholder="Search anything..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        onKeyPress={handleSearch}
-                        style={{
-                            border: 'none',
-                            background: 'transparent',
-                            outline: 'none',
-                            width: '100%',
-                            fontSize: '16px',
-                            color: '#202124'
-                        }}
-                    />
-                </div>
-            </div>
+            <div style={{ flex: 1 }} /> {/* Spacer */}
 
-            {/* Right: Profile & Actions */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            {/* Right: Actions Group */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+
+                {/* Search Icon (Toggles Mode) */}
+                <button
+                    onClick={() => setIsSearchMode(true)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px' }}
+                    title="Search"
+                >
+                    🔍
+                </button>
+
+                {/* Bell Notification */}
                 <button
                     onClick={() => navigate('/notification')}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', position: 'relative' }}
+                    title="Notifications"
                 >
                     🔔
                     <span style={{
                         position: 'absolute', top: -2, right: -2,
                         width: '8px', height: '8px', background: '#d93025', borderRadius: '50%'
                     }}></span>
-                </button>
-
-                <button
-                    onClick={() => navigate('/ttr-ai')}
-                    style={{
-                        background: 'linear-gradient(135deg, #1a73e8, #8ab4f8)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '20px',
-                        padding: '8px 16px',
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '5px'
-                    }}
-                >
-                    ✨ AI Buddy
                 </button>
 
                 {/* Profile Avatar */}
