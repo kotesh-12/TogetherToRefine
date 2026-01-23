@@ -356,7 +356,7 @@ export default function TTRAI() {
 
             {/* 2. MAIN CHAT AREA */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', background: '#ffffff' }}>
-                <AnnouncementBar title="" leftIcon="back" hideRightOptions={true} />
+                <AnnouncementBar title="" leftIcon="back" onMenuClick={() => setShowSidebar(true)} />
 
                 {/* Mobile History Toggle */}
                 <button
