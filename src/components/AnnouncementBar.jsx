@@ -119,22 +119,24 @@ export default function TopBar({ title, leftIcon = 'home', backPath, onMenuClick
             }}>
 
                 {/* Left: Back/Home Icon */}
-                <div
-                    className="icon-btn"
-                    onClick={handleLeftClick}
-                    style={{
-                        fontSize: leftIcon === 'back' ? '16px' : '24px',
-                        fontWeight: leftIcon === 'back' ? 'bold' : 'normal',
-                        cursor: 'pointer',
-                        padding: '0',
-                        color: leftIcon === 'back' ? 'white' : 'inherit',
-                        position: 'relative',
-                        left: 'auto'
-                    }}
-                    title={leftIcon === 'back' ? "Go Back" : "Dashboard"}
-                >
-                    {leftIcon === 'back' ? 'Back' : '🏠'}
-                </div>
+                {leftIcon && (
+                    <div
+                        className="icon-btn"
+                        onClick={handleLeftClick}
+                        style={{
+                            fontSize: leftIcon === 'back' ? '16px' : '24px',
+                            fontWeight: leftIcon === 'back' ? 'bold' : 'normal',
+                            cursor: 'pointer',
+                            padding: '0',
+                            color: leftIcon === 'back' ? '#2d3436' : 'inherit',
+                            position: 'relative',
+                            left: 'auto'
+                        }}
+                        title={leftIcon === 'back' ? "Go Back" : "Dashboard"}
+                    >
+                        {leftIcon === 'back' ? 'Back' : '🏠'}
+                    </div>
+                )}
 
                 {/* Center: Title */}
                 <h1 style={{
@@ -149,7 +151,7 @@ export default function TopBar({ title, leftIcon = 'home', backPath, onMenuClick
                     overflow: 'hidden',
                     textOverflow: 'ellipsis'
                 }}>
-                    {title || `Welcome, ${userData?.name || "User"}!`}
+                    {title !== undefined ? title : `Welcome, ${userData?.name || "User"}!`}
                 </h1>
 
                 {/* Right: Install & Profile */}
