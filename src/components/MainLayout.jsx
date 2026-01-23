@@ -1,19 +1,26 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import BottomNav from '../components/BottomNav';
+import Header from './Header';
+import Sidebar from './Sidebar';
 import { useUser } from '../context/UserContext';
+// import BottomNav from './BottomNav'; // Replaced by Sidebar for Pro Look
 
 export default function MainLayout() {
     const { userData } = useUser();
     const location = useLocation();
 
-    // Define routes where BottomNav should appear
-    // We generally want it on dashboard-like pages, not necessarily on specific detail pages or login
-    // BUT user wants SPA feel, so persistent nav is good.
-    // Let's hide it on Login ('/') and Details ('/details')
-    const hideNavRoutes = ['/', '/details', '/login', '/signup', '/ttr-ai'];
-    const showNav = !hideNavRoutes.includes(location.pathname) && userData && userData.role !== 'admin';
+    // Sidebar State
+    const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 900);
 
+    // Responsive Sidebar
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth < 900) setIsSidebarOpen(false);
+            else setIsSidebarOpen(true);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const handleForceUpdate = () => {
         if ('serviceWorker' in navigator) {
@@ -33,43 +40,60 @@ export default function MainLayout() {
         window.location.reload(true);
     };
 
-
-    // Show Update Button only on Dashboard pages (and related sub-pages if broad matching wanted)
+    // Show Update Button logic
     const dashboardPaths = ['/student', '/teacher', '/institution', '/admin'];
     const showUpdateBtn = dashboardPaths.some(path => location.pathname.startsWith(path));
 
-    return (
-        <div style={{ paddingBottom: '80px' }}> {/* Add padding so content doesn't hide behind fixed nav */}
+    // Hide Layout on Login/Certain pages if needed, but App.jsx handles "Route element={MainLayout}"
+    // So this component ONLY renders for logged-in routes generally.
 
-            {showUpdateBtn && (
-                <button
-                    onClick={handleForceUpdate}
-                    style={{
-                        position: 'fixed',
-                        top: '105px', // Below Header + Announcement Bar
-                        left: '10px',
-                        zIndex: 10000,
-                        backgroundColor: '#2563eb',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '20px',
-                        padding: '6px 14px',
-                        fontSize: '0.8rem',
-                        fontWeight: '600',
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        opacity: 0.95
-                    }}
-                >
-                    <span>Update App</span>
-                    <span style={{ fontSize: '1.2em' }}>↻</span>
-                </button>
-            )}
-            <Outlet />
-            {showNav && <BottomNav />}
+    return (
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+            {/* 1. Sticky Header */}
+            <Header onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+
+            {/* 2. Flex Body */}
+            <div style={{ display: 'flex', flex: 1 }}>
+
+                {/* 3. Sidebar (Left) */}
+                <Sidebar isOpen={isSidebarOpen} />
+
+                {/* 4. Main Content (Right) */}
+                <main style={{
+                    flex: 1,
+                    padding: '24px',
+                    background: '#f9f9f9',
+                    overflowX: 'hidden'
+                }}>
+
+                    {/* Update Button (Floating) */}
+                    {showUpdateBtn && (
+                        <button
+                            onClick={handleForceUpdate}
+                            style={{
+                                marginBottom: '20px',
+                                backgroundColor: '#1a73e8', // Google Blue
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '16px',
+                                padding: '8px 16px',
+                                fontSize: '0.8rem',
+                                fontWeight: '500',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}
+                        >
+                            <span>Update App Version</span>
+                            <span>↻</span>
+                        </button>
+                    )}
+
+                    <Outlet />
+                </main>
+            </div>
         </div>
     );
 }

@@ -1,253 +1,193 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
 
 :root {
-  --primary: #2193b0;
-  --primary-hover: #19778a;
-  --secondary: #6dd5ed;
-  --bg-gradient: linear-gradient(135deg, #6dd5ed, #2193b0);
-  --surface: #ffffff;
-  --text-main: #1f2937;
-  --text-muted: #6b7280;
-  --error: #ef4444;
-  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  /* Google/Chrome Professional Palette */
+  --primary: #1a73e8;
+  /* Google Blue */
+  --primary-hover: #1557b0;
+  --secondary: #e8f0fe;
+  /* Light Blue BG */
+  --bg-body: #f9f9f9;
+  --bg-surface: #ffffff;
+  --text-main: #202124;
+  --text-muted: #5f6368;
+  --divider: #dadce0;
+  --error: #d93025;
+  --success: #1e8e3e;
+
+  /* Modern Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-card: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
 body {
   margin: 0;
   padding: 0;
-  font-family: 'Inter', sans-serif;
-  background: var(--bg-gradient);
-  min-height: 100vh;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--bg-body);
   color: var(--text-main);
   -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
 }
 
-/* Utilities for clean UI */
+/* Scrollbar styling for Chrome feel */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Utilities */
 .container {
-  max-width: 1100px;
+  max-width: 1280px;
+  /* Wider professional layout */
   margin: 0 auto;
-  padding: 20px;
-  /* Reduced from 2rem to prevent mobile overflow */
+  padding: 24px;
   width: 100%;
   box-sizing: border-box;
-  /* Crucial: Includes padding in width calculation */
 }
 
+/* Card - Professional YouTube Studio look */
 .card {
-  background: var(--surface);
-  border-radius: 1rem;
-  box-shadow: var(--shadow);
-  padding: 2rem;
-  transition: transform 0.2s;
+  background: var(--bg-surface);
+  border-radius: 8px;
+  /* Sharper corners */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  /* Subtle border-like shadow */
+  border: 1px solid var(--divider);
+  /* Definitive boundary */
+  padding: 24px;
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-sm);
 }
 
 .btn {
   background-color: var(--primary);
   color: white;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
-  font-weight: 600;
+  padding: 0.6rem 1.25rem;
+  border-radius: 4px;
+  /* Professional square-ish rounded */
+  font-weight: 500;
   border: none;
   cursor: pointer;
-  transition: background-color 0.2s, transform 0.1s;
+  font-size: 0.875rem;
+  letter-spacing: 0.25px;
+  transition: background-color 0.2s;
+  text-transform: uppercase;
 }
 
 .btn:hover {
   background-color: var(--primary-hover);
-  transform: translateY(-1px);
+  box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3);
 }
 
 .input-field {
   width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.5rem;
-  margin-bottom: 1rem;
+  padding: 10px 12px;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  margin-bottom: 16px;
   font-size: 1rem;
-  transition: border-color 0.2s;
+  transition: border 0.2s;
+  background: #f1f3f4;
+  /* Subtle input bg */
   box-sizing: border-box;
 }
 
 .input-field:focus {
   outline: none;
+  background: white;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(33, 147, 176, 0.1);
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
 }
 
 .error-text {
   color: var(--error);
   font-size: 0.875rem;
   margin-bottom: 1rem;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-/* Login Page Specifics */
+/* Authentication Page Styles - Clean & Central */
 .login-container {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  width: 100%;
+  background-color: #f0f2f5;
 }
 
 .login-card {
   width: 100%;
-  max-width: 400px;
-  backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 0.95);
+  max-width: 450px;
+  background: white;
+  padding: 40px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, .1), 0 8px 16px rgba(0, 0, 0, .1);
+  border-radius: 8px;
+  border: none;
 }
 
 .login-title {
   text-align: center;
-  color: var(--primary);
-  font-size: 2rem;
-  margin-bottom: 1.5rem;
+  color: var(--text-main);
+  font-size: 24px;
+  font-weight: 500;
+  margin-bottom: 30px;
 }
 
 .toggle-link {
   text-align: center;
-  color: var(--text-muted);
-  font-size: 0.875rem;
-  margin-top: 1rem;
+  color: var(--primary);
+  font-size: 14px;
+  margin-top: 20px;
+  font-weight: 500;
   cursor: pointer;
 }
 
 .toggle-link:hover {
-  color: var(--primary);
   text-decoration: underline;
 }
 
-/* Student Page & Header */
+/* Header & Components */
 .app-header {
-  background-color: var(--primary);
-  color: white;
-  padding: 1rem;
-  text-align: center;
-  position: relative;
+  background-color: white;
+  border-bottom: 1px solid var(--divider);
+  color: var(--text-main);
+  padding: 0 24px;
+  height: 64px;
   display: flex;
-  justify-content: center;
   align-items: center;
-  box-shadow: var(--shadow);
-}
-
-.icon-btn {
-  position: absolute;
-  left: 20px;
-  font-size: 1.5rem;
-  cursor: pointer;
-  user-select: none;
-}
-
-.profile-pic {
-  position: absolute;
-  right: 20px;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background-color: #ddd;
-  cursor: pointer;
-  background-image: url('https://via.placeholder.com/40');
-  background-size: cover;
-}
-
-.announcement-bar {
-  background-color: #ffeb3b;
-  color: black;
-  padding: 10px;
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-.scrolling-text {
-  display: inline-block;
-  padding-left: 100%;
-  animation: scroll 15s linear infinite;
-}
-
-@keyframes scroll {
-  0% {
-    transform: translateX(0);
-  }
-
-  100% {
-    transform: translateX(-100%);
-  }
-}
-
-.dropdown-container {
-  margin: 20px 0;
-  position: relative;
-  width: 100%;
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.dropdown-toggle {
-  cursor: pointer;
-  font-weight: 600;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.dropdown-list {
-  position: absolute;
-  top: 110%;
-  left: 0;
-  width: 100%;
-  z-index: 10;
-  padding: 0;
-  max-height: 300px;
-  overflow-y: auto;
-  box-sizing: border-box;
-  background: white;
-}
-
-.dropdown-item {
-  padding: 1rem;
-  border-bottom: 1px solid #eee;
-  cursor: pointer;
-  display: flex;
   justify-content: space-between;
-  align-items: center;
+  box-shadow: none;
+  /* Flat style */
+  position: sticky;
+  top: 0;
+  z-index: 1000;
 }
 
-.dropdown-item:hover {
-  background-color: #f9fafb;
-}
-
-.t-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.avatar-small {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-}
-
-.group-indicator {
-  background-color: #22c55e;
-  border: none;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  cursor: pointer;
-}
-
-.mt-2 {
-  margin-top: 0.5rem;
-}
-
-.mt-4 {
-  margin-top: 1.5rem;
-}
-
-.text-center {
-  text-align: center;
+/* Dashboard specific alignment */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 24px;
+  margin-top: 20px;
 }
 
 /* TTR AI Styles */
