@@ -73,24 +73,35 @@ export default function Login() {
 
     const checkUserExists = async (uid) => {
         try {
+            // Helper to safely check doc existence (ignoring permission limitations)
+            const safeGet = async (col, id) => {
+                try {
+                    const s = await getDoc(doc(db, col, id));
+                    return s.exists() ? s : null;
+                } catch (e) {
+                    // Ignore permission errors, assume not found in that collection
+                    return null;
+                }
+            };
+
             // 1. Check 'institutions' (Priority High)
-            let docSnap = await getDoc(doc(db, "institutions", uid));
-            if (docSnap.exists()) {
-                const data = docSnap.data();
+            const instSnap = await safeGet("institutions", uid);
+            if (instSnap) {
+                const data = instSnap.data();
                 return { role: (data.role || 'institution').toLowerCase(), isNew: false, approved: true };
             }
 
             // 2. Check 'teachers'
-            docSnap = await getDoc(doc(db, "teachers", uid));
-            if (docSnap.exists()) {
-                const data = docSnap.data();
+            const teachSnap = await safeGet("teachers", uid);
+            if (teachSnap) {
+                const data = teachSnap.data();
                 return { role: (data.role || 'teacher').toLowerCase(), isNew: !data.profileCompleted, approved: data.approved };
             }
 
             // 3. Check 'users' (Student - Fallback)
-            docSnap = await getDoc(doc(db, "users", uid));
-            if (docSnap.exists()) {
-                const data = docSnap.data();
+            const userSnap = await safeGet("users", uid);
+            if (userSnap) {
+                const data = userSnap.data();
                 const normalizedRole = (data.role || 'student').toLowerCase();
                 return { role: normalizedRole, isNew: !data.profileCompleted, approved: data.approved };
             }
