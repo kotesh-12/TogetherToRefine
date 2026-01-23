@@ -107,80 +107,80 @@ export default function TopBar({ title, leftIcon = 'home', backPath, onMenuClick
     return (
         <div style={{ position: 'sticky', top: 0, zIndex: 999, backgroundColor: '#f0f2f5' }}>
 
-            {/* Main Header with Home & Profile */}
-            <header className="app-header" style={{
-                marginBottom: 0,
-                borderRadius: '0 0 0 0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '15px 20px',
-                position: 'relative'
-            }}>
-
-                {/* Left: Back/Home Icon */}
-                {leftIcon && (
-                    <div
-                        className="icon-btn"
-                        onClick={handleLeftClick}
-                        style={{
-                            fontSize: leftIcon === 'back' ? '16px' : '24px',
-                            fontWeight: leftIcon === 'back' ? 'bold' : 'normal',
-                            cursor: 'pointer',
-                            padding: '0',
-                            color: leftIcon === 'back' ? '#2d3436' : 'inherit',
-                            position: 'relative',
-                            left: 'auto'
-                        }}
-                        title={leftIcon === 'back' ? "Go Back" : "Dashboard"}
-                    >
-                        {leftIcon === 'back' ? 'Back' : '🏠'}
-                    </div>
-                )}
-
-                {/* Center: Title */}
-                <h1 style={{
-                    fontSize: '18px',
-                    margin: 0,
-                    position: 'absolute',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    width: '60%',
-                    textAlign: 'center',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis'
+            {/* Main Header with Home & Profile - HIDDEN on Dashboards (leftIcon === false) */}
+            {leftIcon !== false && (
+                <header className="app-header" style={{
+                    marginBottom: 0,
+                    borderRadius: '0 0 0 0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '15px 20px',
+                    position: 'relative'
                 }}>
-                    {title !== undefined ? title : `Welcome, ${userData?.name || "User"}!`}
-                </h1>
 
-                {/* Right: Install & Profile */}
-                {!hideRightOptions && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', zIndex: 100 }}>
-
-
-
-                        {/* Optional 3-Line Menu Button */}
-                        {onMenuClick && (
-                            <div
-                                onClick={onMenuClick}
-                                style={{ fontSize: '24px', cursor: 'pointer', userSelect: 'none' }}
-                                title="Menu"
-                            >
-                                ☰
-                            </div>
-                        )}
-
-                        <div className="profile-pic" onClick={() => navigate('/profile')} style={{ cursor: 'pointer', width: '35px', height: '35px', position: 'relative', right: 'auto' }}>
-                            {userData?.profileImageURL ? (
-                                <img src={userData.profileImageURL} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-                            ) : (
-                                <span style={{ fontSize: '24px', lineHeight: '35px' }}>👤</span>
-                            )}
+                    {/* Left: Back/Home Icon */}
+                    {leftIcon && (
+                        <div
+                            className="icon-btn"
+                            onClick={handleLeftClick}
+                            style={{
+                                fontSize: leftIcon === 'back' ? '16px' : '24px',
+                                fontWeight: leftIcon === 'back' ? 'bold' : 'normal',
+                                cursor: 'pointer',
+                                padding: '0',
+                                color: leftIcon === 'back' ? '#2d3436' : 'inherit',
+                                position: 'relative',
+                                left: 'auto'
+                            }}
+                            title={leftIcon === 'back' ? "Go Back" : "Dashboard"}
+                        >
+                            {leftIcon === 'back' ? 'Back' : '🏠'}
                         </div>
-                    </div>
-                )}
-            </header>
+                    )}
+
+                    {/* Center: Title */}
+                    <h1 style={{
+                        fontSize: '18px',
+                        margin: 0,
+                        position: 'absolute',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        width: '60%',
+                        textAlign: 'center',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                    }}>
+                        {title !== undefined ? title : `Welcome, ${userData?.name || "User"}!`}
+                    </h1>
+
+                    {/* Right: Install & Profile */}
+                    {!hideRightOptions && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', zIndex: 100 }}>
+
+                            {/* Optional 3-Line Menu Button */}
+                            {onMenuClick && (
+                                <div
+                                    onClick={onMenuClick}
+                                    style={{ fontSize: '24px', cursor: 'pointer', userSelect: 'none' }}
+                                    title="Menu"
+                                >
+                                    ☰
+                                </div>
+                            )}
+
+                            <div className="profile-pic" onClick={() => navigate('/profile')} style={{ cursor: 'pointer', width: '35px', height: '35px', position: 'relative', right: 'auto' }}>
+                                {userData?.profileImageURL ? (
+                                    <img src={userData.profileImageURL} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                                ) : (
+                                    <span style={{ fontSize: '24px', lineHeight: '35px' }}>👤</span>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </header>
+            )}
 
             {/* QR CODE MODAL */}
             {showQR && (
