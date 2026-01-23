@@ -482,11 +482,11 @@ export default function Timetable() {
     const finalTimetable = viewMode === 'personal' ? mySchedule : timetable;
 
     return (
-        <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)', paddingBottom: '50px' }}>
+        <div style={{ minHeight: '100%', background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)', paddingBottom: '120px' }}>
             <AIBadge />
             <AnnouncementBar title="Weekly Timetable" leftIcon="back" />
 
-            <div className="container" style={{ maxWidth: '1400px', margin: '20px auto', padding: '0 10px' }}>
+            <div className="container" style={{ width: '100%', maxWidth: '1400px', margin: '0 auto', padding: '20px 10px' }}>
 
                 {/* Controls */}
                 <div className="card" style={{ marginBottom: '20px', display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }}>
