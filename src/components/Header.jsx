@@ -58,7 +58,7 @@ export default function Header({ onToggleSidebar }) {
                     onClick={() => navigate('/')}
                     style={{ fontSize: '22px', fontWeight: 'bold', color: '#1a73e8', cursor: 'pointer', letterSpacing: '-0.5px' }}
                 >
-                    TTR<span style={{ color: '#202124' }}>Studio</span>
+                    Together To Refine
                 </div>
             </div>
 

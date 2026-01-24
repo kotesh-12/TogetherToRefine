@@ -10,7 +10,7 @@ export default function TopBar({ title, leftIcon = 'home', backPath, onMenuClick
     const navigate = useNavigate();
     const location = useLocation();
     const { userData, user } = useUser();
-    const [announcement, setAnnouncement] = useState('Welcome to TTR!');
+    const [announcement, setAnnouncement] = useState('Welcome to Together To Refine!');
     const [showQR, setShowQR] = useState(false); // QR Modal State
 
     const handleLeftClick = () => {
@@ -96,7 +96,7 @@ export default function TopBar({ title, leftIcon = 'home', backPath, onMenuClick
                         if (latestGlobal.authorName) text = `${latestGlobal.authorName}: ${text}`;
                         setAnnouncement(text);
                     } else {
-                        setAnnouncement('Welcome to TTR!');
+                        setAnnouncement('Welcome to Together To Refine!');
                     }
                 }
             }
