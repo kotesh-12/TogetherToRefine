@@ -102,7 +102,7 @@ export default function Teacher() {
 
 
 
-            <AnnouncementBar title="Teacher Dashboard" leftIcon={false} />
+
 
             {/* Announcement Button (Relative) */}
             <div style={{ display: 'flex', padding: '10px 15px', justifyContent: 'flex-start' }}>

@@ -27,7 +27,7 @@ export default function Settings() {
     return (
         <div className="page-wrapper">
             <AIBadge />
-            <AnnouncementBar title="Settings" leftIcon={false} />
+
 
             <div className="container" style={{ maxWidth: '600px', margin: '20px auto' }}>
                 <div className="card">

@@ -105,7 +105,7 @@ export default function Institution() {
     return (
         <div className="page-wrapper">
             <AIBadge />
-            <AnnouncementBar title={profile?.institutionName || "Institution Dashboard"} leftIcon={false} />
+
 
             <div style={{ padding: '20px', width: '100%', boxSizing: 'border-box' }}>
 

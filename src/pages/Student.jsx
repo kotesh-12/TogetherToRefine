@@ -120,7 +120,7 @@ export default function Student() {
         <div className="page-wrapper">
             <AIBadge />
 
-            <AnnouncementBar title="" leftIcon={false} />
+
 
             {userData?.pid && (
                 <div style={{ textAlign: 'center', marginTop: '10px' }}>

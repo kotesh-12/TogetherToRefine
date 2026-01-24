@@ -632,7 +632,7 @@ export default function Attendance() {
         return (
             <div className="page-wrapper" style={{ minHeight: '100vh', background: '#f5f7fa' }}>
                 <AIBadge />
-                <AnnouncementBar title="My Attendance" leftIcon="back" backPath={backPath} />
+
                 <div className="container" style={{ maxWidth: '800px', margin: '20px auto', paddingBottom: '50px' }}>
 
                     {/* Overall Score Card */}
@@ -704,7 +704,7 @@ export default function Attendance() {
     return (
         <div className="page-wrapper">
             <AIBadge />
-            <AnnouncementBar title={role === 'institution' ? "Institution Attendance" : "Attendance Manager"} leftIcon={false} backPath={backPath} />
+
 
             <div className="container" style={{ maxWidth: '900px', margin: '20px auto' }}>
 
