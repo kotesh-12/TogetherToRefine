@@ -61,29 +61,7 @@ export default function MainLayout() {
                 <main className="main-content-area">
 
                     {/* Update Button (Floating) */}
-                    {showUpdateBtn && (
-                        <button
-                            onClick={handleForceUpdate}
-                            style={{
-                                marginBottom: '20px',
-                                backgroundColor: '#1a73e8', // Google Blue
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '16px',
-                                padding: '8px 16px',
-                                fontSize: '0.8rem',
-                                fontWeight: '500',
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '8px'
-                            }}
-                        >
-                            <span>Update App Version</span>
-                            <span>↻</span>
-                        </button>
-                    )}
+
 
                     <Outlet />
                 </main>

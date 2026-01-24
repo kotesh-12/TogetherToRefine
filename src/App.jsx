@@ -35,6 +35,7 @@ const FacultyFeedback = lazy(() => import('./pages/FacultyFeedback'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const InstitutionDetailsAdmin = lazy(() => import('./pages/InstitutionDetailsAdmin'));
 const Onboarding = lazy(() => import('./pages/Onboarding'));
+const Settings = lazy(() => import('./pages/Settings'));
 
 
 import ProtectedRoute from './components/ProtectedRoute';
@@ -61,6 +62,7 @@ function App() {
 
               <Route element={<ProtectedRoute allowedRoles={['student', 'teacher', 'institution', 'admin']} />}>
                 <Route path="/onboarding" element={<Onboarding />} />
+                <Route path="/settings" element={<Settings />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/profileview" element={<ProfileView />} />
                 <Route path="/group" element={<Group />} />

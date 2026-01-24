@@ -17,6 +17,7 @@ export default function Sidebar({ isOpen }) {
         { path: '/video-library', label: 'Library', icon: '📺', roles: ['all'] },
         { path: '/health', label: 'Health', icon: '❤️', roles: ['all'] },
         { path: '/general-feedback', label: 'Feedback', icon: '💬', roles: ['all'] },
+        { path: '/settings', label: 'Settings', icon: '⚙️', roles: ['all'] },
     ];
 
     // Filter by Role
