@@ -4,6 +4,7 @@ import Header from './Header';
 import Sidebar from './Sidebar';
 import { useUser } from '../context/UserContext';
 import BottomNav from './BottomNav';
+import AnnouncementBar from './AnnouncementBar';
 
 export default function MainLayout() {
     const { userData } = useUser();
@@ -60,7 +61,9 @@ export default function MainLayout() {
                 {/* 4. Main Content (Right) */}
                 <main className="main-content-area">
 
-                    {/* Update Button (Floating) */}
+
+                    {/* Announcement Bar (Global) */}
+                    <AnnouncementBar leftIcon={false} />
 
 
                     <Outlet />
