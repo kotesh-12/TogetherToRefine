@@ -21,6 +21,7 @@ export default function Details() {
 
     // Form states
     const [formData, setFormData] = useState({});
+    const [initialData, setInitialData] = useState({}); // To detecting changes
 
     // DATA PROPAGATION HELPER (DML-like Cascading Update)
     const propagateUserUpdates = async (uid, userRole, newName) => {
@@ -96,22 +97,28 @@ export default function Details() {
                     // Check 'users' (Student)
                     let userDoc = await getDoc(doc(db, "users", user.uid));
                     if (userDoc.exists()) {
-                        setRole(userDoc.data().role);
-                        setFormData(userDoc.data());
+                        const data = userDoc.data();
+                        setRole(data.role);
+                        setFormData(data);
+                        setInitialData(data); // Capture baseline
                         setIsRoleLocked(true);
                     } else {
                         // Check 'teachers'
                         userDoc = await getDoc(doc(db, "teachers", user.uid));
                         if (userDoc.exists()) {
+                            const data = userDoc.data();
                             setRole('teacher');
-                            setFormData(userDoc.data());
+                            setFormData(data);
+                            setInitialData(data); // Capture baseline
                             setIsRoleLocked(true);
                         } else {
                             // Check 'institutions'
                             userDoc = await getDoc(doc(db, "institutions", user.uid));
                             if (userDoc.exists()) {
+                                const data = userDoc.data();
                                 setRole('institution');
-                                setFormData(userDoc.data());
+                                setFormData(data);
+                                setInitialData(data); // Capture baseline
                                 setIsRoleLocked(true);
                             }
                         }
@@ -168,137 +175,144 @@ export default function Details() {
             return;
         }
 
-        // STRICT VALIDATION: Ensure critical fields are filled based on role
+        // STRICT VALIDATION
         if (!role) {
             alert("Please select a role.");
             return;
         }
 
-        // Check Institution specifically (Main verification point)
+        // REQUIRED FIELDS CHECK
         if ((role === 'student' || role === 'teacher') && !formData.institutionId) {
-            alert("⚠️ Please select a School/Institution to apply to.");
+            alert("⚠️ Please select a School/Institution.");
             return;
         }
 
         if (role === 'student') {
-            if (!formData.firstName || !formData.class || !formData.dob) {
-                alert("Please fill all required fields (Name, Class, DOB).");
-                return;
-            }
+            if (!formData.firstName || !formData.class || !formData.dob) return alert("Please fill Name, Class, DOB.");
         } else if (role === 'teacher') {
-            if (!formData.firstName || !formData.subject) {
-                alert("Please fill all required fields (Name, Subject).");
-                return;
-            }
+            if (!formData.firstName || !formData.subject) return alert("Please fill Name, Subject.");
         } else if (role === 'institution') {
-            if (!formData.schoolName || !formData.phoneNumber) {
-                alert("Please fill all required fields (School Name, Phone).");
-                return;
-            }
+            if (!formData.schoolName || !formData.phoneNumber) return alert("Please fill School Name, Phone.");
         }
 
-        try {
-            // Cleanup: If we are saving as Teacher or Institution, ensure we don't have a record in 'users' that blocks correct login
-            if (role === 'teacher' || role === 'institution') {
-                try {
-                    await deleteDoc(doc(db, "users", userId));
-                    console.log("Cleaned up potential stale user record.");
-                } catch (cleanupErr) {
-                    console.warn("Cleanup warning:", cleanupErr);
+        // --- UX LOGIC: DETECT MAJOR CHANGES ---
+        // Major changes require Re-Approval (Status: Pending)
+        // Minor changes (Name, Phone, etc) are instant updates.
+
+        let isMajorUpdate = false;
+
+        // 1. New User (No initial data) -> Always Major
+        if (!initialData || Object.keys(initialData).length === 0) {
+            isMajorUpdate = true;
+        } else {
+            // 2. Existing User -> Check specific fields
+            if (role === 'student') {
+                if (String(formData.institutionId) !== String(initialData.institutionId) ||
+                    String(formData.class) !== String(initialData.class)) {
+                    isMajorUpdate = true;
+                }
+            } else if (role === 'teacher') {
+                if (String(formData.institutionId) !== String(initialData.institutionId) ||
+                    String(formData.subject) !== String(initialData.subject)) {
+                    isMajorUpdate = true;
                 }
             }
+            // Note: If ROLE changed, it's major, but role is usually locked or handled by separate flow.
+            // But if user manually unlocked and changed it:
+            if (role !== initialData.role && initialData.role) isMajorUpdate = true;
+        }
 
-            // Save extra details to Firestore
+        // Allow Institution Admins to update freely? Yes, usually self-managed.
+        if (role === 'institution') isMajorUpdate = false; // Institutions don't have parents approval
+
+        try {
+            // Cleanup stale collections if role changed (rare)
+            if ((role === 'teacher' || role === 'institution') && initialData && initialData.role !== role) {
+                try { await deleteDoc(doc(db, "users", userId)); } catch (e) { }
+            }
+
             const collectionName = role === 'institution' ? 'institutions' : (role === 'teacher' ? 'teachers' : 'users');
 
-            // Ensure we merge with existing data, and set profileCompleted
-            // Generate PID if doesn't exist (e.g. Google Sign Up or First Time)
+            // Format Name
+            const newDisplayName = role === 'institution' ? formData.schoolName : `${formData.firstName} ${formData.secondName}`;
+
+            // Generate PID if new
             let finalPid = formData.pid;
             if (!finalPid) {
                 const prefix = role === 'student' ? 'ST' : (role === 'teacher' ? 'TE' : 'IN');
-                const randomNum = Math.floor(100000 + Math.random() * 900000);
-                finalPid = `${prefix}-${randomNum}`;
-                console.log("Generated New PID:", finalPid);
+                finalPid = `${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;
             }
 
-            // Calculate formatted name for the main document
-            const newDisplayName = role === 'institution' ? formData.schoolName : `${formData.firstName} ${formData.secondName}`;
+            // --- CASE 1: SAFE UPDATE (Minor Changes) ---
+            if (!isMajorUpdate) {
+                console.log("✅ Safe Update Detected. Updating profile without resetting approval.");
+                await setDoc(doc(db, collectionName, userId), {
+                    ...formData,
+                    name: newDisplayName,
+                    pid: finalPid,
+                    profileCompleted: true,
+                    updatedAt: new Date()
+                    // DO NOT TOUCH 'approved' or 'institutionName' (unless inst changed which is major)
+                }, { merge: true });
 
+                // Propagate Name Changes
+                await propagateUserUpdates(userId, role, newDisplayName);
+
+                // Optimistic UI
+                setUserData(prev => ({ ...prev, ...formData, name: newDisplayName }));
+
+                alert("Profile Updated Successfully! ✅");
+                navigate(-1); // Go back
+                return;
+            }
+
+            // --- CASE 2: MAJOR UPDATE (Re-Admission Required) ---
+            console.log("⚠️ Major Update Detected. Requesting new approval.");
+
+            // 1. Update Core Profile
             await setDoc(doc(db, collectionName, userId), {
                 ...formData,
-                name: newDisplayName, // Explicitly save the combined name
+                name: newDisplayName,
                 pid: finalPid,
                 profileCompleted: true,
                 updatedAt: new Date()
             }, { merge: true });
 
-            // CASCADE UPDATES (Update name in other collections)
-            await propagateUserUpdates(userId, role, newDisplayName);
+            // 2. Handle Re-Admission Logic (Student/Teacher)
+            if (role === 'student' || role === 'teacher') {
+                const instRef = doc(db, "institutions", formData.institutionId);
+                const instSnap = await getDoc(instRef);
+                const instName = instSnap.exists() ? (instSnap.data().schoolName || instSnap.data().name) : "Unknown Institution";
 
-            // OPTIMISTIC UPDATE: Update Context immediately so Dashboard reflects changes
-            setUserData(prev => ({
-                ...prev,
-                ...formData,
-                role: role,
-                name: newDisplayName,
-                institutionName: role === 'institution' ? formData.schoolName : (formData.institutionName || prev?.institutionName),
-                collection: role === 'teacher' ? 'teachers' : (role === 'institution' ? 'institutions' : 'users')
-            }));
+                // Set Approved = False, Update linked Institution
+                await setDoc(doc(db, collectionName, userId), {
+                    institutionName: instName,
+                    approved: false
+                }, { merge: true });
 
-            // Logic for Student/Teacher admissions
-            if ((role === 'student' || role === 'teacher')) {
-                // If Institution is selected, add to their lists
-                if (formData.institutionId) {
-                    const instRef = doc(db, "institutions", formData.institutionId);
-                    const instSnap = await getDoc(instRef);
-                    const instName = instSnap.exists() ? (instSnap.data().schoolName || instSnap.data().name) : "Unknown Institution";
+                // Create Admission Request
+                await addDoc(collection(db, "admissions"), {
+                    name: newDisplayName,
+                    role: role,
+                    [role === 'teacher' ? 'subject' : 'age']: role === 'teacher' ? (formData.subject || 'General') : (formData.dob ? new Date().getFullYear() - new Date(formData.dob).getFullYear() : 'N/A'),
+                    class: formData.class || '',
+                    institutionId: formData.institutionId,
+                    institutionName: instName,
+                    userId: userId,
+                    status: 'waiting',
+                    joinedAt: new Date()
+                });
 
-                    // Update user's own doc with Institution Name and SET STATUS TO PENDING (not approved)
-                    await setDoc(doc(db, collectionName, userId), {
-                        institutionName: instName,
-                        approved: false // User cannot access dashboard yet
-                    }, { merge: true });
-
-                    // Add to Admissions (Waiting List)
-                    await addDoc(collection(db, "admissions"), {
-                        name: `${formData.firstName} ${formData.secondName}`,
-                        role: role,
-                        // Calculate Age or Subject
-                        [role === 'teacher' ? 'subject' : 'age']: role === 'teacher' ?
-                            (formData.subject || 'General') :
-                            (formData.dob && !isNaN(new Date(formData.dob).getTime()) ? new Date().getFullYear() - new Date(formData.dob).getFullYear() : 'N/A'),
-                        class: formData.class || '',
-                        institutionId: formData.institutionId,
-                        institutionName: instName,
-                        userId: userId,
-                        status: 'waiting',
-                        joinedAt: new Date()
-                    });
-
-                    // Redirect to Pending page
-                    navigate('/pending-approval');
-                    return;
-                } else {
-                    // Valid case: No institution selected (if allowed). But we made it required above.
-                    // Fallback to approved
-                    await setDoc(doc(db, collectionName, userId), { approved: true }, { merge: true });
-                }
+                setUserData(prev => ({ ...prev, approved: false })); // Lock UI
+                navigate('/pending-approval');
             } else {
-                // Institution role is auto-approved for now (or different flow)
-                await setDoc(doc(db, collectionName, userId), { approved: true }, { merge: true });
+                // Institution (shouldn't really hit major update block logic, but just in case)
+                navigate('/institution');
             }
-
-            console.log("Submission successful, redirecting...");
-
-            // Redirect
-            if (role === "student") navigate('/student');
-            else if (role === "teacher") navigate('/teacher');
-            else if (role === "institution") navigate('/institution');
-            else navigate('/');
 
         } catch (err) {
             console.error("Submission Error:", err);
-            alert("Error saving details: " + err.message);
+            alert("Error saving: " + err.message);
         }
     };
 
