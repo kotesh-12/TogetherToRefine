@@ -3,7 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import { useUser } from '../context/UserContext';
-import BottomNav from './BottomNav';
+import AnnouncementBar from './AnnouncementBar';
 
 export default function MainLayout() {
     const { userData } = useUser();
@@ -45,12 +45,15 @@ export default function MainLayout() {
     const showUpdateBtn = dashboardPaths.some(path => location.pathname.startsWith(path));
 
     return (
-        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             {/* 1. Sticky Header */}
             <Header onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
 
+            {/* Global Announcement Bar */}
+            <AnnouncementBar leftIcon={false} title="" />
+
             {/* 2. Flex Body */}
-            <div style={{ display: 'flex', flex: 1 }}>
+            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
                 {/* 3. Sidebar (Left) - Desktop Only via CSS */}
                 <div className="sidebar-wrapper">
@@ -58,7 +61,7 @@ export default function MainLayout() {
                 </div>
 
                 {/* 4. Main Content (Right) */}
-                <main className="main-content-area">
+                <main className="main-content-area" style={{ overflowY: 'auto', flex: 1 }}>
 
                     {/* Update Button (Floating) */}
                     {showUpdateBtn && (
