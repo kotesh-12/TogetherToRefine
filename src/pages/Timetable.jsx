@@ -484,7 +484,7 @@ export default function Timetable() {
     return (
         <div style={{ minHeight: '100%', background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)', paddingBottom: '120px' }}>
             <AIBadge />
-            <AnnouncementBar title="Weekly Timetable" leftIcon="back" />
+            <AnnouncementBar title="Weekly Timetable" leftIcon={false} />
 
             <div className="container" style={{ width: '100%', maxWidth: '1400px', margin: '0 auto', padding: '20px 10px' }}>
 

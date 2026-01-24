@@ -39,7 +39,7 @@ export default function DownloadApp() {
 
     return (
         <div className="page-wrapper">
-            <AnnouncementBar title="Get the App" leftIcon="back" />
+            <AnnouncementBar title="Get the App" leftIcon={false} />
 
             <div className="container" style={{ textAlign: 'center', marginTop: '30px' }}>
                 <div className="card">

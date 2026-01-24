@@ -704,7 +704,7 @@ export default function Attendance() {
     return (
         <div className="page-wrapper">
             <AIBadge />
-            <AnnouncementBar title={role === 'institution' ? "Institution Attendance" : "Attendance Manager"} leftIcon="back" backPath={backPath} />
+            <AnnouncementBar title={role === 'institution' ? "Institution Attendance" : "Attendance Manager"} leftIcon={false} backPath={backPath} />
 
             <div className="container" style={{ maxWidth: '900px', margin: '20px auto' }}>
 

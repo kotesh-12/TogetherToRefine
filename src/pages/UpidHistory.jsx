@@ -32,7 +32,7 @@ export default function UpidHistory() {
 
     return (
         <div className="page-wrapper">
-            <AnnouncementBar title="My Private IDs (UPIDs)" leftIcon="back" backPath="/student" />
+            <AnnouncementBar title="My Private IDs (UPIDs)" leftIcon={false} backPath="/student" />
 
             <div className="container" style={{ maxWidth: '800px', margin: '20px auto' }}>
                 <div className="card" style={{ padding: '25px' }}>

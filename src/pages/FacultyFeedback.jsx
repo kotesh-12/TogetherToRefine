@@ -109,7 +109,7 @@ export default function FacultyFeedback() {
 
     return (
         <div className="page-wrapper">
-            <AnnouncementBar title="Faculty Feedback Review" leftIcon="back" backPath="/institution" />
+            <AnnouncementBar title="Faculty Feedback Review" leftIcon={false} backPath="/institution" />
 
             <div className="container" style={{ maxWidth: '1000px', margin: '20px auto' }}>
                 {!selectedTeacher ? (

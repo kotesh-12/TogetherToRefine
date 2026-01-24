@@ -244,7 +244,7 @@ export default function SelectFeedbackTarget() {
     return (
         <div className="page-wrapper">
             <AIBadge />
-            <AnnouncementBar title={title} leftIcon="back" />
+            <AnnouncementBar title={title} leftIcon={false} backPath="/student" />
 
             <div className="container" style={{ maxWidth: '600px', margin: '20px auto' }}>
                 <p className="text-center text-muted" style={{ marginBottom: '20px' }}>

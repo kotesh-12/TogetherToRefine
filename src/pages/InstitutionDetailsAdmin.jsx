@@ -107,7 +107,7 @@ export default function InstitutionDetailsAdmin() {
     return (
         <div className="page-wrapper" style={{ background: '#f1f2f6', minHeight: '100vh', paddingBottom: '30px' }}>
             <AIBadge />
-            <AnnouncementBar title="Institution Overview" leftIcon="back" backPath="/admin" />
+            <AnnouncementBar title="Institution Overview" leftIcon={false} backPath="/admin" />
 
             <div className="container" style={{ maxWidth: '1000px', margin: '30px auto' }}>
 

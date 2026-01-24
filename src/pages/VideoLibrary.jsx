@@ -140,7 +140,7 @@ export default function VideoLibrary() {
     return (
         <div className="page-wrapper">
             <AIBadge />
-            <AnnouncementBar title="Video Library 🎬" leftIcon="back" />
+            <AnnouncementBar title="Video Library 🎬" leftIcon={false} />
 
             <div className="container" style={{ maxWidth: '1000px', margin: '20px auto' }}>
 

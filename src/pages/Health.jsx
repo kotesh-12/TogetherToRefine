@@ -187,7 +187,7 @@ export default function Health() {
             <AIBadge />
             <AnnouncementBar
                 title={role === 'institution' ? "Health Monitoring Camp" : "My Health Report"}
-                leftIcon="back"
+                leftIcon={false}
             />
             {role === 'institution' ? renderInstitutionView() : renderStudentView()}
         </div>
