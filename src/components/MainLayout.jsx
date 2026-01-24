@@ -49,8 +49,8 @@ export default function MainLayout() {
             {/* 1. Sticky Header */}
             <Header onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
 
-            {/* Global Announcement Bar */}
-            <AnnouncementBar leftIcon={false} title="" />
+            {/* Global Announcement Bar (Temporarily disabled for debugging) */}
+            {/* <AnnouncementBar leftIcon={false} title="" /> */}
 
             {/* 2. Flex Body */}
             <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
