@@ -9,6 +9,7 @@ export default function Header({ onToggleSidebar }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [menuOpen, setMenuOpen] = useState(false);
     const [isSearchMode, setIsSearchMode] = useState(false); // YouTube-style search toggle
+    const [desktopMode, setDesktopMode] = useState(false);
 
     const handleSearch = (e) => {
         if (e.key === 'Enter') {
@@ -22,6 +23,20 @@ export default function Header({ onToggleSidebar }) {
         if (window.confirm("Are you sure you want to logout?")) {
             auth.signOut().then(() => navigate('/'));
         }
+    };
+
+    const toggleDesktopMode = () => {
+        const metaViewport = document.querySelector('meta[name=viewport]');
+        if (!desktopMode) {
+            // Switch to Desktop
+            metaViewport.setAttribute('content', 'width=1024');
+            setDesktopMode(true);
+        } else {
+            // Switch back to Mobile/Responsive
+            metaViewport.setAttribute('content', 'width=device-width, initial-scale=1');
+            setDesktopMode(false);
+        }
+        setMenuOpen(false);
     };
 
     // SEARCH MODE HEADER (YouTube Style)
@@ -150,10 +165,16 @@ export default function Header({ onToggleSidebar }) {
                                     👤 Profile
                                 </button>
                                 <button
-                                    onClick={() => { navigate('/details'); setMenuOpen(false); }}
+                                    onClick={() => { navigate('/settings'); setMenuOpen(false); }}
                                     style={menuItemStyle}
                                 >
                                     ⚙️ Settings
+                                </button>
+                                <button
+                                    onClick={toggleDesktopMode}
+                                    style={menuItemStyle}
+                                >
+                                    {desktopMode ? '📱 Mobile Site' : '🖥️ Desktop Site'}
                                 </button>
                                 <button
                                     onClick={() => { window.location.href = 'mailto:support@ttr.com'; setMenuOpen(false); }}

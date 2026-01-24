@@ -327,23 +327,11 @@ export default function Details() {
             <div className="card details-card">
                 <form onSubmit={handleSubmit}>
 
-                    {/* Role Status and Change Option */}
+                    {/* Role Status and Change Option - HIDDEN to enforce Rule: Role cannot be changed */}
                     <div className="role-status-box">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span><strong>Role:</strong> {role ? role.toUpperCase() : 'NOT SELECTED'}</span>
-                            {(!isRoleLocked && role) && (
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setRole('');
-                                        setFormData({}); // Clear form data to prevent mixups
-                                    }}
-                                    className="change-role-button"
-                                    style={{ marginLeft: '10px', fontSize: '12px', padding: '5px 10px' }}
-                                >
-                                    Change Role ✎
-                                </button>
-                            )}
+                            {/* User Rule: Role cannot be changed. Removed logic to unlock role. */}
                         </div>
                     </div>
 
@@ -373,7 +361,18 @@ export default function Details() {
                             <input name="secondName" value={formData.secondName || ''} className="input-field" required onChange={handleChange} />
 
                             <label>Subject Specialization</label>
-                            <input name="subject" value={formData.subject || ''} className="input-field" placeholder="e.g. Mathematics, Science" required onChange={handleChange} />
+                            <input
+                                name="subject"
+                                value={formData.subject || ''}
+                                className="input-field"
+                                placeholder="e.g. Mathematics, Science"
+                                required
+                                onChange={handleChange}
+                                disabled={true} // Rule: Subject set by Institution only
+                                title="Subject can only be changed by the Institution"
+                                style={{ backgroundColor: '#e9ecef', color: '#6c757d', cursor: 'not-allowed' }}
+                            />
+                            <p style={{ fontSize: '11px', color: '#d63031', marginTop: '-5px' }}>* Subject is assigned by Institution</p>
 
                             <label>Gender</label>
                             <select name="gender" value={formData.gender || ''} className="input-field" onChange={handleChange}>
@@ -401,7 +400,14 @@ export default function Details() {
                             <label style={{ color: '#d63031', fontWeight: 'bold', marginTop: '15px' }}>Apply to School/Institution:</label>
                             {institutions.length === 0 && <p style={{ color: 'red', fontSize: '12px' }}>No registered institutions found. You cannot submit without selecting one.</p>}
                             <p style={{ fontSize: '12px', color: '#666', marginTop: '-5px', marginBottom: '10px' }}>Select the school you want to join. They will receive your application.</p>
-                            <select name="institutionId" value={formData.institutionId || ''} className="input-field" required onChange={handleChange}>
+                            <select
+                                name="institutionId"
+                                value={formData.institutionId || ''}
+                                className="input-field"
+                                required
+                                onChange={handleChange}
+                                disabled={!!initialData.institutionId} // Rule: Cannot change Institution Name
+                            >
                                 <option value="" disabled>Select a School to Apply</option>
                                 {institutions.map(inst => (
                                     <option key={inst.id} value={inst.id}>{inst.schoolName || inst.name || "Unnamed"}</option>
@@ -429,7 +435,14 @@ export default function Details() {
 
                             <label style={{ color: '#d63031', fontWeight: 'bold', marginTop: '15px' }}>Apply to School/Institution:</label>
                             {institutions.length === 0 && <p style={{ color: 'red', fontSize: '12px' }}>No registered institutions found. You cannot submit without selecting one.</p>}
-                            <select name="institutionId" value={formData.institutionId || ''} className="input-field" required onChange={handleChange}>
+                            <select
+                                name="institutionId"
+                                value={formData.institutionId || ''}
+                                className="input-field"
+                                required
+                                onChange={handleChange}
+                                disabled={!!initialData.institutionId} // Rule: Cannot change Institution Name
+                            >
                                 <option value="" disabled>Select a School to Apply</option>
                                 {institutions.map(inst => (
                                     <option key={inst.id} value={inst.id}>{inst.schoolName || inst.name || "Unnamed"}</option>
