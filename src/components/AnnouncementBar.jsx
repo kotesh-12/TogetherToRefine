@@ -105,7 +105,7 @@ export default function TopBar({ title, leftIcon = 'home', backPath, onMenuClick
     }, [userData, user]);
 
     return (
-        <div style={{ position: 'sticky', top: 0, zIndex: 999, backgroundColor: '#f0f2f5' }}>
+        <div className="ttr-announcement-wrapper">
 
             {/* Main Header with Home & Profile - HIDDEN on Dashboards (leftIcon === false) */}
             {leftIcon !== false && (
