@@ -56,6 +56,7 @@ export default function Group() {
     };
 
     const fetchTeacherClasses = async () => {
+        if (!userData?.uid) return;
         try {
             // Fetch allotments for this teacher
             const q = query(collection(db, "teacher_allotments"), where("userId", "==", userData.uid));
@@ -89,7 +90,9 @@ export default function Group() {
             let q;
             // 1. Institution: Show all groups created by them
             if (userData.role === 'institution') {
-                q = query(collection(db, "groups"), where("createdBy", "==", userData.uid));
+                if (userData.uid) {
+                    q = query(collection(db, "groups"), where("createdBy", "==", userData.uid));
+                }
             }
             // 2. Teacher with Scope
             else if (userData.role === 'teacher') {
@@ -99,12 +102,12 @@ export default function Group() {
                 // Query by ClassName + Institution Check
                 // Note: We use "createdBy" as the field storing the Institution ID.
                 // We rely on 'createdBy' == userData.institutionId
-                if (userData.institutionId) {
+                if (userData.institutionId && targetScope.className) {
                     q = query(collection(db, "groups"),
                         where("className", "==", targetScope.className),
                         where("createdBy", "==", userData.institutionId)
                     );
-                } else {
+                } else if (targetScope.className) {
                     // Fallback if institutionId missing (legacy), strict on class
                     q = query(collection(db, "groups"), where("className", "==", targetScope.className));
                 }
@@ -156,7 +159,101 @@ export default function Group() {
         }
     };
 
-    // ... [Rest of loadGroupChat, fetchMembers etc. remains the same] ...
+    const loadGroupChat = (gid) => {
+        if (!gid) return;
+        // Fetch group data
+        const groupRef = doc(db, "groups", gid);
+        getDoc(groupRef).then(docSnap => {
+            if (docSnap.exists()) {
+                setGroupData({ id: docSnap.id, ...docSnap.data() });
+            } else {
+                console.log("No such group!");
+                setGroupData(null);
+                localStorage.removeItem("activeGroupId");
+                setIsSelecting(true); // Go back to selection
+            }
+        }).catch(e => console.error("Error fetching group data:", e));
+
+        // Fetch members (simplified for now, could be more complex)
+        // This is a placeholder, actual member fetching would depend on your data structure
+        // For now, let's assume groupData contains member UIDs or we fetch from a 'members' subcollection
+        // For this example, we'll just show the current user as a member.
+        // A more robust solution would involve fetching from a 'users' collection based on UIDs stored in the group.
+        const fetchMembers = async () => {
+            if (!groupData?.members) return; // Assuming groupData has a 'members' array of UIDs
+            const memberDetails = [];
+            for (const memberUid of groupData.members) {
+                const userDoc = await getDoc(doc(db, "users", memberUid));
+                if (userDoc.exists()) {
+                    memberDetails.push({ uid: userDoc.id, ...userDoc.data() });
+                }
+            }
+            setMembers(memberDetails);
+        };
+        // fetchMembers(); // Uncomment if groupData.members is implemented
+
+        // Listen for messages
+        const messagesQuery = query(
+            collection(db, "groups", gid, "messages"),
+            orderBy("createdAt", "asc")
+        );
+
+        const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+            const msgs = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            setMessages(msgs);
+        }, (error) => {
+            console.error("Error fetching messages:", error);
+        });
+
+        return unsubscribe;
+    };
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages]);
+
+    const handleFileSelect = (e) => {
+        if (e.target.files[0]) {
+            const f = e.target.files[0];
+            if (f.size > 500000) return alert("File too big! Max 500KB.");
+            const reader = new FileReader();
+            reader.onloadend = () => setFile(reader.result);
+            reader.readAsDataURL(f);
+        }
+    };
+
+    const handleSend = async (e) => {
+        e.preventDefault();
+        if ((newMessage.trim() === '' && !file) || !groupId) return;
+
+        const payload = {
+            text: newMessage,
+            image: file || null,
+            createdAt: serverTimestamp(),
+            uid: userData?.uid || 'anon',
+            displayName: userData?.name || 'Anonymous',
+            role: userData?.role || 'student',
+            photoURL: userData?.profileImageURL || null
+        };
+
+        await addDoc(collection(db, "groups", groupId, "messages"), payload);
+        setNewMessage('');
+        setFile(null);
+    };
+
+    const selectGroup = (gid) => {
+        localStorage.setItem("activeGroupId", gid);
+        setGroupId(gid);
+        setIsSelecting(false);
+        loadGroupChat(gid);
+    }
 
     // --- RENDER GROUP SELECTION LIST ---
     if (isSelecting) {
@@ -357,10 +454,12 @@ export default function Group() {
                 <button type="submit" className="btn" style={{ backgroundColor: '#0984e3', borderRadius: '20px', padding: '10px 20px' }}>Send</button>
             </form>
 
-            {/* OVERLAYS */}
-            {(viewMode === 'members' || viewMode === 'about') && (
-                <OverlayView title="Group Members" onClose={() => setViewMode(null)}>
-                    {members.length === 0 ? <p>Loading or no members found...</p> : (
+            <OverlayView title={viewMode === 'photos' ? "Shared Photos" : (viewMode === 'files' || viewMode === 'docs' ? "Shared Content" : "Group Members")}
+                onClose={() => setViewMode(null)}
+                visible={viewMode !== null}>
+
+                {viewMode === 'members' || viewMode === 'about' ? (
+                    members.length === 0 ? <p>Loading or no members found...</p> : (
                         members.map((m, i) => (
                             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '10px', borderBottom: '1px solid #f0f0f0' }}>
                                 <div style={{
@@ -378,29 +477,42 @@ export default function Group() {
                                 </div>
                             </div>
                         ))
-                    )}
-                </OverlayView>
-            )}
-
-            {viewMode === 'photos' && (
-                <OverlayView title="Shared Photos" onClose={() => setViewMode(null)}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '5px' }}>
-                        {messages.filter(m => m.image).map(m => (
-                            <img key={m.id} src={m.image} style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: '4px' }} alt="shared" />
-                        ))}
-                    </div>
-                    {messages.filter(m => m.image).length === 0 && <p className="text-center text-muted">No photos shared.</p>}
-                </OverlayView>
-            )}
-
-            {(viewMode === 'files' || viewMode === 'docs') && (
-                <OverlayView title={viewMode === 'files' ? "Shared Files" : "Shared Documents"} onClose={() => setViewMode(null)}>
+                    )
+                ) : viewMode === 'photos' ? (
+                    <>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '5px' }}>
+                            {messages.filter(m => m.image).map(m => (
+                                <img key={m.id} src={m.image} style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover', borderRadius: '4px' }} alt="shared" />
+                            ))}
+                        </div>
+                        {messages.filter(m => m.image).length === 0 && <p className="text-center text-muted">No photos shared.</p>}
+                    </>
+                ) : (
                     <p className="text-center text-muted" style={{ marginTop: '50px' }}>
                         No {viewMode} shared yet. <br />
                         <span style={{ fontSize: '12px' }}>(Only images supported currently)</span>
                     </p>
-                </OverlayView>
-            )}
+                )}
+            </OverlayView>
         </div>
     );
 }
+
+// --- SUB-COMPONENTS ---
+const OverlayView = ({ title, onClose, children, visible }) => {
+    if (!visible) return null;
+    return (
+        <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'white', zIndex: 2000, display: 'flex', flexDirection: 'column'
+        }}>
+            <div style={{ padding: '15px', borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '20px' }}>⬅</button>
+                <h3 style={{ margin: 0 }}>{title}</h3>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '15px' }}>
+                {children}
+            </div>
+        </div>
+    );
+};
