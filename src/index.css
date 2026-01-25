@@ -206,7 +206,7 @@ body {
 .login-card {
   width: 100%;
   max-width: 450px;
-  background: white;
+  background: var(--bg-surface);
   padding: 40px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, .1), 0 8px 16px rgba(0, 0, 0, .1);
   border-radius: 8px;
@@ -236,7 +236,7 @@ body {
 
 /* Header & Components */
 .app-header {
-  background-color: white;
+  background-color: var(--bg-surface);
   border-bottom: 1px solid var(--divider);
   color: var(--text-main);
   padding: 0 16px;
@@ -321,7 +321,7 @@ body {
   padding-bottom: 20px;
   /* Safe area */
   z-index: 1000;
-  background: white;
+  background: var(--bg-surface);
   /* Changed from transparent to solid white */
   flex-shrink: 0;
   display: flex;
@@ -336,7 +336,7 @@ body {
   gap: 10px;
   width: 100%;
   max-width: 800px;
-  background: white;
+  background: var(--bg-surface);
   /* Floating Box */
   padding: 8px 15px;
   border-radius: 30px;
@@ -444,7 +444,7 @@ body {
 
 .sidebar-content {
   width: 280px;
-  background: white;
+  background: var(--bg-surface);
   height: 100%;
   padding: 20px;
   display: flex;

@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
+import { useTheme } from '../context/ThemeContext';
 import { auth, db } from '../firebase';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 
 export default function Header({ onToggleSidebar }) {
     const { userData } = useUser();
+    const { theme, toggleTheme } = useTheme();
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
     const [menuOpen, setMenuOpen] = useState(false);
@@ -129,19 +131,19 @@ export default function Header({ onToggleSidebar }) {
     // SEARCH MODE HEADER (YouTube Style)
     if (isSearchMode) {
         return (
-            <header className="app-header" style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'white', position: 'relative' }}>
-                <button onClick={() => setIsSearchMode(false)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', padding: '0 10px' }}>
+            <header className="app-header" style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--bg-surface)', position: 'relative' }}>
+                <button onClick={() => setIsSearchMode(false)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', padding: '0 10px', color: 'var(--text-main)' }}>
                     ←
                 </button>
                 <div style={{ flex: 1, position: 'relative' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', background: '#f1f3f4', borderRadius: '20px', padding: '5px 15px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', background: 'var(--secondary)', borderRadius: '20px', padding: '5px 15px' }}>
                         <input
                             autoFocus
                             type="text"
                             placeholder={userData?.role === 'student' ? "Search Teachers..." : "Search Students..."}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            style={{ width: '100%', border: 'none', background: 'transparent', outline: 'none', fontSize: '16px' }}
+                            style={{ width: '100%', border: 'none', background: 'transparent', outline: 'none', fontSize: '16px', color: 'var(--text-main)' }}
                         />
                     </div>
 
@@ -149,16 +151,16 @@ export default function Header({ onToggleSidebar }) {
                     {suggestions.length > 0 && (
                         <div style={{
                             position: 'absolute', top: '110%', left: 0, right: 0,
-                            background: 'white', border: '1px solid #ddd', borderRadius: '8px', zIndex: 2000,
+                            background: 'var(--bg-surface)', border: '1px solid var(--divider)', borderRadius: '8px', zIndex: 2000,
                             boxShadow: '0 4px 10px rgba(0,0,0,0.1)', maxHeight: '300px', overflowY: 'auto'
                         }}>
                             {suggestions.map((item, idx) => (
                                 <div
                                     key={idx}
                                     onClick={() => handleSuggestionClick(item)}
-                                    style={{ padding: '10px 15px', borderBottom: '1px solid #f5f5f5', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}
-                                    onMouseEnter={e => e.currentTarget.style.background = '#f9f9f9'}
-                                    onMouseLeave={e => e.currentTarget.style.background = 'white'}
+                                    style={{ padding: '10px 15px', borderBottom: '1px solid var(--divider)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}
+                                    onMouseEnter={e => e.currentTarget.style.background = 'var(--secondary)'}
+                                    onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-surface)'}
                                 >
                                     <div style={{
                                         width: '30px', height: '30px', borderRadius: '50%',
@@ -204,11 +206,17 @@ export default function Header({ onToggleSidebar }) {
                 {/* Search Icon (Toggles Mode) */}
                 <button
                     onClick={() => setIsSearchMode(true)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px' }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: 'var(--text-muted)' }}
                     title="Search"
                 >
                     🔍
                 </button>
+
+                {/* Theme Toggle Switch */}
+                <label className="switch" title="Toggle Dark/Light Mode" style={{ transform: 'scale(0.8)' }}>
+                    <input type="checkbox" checked={theme === 'Dark'} onChange={toggleTheme} />
+                    <span className="slider"></span>
+                </label>
 
 
 
@@ -301,6 +309,12 @@ export default function Header({ onToggleSidebar }) {
                                 >
                                     ❓ Help
                                 </button>
+                                <button
+                                    onClick={() => { toggleTheme(); setMenuOpen(false); }}
+                                    style={menuItemStyle}
+                                >
+                                    {theme === 'Light' ? '🌙 Dark Theme' : '☀️ Light Theme'}
+                                </button>
                                 <div style={{ borderTop: '1px solid #eee', margin: '4px 0' }}></div>
                                 <button
                                     onClick={handleLogout}
@@ -326,7 +340,7 @@ const menuItemStyle = {
     background: 'none',
     border: 'none',
     fontSize: '14px',
-    color: '#3c4043',
+    color: 'var(--text-main)',
     cursor: 'pointer',
     textAlign: 'left'
 };

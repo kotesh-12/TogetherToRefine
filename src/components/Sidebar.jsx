@@ -46,8 +46,8 @@ export default function Sidebar({ isOpen }) {
     return (
         <div style={{
             width: isOpen ? '240px' : '72px',
-            background: 'white',
-            borderRight: '1px solid #dadce0',
+            background: 'var(--bg-surface)',
+            borderRight: '1px solid var(--divider)',
             height: 'calc(100vh - 64px)', // Full height minus header
             position: 'sticky',
             top: '64px',
@@ -66,9 +66,9 @@ export default function Sidebar({ isOpen }) {
                         alignItems: 'center',
                         padding: '10px 24px',
                         cursor: 'pointer',
-                        background: isActive(item.path) ? '#e8f0fe' : 'transparent',
-                        color: isActive(item.path) ? '#1967d2' : '#5f6368',
-                        borderLeft: isActive(item.path) ? '4px solid #1a73e8' : '4px solid transparent',
+                        background: isActive(item.path) ? 'var(--secondary)' : 'transparent',
+                        color: isActive(item.path) ? 'var(--primary)' : 'var(--text-muted)',
+                        borderLeft: isActive(item.path) ? '4px solid var(--primary)' : '4px solid transparent',
                         marginBottom: '4px'
                     }}
                     title={item.label}
