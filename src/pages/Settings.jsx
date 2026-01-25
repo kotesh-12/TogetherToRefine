@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import AnnouncementBar from '../components/AnnouncementBar';
-import AIBadge from '../components/AIBadge';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 
@@ -67,15 +65,18 @@ export default function Settings() {
         <div
             onClick={!isSwitch ? action : undefined}
             style={{
-                display: 'flex', alignItems: 'center', padding: '15px 20px',
+                display: 'flex', alignItems: 'center', padding: '16px 20px',
                 borderBottom: '1px solid var(--divider)', cursor: 'pointer',
                 background: 'var(--bg-surface)',
-                color: 'var(--text-main)'
+                color: 'var(--text-main)',
+                transition: 'background 0.2s'
             }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--secondary)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg-surface)'}
         >
-            <div style={{ fontSize: '24px', marginRight: '20px', color: 'var(--text-muted)', width: '24px', textAlign: 'center' }}>{icon}</div>
+            <div style={{ fontSize: '24px', marginRight: '20px', color: 'var(--text-muted)', width: '24px', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{icon}</div>
             <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '16px', color: 'var(--text-main)' }}>{title}</div>
+                <div style={{ fontSize: '16px', fontWeight: '500', color: 'var(--text-main)' }}>{title}</div>
                 {subtitle && <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>{subtitle}</div>}
             </div>
             {isSwitch ? (
@@ -91,14 +92,12 @@ export default function Settings() {
 
     return (
         <div className="page-wrapper" style={{ background: 'var(--bg-body)', minHeight: '100vh', color: 'var(--text-main)' }}>
-            <AnnouncementBar title="Settings" />
-            <AIBadge />
 
-            <div className="container" style={{ maxWidth: '600px', margin: '0 auto', padding: '0' }}>
+            <div className="container" style={{ maxWidth: '800px', margin: '0 auto', padding: '20px 0' }}>
+                <h1 style={{ fontSize: '24px', margin: '0 0 20px 20px', color: 'var(--text-main)' }}>Settings</h1>
 
-                {/* Section: General */}
-                <div style={{ padding: '15px 20px 5px', fontSize: '14px', fontWeight: '500', color: 'var(--primary)', textTransform: 'uppercase' }}>General</div>
                 <div style={{ background: 'var(--bg-surface)', borderTop: '1px solid var(--divider)', borderBottom: '1px solid var(--divider)' }}>
+                    {/* General */}
                     <SettingItem
                         icon="🏠"
                         title="Dashboard"
@@ -111,11 +110,8 @@ export default function Settings() {
                         subtitle="Manage personal details"
                         action={() => navigate('/details')}
                     />
-                </div>
 
-                {/* Section: Appearance */}
-                <div style={{ padding: '25px 20px 5px', fontSize: '14px', fontWeight: '500', color: 'var(--primary)', textTransform: 'uppercase' }}>Appearance</div>
-                <div style={{ background: 'var(--bg-surface)', borderTop: '1px solid var(--divider)', borderBottom: '1px solid var(--divider)' }}>
+                    {/* Appearance */}
                     <SettingItem
                         icon="🌙"
                         title="Dark Mode"
@@ -132,11 +128,8 @@ export default function Settings() {
                         isChecked={isDesktop}
                         action={toggleDesktopMode}
                     />
-                </div>
 
-                {/* Section: About & System */}
-                <div style={{ padding: '25px 20px 5px', fontSize: '14px', fontWeight: '500', color: 'var(--primary)', textTransform: 'uppercase' }}>System</div>
-                <div style={{ background: 'var(--bg-surface)', borderTop: '1px solid var(--divider)', borderBottom: '1px solid var(--divider)' }}>
+                    {/* System */}
                     <SettingItem
                         icon="↻"
                         title="Check for Updates"

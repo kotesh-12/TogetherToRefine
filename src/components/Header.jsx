@@ -212,11 +212,7 @@ export default function Header({ onToggleSidebar }) {
                     🔍
                 </button>
 
-                {/* Theme Toggle Switch */}
-                <label className="switch" title="Toggle Dark/Light Mode" style={{ transform: 'scale(0.8)' }}>
-                    <input type="checkbox" checked={theme === 'Dark'} onChange={toggleTheme} />
-                    <span className="slider"></span>
-                </label>
+
 
 
 
