@@ -266,6 +266,31 @@ export default function Timetable() {
     };
 
 
+    // Zoom State
+    const [zoom, setZoom] = useState(1);
+    const tableContainerRef = React.useRef(null);
+
+    // Auto-Fit on Load (Mobile)
+    useEffect(() => {
+        const handleResize = () => {
+            // Only auto-scale if we haven't manually zoomed? 
+            // Or just set initial zoom.
+            const w = window.innerWidth;
+            if (w < 800) {
+                // Fit 900px table into 'w'
+                const scale = (w - 40) / 900;
+                setZoom(scale);
+            } else {
+                setZoom(1);
+            }
+        };
+
+        handleResize();
+        // window.addEventListener('resize', handleResize); // Optional: dynamic resize
+        // return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+
     const finalTimetable = viewMode === 'personal' ? mySchedule : timetable;
 
     return (
@@ -277,6 +302,8 @@ export default function Timetable() {
 
                 {/* Controls */}
                 <div className="card" style={{ marginBottom: '20px', display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+
+                    {/* ...Existing Controls... */}
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                         <h3 style={{ margin: 0, color: '#2d3436' }}>📅 Schedule</h3>
 
@@ -315,7 +342,7 @@ export default function Timetable() {
                                         padding: '5px 15px', cursor: 'pointer', fontWeight: 'bold'
                                     }}
                                 >
-                                    Single Class
+                                    One
                                 </button>
                                 <button
                                     onClick={() => setViewMode('overview')}
@@ -325,7 +352,7 @@ export default function Timetable() {
                                         padding: '5px 15px', cursor: 'pointer', fontWeight: 'bold'
                                     }}
                                 >
-                                    See All Classes
+                                    All
                                 </button>
                             </div>
                         )}
@@ -353,33 +380,34 @@ export default function Timetable() {
                             </>
                         )}
                         {userData?.role === 'student' && (
-                            <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#0984e3' }}>
+                            <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#0984e3', whiteSpace: 'nowrap' }}>
                                 {selectedClass} - {selectedSection}
                             </span>
                         )}
                     </div>
+                </div>
 
-                    {isInstitution && viewMode !== 'overview' && (
-                        <div style={{ display: 'flex', gap: '10px' }}>
+                {/* ZOOM CONTROLS (Floating or Inline) */}
+                {viewMode !== 'overview' && (
+                    <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', background: 'white', padding: '5px 15px', borderRadius: '20px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
+                            <span style={{ fontSize: '12px', color: '#666' }}>🔎 View:</span>
+                            <button onClick={() => setZoom(z => Math.max(0.3, z - 0.1))} style={{ cursor: 'pointer', border: 'none', background: '#f1f2f6', borderRadius: '50%', width: '25px', height: '25px' }}>-</button>
+                            <span style={{ fontSize: '13px', fontWeight: 'bold', minWidth: '40px' }}>{Math.round(zoom * 100)}%</span>
+                            <button onClick={() => setZoom(z => Math.min(2, z + 0.1))} style={{ cursor: 'pointer', border: 'none', background: '#f1f2f6', borderRadius: '50%', width: '25px', height: '25px' }}>+</button>
                             <button
-                                className="btn"
-                                onClick={() => { setStructureMode(!structureMode); setIsEditing(true); }}
-                                style={{ background: structureMode ? '#e17055' : '#636e72', fontSize: '14px' }}
+                                onClick={() => {
+                                    const w = window.innerWidth;
+                                    setZoom(w < 800 ? (w - 40) / 900 : 1);
+                                }}
+                                style={{ marginLeft: '10px', fontSize: '12px', cursor: 'pointer', border: '1px solid #ddd', background: 'white', borderRadius: '12px', padding: '2px 8px' }}
                             >
-                                {structureMode ? 'Done Configuring' : '⚙️ Configure Periods'}
-                            </button>
-
-                            <button
-                                className="btn"
-                                onClick={isEditing ? saveTimetable : () => { setIsEditing(true); if (isInstitution) fetchAllTimetables(); }}
-                                style={{ background: isEditing ? '#00b894' : '#0984e3', minWidth: '120px' }}
-                                disabled={loading}
-                            >
-                                {loading ? '⏳ Saving...' : (isEditing ? '💾 Save Changes' : '✏️ Edit Content')}
+                                Fit Screen
                             </button>
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
+
 
                 {/* OVERVIEW MODE (ALL CLASSES) */}
                 {viewMode === 'overview' && (
@@ -411,13 +439,8 @@ export default function Timetable() {
                                                     <tr key={day}>
                                                         <td style={{ padding: '10px', fontWeight: 'bold', background: '#f5f6fa', fontSize: '13px' }}>{day}</td>
                                                         {periods.map((p, index) => {
-                                                            // Simple Read-Only Render Logic for Overview
                                                             const cellData = schedule?.[day]?.[p.id] || {};
-
                                                             let skip = false;
-                                                            // Naive merge check: skip if previous cells cover this
-                                                            // To allow simplified overview, maybe skip complex merge logic?
-                                                            // Or implement basic span skipping:
                                                             for (let k = 1; k <= index; k++) {
                                                                 const prevP = periods[index - k];
                                                                 const prevData = schedule?.[day]?.[prevP.id] || {};
@@ -454,126 +477,141 @@ export default function Timetable() {
                 {/* STANDARD SINGLE VIEW Mode */}
                 {viewMode !== 'overview' && (
                     <>
-                        <div style={{ overflowX: 'auto', borderRadius: '16px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white', minWidth: '1000px' }}>
-                                <thead>
-                                    <tr style={{ background: '#6c5ce7', color: 'white' }}>
-                                        <th style={{ padding: '15px', border: '1px solid rgba(255,255,255,0.2)', width: '100px' }}>Day</th>
-                                        {periodConfig.map((p, index) => (
-                                            <th key={p.id} style={{ padding: '10px', border: '1px solid rgba(255,255,255,0.2)', background: p.type === 'break' ? '#fdcb6e' : 'transparent', minWidth: '120px' }}>
-                                                {structureMode ? (
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                                        <input
-                                                            value={p.name}
-                                                            onChange={(e) => updatePeriod(index, 'name', e.target.value)}
-                                                            style={{ width: '100%', color: 'black', padding: '5px' }}
-                                                            placeholder="Name/Time"
-                                                        />
-                                                        <select
-                                                            value={p.type}
-                                                            onChange={(e) => updatePeriod(index, 'type', e.target.value)}
-                                                            style={{ color: 'black', padding: '2px' }}
-                                                        >
-                                                            <option value="class">Class</option>
-                                                            <option value="break">Break</option>
-                                                        </select>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                            <button onClick={() => movePeriod(index, -1)} style={{ cursor: 'pointer', padding: '2px' }}>⬅️</button>
-                                                            <button onClick={() => removePeriod(index)} style={{ cursor: 'pointer', color: 'red', fontWeight: 'bold' }}>❌</button>
-                                                            <button onClick={() => movePeriod(index, 1)} style={{ cursor: 'pointer', padding: '2px' }}>➡️</button>
+                        <div
+                            ref={tableContainerRef}
+                            style={{
+                                width: '100%',
+                                overflow: 'hidden', // Hide scroll since we scale
+                                borderRadius: '16px',
+                                boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
+                                transition: 'height 0.3s'
+                            }}
+                        >
+                            <div style={{
+                                width: '900px', // Fixed base width for calculation
+                                transform: `scale(${zoom})`,
+                                transformOrigin: 'top left',
+                            }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white' }}>
+                                    <thead>
+                                        <tr style={{ background: '#6c5ce7', color: 'white' }}>
+                                            <th style={{ padding: '15px', border: '1px solid rgba(255,255,255,0.2)', width: '100px' }}>Day</th>
+                                            {periodConfig.map((p, index) => (
+                                                <th key={p.id} style={{ padding: '10px', border: '1px solid rgba(255,255,255,0.2)', background: p.type === 'break' ? '#fdcb6e' : 'transparent', minWidth: '100px' }}>
+                                                    {structureMode ? (
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                            <input
+                                                                value={p.name}
+                                                                onChange={(e) => updatePeriod(index, 'name', e.target.value)}
+                                                                style={{ width: '100%', color: 'black', padding: '5px' }}
+                                                                placeholder="Name/Time"
+                                                            />
+                                                            <select
+                                                                value={p.type}
+                                                                onChange={(e) => updatePeriod(index, 'type', e.target.value)}
+                                                                style={{ color: 'black', padding: '2px' }}
+                                                            >
+                                                                <option value="class">Class</option>
+                                                                <option value="break">Break</option>
+                                                            </select>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                                <button onClick={() => movePeriod(index, -1)} style={{ cursor: 'pointer', padding: '2px' }}>⬅️</button>
+                                                                <button onClick={() => removePeriod(index)} style={{ cursor: 'pointer', color: 'red', fontWeight: 'bold' }}>❌</button>
+                                                                <button onClick={() => movePeriod(index, 1)} style={{ cursor: 'pointer', padding: '2px' }}>➡️</button>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                ) : (
-                                                    <div>
-                                                        {p.type === 'break' ? '🍽️' : ''} {p.name}
-                                                    </div>
-                                                )}
-                                            </th>
-                                        ))}
-                                        {structureMode && (
-                                            <th style={{ padding: '10px', background: 'rgba(0,0,0,0.1)' }}>
-                                                <button onClick={addPeriod} style={{ width: '100%', height: '100%', fontSize: '20px', cursor: 'pointer', background: 'transparent', border: 'none', color: 'white' }}>➕ Add</button>
-                                            </th>
-                                        )}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {days.map(day => (
-                                        <tr key={day}>
-                                            <td style={{ padding: '15px', fontWeight: 'bold', background: '#f0f3f7', borderBottom: '1px solid #dfe6e9' }}>{day}</td>
+                                                    ) : (
+                                                        <div>
+                                                            {p.type === 'break' ? '🍽️' : ''} {p.name}
+                                                        </div>
+                                                    )}
+                                                </th>
+                                            ))}
+                                            {structureMode && (
+                                                <th style={{ padding: '10px', background: 'rgba(0,0,0,0.1)' }}>
+                                                    <button onClick={addPeriod} style={{ width: '100%', height: '100%', fontSize: '20px', cursor: 'pointer', background: 'transparent', border: 'none', color: 'white' }}>➕ Add</button>
+                                                </th>
+                                            )}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {days.map(day => (
+                                            <tr key={day}>
+                                                <td style={{ padding: '15px', fontWeight: 'bold', background: '#f0f3f7', borderBottom: '1px solid #dfe6e9' }}>{day}</td>
 
-                                            {periodConfig.map((p, index) => {
-                                                // Merge Handling
-                                                const cellData = finalTimetable?.[day]?.[p.id] || {};
+                                                {periodConfig.map((p, index) => {
+                                                    // Merge Handling
+                                                    const cellData = finalTimetable?.[day]?.[p.id] || {};
 
-                                                let skip = false;
-                                                for (let k = 1; k <= index; k++) {
-                                                    const prevP = periodConfig[index - k];
-                                                    const prevData = finalTimetable?.[day]?.[prevP.id] || {};
-                                                    const prevSpan = parseInt(prevData.span || 1);
-                                                    if (prevSpan > k) {
-                                                        skip = true;
-                                                        break;
+                                                    let skip = false;
+                                                    for (let k = 1; k <= index; k++) {
+                                                        const prevP = periodConfig[index - k];
+                                                        const prevData = finalTimetable?.[day]?.[prevP.id] || {};
+                                                        const prevSpan = parseInt(prevData.span || 1);
+                                                        if (prevSpan > k) {
+                                                            skip = true;
+                                                            break;
+                                                        }
                                                     }
-                                                }
 
-                                                if (skip) return null;
+                                                    if (skip) return null;
 
-                                                const span = parseInt(cellData.span || 1);
-                                                // Handle Object (Non-Legacy) or String (Legacy)
-                                                const val = typeof cellData === 'object' ? (cellData.subject || '') : cellData;
+                                                    const span = parseInt(cellData.span || 1);
+                                                    // Handle Object (Non-Legacy) or String (Legacy)
+                                                    const val = typeof cellData === 'object' ? (cellData.subject || '') : cellData;
 
-                                                if (p.type === 'break') {
+                                                    if (p.type === 'break') {
+                                                        return (
+                                                            <td key={p.id} style={{ background: '#ffeaa7', textAlign: 'center', fontWeight: 'bold', border: '1px solid #dfe6e9', color: '#b7791f' }}>
+                                                                {p.name}
+                                                            </td>
+                                                        );
+                                                    }
+
                                                     return (
-                                                        <td key={p.id} style={{ background: '#ffeaa7', textAlign: 'center', fontWeight: 'bold', border: '1px solid #dfe6e9', color: '#b7791f' }}>
-                                                            {p.name}
+                                                        <td key={p.id} colSpan={span} style={{ border: '1px solid #dfe6e9', padding: '0', minWidth: '100px' }}>
+                                                            {isEditing && !structureMode ? (
+                                                                <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: '80px' }}>
+                                                                    <input
+                                                                        list="allotted-teachers"
+                                                                        value={val}
+                                                                        onChange={(e) => handleCellChange(day, p.id, 'subject', e.target.value)}
+                                                                        placeholder="Subject"
+                                                                        style={{
+                                                                            width: '100%', flex: 1, border: 'none', padding: '10px',
+                                                                            fontSize: '14px', outline: 'none', background: 'transparent'
+                                                                        }}
+                                                                    />
+                                                                    {conflicts && conflicts[`${day}_${p.id}`] && (
+                                                                        <div style={{ color: '#d63031', fontSize: '10px', fontWeight: 'bold', margin: '2px 5px', background: '#ffeaa7', padding: '3px', borderRadius: '4px', border: '1px solid #fab1a0' }}>
+                                                                            ⚠ {conflicts[`${day}_${p.id}`]}
+                                                                        </div>
+                                                                    )}
+                                                                    {/* Merge Control */}
+                                                                    <div style={{ background: '#f1f2f6', padding: '2px 5px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', color: '#636e72' }}>
+                                                                        <span>Span:</span>
+                                                                        <input
+                                                                            type="number"
+                                                                            min="1" max="8"
+                                                                            value={span}
+                                                                            onChange={(e) => handleCellChange(day, p.id, 'span', e.target.value)}
+                                                                            style={{ width: '35px', border: '1px solid #ccc', borderRadius: '3px', padding: '2px' }}
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div style={{ padding: '15px', minHeight: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', color: val ? '#2d3436' : '#b2bec3', whiteSpace: 'pre-wrap', textAlign: 'center' }}>
+                                                                    {val || '-'}
+                                                                </div>
+                                                            )}
                                                         </td>
                                                     );
-                                                }
-
-                                                return (
-                                                    <td key={p.id} colSpan={span} style={{ border: '1px solid #dfe6e9', padding: '0', minWidth: '100px' }}>
-                                                        {isEditing && !structureMode ? (
-                                                            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: '80px' }}>
-                                                                <input
-                                                                    list="allotted-teachers"
-                                                                    value={val}
-                                                                    onChange={(e) => handleCellChange(day, p.id, 'subject', e.target.value)}
-                                                                    placeholder="Subject"
-                                                                    style={{
-                                                                        width: '100%', flex: 1, border: 'none', padding: '10px',
-                                                                        fontSize: '14px', outline: 'none', background: 'transparent'
-                                                                    }}
-                                                                />
-                                                                {conflicts && conflicts[`${day}_${p.id}`] && (
-                                                                    <div style={{ color: '#d63031', fontSize: '10px', fontWeight: 'bold', margin: '2px 5px', background: '#ffeaa7', padding: '3px', borderRadius: '4px', border: '1px solid #fab1a0' }}>
-                                                                        ⚠ {conflicts[`${day}_${p.id}`]}
-                                                                    </div>
-                                                                )}
-                                                                {/* Merge Control */}
-                                                                <div style={{ background: '#f1f2f6', padding: '2px 5px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', color: '#636e72' }}>
-                                                                    <span>Span:</span>
-                                                                    <input
-                                                                        type="number"
-                                                                        min="1" max="8"
-                                                                        value={span}
-                                                                        onChange={(e) => handleCellChange(day, p.id, 'span', e.target.value)}
-                                                                        style={{ width: '35px', border: '1px solid #ccc', borderRadius: '3px', padding: '2px' }}
-                                                                    />
-                                                                </div>
-                                                            </div>
-                                                        ) : (
-                                                            <div style={{ padding: '15px', minHeight: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', color: val ? '#2d3436' : '#b2bec3', whiteSpace: 'pre-wrap', textAlign: 'center' }}>
-                                                                {val || '-'}
-                                                            </div>
-                                                        )}
-                                                    </td>
-                                                );
-                                            })}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                                })}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
 
                         {!isEditing && finalTimetable && Object.keys(finalTimetable).length === 0 && (
