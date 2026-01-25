@@ -22,24 +22,29 @@
 }
 
 [data-theme='Dark'] {
-  --primary: #8ab4f8;
-  --primary-hover: #aecbfa;
-  --secondary: #303134;
-  /* Darker secondary */
-  --bg-body: #202124;
-  /* Very dark grey, almost black */
-  --bg-surface: #2d2e30;
-  /* Slightly lighter for cards */
-  --text-main: #e8eaed;
-  /* Off-white */
-  --text-muted: #9aa0a6;
-  --divider: #3c4043;
-  --error: #f28b82;
-  --success: #81c995;
+  /* Premium Slate / Midnight Palette for Beautiful Dark Mode */
+  --primary: #60a5fa;
+  --primary-hover: #3b82f6;
+  --secondary: #334155;
 
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.6);
+  --bg-body: #0f172a;
+  /* Slate 900 (Rich Deep Blue-Black) */
+  --bg-surface: #1e293b;
+  /* Slate 800 (Contrast Surface) */
+
+  --text-main: #f1f5f9;
+  /* Slate 100 */
+  --text-muted: #94a3b8;
+  /* Slate 400 */
+
+  --divider: #334155;
+  /* Slate 700 */
+  --error: #f87171;
+  --success: #4ade80;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
-  --shadow-card: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  --shadow-card: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.6);
 }
 
 /* Toggle Switch Styles */
