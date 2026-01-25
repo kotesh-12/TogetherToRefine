@@ -295,8 +295,8 @@ export default function FourWayLearning() {
         <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#f5f6fa', fontFamily: "'Segoe UI', sans-serif" }}>
 
             {/* HEADER */}
-            <div style={{ background: 'white', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', zIndex: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'center', padding: '15px 20px', borderBottom: '1px solid #eee' }}>
+            <div style={{ background: 'white', borderBottom: '1px solid #eee', flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', padding: '10px 15px' }}>
                     <button
                         onClick={() => setShowSidebar(true)}
                         style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', marginRight: '15px', color: '#2d3436' }}
@@ -304,10 +304,10 @@ export default function FourWayLearning() {
                         ☰
                     </button>
                     <button className="btn-back-marker" onClick={() => navigate(-1)}>Back</button>
-                    <h1 style={{ margin: '0 0 0 15px', fontSize: '20px', color: '#2d3436' }}>Four-Way Learning</h1>
+                    <h1 style={{ margin: '0 0 0 15px', fontSize: '18px', color: '#2d3436' }}>Four-Way Learning</h1>
                 </div>
 
-                <div style={{ display: 'flex', overflowX: 'auto', padding: '0 10px' }}>
+                <div style={{ display: 'flex', overflowX: 'auto', padding: '0 10px', scrollbarWidth: 'none' }}>
                     {modes.map(m => (
                         <button
                             key={m.id}
@@ -327,7 +327,7 @@ export default function FourWayLearning() {
             </div>
 
             {/* CHAT AREA */}
-            <div ref={chatContainerRef} style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <div ref={chatContainerRef} style={{ flex: 1, overflowY: 'auto', padding: '15px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 {chats[activeTab].length === 0 && (
                     <div style={{ textAlign: 'center', color: '#b2bec3', marginTop: '50px' }}>
                         <div style={{ fontSize: '40px', marginBottom: '10px' }}>✨</div>
@@ -341,12 +341,12 @@ export default function FourWayLearning() {
                         maxWidth: '85%',
                         background: msg.role === 'user' ? '#6c5ce7' : 'white',
                         color: msg.role === 'user' ? 'white' : '#2d3436',
-                        padding: '12px 18px',
+                        padding: '10px 14px',
                         borderRadius: '12px',
                         borderBottomRightRadius: msg.role === 'user' ? '2px' : '12px',
                         borderBottomLeftRadius: msg.role === 'ai' ? '2px' : '12px',
-                        boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
-                        lineHeight: '1.5',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                        lineHeight: '1.4',
                         position: 'relative' // For absolute positioning of button if needed, but flex is safer inside div
                     }}>
                         {msg.image && <img src={msg.image} alt="User" style={{ maxWidth: '100%', borderRadius: '8px', marginBottom: '10px' }} />}
@@ -371,7 +371,7 @@ export default function FourWayLearning() {
             </div>
 
             {/* INPUT AREA */}
-            <div style={{ padding: '15px', background: 'white', borderTop: '1px solid #eee' }}>
+            <div style={{ padding: '15px', background: 'white', borderTop: '1px solid #eee', flexShrink: 0 }}>
                 {activeTab === 'teaching' && (
                     <div style={{ marginBottom: '10px', display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div style={{ display: 'flex', gap: '10px' }}>

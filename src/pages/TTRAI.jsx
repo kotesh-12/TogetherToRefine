@@ -319,7 +319,7 @@ export default function TTRAI() {
                 {/* Mobile History Toggle */}
 
 
-                <div className="chat-area" style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px', paddingBottom: '100px' }}>
+                <div className="chat-area" style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                     {messages.map((msg, idx) => (
                         <div key={idx} className={`message-bubble ${msg.sender === 'user' ? 'message-user' : 'message-ai'}`}>
                             {msg.image && <img src={msg.image} alt="User Upload" className="message-image" />}
@@ -337,7 +337,7 @@ export default function TTRAI() {
                     <div ref={messagesEndRef} />
                 </div>
 
-                <div className="input-area" style={{ borderTop: '1px solid #eee', padding: '15px', paddingBottom: '25px', marginBottom: '60px', background: '#fff' }}>
+                <div className="input-area" style={{ borderTop: '1px solid #eee', padding: '15px', paddingBottom: '25px', marginBottom: '0', background: '#fff' }}>
                     {selectedImage && (
                         <div className="image-preview-container">
                             <img src={selectedImage} alt="Preview" className="image-preview" />
