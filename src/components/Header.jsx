@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
-import { auth } from '../firebase';
+import { auth, db } from '../firebase';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 
 export default function Header({ onToggleSidebar }) {
     const { userData } = useUser();
@@ -11,51 +12,149 @@ export default function Header({ onToggleSidebar }) {
     const [isSearchMode, setIsSearchMode] = useState(false); // YouTube-style search toggle
     const [desktopMode, setDesktopMode] = useState(false);
 
-    const handleSearch = (e) => {
-        if (e.key === 'Enter') {
-            console.log("Searching for:", searchTerm);
-            // Implement actual search redirect or filter here if needed
-            // setIsSearchMode(false); // Optional: close on search
-        }
-    };
+    const [suggestions, setSuggestions] = useState([]);
 
-    const handleLogout = () => {
-        if (window.confirm("Are you sure you want to logout?")) {
-            auth.signOut().then(() => navigate('/'));
+    // Auto-Search on Type (Debounced manually by user typing speed usually, but here direct)
+    React.useEffect(() => {
+        if (!searchTerm || searchTerm.length < 2 || !userData) {
+            setSuggestions([]);
+            return;
         }
-    };
 
-    const toggleDesktopMode = () => {
-        const metaViewport = document.querySelector('meta[name=viewport]');
-        if (!desktopMode) {
-            // Switch to Desktop
-            metaViewport.setAttribute('content', 'width=1024');
-            setDesktopMode(true);
-        } else {
-            // Switch back to Mobile/Responsive
-            metaViewport.setAttribute('content', 'width=device-width, initial-scale=1');
-            setDesktopMode(false);
+        const delayDebounceFn = setTimeout(async () => {
+            console.log("Fetching suggestions for:", searchTerm);
+            const lowerTerm = searchTerm.toLowerCase();
+            let results = [];
+
+            try {
+                if (userData.role === 'student' && userData.institutionId) {
+                    // Students search Teachers
+                    // NOTE: Firestore doesn't support native partial text search well. 
+                    // We fetch a reasonable subset or rely on client filtering if dataset is small.
+                    // For scalability, we'd use Algolia/Typesense. Here we fetch matches by "name" >= term.
+                    // BUT "createdBy" filter is paramount.
+
+                    // Simple approach: Fetch all teachers of this institution (usually < 100) and filter client-side
+                    const q = query(collection(db, "teacher_allotments"), where("createdBy", "==", userData.institutionId));
+                    const snap = await getDocs(q);
+                    const unique = new Map();
+                    snap.forEach(d => {
+                        const data = d.data();
+                        const name = data.name || data.teacherName;
+                        if (name && name.toLowerCase().includes(lowerTerm)) {
+                            if (!unique.has(name)) unique.set(name, { id: d.id, ...data, type: 'Teacher' });
+                        }
+                    });
+                    results = Array.from(unique.values());
+                }
+                else if (userData.role === 'teacher' && userData.institutionId) {
+                    // Teachers search Students of their Institution
+                    const q = query(collection(db, "student_allotments"), where("createdBy", "==", userData.institutionId));
+                    // Ideally we limit this, but filtering by strict "includes" requires reading.
+                    // Optimisation: If collection is huge, this lags. For now, assuming < 2000 docs ok.
+                    const snap = await getDocs(q);
+                    snap.forEach(d => {
+                        const data = d.data();
+                        const name = data.name || data.studentName;
+                        if (name && name.toLowerCase().includes(lowerTerm)) {
+                            results.push({ id: d.id, ...data, type: 'Student' });
+                        }
+                    });
+                }
+                else if (userData.role === 'institution') {
+                    // Search Both
+                    const p1 = getDocs(query(collection(db, "teacher_allotments"), where("createdBy", "==", userData.uid)));
+                    const p2 = getDocs(query(collection(db, "student_allotments"), where("createdBy", "==", userData.uid)));
+                    const [snap1, snap2] = await Promise.all([p1, p2]);
+
+                    const uniqueT = new Set();
+                    snap1.forEach(d => {
+                        const name = d.data().name || d.data().teacherName;
+                        if (name && name.toLowerCase().includes(lowerTerm)) {
+                            if (!uniqueT.has(name)) {
+                                results.push({ id: d.id, ...d.data(), type: 'Teacher' });
+                                uniqueT.add(name);
+                            }
+                        }
+                    });
+                    snap2.forEach(d => {
+                        const name = d.data().name || d.data().studentName;
+                        if (name && name.toLowerCase().includes(lowerTerm)) {
+                            results.push({ id: d.id, ...d.data(), type: 'Student' });
+                        }
+                    });
+                }
+
+                setSuggestions(results.slice(0, 10)); // Top 10 matches
+            } catch (e) {
+                console.error("Search error:", e);
+            }
+        }, 500);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchTerm, userData]);
+
+    const handleSuggestionClick = (item) => {
+        setIsSearchMode(false);
+        setSearchTerm('');
+        // Navigate based on type
+        if (item.type === 'Teacher') {
+            // Check if we can navigate to a feedback or details page
+            navigate('/general-feedback', { state: { target: item } });
+        } else if (item.type === 'Student') {
+            navigate('/general-feedback', { state: { target: item } });
         }
-        setMenuOpen(false);
     };
 
     // SEARCH MODE HEADER (YouTube Style)
     if (isSearchMode) {
         return (
-            <header className="app-header" style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'white' }}>
+            <header className="app-header" style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'white', position: 'relative' }}>
                 <button onClick={() => setIsSearchMode(false)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', padding: '0 10px' }}>
                     ←
                 </button>
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: '#f1f3f4', borderRadius: '20px', padding: '5px 15px' }}>
-                    <input
-                        autoFocus
-                        type="text"
-                        placeholder="Search..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        onKeyPress={handleSearch}
-                        style={{ width: '100%', border: 'none', background: 'transparent', outline: 'none', fontSize: '16px' }}
-                    />
+                <div style={{ flex: 1, position: 'relative' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', background: '#f1f3f4', borderRadius: '20px', padding: '5px 15px' }}>
+                        <input
+                            autoFocus
+                            type="text"
+                            placeholder={userData?.role === 'student' ? "Search Teachers..." : "Search Students..."}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            style={{ width: '100%', border: 'none', background: 'transparent', outline: 'none', fontSize: '16px' }}
+                        />
+                    </div>
+
+                    {/* Suggestions Dropdown */}
+                    {suggestions.length > 0 && (
+                        <div style={{
+                            position: 'absolute', top: '110%', left: 0, right: 0,
+                            background: 'white', border: '1px solid #ddd', borderRadius: '8px', zIndex: 2000,
+                            boxShadow: '0 4px 10px rgba(0,0,0,0.1)', maxHeight: '300px', overflowY: 'auto'
+                        }}>
+                            {suggestions.map((item, idx) => (
+                                <div
+                                    key={idx}
+                                    onClick={() => handleSuggestionClick(item)}
+                                    style={{ padding: '10px 15px', borderBottom: '1px solid #f5f5f5', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}
+                                    onMouseEnter={e => e.currentTarget.style.background = '#f9f9f9'}
+                                    onMouseLeave={e => e.currentTarget.style.background = 'white'}
+                                >
+                                    <div style={{
+                                        width: '30px', height: '30px', borderRadius: '50%',
+                                        background: item.type === 'Teacher' ? '#0984e3' : '#e17055', color: 'white',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold'
+                                    }}>
+                                        {item.name ? item.name.charAt(0).toUpperCase() : '?'}
+                                    </div>
+                                    <div>
+                                        <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#2d3436' }}>{item.name}</div>
+                                        <div style={{ fontSize: '11px', color: '#636e72' }}>{item.type} • {item.subject || (item.classAssigned ? `Class ${item.classAssigned}` : '')}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </header>
         );
