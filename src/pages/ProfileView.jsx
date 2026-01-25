@@ -8,12 +8,44 @@ export default function ProfileView() {
     const [profileData, setProfileData] = useState(null);
 
     useEffect(() => {
-        // Resolve profile data from route state or local storage fallback (for demo)
+        // Resolve profile data from route state or local storage fallback
         const stateTarget = location.state?.target;
+
+        const fetchRealProfile = async (target) => {
+            // If the target has a 'userId', 'teacherId', or 'studentId', use that as the Document ID in 'users' collection
+            // Otherwise use 'id'
+            const uid = target.teacherId || target.studentId || target.userId || target.id;
+            console.log("Fetching profile for UID:", uid);
+
+            if (uid) {
+                try {
+                    const docRef = await import('firebase/firestore').then(mod => mod.doc(db, "users", uid));
+                    const docSnap = await import('firebase/firestore').then(mod => mod.getDoc(docRef));
+
+                    if (docSnap.exists()) {
+                        const freshData = docSnap.data();
+                        // Merge fresh data with existing target data (target might have specific allotment info like Class)
+                        setProfileData({ ...target, ...freshData, id: uid });
+                    } else {
+                        // Fallback to what we have
+                        setProfileData(target);
+                    }
+                } catch (e) {
+                    console.error("Error fetching fresh profile:", e);
+                    setProfileData(target);
+                }
+            } else {
+                setProfileData(target);
+            }
+        };
+
         if (stateTarget) {
+            // Optimistic Set
             setProfileData(stateTarget);
+            // Async Fetch Fresh
+            fetchRealProfile(stateTarget);
         } else {
-            // Fallback for direct access demo
+            // Fallback for direct access
             const selected = localStorage.getItem("selectedPerson");
             setProfileData({
                 name: selected || "Unknown User",

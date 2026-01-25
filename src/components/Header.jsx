@@ -42,7 +42,7 @@ export default function Header({ onToggleSidebar }) {
         navigate('/profileview', { state: { target: item } });
     };
 
-    // Auto-Search with improved filtering
+    // Auto-Search with improved filtering and robust error handling
     React.useEffect(() => {
         if (!searchTerm || searchTerm.length < 2 || !userData) {
             setSuggestions([]);
@@ -55,34 +55,38 @@ export default function Header({ onToggleSidebar }) {
             const uniqueResults = new Map();
 
             try {
+                // Determine Institution ID (Student: institutionId, Teacher/Institution: createdBy/institutionId fallback)
+                // Note: userData.createdBy might be the Inst ID for teacher
+                const instId = userData.institutionId || userData.createdBy;
+
                 // 1. Fetch Local Matches (Teachers/Students based on role)
-                if (userData.role === 'student' && userData.institutionId) {
-                    const q = query(collection(db, "teacher_allotments"), where("createdBy", "==", userData.institutionId));
+                if (userData.role === 'student' && instId) {
+                    const q = query(collection(db, "teacher_allotments"), where("createdBy", "==", instId));
                     const snap = await getDocs(q);
                     snap.forEach(d => {
                         const data = d.data();
                         const name = data.name || data.teacherName;
                         if (name && name.toLowerCase().includes(lowerTerm)) {
-                            uniqueResults.set(d.id, { id: d.id, ...data, type: 'Teacher', collection: 'teacher_allotments' });
+                            // Important: Capture the real userId (teacherId) if available to fetch profile pic later
+                            const realId = data.teacherId || data.userId || d.id;
+                            uniqueResults.set(realId, { id: realId, ...data, type: 'Teacher', collection: 'teacher_allotments' });
                         }
                     });
-                } else if (userData.role === 'teacher' && userData.institutionId) {
-                    const q = query(collection(db, "student_allotments"), where("createdBy", "==", userData.institutionId));
+                } else if (userData.role === 'teacher' && instId) {
+                    const q = query(collection(db, "student_allotments"), where("createdBy", "==", instId));
                     const snap = await getDocs(q);
                     snap.forEach(d => {
                         const data = d.data();
                         const name = data.name || data.studentName;
                         if (name && name.toLowerCase().includes(lowerTerm)) {
-                            uniqueResults.set(d.id, { id: d.id, ...data, type: 'Student', collection: 'student_allotments' });
+                            const realId = data.studentId || data.userId || d.id;
+                            uniqueResults.set(realId, { id: realId, ...data, type: 'Student', collection: 'student_allotments' });
                         }
                     });
                 }
 
                 // 2. Fetch Global Institutions (Both Students and Teachers can search Institutions)
-                // Note: Searching 'users' collection by name requires a field specific search
-                // Ideally this should use Algolia, but filtering client side for now if strict 'includes' needed on Firestore
-                // We will fetch all institutions and filter.
-
+                // Fetch ALL institutions and filter locally since Firestore 'includes' is partial
                 const instQuery = query(collection(db, "users"), where("role", "==", "institution"));
                 const instSnap = await getDocs(instQuery);
                 instSnap.forEach(d => {
