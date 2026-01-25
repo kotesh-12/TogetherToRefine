@@ -550,7 +550,7 @@ export default function Group() {
                         members.map((m, i) => (
                             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '10px', borderBottom: '1px solid #f0f0f0' }}>
                                 <div
-                                    onClick={() => navigate('/profileview', { state: { target: m } })}
+                                    onClick={(e) => { e.stopPropagation(); navigate('/profile-view', { state: { target: m } }); }}
                                     style={{
                                         width: '40px', height: '40px', borderRadius: '50%',
                                         background: m.type === 'Teacher' ? '#ff7675' : '#a29bfe',
@@ -559,7 +559,7 @@ export default function Group() {
                                     }}>
                                     {m.name?.[0] || '?'}
                                 </div>
-                                <div onClick={() => navigate('/profileview', { state: { target: m } })} style={{ cursor: 'pointer', flex: 1 }}>
+                                <div onClick={(e) => { e.stopPropagation(); navigate('/profile-view', { state: { target: m } }); }} style={{ cursor: 'pointer', flex: 1 }}>
                                     <div style={{ fontWeight: 'bold' }}>{i + 1}. {m.name} {m.type === 'Teacher' && '⭐'}</div>
                                     <div style={{ fontSize: '12px', color: '#666' }}>
                                         {m.type === 'Teacher' ? `Teacher • ${m.subject || 'General'}` : `Student • ${m.rollNumber || 'N/A'}`}

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AnnouncementBar from '../components/AnnouncementBar';
 import { db } from '../firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
 export default function ProfileView() {
     const navigate = useNavigate();
@@ -58,6 +58,71 @@ export default function ProfileView() {
         }
     }, [location]);
 
+    const [feedbackStats, setFeedbackStats] = useState({ received: 0, given: 0, score: 0 });
+
+    useEffect(() => {
+        if (!profileData?.id) return;
+
+        const fetchStats = async () => {
+            try {
+                // 1. Fetch Received Feedback
+                const qReceived = query(collection(db, "general_feedback"), where("targetId", "==", profileData.id));
+                const snapReceived = await getDocs(qReceived);
+                const receivedCount = snapReceived.size;
+
+                // 2. Fetch Given Feedback
+                const qGiven = query(collection(db, "general_feedback"), where("authorId", "==", profileData.id));
+                const snapGiven = await getDocs(qGiven);
+                const givenCount = snapGiven.size;
+
+                // 3. Calculate Reputation Score
+                // Rule: Positive (+1%), Negative (-0.33%). 
+                // Let's assume a Base Score of 50%? Or 0? "show it by percentage with 100% how many they got".
+                // If we start at 0, user with 1 positive has 1%. User with 100 has 100%. 
+                // If we assume a "Reputation Health" which starts at 100% and drops? No, "increase 1 percentage".
+
+                // Interpretation: Start at 0 (or some base) and climb.
+                // Let's start at 0 for now as it seems to be an accumulation metric. Or maybe 50 is neutral.
+                // Let's try Base 0, but maybe visually it's filled.
+
+                let rawScore = 0;
+
+                snapReceived.forEach(doc => {
+                    const data = doc.data();
+                    // Calculate Average Rating for this feedback
+                    const cats = ['behavior', 'communication', 'bodyLanguage', 'hardworking'];
+                    let sum = 0;
+                    let count = 0;
+                    cats.forEach(c => {
+                        if (data[c]?.stars) { sum += data[c].stars; count++; }
+                    });
+                    const avg = count > 0 ? sum / count : 0;
+
+                    if (avg >= 4) {
+                        rawScore += 1;
+                    } else if (avg <= 2.5) { // Threshold for negative
+                        rawScore -= 0.33;
+                    }
+                });
+
+                // Cap logic: 0 to 100
+                if (rawScore < 0) rawScore = 0;
+                if (rawScore > 100) rawScore = 100;
+
+                setFeedbackStats({
+                    received: receivedCount,
+                    given: givenCount,
+                    score: Math.round(rawScore) // Round for display
+                });
+
+            } catch (e) {
+                console.error("Error fetching stats:", e);
+            }
+        };
+
+        fetchStats();
+    }, [profileData]);
+
     if (!profileData) return <div className="container" style={{ textAlign: 'center', marginTop: '50px' }}>Loading...</div>;
 
     const isInstitution = profileData.type === 'Institution' || profileData.role === 'institution';
@@ -101,19 +166,21 @@ export default function ProfileView() {
                             {isInstitution && <span style={{ fontSize: '12px', color: 'var(--primary)', marginTop: '2px' }}>Verified Institution</span>}
                         </div>
 
-                        {/* Follower Stats Row (Visual Only for now) */}
+                        {/* Updated Stats Row: Feedback Based */}
                         <div style={{ display: 'flex', gap: '20px', fontSize: '14px', textAlign: 'center' }}>
                             <div>
-                                <strong style={{ display: 'block', fontSize: '16px' }}>{Math.floor(Math.random() * 20) + 1}</strong>
-                                <span style={{ color: 'var(--text-muted)' }}>Posts</span>
+                                <strong style={{ display: 'block', fontSize: '16px' }}>{feedbackStats.received}</strong>
+                                <span style={{ color: 'var(--text-muted)' }}>Received</span>
                             </div>
                             <div>
-                                <strong style={{ display: 'block', fontSize: '16px' }}>{Math.floor(Math.random() * 500) + 100}</strong>
-                                <span style={{ color: 'var(--text-muted)' }}>{isInstitution ? 'Students' : 'Connections'}</span>
+                                <strong style={{ display: 'block', fontSize: '16px' }}>{feedbackStats.given}</strong>
+                                <span style={{ color: 'var(--text-muted)' }}>Given</span>
                             </div>
                             <div>
-                                <strong style={{ display: 'block', fontSize: '16px' }}>{Math.floor(Math.random() * 50) + 10}</strong>
-                                <span style={{ color: 'var(--text-muted)' }}>Following</span>
+                                <strong style={{ display: 'block', fontSize: '16px', color: feedbackStats.score > 50 ? '#00b894' : '#fdcb6e' }}>
+                                    {feedbackStats.score}%
+                                </strong>
+                                <span style={{ color: 'var(--text-muted)' }}>Reputation</span>
                             </div>
                         </div>
 

@@ -392,7 +392,7 @@ export default function SelectFeedbackTarget() {
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                                         <div
-                                            onClick={(e) => { e.stopPropagation(); navigate('/profileview', { state: { target: t } }); }}
+                                            onClick={(e) => { e.stopPropagation(); navigate('/profile-view', { state: { target: t } }); }}
                                             style={{
                                                 width: '50px', height: '50px',
                                                 borderRadius: '50%',

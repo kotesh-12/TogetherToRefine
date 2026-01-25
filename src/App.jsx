@@ -66,7 +66,7 @@ function App() {
                   <Route path="/onboarding" element={<Onboarding />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/profile" element={<Profile />} />
-                  <Route path="/profileview" element={<ProfileView />} />
+                  <Route path="/profile-view" element={<ProfileView />} />
                   <Route path="/group" element={<Group />} />
                   <Route path="/details" element={<Details />} /> {/* Sometimes needed for editing */}
                   <Route path="/general-feedback" element={<GeneralFeedback />} />
