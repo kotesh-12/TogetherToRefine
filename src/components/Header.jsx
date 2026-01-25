@@ -36,7 +36,13 @@ export default function Header({ onToggleSidebar }) {
 
     const [suggestions, setSuggestions] = useState([]);
 
-    // Auto-Search on Type (Debounced manually by user typing speed usually, but here direct)
+    const handleSuggestionClick = (item) => {
+        setIsSearchMode(false);
+        setSearchTerm('');
+        navigate('/profileview', { state: { target: item } });
+    };
+
+    // Auto-Search with improved filtering
     React.useEffect(() => {
         if (!searchTerm || searchTerm.length < 2 || !userData) {
             setSuggestions([]);
@@ -44,70 +50,51 @@ export default function Header({ onToggleSidebar }) {
         }
 
         const delayDebounceFn = setTimeout(async () => {
-            console.log("Fetching suggestions for:", searchTerm);
             const lowerTerm = searchTerm.toLowerCase();
             let results = [];
+            const uniqueResults = new Map();
 
             try {
+                // 1. Fetch Local Matches (Teachers/Students based on role)
                 if (userData.role === 'student' && userData.institutionId) {
-                    // Students search Teachers
-                    // NOTE: Firestore doesn't support native partial text search well. 
-                    // We fetch a reasonable subset or rely on client filtering if dataset is small.
-                    // For scalability, we'd use Algolia/Typesense. Here we fetch matches by "name" >= term.
-                    // BUT "createdBy" filter is paramount.
-
-                    // Simple approach: Fetch all teachers of this institution (usually < 100) and filter client-side
                     const q = query(collection(db, "teacher_allotments"), where("createdBy", "==", userData.institutionId));
                     const snap = await getDocs(q);
-                    const unique = new Map();
                     snap.forEach(d => {
                         const data = d.data();
                         const name = data.name || data.teacherName;
                         if (name && name.toLowerCase().includes(lowerTerm)) {
-                            if (!unique.has(name)) unique.set(name, { id: d.id, ...data, type: 'Teacher' });
+                            uniqueResults.set(d.id, { id: d.id, ...data, type: 'Teacher', collection: 'teacher_allotments' });
                         }
                     });
-                    results = Array.from(unique.values());
-                }
-                else if (userData.role === 'teacher' && userData.institutionId) {
-                    // Teachers search Students of their Institution
+                } else if (userData.role === 'teacher' && userData.institutionId) {
                     const q = query(collection(db, "student_allotments"), where("createdBy", "==", userData.institutionId));
-                    // Ideally we limit this, but filtering by strict "includes" requires reading.
-                    // Optimisation: If collection is huge, this lags. For now, assuming < 2000 docs ok.
                     const snap = await getDocs(q);
                     snap.forEach(d => {
                         const data = d.data();
                         const name = data.name || data.studentName;
                         if (name && name.toLowerCase().includes(lowerTerm)) {
-                            results.push({ id: d.id, ...data, type: 'Student' });
-                        }
-                    });
-                }
-                else if (userData.role === 'institution') {
-                    // Search Both
-                    const p1 = getDocs(query(collection(db, "teacher_allotments"), where("createdBy", "==", userData.uid)));
-                    const p2 = getDocs(query(collection(db, "student_allotments"), where("createdBy", "==", userData.uid)));
-                    const [snap1, snap2] = await Promise.all([p1, p2]);
-
-                    const uniqueT = new Set();
-                    snap1.forEach(d => {
-                        const name = d.data().name || d.data().teacherName;
-                        if (name && name.toLowerCase().includes(lowerTerm)) {
-                            if (!uniqueT.has(name)) {
-                                results.push({ id: d.id, ...d.data(), type: 'Teacher' });
-                                uniqueT.add(name);
-                            }
-                        }
-                    });
-                    snap2.forEach(d => {
-                        const name = d.data().name || d.data().studentName;
-                        if (name && name.toLowerCase().includes(lowerTerm)) {
-                            results.push({ id: d.id, ...d.data(), type: 'Student' });
+                            uniqueResults.set(d.id, { id: d.id, ...data, type: 'Student', collection: 'student_allotments' });
                         }
                     });
                 }
 
-                setSuggestions(results.slice(0, 10)); // Top 10 matches
+                // 2. Fetch Global Institutions (Both Students and Teachers can search Institutions)
+                // Note: Searching 'users' collection by name requires a field specific search
+                // Ideally this should use Algolia, but filtering client side for now if strict 'includes' needed on Firestore
+                // We will fetch all institutions and filter.
+
+                const instQuery = query(collection(db, "users"), where("role", "==", "institution"));
+                const instSnap = await getDocs(instQuery);
+                instSnap.forEach(d => {
+                    const data = d.data();
+                    const name = data.institutionName || data.name;
+                    if (name && name.toLowerCase().includes(lowerTerm)) {
+                        uniqueResults.set(d.id, { id: d.id, ...data, name: name, type: 'Institution', collection: 'users' });
+                    }
+                });
+
+                results = Array.from(uniqueResults.values());
+                setSuggestions(results.slice(0, 10));
             } catch (e) {
                 console.error("Search error:", e);
             }
@@ -115,18 +102,6 @@ export default function Header({ onToggleSidebar }) {
 
         return () => clearTimeout(delayDebounceFn);
     }, [searchTerm, userData]);
-
-    const handleSuggestionClick = (item) => {
-        setIsSearchMode(false);
-        setSearchTerm('');
-        // Navigate based on type
-        if (item.type === 'Teacher') {
-            // Check if we can navigate to a feedback or details page
-            navigate('/general-feedback', { state: { target: item } });
-        } else if (item.type === 'Student') {
-            navigate('/general-feedback', { state: { target: item } });
-        }
-    };
 
     // SEARCH MODE HEADER (YouTube Style)
     if (isSearchMode) {

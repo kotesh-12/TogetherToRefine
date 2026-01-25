@@ -1,80 +1,161 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import AnnouncementBar from '../components/AnnouncementBar';
 
 export default function ProfileView() {
     const navigate = useNavigate();
-    const [personName, setPersonName] = useState("");
-    const [role, setRole] = useState("Teacher"); // Defaulting to teacher as per student view
-    const [showBreakdown, setShowBreakdown] = useState(false);
+    const location = useLocation();
+    const [profileData, setProfileData] = useState(null);
 
     useEffect(() => {
-        const selected = localStorage.getItem("selectedPerson");
-        if (selected) {
-            setPersonName(selected);
+        // Resolve profile data from route state or local storage fallback (for demo)
+        const stateTarget = location.state?.target;
+        if (stateTarget) {
+            setProfileData(stateTarget);
         } else {
-            setPersonName("Unknown Person");
+            // Fallback for direct access demo
+            const selected = localStorage.getItem("selectedPerson");
+            setProfileData({
+                name: selected || "Unknown User",
+                role: "User",
+                type: "Student", // default
+                initials: (selected || "U").charAt(0)
+            });
         }
-    }, []);
+    }, [location]);
+
+    if (!profileData) return <div className="container" style={{ textAlign: 'center', marginTop: '50px' }}>Loading...</div>;
+
+    const isInstitution = profileData.type === 'Institution' || profileData.role === 'institution';
+    const isTeacher = profileData.type === 'Teacher' || profileData.role === 'teacher';
 
     return (
-        <div className="container" style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '20px' }}>
-                <button
-                    onClick={() => navigate(-1)}
-                    className="btn-back-marker"
-                >
-                    Back
-                </button>
-            </div>
+        <div className="page-wrapper" style={{ background: 'var(--bg-body)', minHeight: '100vh', color: 'var(--text-main)' }}>
+            <AnnouncementBar title={profileData.name || "Profile"} leftIcon="back" />
 
-            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <div style={{ flex: 1 }}>
-                        <h2>{personName}</h2>
-                        <h4 style={{ color: '#666' }}>{role}</h4>
+            <div className="container" style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
 
-                        <div style={{ marginTop: '20px' }}>
-                            <p><strong>Qualification:</strong> M.Sc. Physics (Demo)</p>
-                            <p><strong>Experience:</strong> 8 Years (Demo)</p>
+                {/* Profile Header (Instagram Style) */}
+                <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', marginBottom: '30px' }}>
+                    {/* Avatar */}
+                    <div style={{
+                        width: '80px', height: '80px', borderRadius: '50%',
+                        background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)', // Instagram-ish gradient border
+                        padding: '3px',
+                        flexShrink: 0
+                    }}>
+                        <div style={{
+                            width: '100%', height: '100%', borderRadius: '50%',
+                            background: 'var(--bg-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            overflow: 'hidden', border: '2px solid var(--bg-body)'
+                        }}>
+                            {profileData.profileImageURL ? (
+                                <img src={profileData.profileImageURL} alt={profileData.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                                <span style={{ fontSize: '32px', fontWeight: 'bold', color: 'var(--text-muted)' }}>
+                                    {profileData.name ? profileData.name.charAt(0).toUpperCase() : '?'}
+                                </span>
+                            )}
+                        </div>
+                    </div>
 
-                            <p style={{ marginTop: '10px' }}><strong>Overall Rating:</strong></p>
-                            <div style={{ background: '#eee', borderRadius: '10px', height: '20px', width: '100%', maxWidth: '300px' }}>
-                                <div style={{ width: '92%', background: '#27ae60', height: '100%', borderRadius: '10px', color: 'white', fontSize: '12px', textAlign: 'center' }}>92%</div>
+                    {/* Stats & Info */}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <h2 style={{ fontSize: '20px', margin: 0, fontWeight: '600' }}>{profileData.name}</h2>
+                            <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{profileData.type || profileData.role}</span>
+                            {isInstitution && <span style={{ fontSize: '12px', color: 'var(--primary)', marginTop: '2px' }}>Verified Institution</span>}
+                        </div>
+
+                        {/* Follower Stats Row (Visual Only for now) */}
+                        <div style={{ display: 'flex', gap: '20px', fontSize: '14px', textAlign: 'center' }}>
+                            <div>
+                                <strong style={{ display: 'block', fontSize: '16px' }}>{Math.floor(Math.random() * 20) + 1}</strong>
+                                <span style={{ color: 'var(--text-muted)' }}>Posts</span>
+                            </div>
+                            <div>
+                                <strong style={{ display: 'block', fontSize: '16px' }}>{Math.floor(Math.random() * 500) + 100}</strong>
+                                <span style={{ color: 'var(--text-muted)' }}>{isInstitution ? 'Students' : 'Connections'}</span>
+                            </div>
+                            <div>
+                                <strong style={{ display: 'block', fontSize: '16px' }}>{Math.floor(Math.random() * 50) + 10}</strong>
+                                <span style={{ color: 'var(--text-muted)' }}>Following</span>
                             </div>
                         </div>
 
-                        <p
-                            style={{ color: '#0984e3', textDecoration: 'underline', cursor: 'pointer', marginTop: '10px' }}
-                            onClick={() => setShowBreakdown(!showBreakdown)}
-                        >
-                            {showBreakdown ? "Hide Breakdown" : "View Details"}
-                        </p>
-
-                        {showBreakdown && (
-                            <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#f9f9f9', borderRadius: '8px' }}>
-                                <ul style={{ listStyle: 'none', padding: 0 }}>
-                                    <li>Behavior: 93%</li>
-                                    <li>Communication: 91%</li>
-                                    <li>Body Language: 90%</li>
-                                </ul>
-                            </div>
-                        )}
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '200px' }}>
-                        <img src="https://via.placeholder.com/240x300" alt="Profile" style={{ borderRadius: '8px', border: '1px solid #ddd', marginBottom: '15px' }} />
-                        <button className="btn" style={{ width: '100%' }} onClick={() => navigate('/general-feedback')}>Give Feedback</button>
-                        <div style={{ marginTop: '30px', borderTop: '1px solid #eee', paddingTop: '20px' }}>
-                            <p style={{ color: '#aaa', fontSize: '14px' }}>Reporting Zone</p>
-                            <button onClick={() => navigate('/report-misbehavior')} style={{ width: '100%', padding: '10px', marginTop: '10px', background: '#f39c12', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
-                                ⚠️ Report Misbehavior
-                            </button>
-                            <button onClick={() => navigate('/report-harassment')} style={{ width: '100%', padding: '10px', marginTop: '10px', background: '#c0392b', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
-                                🚨 Report Sexual Harassment
-                            </button>
+                        {/* Bio */}
+                        <div style={{ fontSize: '14px', marginTop: '5px' }}>
+                            {profileData.bio || (
+                                isInstitution ? "Welcome to our official platform profile." :
+                                    isTeacher ? `Teacher at ${profileData.institutionId || 'Local School'}` :
+                                        "Student • Learning & Growing"
+                            )}
                         </div>
                     </div>
                 </div>
+
+                {/* Actions Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
+                    <button
+                        onClick={() => navigate('/general-feedback', { state: { target: profileData } })}
+                        className="btn"
+                        style={{ width: '100%', background: 'var(--primary)', color: 'white', fontWeight: '600' }}
+                    >
+                        Give Feedback
+                    </button>
+                    {!isInstitution && (
+                        <button
+                            className="btn"
+                            style={{ width: '100%', background: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--divider)' }}
+                            onClick={() => alert("Message feature coming soon!")}
+                        >
+                            Message
+                        </button>
+                    )}
+                </div>
+
+                {/* Posts/Content Tab */}
+                <div style={{ borderTop: '1px solid var(--divider)', marginTop: '10px', paddingTop: '20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '40px', marginBottom: '20px', borderBottom: '1px solid transparent' }}>
+                        <div style={{ borderTop: '1px solid var(--text-main)', paddingTop: '10px', fontSize: '12px', fontWeight: 'bold', letterSpacing: '1px', cursor: 'pointer' }}>POSTS</div>
+                        <div style={{ paddingTop: '10px', fontSize: '12px', color: 'var(--text-muted)', letterSpacing: '1px', cursor: 'pointer' }}>ABOUT</div>
+                    </div>
+
+                    {/* Grid of Empty Posts (Placeholder) */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px' }}>
+                        {[1, 2, 3, 4, 5, 6].map(i => (
+                            <div key={i} style={{
+                                aspectRatio: '1/1',
+                                background: 'var(--divider)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '24px',
+                                color: 'var(--bg-surface)',
+                                cursor: 'pointer'
+                            }}>
+                                📷
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Reporting Zone Footer */}
+                <div style={{ marginTop: '40px', padding: '20px', background: 'var(--bg-surface)', borderRadius: '10px', border: '1px solid var(--divider)' }}>
+                    <h4 style={{ margin: '0 0 10px 0', color: 'var(--error)' }}>Report User</h4>
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '15px' }}>
+                        If this user is violating community guidelines, please report them immediately.
+                    </p>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                        <button onClick={() => navigate('/report-misbehavior')} style={{ flex: 1, padding: '8px', background: 'var(--secondary)', color: 'var(--error)', border: '1px solid var(--error)', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>
+                            Report Misbehavior
+                        </button>
+                        <button onClick={() => navigate('/report-harassment')} style={{ flex: 1, padding: '8px', background: 'var(--secondary)', color: 'var(--error)', border: '1px solid var(--error)', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}>
+                            Report Harassment
+                        </button>
+                    </div>
+                </div>
+
             </div>
         </div>
     );
