@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AnnouncementBar from '../components/AnnouncementBar';
+import { db } from '../firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default function ProfileView() {
     const navigate = useNavigate();
@@ -19,8 +21,8 @@ export default function ProfileView() {
 
             if (uid) {
                 try {
-                    const docRef = await import('firebase/firestore').then(mod => mod.doc(db, "users", uid));
-                    const docSnap = await import('firebase/firestore').then(mod => mod.getDoc(docRef));
+                    const docRef = doc(db, "users", uid);
+                    const docSnap = await getDoc(docRef);
 
                     if (docSnap.exists()) {
                         const freshData = docSnap.data();

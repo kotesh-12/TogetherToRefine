@@ -55,12 +55,23 @@ export default function Header({ onToggleSidebar }) {
             const uniqueResults = new Map();
 
             try {
-                // Determine Institution ID (Student: institutionId, Teacher/Institution: createdBy/institutionId fallback)
-                // Note: userData.createdBy might be the Inst ID for teacher
-                const instId = userData.institutionId || userData.createdBy;
+                // Determine Institution ID
+                // 1. If I am Institution -> My UID
+                // 2. If I am Student/Teacher -> My 'institutionId' or 'createdBy'
+                const instId = userData.role === 'institution'
+                    ? userData.uid
+                    : (userData.institutionId || userData.createdBy);
+
+                console.log("Search Context:", { role: userData.role, instId, term: lowerTerm });
+
+                if (!instId) {
+                    console.warn("Search aborted: No Institution ID found for user.");
+                    return;
+                }
 
                 // 1. Fetch Local Matches (Teachers/Students based on role)
-                if (userData.role === 'student' && instId) {
+                if (userData.role === 'student') {
+                    // Student searches for Teachers in their institution
                     const q = query(collection(db, "teacher_allotments"), where("createdBy", "==", instId));
                     const snap = await getDocs(q);
                     snap.forEach(d => {
@@ -72,7 +83,8 @@ export default function Header({ onToggleSidebar }) {
                             uniqueResults.set(realId, { id: realId, ...data, type: 'Teacher', collection: 'teacher_allotments' });
                         }
                     });
-                } else if (userData.role === 'teacher' && instId) {
+                } else if (userData.role === 'teacher') {
+                    // Teacher searches for Students in their institution
                     const q = query(collection(db, "student_allotments"), where("createdBy", "==", instId));
                     const snap = await getDocs(q);
                     snap.forEach(d => {
@@ -81,6 +93,29 @@ export default function Header({ onToggleSidebar }) {
                         if (name && name.toLowerCase().includes(lowerTerm)) {
                             const realId = data.studentId || data.userId || d.id;
                             uniqueResults.set(realId, { id: realId, ...data, type: 'Student', collection: 'student_allotments' });
+                        }
+                    });
+                } else if (userData.role === 'institution') {
+                    // Institution Search (Both Teachers & Students)
+                    // 1. Teachers
+                    const qT = query(collection(db, "teacher_allotments"), where("createdBy", "==", instId));
+                    const snapT = await getDocs(qT);
+                    snapT.forEach(d => {
+                        const data = d.data();
+                        if ((data.name || '').toLowerCase().includes(lowerTerm)) {
+                            const realId = data.teacherId || data.userId || d.id;
+                            uniqueResults.set(realId, { id: realId, ...data, type: 'Teacher' });
+                        }
+                    });
+
+                    // 2. Students
+                    const qS = query(collection(db, "student_allotments"), where("createdBy", "==", instId));
+                    const snapS = await getDocs(qS);
+                    snapS.forEach(d => {
+                        const data = d.data();
+                        if ((data.name || '').toLowerCase().includes(lowerTerm)) {
+                            const realId = data.studentId || data.userId || d.id;
+                            uniqueResults.set(realId, { id: realId, ...data, type: 'Student' });
                         }
                     });
                 }
