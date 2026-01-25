@@ -218,17 +218,29 @@ export default function Timetable() {
             const rawCls = selectedClass || '';
             const normalizedCls = rawCls.replace(/(\d+)(st|nd|rd|th)/i, '$1');
 
-            const q = query(
+            const q1 = query(
                 collection(db, "timetables"),
                 where("institutionId", "==", instId),
-                where("class", "in", [rawCls, normalizedCls]), // Check both formatting variants
+                where("class", "in", [rawCls, normalizedCls]),
                 where("section", "==", selectedSection)
             );
 
-            const snap = await getDocs(q);
+            // Legacy Query
+            const q2 = query(
+                collection(db, "timetables"),
+                where("createdBy", "==", instId), // Legacy check
+                where("class", "in", [rawCls, normalizedCls]),
+                where("section", "==", selectedSection)
+            );
 
-            if (!snap.empty) {
-                const data = snap.docs[0].data(); // Use first match
+            const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+
+            // Prioritize Q1, fall back to Q2
+            let data = null;
+            if (!snap1.empty) data = snap1.docs[0].data();
+            else if (!snap2.empty) data = snap2.docs[0].data();
+
+            if (data) {
                 setTimetable(data.schedule || {});
                 if (data.periods) setPeriodConfig(data.periods);
                 else setPeriodConfig(defaultPeriodConfig);

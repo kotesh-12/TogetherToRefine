@@ -5,8 +5,10 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
 import AIBadge from '../components/AIBadge';
 import AnnouncementBar from '../components/AnnouncementBar';
+import { useUser } from '../context/UserContext';
 
 export default function Allotment() {
+    const { userData } = useUser();
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -32,13 +34,20 @@ export default function Allotment() {
     useEffect(() => {
         if (role === 'teacher') {
             const fetchTeachers = async () => {
-                const q = query(collection(db, "users"), where("role", "==", "teacher"));
+                const instId = userData?.role === 'institution' ? userData.uid : userData?.institutionId;
+                // Fix: Only show teachers from THIS institution
+                let q;
+                if (instId) {
+                    q = query(collection(db, "users"), where("role", "==", "teacher"), where("institutionId", "==", instId));
+                } else {
+                    q = query(collection(db, "users"), where("role", "==", "teacher"));
+                }
                 const snap = await getDocs(q);
                 setExistingTeachers(snap.docs.map(d => ({ uid: d.id, ...d.data() })));
             };
             fetchTeachers();
         }
-    }, [role]);
+    }, [role, userData]);
 
     const handleSelectTeacher = (e) => {
         const uid = e.target.value;
@@ -100,6 +109,7 @@ export default function Allotment() {
                 section: sec,
                 [role === 'teacher' ? 'subject' : 'age']: extra,
                 createdBy: currentUser ? currentUser.uid : 'unknown',
+                institutionId: (userData?.role === 'institution' ? userData.uid : userData?.institutionId) || null, // Robust Link
                 userId: finalUserId
             };
             if (role === 'teacher' && finalUserId) docData.teacherId = finalUserId;

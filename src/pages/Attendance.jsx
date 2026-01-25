@@ -383,8 +383,18 @@ export default function Attendance() {
         setList([]);
         try {
             const colName = view === 'teachers' ? 'teacher_allotments' : 'student_allotments';
-            const creatorId = role === 'institution' ? userData.uid : userData.institutionId;
-            let q;
+
+            // Robust check using lowercased role
+            const userRole = (role || "").toLowerCase();
+            const creatorId = userRole === 'institution' ? userData.uid : userData.institutionId;
+
+            if (!creatorId) {
+                console.warn("No creator/institution ID found, aborting fetch.");
+                setLoading(false);
+                return;
+            }
+
+            const fetchPromises = [];
 
             if (view === 'students') {
                 const classNum = selectedClass;
@@ -397,24 +407,50 @@ export default function Attendance() {
                     const suffixes = ["th", "st", "nd", "rd"];
                     const v = n % 100;
                     const suffix = suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0];
-                    if (n !== 11 && n !== 12 && n !== 13) {
-                        // suffix logic
-                    }
                     variants.push(`${n}${suffix}`);
                 }
 
+                // Query A: CreatedBy (Legacy)
+                let qA;
                 if (sec) {
-                    q = query(collection(db, colName), where('classAssigned', 'in', variants), where('section', '==', sec), where('createdBy', '==', creatorId));
+                    qA = query(collection(db, colName), where('classAssigned', 'in', variants), where('section', '==', sec), where('createdBy', '==', creatorId));
                 } else {
-                    q = query(collection(db, colName), where('classAssigned', 'in', variants), where('createdBy', '==', creatorId));
+                    qA = query(collection(db, colName), where('classAssigned', 'in', variants), where('createdBy', '==', creatorId));
                 }
+                fetchPromises.push(getDocs(qA));
+
+                // Query B: InstitutionId (Robust/New)
+                let qB;
+                if (sec) {
+                    qB = query(collection(db, colName), where('classAssigned', 'in', variants), where('section', '==', sec), where('institutionId', '==', creatorId));
+                } else {
+                    qB = query(collection(db, colName), where('classAssigned', 'in', variants), where('institutionId', '==', creatorId));
+                }
+                fetchPromises.push(getDocs(qB));
+
             } else {
                 // Fetch All Allotments to find Teachers linked to this Institution
-                q = query(collection(db, colName), where('createdBy', '==', creatorId));
+
+                // Query A: CreatedBy
+                fetchPromises.push(getDocs(query(collection(db, colName), where('createdBy', '==', creatorId))));
+
+                // Query B: InstitutionId
+                fetchPromises.push(getDocs(query(collection(db, colName), where('institutionId', '==', creatorId))));
             }
 
-            const snapshot = await getDocs(q);
-            let rawList = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            const snapshots = await Promise.all(fetchPromises);
+
+            // Merge & Deduplicate
+            const uniqueMap = new Map();
+            snapshots.forEach(snap => {
+                snap.forEach(d => {
+                    if (!uniqueMap.has(d.id)) {
+                        uniqueMap.set(d.id, { id: d.id, ...d.data() });
+                    }
+                });
+            });
+
+            let rawList = Array.from(uniqueMap.values());
 
             // SELF-HEALING: If allotments are missing 'userId', try to find and link the real User UID.
             // This fixes the bug where students can't see attendance marked by teachers because it was keyed to a random ID.
