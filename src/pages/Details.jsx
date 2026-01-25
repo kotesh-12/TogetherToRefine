@@ -24,8 +24,8 @@ export default function Details() {
     const [initialData, setInitialData] = useState({}); // To detecting changes
 
     // DATA PROPAGATION HELPER (DML-like Cascading Update)
-    const propagateUserUpdates = async (uid, userRole, newName) => {
-        console.log(`🔄 Propagating updates for ${userRole}: ${newName}`);
+    const propagateUserUpdates = async (uid, userRole, newName, newSubject = null) => {
+        console.log(`🔄 Propagating updates for ${userRole}: ${newName} ${newSubject ? `(Subject: ${newSubject})` : ''}`);
         const promises = [];
 
         try {
@@ -34,13 +34,15 @@ export default function Details() {
                 const q = query(collection(db, "admissions"), where("userId", "==", uid));
                 const snap = await getDocs(q);
                 snap.forEach(d => {
-                    promises.push(updateDoc(d.ref, { name: newName }));
+                    const updates = { name: newName };
+                    if (userRole === 'teacher' && newSubject) updates.subject = newSubject;
+                    promises.push(updateDoc(d.ref, updates));
                 });
             }
 
             // 2. Update Student Allotments (Student only)
             if (userRole === 'student') {
-                const q = query(collection(db, "student_allotments"), where("uid", "==", uid));
+                const q = query(collection(db, "student_allotments"), where("userId", "==", uid));
                 const snap = await getDocs(q);
                 snap.forEach(d => {
                     promises.push(updateDoc(d.ref, { name: newName, studentName: newName }));
@@ -49,10 +51,13 @@ export default function Details() {
 
             // 3. Update Teacher Allotments & Groups (Teacher only)
             if (userRole === 'teacher') {
+                // Update Allotments
                 const q = query(collection(db, "teacher_allotments"), where("userId", "==", uid));
                 const snap = await getDocs(q);
                 snap.forEach(d => {
-                    promises.push(updateDoc(d.ref, { name: newName, teacherName: newName }));
+                    const updates = { name: newName, teacherName: newName };
+                    if (newSubject) updates.subject = newSubject;
+                    promises.push(updateDoc(d.ref, updates));
                 });
 
                 // Update 'groups' metadata where this teacher is the owner/teacher
@@ -60,7 +65,9 @@ export default function Details() {
                 const qGroup = query(collection(db, "groups"), where("teacherId", "==", uid));
                 const snapGroup = await getDocs(qGroup);
                 snapGroup.forEach(d => {
-                    promises.push(updateDoc(d.ref, { teacherName: newName }));
+                    const updates = { teacherName: newName };
+                    if (newSubject) updates.subject = newSubject;
+                    promises.push(updateDoc(d.ref, updates));
                 });
             }
 
@@ -228,8 +235,7 @@ export default function Details() {
                     isMajorUpdate = true;
                 }
             } else if (role === 'teacher') {
-                if (String(formData.institutionId) !== String(initialData.institutionId) ||
-                    String(formData.subject) !== String(initialData.subject)) {
+                if (String(formData.institutionId) !== String(initialData.institutionId)) {
                     isMajorUpdate = true;
                 }
             }
@@ -273,7 +279,7 @@ export default function Details() {
                 }, { merge: true });
 
                 // Propagate Name Changes
-                await propagateUserUpdates(userId, role, newDisplayName);
+                await propagateUserUpdates(userId, role, newDisplayName, formData.subject);
 
                 // Optimistic UI
                 setUserData(prev => ({ ...prev, ...formData, name: newDisplayName }));
@@ -391,11 +397,9 @@ export default function Details() {
                                 placeholder="e.g. Mathematics, Science"
                                 required
                                 onChange={handleChange}
-                                disabled={true} // Rule: Subject set by Institution only
-                                title="Subject can only be changed by the Institution"
-                                style={{ backgroundColor: '#e9ecef', color: '#6c757d', cursor: 'not-allowed' }}
+                            // Subject is now editable by Teacher
                             />
-                            <p style={{ fontSize: '11px', color: '#d63031', marginTop: '-5px' }}>* Subject is assigned by Institution</p>
+                            {/* <p style={{ fontSize: '11px', color: '#d63031', marginTop: '-5px' }}>* Subject is assigned by Institution</p> */}
 
                             <label>Gender</label>
                             <select name="gender" value={formData.gender || ''} className="input-field" onChange={handleChange}>

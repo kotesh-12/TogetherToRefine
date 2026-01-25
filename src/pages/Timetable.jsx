@@ -66,11 +66,14 @@ export default function Timetable() {
         }
     }, [selectedClass, selectedSection, userData, viewMode]);
 
+    // Helper ID
+    const instId = userData?.role === 'institution' ? userData.uid : userData.institutionId;
+
     const fetchAllTimetables = async () => {
         setLoading(true);
         try {
             // Filter by Institution ID
-            const q = query(collection(db, "timetables"), where("institutionId", "==", userData.institutionId));
+            const q = query(collection(db, "timetables"), where("institutionId", "==", instId));
             const snap = await getDocs(q);
             const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
@@ -101,14 +104,6 @@ export default function Timetable() {
             const r1 = snap.docs.map(d => d.data());
 
             allotments = [...allotments, ...r1];
-
-            // Query 2: teacherId (Fallback - but strictly by Institution too if fetching broadly)
-            // But here we query by 'where userId == me', so it's inherently safe for the Teacher.
-            // The danger is if I (Teacher A from School A) am allotted classes in School B. 
-            // BUT allotments have 'createdBy' (Institution ID). We should ideally filter by current institution context if multi-tenancy was full.
-            // For now, teacher sees THEIR allotments.
-
-            // Legacy Fallbacks omitted for brevity but safe as they are user-specific.
 
             // ... (Rest of fetchMyTimetable logic remains mostly same, but we need to ensure getDoc later checks institution)
             // Actually, getDoc(doc(db, "timetables", id)) is direct ID access.
@@ -151,7 +146,7 @@ export default function Timetable() {
             const promises = uniqueTargets.map(async (key) => {
                 const [cls, sec] = key.split('_');
                 // Query by InstID + Section strictly first
-                const qT = query(collection(db, "timetables"), where("institutionId", "==", userData.institutionId), where("section", "==", sec));
+                const qT = query(collection(db, "timetables"), where("institutionId", "==", instId), where("section", "==", sec));
                 const snapT = await getDocs(qT);
 
                 // Client-side filter for Class (handling 10 vs 10th)
@@ -223,12 +218,9 @@ export default function Timetable() {
             const rawCls = selectedClass || '';
             const normalizedCls = rawCls.replace(/(\d+)(st|nd|rd|th)/i, '$1');
 
-            // OLD INSECURE WAY: getDoc(doc(db, "timetables", "10_A")) 
-            // NEW SECURE WAY: Query by InstID + Class + Section
-
             const q = query(
                 collection(db, "timetables"),
-                where("institutionId", "==", userData.institutionId),
+                where("institutionId", "==", instId),
                 where("class", "in", [rawCls, normalizedCls]), // Check both formatting variants
                 where("section", "==", selectedSection)
             );

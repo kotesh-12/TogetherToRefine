@@ -13,7 +13,8 @@ export default function Attendance() {
 
     // View State
     const [view, setView] = useState('students');
-    const [cls, setCls] = useState('');
+    const [selectedClass, setSelectedClass] = useState('');
+    const [selectedSection, setSelectedSection] = useState('A');
     const [subject, setSubject] = useState(''); // New: Subject Context
     const [list, setList] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -36,7 +37,7 @@ export default function Attendance() {
                     let classes = [];
                     const clsHelper = (docSnap) => {
                         const data = docSnap.data();
-                        return `${data.classAssigned}-${data.section}`;
+                        return { class: data.classAssigned, section: data.section };
                     };
 
                     // 1. By userId (New)
@@ -55,11 +56,20 @@ export default function Attendance() {
                         const snap3 = await getDocs(q3);
                         snap3.forEach(d => classes.push(clsHelper(d)));
                     }
-                    const uniqueClasses = [...new Set(classes)];
+
+                    // Filter unique
+                    const uniqueMap = new Map();
+                    classes.forEach(c => {
+                        const key = `${c.class}-${c.section}`;
+                        if (!uniqueMap.has(key)) uniqueMap.set(key, c);
+                    });
+                    const uniqueClasses = Array.from(uniqueMap.values());
+
                     setTeacherClasses(uniqueClasses);
                     // Auto-select first if available
-                    if (uniqueClasses.length > 0 && !cls) {
-                        setCls(uniqueClasses[0]);
+                    if (uniqueClasses.length > 0 && !selectedClass) {
+                        setSelectedClass(uniqueClasses[0].class);
+                        setSelectedSection(uniqueClasses[0].section);
                     }
                 } catch (e) {
                     console.error("Error fetching teacher classes", e);
@@ -83,7 +93,7 @@ export default function Attendance() {
     useEffect(() => {
         if (role === 'student') return;
         fetchData();
-    }, [view, cls, subject, selectedDate, role]);
+    }, [view, selectedClass, selectedSection, subject, selectedDate, role]);
 
     const fetchMyStats = async () => {
         if (!userData?.uid) return;
@@ -364,7 +374,7 @@ export default function Attendance() {
     };
 
     const fetchData = async () => {
-        if (view === 'students' && !cls) {
+        if (view === 'students' && !selectedClass) {
             setList([]);
             return;
         }
@@ -377,7 +387,8 @@ export default function Attendance() {
             let q;
 
             if (view === 'students') {
-                const [classNum, sec] = cls.split('-');
+                const classNum = selectedClass;
+                const sec = selectedSection;
 
                 // Robust Query for mixed data (1 vs 1st)
                 const variants = [classNum];
@@ -409,7 +420,8 @@ export default function Attendance() {
             // This fixes the bug where students can't see attendance marked by teachers because it was keyed to a random ID.
             if (view === 'students' && rawList.some(r => !r.userId)) {
                 try {
-                    const [cNum, sNum] = cls.split('-');
+                    const cNum = selectedClass;
+                    const sNum = selectedSection;
                     // Find actual users in this class
                     const uQ = query(collection(db, "users"), where("assignedClass", "==", cNum), where("assignedSection", "==", sNum));
                     const uSnap = await getDocs(uQ);
@@ -751,14 +763,28 @@ export default function Attendance() {
 
                         {view === 'students' && (
                             <>
-                                <select className="input-field" value={cls} onChange={(e) => setCls(e.target.value)} style={{ width: '150px', margin: 0 }}>
-                                    <option value="">- Class -</option>
-                                    {/* Show All Classes for Everyone (Teacher & Institution) to allow full access */}
-                                    {['Nursery-A', 'LKG-A', 'UKG-A', '1-A', '2-A', '3-A', '4-A', '5-A', '6-A', '7-A', '8-A', '9-A', '10-A', '10-B'].map(c => (
+                                <select
+                                    className="input-field"
+                                    value={selectedClass}
+                                    onChange={(e) => setSelectedClass(e.target.value)}
+                                    style={{ width: 'auto', margin: 0, minWidth: '80px' }}
+                                >
+                                    <option value="">Class</option>
+                                    {['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'].map(c => (
                                         <option key={c} value={c}>{c}</option>
                                     ))}
                                 </select>
-
+                                <select
+                                    className="input-field"
+                                    value={selectedSection}
+                                    onChange={(e) => setSelectedSection(e.target.value)}
+                                    style={{ width: 'auto', margin: 0, minWidth: '70px' }}
+                                >
+                                    <option value="">Sec</option>
+                                    {['A', 'B', 'C', 'D'].map(s => (
+                                        <option key={s} value={s}>{s}</option>
+                                    ))}
+                                </select>
                             </>
                         )}
 
