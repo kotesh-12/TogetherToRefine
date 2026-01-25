@@ -220,28 +220,33 @@ export default function SelectFeedbackTarget() {
         navigate('/general-feedback', { state: { target: person } });
     };
 
-    // Extract Unique Options
-    const uniqueClasses = [...new Set(targets.filter(t => t.type === 'Student').map(t => t.classAssigned).filter(Boolean))].sort();
+    // Unified Filter Logic
+    const uniqueClasses = [...new Set(targets.filter(t => t.type === 'Student').map(t => t.classAssigned).filter(Boolean))].sort((a, b) => {
+        return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+    });
     const uniqueSections = [...new Set(targets.filter(t => t.type === 'Student').map(t => t.section).filter(Boolean))].sort();
 
-    // Filter Logic
     const filteredTargets = targets
         .filter(t => {
-            if (userData?.role === 'teacher') {
-                const matchesSearch = t.name.toLowerCase().includes(searchTerm.toLowerCase());
+            // Text Search
+            if (searchTerm && !t.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+
+            // Class Filter (Only applies to Students usually)
+            if (t.type === 'Student' && filterClass !== 'All') {
                 const rawCls = (t.classAssigned || '').toString();
-                const normCls = rawCls.replace(/(\d+)(st|nd|rd|th)/i, '$1');
-                const matchesClass = filterClass === 'All' || rawCls === filterClass || normCls === filterClass;
-                const matchesSection = filterSection === 'All' || t.section === filterSection;
-                return matchesSearch && matchesClass && matchesSection;
+                if (rawCls !== filterClass) return false;
             }
+
+            // Section Filter
+            if (t.type === 'Student' && filterSection !== 'All') {
+                if (t.section !== filterSection) return false;
+            }
+
             return true;
         })
         .sort((a, b) => {
-            // Pin Institution to Top
             if (a.type === 'Institution' && b.type !== 'Institution') return -1;
             if (b.type === 'Institution' && a.type !== 'Institution') return 1;
-            // Alphabetical Sort
             return a.name.localeCompare(b.name);
         });
 
@@ -255,44 +260,11 @@ export default function SelectFeedbackTarget() {
                     Who do you want to give feedback to?
                 </p>
 
-                {/* Teacher Controls: Search & Filter */}
-                {userData?.role === 'teacher' && (
-                    <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        <input
-                            className="input-field"
-                            placeholder="🔍 Search Student..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            style={{ margin: 0 }}
-                        />
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                            <select
-                                className="input-field"
-                                value={filterClass}
-                                onChange={(e) => setFilterClass(e.target.value)}
-                                style={{ flex: 1, margin: 0 }}
-                            >
-                                <option value="All">All Classes</option>
-                                {['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'].map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
-                            <select
-                                className="input-field"
-                                value={filterSection}
-                                onChange={(e) => setFilterSection(e.target.value)}
-                                style={{ flex: 1, margin: 0 }}
-                            >
-                                <option value="All">All Sections</option>
-                                {['A', 'B', 'C', 'D', 'E'].map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
-                        </div>
-                    </div>
-                )}
-
-                {/* Institution Controls */}
+                {/* Institution Role Toggle */}
                 {userData?.role === 'institution' && (
                     <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', background: '#ececec', padding: '5px', borderRadius: '10px' }}>
                         <button
-                            onClick={() => setInstitutionFilter('Teacher')}
+                            onClick={() => { setInstitutionFilter('Teacher'); setFilterClass('All'); setFilterSection('All'); }}
                             style={{
                                 flex: 1, padding: '10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
                                 background: institutionFilter === 'Teacher' ? 'white' : 'transparent',
@@ -303,7 +275,7 @@ export default function SelectFeedbackTarget() {
                             👨‍🏫 Teachers
                         </button>
                         <button
-                            onClick={() => setInstitutionFilter('Student')}
+                            onClick={() => { setInstitutionFilter('Student'); setFilterClass('All'); setFilterSection('All'); }}
                             style={{
                                 flex: 1, padding: '10px', borderRadius: '8px', border: 'none', cursor: 'pointer',
                                 background: institutionFilter === 'Student' ? 'white' : 'transparent',
@@ -316,12 +288,53 @@ export default function SelectFeedbackTarget() {
                     </div>
                 )}
 
+                {/* Universal Search & Filters (Visible for Teachers & Institution viewing Students) */}
+                <div style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <input
+                        className="input-field"
+                        placeholder="🔍 Search Name..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        style={{ margin: 0 }}
+                    />
+
+                    {/* Show Class/Section Filters if viewing Students (Teacher or Institution->Student) */}
+                    {(userData?.role === 'teacher' || (userData?.role === 'institution' && institutionFilter === 'Student')) && (
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <select
+                                className="input-field"
+                                value={filterClass}
+                                onChange={(e) => setFilterClass(e.target.value)}
+                                style={{ flex: 1, margin: 0 }}
+                            >
+                                <option value="All">All Classes</option>
+                                {uniqueClasses.length > 0
+                                    ? uniqueClasses.map(c => <option key={c} value={c}>{c}</option>)
+                                    : ['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'].map(c => <option key={c} value={c}>{c}</option>)
+                                }
+                            </select>
+                            <select
+                                className="input-field"
+                                value={filterSection}
+                                onChange={(e) => setFilterSection(e.target.value)}
+                                style={{ flex: 1, margin: 0 }}
+                            >
+                                <option value="All">All Sections</option>
+                                {uniqueSections.length > 0
+                                    ? uniqueSections.map(s => <option key={s} value={s}>{s}</option>)
+                                    : ['A', 'B', 'C', 'D', 'E'].map(s => <option key={s} value={s}>{s}</option>)
+                                }
+                            </select>
+                        </div>
+                    )}
+                </div>
+
                 {loading ? (
                     <div className="text-center">Loading List...</div>
                 ) : (
                     <div style={{ display: 'grid', gap: '15px' }}>
-                        {/* Institution Card for Teachers and Students */}
-                        {(userData?.role === 'teacher' || userData?.role === 'student') && institutionTarget && (
+                        {/* Institution Card (Only for Teachers/Students) */}
+                        {institutionTarget && (
                             <div
                                 onClick={() => handleSelect(institutionTarget)}
                                 className="card"
@@ -330,7 +343,7 @@ export default function SelectFeedbackTarget() {
                                     display: 'flex',
                                     justifyContent: 'space-between',
                                     alignItems: 'center',
-                                    background: '#d63031', // Red background as requested
+                                    background: '#d63031',
                                     color: 'white',
                                     border: 'none',
                                     boxShadow: '0 4px 15px rgba(214, 48, 49, 0.3)',
@@ -358,9 +371,7 @@ export default function SelectFeedbackTarget() {
 
                         {filteredTargets.length === 0 ? (
                             <div className="card text-center text-muted">
-                                {userData?.role === 'teacher'
-                                    ? "No students found matching criteria."
-                                    : "No teachers found for your class yet."}
+                                No matching results found.
                             </div>
                         ) : (
                             filteredTargets.map(t => (
