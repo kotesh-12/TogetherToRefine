@@ -96,11 +96,18 @@ export default function Group() {
                 const targetScope = scope || selectedClassScope;
                 if (!targetScope) return; // Should not happen if flow is correct
 
-                // Query by ClassName
-                // IMPORTANT: Groups data usually stores "className" and "section"
-                // Ideally we filter by BOTH in query, but firestore composite index might be needed.
-                // We'll query by class and filter by section in JS to avoid index issues for now.
-                q = query(collection(db, "groups"), where("className", "==", targetScope.className));
+                // Query by ClassName + Institution Check
+                // Note: We use "createdBy" as the field storing the Institution ID.
+                // We rely on 'createdBy' == userData.institutionId
+                if (userData.institutionId) {
+                    q = query(collection(db, "groups"),
+                        where("className", "==", targetScope.className),
+                        where("createdBy", "==", userData.institutionId)
+                    );
+                } else {
+                    // Fallback if institutionId missing (legacy), strict on class
+                    q = query(collection(db, "groups"), where("className", "==", targetScope.className));
+                }
             }
             // 3. Student
             else {
@@ -108,7 +115,14 @@ export default function Group() {
                 if (userClass && parseInt(userClass)) userClass = parseInt(userClass).toString(); // Normalize
 
                 if (userClass) {
-                    q = query(collection(db, "groups"), where("className", "==", userClass));
+                    if (userData.institutionId) {
+                        q = query(collection(db, "groups"),
+                            where("className", "==", userClass),
+                            where("createdBy", "==", userData.institutionId)
+                        );
+                    } else {
+                        q = query(collection(db, "groups"), where("className", "==", userClass));
+                    }
                 }
             }
 
