@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AnnouncementBar from '../components/AnnouncementBar';
 import AIBadge from '../components/AIBadge';
 import { useNavigate } from 'react-router-dom';
@@ -133,7 +133,7 @@ export default function Settings() {
                     <SettingItem
                         icon="ℹ️"
                         title="App Version"
-                        value="v0.0.8"
+                        value="v0.0.15"
                         action={() => { }}
                     />
                 </div>
