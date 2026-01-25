@@ -391,13 +391,15 @@ export default function SelectFeedbackTarget() {
                                     onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                        <div style={{
-                                            width: '50px', height: '50px',
-                                            borderRadius: '50%',
-                                            background: '#0984e3', color: 'white',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            fontSize: '20px', fontWeight: 'bold'
-                                        }}>
+                                        <div
+                                            onClick={(e) => { e.stopPropagation(); navigate('/profileview', { state: { target: t } }); }}
+                                            style={{
+                                                width: '50px', height: '50px',
+                                                borderRadius: '50%',
+                                                background: '#0984e3', color: 'white',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontSize: '20px', fontWeight: 'bold', cursor: 'pointer', zIndex: 10
+                                            }} title="View Profile">
                                             {t.name.charAt(0)}
                                         </div>
                                         <div>

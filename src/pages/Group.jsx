@@ -58,9 +58,16 @@ export default function Group() {
     const fetchTeacherClasses = async () => {
         if (!userData?.uid) return;
         try {
-            // Fetch allotments for this teacher
-            const q = query(collection(db, "teacher_allotments"), where("userId", "==", userData.uid));
-            const snap = await getDocs(q);
+            // Fetch allotments for this teacher (Try userId first, then teacherId)
+            let q = query(collection(db, "teacher_allotments"), where("userId", "==", userData.uid));
+            let snap = await getDocs(q);
+
+            if (snap.empty) {
+                // Fallback for legacy data
+                q = query(collection(db, "teacher_allotments"), where("teacherId", "==", userData.uid));
+                snap = await getDocs(q);
+            }
+
             const classes = [];
             const seen = new Set();
 
@@ -70,14 +77,18 @@ export default function Group() {
                     const key = `${data.classAssigned}-${data.section}`;
                     if (!seen.has(key)) {
                         seen.add(key);
-                        classes.push({ className: data.classAssigned, section: data.section });
+                        // Store createdBy as institutionId
+                        classes.push({
+                            className: data.classAssigned,
+                            section: data.section,
+                            institutionId: data.createdBy // Critical for scope
+                        });
                     }
                 }
             });
             // Sort
             classes.sort((a, b) => a.className.localeCompare(b.className));
             setTeacherClasses(classes);
-            // If only 1 class, maybe auto-select? Let's keep it manual for now for clarity
         } catch (e) {
             console.error(e);
         }
@@ -97,19 +108,22 @@ export default function Group() {
             // 2. Teacher with Scope
             else if (userData.role === 'teacher') {
                 const targetScope = scope || selectedClassScope;
-                if (!targetScope) return; // Should not happen if flow is correct
+                if (!targetScope) return;
 
-                // Query by ClassName + Institution Check
-                // Note: We use "createdBy" as the field storing the Institution ID.
-                // We rely on 'createdBy' == userData.institutionId
-                if (userData.institutionId && targetScope.className) {
+                // Use the Institution ID found in the allotment (Safest) or fallback to userData
+                const instId = targetScope.institutionId || userData.institutionId;
+
+                if (instId && targetScope.className) {
                     q = query(collection(db, "groups"),
                         where("className", "==", targetScope.className),
-                        where("createdBy", "==", userData.institutionId)
+                        where("createdBy", "==", instId)
                     );
-                } else if (targetScope.className) {
-                    // Fallback if institutionId missing (legacy), strict on class
-                    q = query(collection(db, "groups"), where("className", "==", targetScope.className));
+                } else {
+                    // Safety: Do NOT query widely if no Inst ID. 
+                    // This prevents cross-institution leaks.
+                    // If we really must, we could rely on string match in a desperate case, but better to show nothing than wrong info.
+                    console.warn("Missing Institution ID for Teacher Group Scope. Aborting query.");
+                    return;
                 }
             }
             // 3. Student
@@ -124,6 +138,7 @@ export default function Group() {
                             where("createdBy", "==", userData.institutionId)
                         );
                     } else {
+                        // Student fallback - risky but students usually have institutionId in profile
                         q = query(collection(db, "groups"), where("className", "==", userClass));
                     }
                 }
@@ -144,7 +159,7 @@ export default function Group() {
                     // Show if:
                     // 1. Institution (All)
                     // 2. Section Matches (Strict for Student/Teacher scope)
-                    // 3. Group has NO section (Global class group)
+                    // OR 3. Group has NO section (Global class group) - ALLOWED for teachers of that class
 
                     const matchesSection = !data.section || data.section === sectionFilter;
 
@@ -534,14 +549,17 @@ export default function Group() {
                     members.length === 0 ? <p>Loading or no members found...</p> : (
                         members.map((m, i) => (
                             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '10px', borderBottom: '1px solid #f0f0f0' }}>
-                                <div style={{
-                                    width: '40px', height: '40px', borderRadius: '50%',
-                                    background: m.type === 'Teacher' ? '#ff7675' : '#a29bfe',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold'
-                                }}>
+                                <div
+                                    onClick={() => navigate('/profileview', { state: { target: m } })}
+                                    style={{
+                                        width: '40px', height: '40px', borderRadius: '50%',
+                                        background: m.type === 'Teacher' ? '#ff7675' : '#a29bfe',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        color: 'white', fontWeight: 'bold', cursor: 'pointer'
+                                    }}>
                                     {m.name?.[0] || '?'}
                                 </div>
-                                <div>
+                                <div onClick={() => navigate('/profileview', { state: { target: m } })} style={{ cursor: 'pointer', flex: 1 }}>
                                     <div style={{ fontWeight: 'bold' }}>{i + 1}. {m.name} {m.type === 'Teacher' && '⭐'}</div>
                                     <div style={{ fontSize: '12px', color: '#666' }}>
                                         {m.type === 'Teacher' ? `Teacher • ${m.subject || 'General'}` : `Student • ${m.rollNumber || 'N/A'}`}
