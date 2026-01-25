@@ -393,9 +393,9 @@ export default function Attendance() {
                 }
 
                 if (sec) {
-                    q = query(collection(db, colName), where('classAssigned', 'in', variants), where('section', '==', sec));
+                    q = query(collection(db, colName), where('classAssigned', 'in', variants), where('section', '==', sec), where('createdBy', '==', userData.institutionId));
                 } else {
-                    q = query(collection(db, colName), where('classAssigned', 'in', variants));
+                    q = query(collection(db, colName), where('classAssigned', 'in', variants), where('createdBy', '==', userData.institutionId));
                 }
             } else {
                 // Fetch All Allotments to find Teachers linked to this Institution

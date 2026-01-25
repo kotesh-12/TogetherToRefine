@@ -239,7 +239,8 @@ export default function Details() {
         }
 
         // Allow Institution Admins to update freely? Yes, usually self-managed.
-        if (role === 'institution') isMajorUpdate = false; // Institutions don't have parents approval
+        // BUT for initial setup, we force check.
+        if (role === 'institution' && (!initialData || !initialData.approved)) isMajorUpdate = true;
 
         try {
             // Cleanup stale collections if role changed (rare)
@@ -321,10 +322,16 @@ export default function Details() {
 
                 setUserData(prev => ({ ...prev, approved: false })); // Lock UI
                 navigate('/pending-approval');
-            } else {
-                // Institution (shouldn't really hit major update block logic, but just in case)
-                navigate('/institution');
+            } else if (role === 'institution') {
+                // New Institution Registration Logic
+                await setDoc(doc(db, "institutions", userId), {
+                    approved: false
+                }, { merge: true });
+
+                setUserData(prev => ({ ...prev, approved: false }));
+                navigate('/pending-approval');
             }
+
 
         } catch (err) {
             console.error("Submission Error:", err);

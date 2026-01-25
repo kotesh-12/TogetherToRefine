@@ -42,13 +42,20 @@ export default function PendingApproval() {
                 userDoc = await getDoc(doc(db, "teachers", user.uid));
                 role = 'teacher';
             }
+            if (!userDoc.exists()) {
+                userDoc = await getDoc(doc(db, "institutions", user.uid));
+                role = 'institution';
+            }
 
             if (userDoc.exists()) {
                 const userData = userDoc.data();
                 if (userData.approved === true) {
                     console.log("User is already approved! Redirecting...");
                     setStatusMsg('Approved! Redirecting...');
-                    setTimeout(() => navigate(role === 'teacher' ? '/teacher' : '/student'), 1000);
+                    let path = '/student';
+                    if (role === 'teacher') path = '/teacher';
+                    if (role === 'institution') path = '/institution';
+                    setTimeout(() => navigate(path), 1000);
                     return;
                 }
             }

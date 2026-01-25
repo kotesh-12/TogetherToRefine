@@ -57,7 +57,11 @@ export default function SelectFeedbackTarget() {
                         const q = query(
                             collection(db, "teacher_allotments"),
                             where("classAssigned", "==", userClass),
-                            where("section", "==", userSection)
+                            where("section", "==", userSection),
+                            // Filter by Institution ID to prevent cross-institution bleed
+                            // Note: Teacher Allotments should have 'createdBy' (inst ID) or we rely on 'userId' matching an institution check.
+                            // Better: Teacher Allotments already have 'createdBy' which IS the institution ID.
+                            where("createdBy", "==", userData.institutionId)
                         );
                         const snap = await getDocs(q);
                         const teachers = snap.docs.map(d => ({
