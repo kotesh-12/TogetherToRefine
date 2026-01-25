@@ -20,6 +20,12 @@ export default function Settings() {
         }
     }, []);
 
+    // Apply Theme Effect
+    useEffect(() => {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('app_theme', theme);
+    }, [theme]);
+
     const handleForceUpdate = () => {
         if (window.confirm("This will clear the cache and reload the latest version. Continue?")) {
             if ('serviceWorker' in navigator) {
@@ -50,9 +56,6 @@ export default function Settings() {
     const toggleTheme = () => {
         const newTheme = theme === 'Light' ? 'Dark' : 'Light';
         setTheme(newTheme);
-        localStorage.setItem('app_theme', newTheme);
-        // Placeholder for actual theme logic
-        alert("Theme preference saved: " + newTheme);
     };
 
     const navigateToDashboard = () => {
@@ -60,34 +63,42 @@ export default function Settings() {
         navigate(role === 'admin' ? '/admin' : role === 'institution' ? '/institution' : role === 'teacher' ? '/teacher' : '/student');
     };
 
-    const SettingItem = ({ icon, title, subtitle, action, value }) => (
+    const SettingItem = ({ icon, title, subtitle, action, value, isSwitch, isChecked }) => (
         <div
-            onClick={action}
+            onClick={!isSwitch ? action : undefined}
             style={{
                 display: 'flex', alignItems: 'center', padding: '15px 20px',
-                borderBottom: '1px solid #f1f3f4', cursor: 'pointer',
-                background: 'white'
+                borderBottom: '1px solid var(--divider)', cursor: 'pointer',
+                background: 'var(--bg-surface)',
+                color: 'var(--text-main)'
             }}
         >
-            <div style={{ fontSize: '24px', marginRight: '20px', color: '#5f6368', width: '24px', textAlign: 'center' }}>{icon}</div>
+            <div style={{ fontSize: '24px', marginRight: '20px', color: 'var(--text-muted)', width: '24px', textAlign: 'center' }}>{icon}</div>
             <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '16px', color: '#202124' }}>{title}</div>
-                {subtitle && <div style={{ fontSize: '13px', color: '#5f6368', marginTop: '2px' }}>{subtitle}</div>}
+                <div style={{ fontSize: '16px', color: 'var(--text-main)' }}>{title}</div>
+                {subtitle && <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>{subtitle}</div>}
             </div>
-            {value && <div style={{ fontSize: '14px', color: '#1a73e8', fontWeight: '500' }}>{value}</div>}
+            {isSwitch ? (
+                <label className="switch" onClick={(e) => e.stopPropagation()}>
+                    <input type="checkbox" checked={isChecked} onChange={action} />
+                    <span className="slider"></span>
+                </label>
+            ) : (
+                value && <div style={{ fontSize: '14px', color: 'var(--primary)', fontWeight: '500' }}>{value}</div>
+            )}
         </div>
     );
 
     return (
-        <div className="page-wrapper" style={{ background: '#f8f9fa', minHeight: '100vh' }}>
+        <div className="page-wrapper" style={{ background: 'var(--bg-body)', minHeight: '100vh', color: 'var(--text-main)' }}>
             <AnnouncementBar title="Settings" />
             <AIBadge />
 
             <div className="container" style={{ maxWidth: '600px', margin: '0 auto', padding: '0' }}>
 
                 {/* Section: General */}
-                <div style={{ padding: '15px 20px 5px', fontSize: '14px', fontWeight: '500', color: '#1a73e8', textTransform: 'uppercase' }}>General</div>
-                <div style={{ background: 'white', borderTop: '1px solid #dadce0', borderBottom: '1px solid #dadce0' }}>
+                <div style={{ padding: '15px 20px 5px', fontSize: '14px', fontWeight: '500', color: 'var(--primary)', textTransform: 'uppercase' }}>General</div>
+                <div style={{ background: 'var(--bg-surface)', borderTop: '1px solid var(--divider)', borderBottom: '1px solid var(--divider)' }}>
                     <SettingItem
                         icon="🏠"
                         title="Dashboard"
@@ -103,27 +114,29 @@ export default function Settings() {
                 </div>
 
                 {/* Section: Appearance */}
-                <div style={{ padding: '25px 20px 5px', fontSize: '14px', fontWeight: '500', color: '#1a73e8', textTransform: 'uppercase' }}>Appearance</div>
-                <div style={{ background: 'white', borderTop: '1px solid #dadce0', borderBottom: '1px solid #dadce0' }}>
+                <div style={{ padding: '25px 20px 5px', fontSize: '14px', fontWeight: '500', color: 'var(--primary)', textTransform: 'uppercase' }}>Appearance</div>
+                <div style={{ background: 'var(--bg-surface)', borderTop: '1px solid var(--divider)', borderBottom: '1px solid var(--divider)' }}>
                     <SettingItem
-                        icon="🎨"
-                        title="Theme"
-                        subtitle="App color scheme"
-                        value={theme}
+                        icon="🌙"
+                        title="Dark Mode"
+                        subtitle="Switch between Light and Dark themes"
+                        isSwitch={true}
+                        isChecked={theme === 'Dark'}
                         action={toggleTheme}
                     />
                     <SettingItem
                         icon={isDesktop ? "📱" : "🖥️"}
                         title="Desktop Site"
                         subtitle="Request desktop view"
-                        value={isDesktop ? "On" : "Off"}
+                        isSwitch={true}
+                        isChecked={isDesktop}
                         action={toggleDesktopMode}
                     />
                 </div>
 
                 {/* Section: About & System */}
-                <div style={{ padding: '25px 20px 5px', fontSize: '14px', fontWeight: '500', color: '#1a73e8', textTransform: 'uppercase' }}>System</div>
-                <div style={{ background: 'white', borderTop: '1px solid #dadce0', borderBottom: '1px solid #dadce0' }}>
+                <div style={{ padding: '25px 20px 5px', fontSize: '14px', fontWeight: '500', color: 'var(--primary)', textTransform: 'uppercase' }}>System</div>
+                <div style={{ background: 'var(--bg-surface)', borderTop: '1px solid var(--divider)', borderBottom: '1px solid var(--divider)' }}>
                     <SettingItem
                         icon="↻"
                         title="Check for Updates"
@@ -133,12 +146,12 @@ export default function Settings() {
                     <SettingItem
                         icon="ℹ️"
                         title="App Version"
-                        value="v0.0.15"
+                        value="v0.0.18"
                         action={() => { }}
                     />
                 </div>
 
-                <div style={{ textAlign: 'center', margin: '30px', color: '#9aa0a6', fontSize: '12px' }}>
+                <div style={{ textAlign: 'center', margin: '30px', color: 'var(--text-muted)', fontSize: '12px' }}>
                     Together To Refine &copy; 2026<br />
                     Made with ❤️ for Education
                 </div>
