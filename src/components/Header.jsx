@@ -12,6 +12,26 @@ export default function Header({ onToggleSidebar }) {
     const [isSearchMode, setIsSearchMode] = useState(false); // YouTube-style search toggle
     const [desktopMode, setDesktopMode] = useState(false);
 
+    const handleLogout = () => {
+        if (window.confirm("Are you sure you want to logout?")) {
+            auth.signOut().then(() => navigate('/'));
+        }
+    };
+
+    const toggleDesktopMode = () => {
+        const metaViewport = document.querySelector('meta[name=viewport]');
+        if (!desktopMode) {
+            // Switch to Desktop
+            metaViewport.setAttribute('content', 'width=1024');
+            setDesktopMode(true);
+        } else {
+            // Switch back to Mobile/Responsive
+            metaViewport.setAttribute('content', 'width=device-width, initial-scale=1');
+            setDesktopMode(false);
+        }
+        setMenuOpen(false);
+    };
+
     const [suggestions, setSuggestions] = useState([]);
 
     // Auto-Search on Type (Debounced manually by user typing speed usually, but here direct)
