@@ -317,13 +317,7 @@ export default function TTRAI() {
                 <Header onToggleSidebar={() => setShowSidebar(!showSidebar)} />
 
                 {/* Mobile History Toggle */}
-                <button
-                    className="mobile-history-toggle"
-                    onClick={() => setShowSidebar(true)}
-                    style={{ position: 'absolute', top: '80px', left: '10px', zIndex: 90, background: '#333', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', boxShadow: '0 2px 5px rgba(0,0,0,0.2)' }}
-                >
-                    📜 History
-                </button>
+
 
                 <div className="chat-area" style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px', paddingBottom: '100px' }}>
                     {messages.map((msg, idx) => (
@@ -343,7 +337,7 @@ export default function TTRAI() {
                     <div ref={messagesEndRef} />
                 </div>
 
-                <div className="input-area" style={{ borderTop: '1px solid #eee', padding: '15px', paddingBottom: '25px', background: '#fff' }}>
+                <div className="input-area" style={{ borderTop: '1px solid #eee', padding: '15px', paddingBottom: '25px', marginBottom: '60px', background: '#fff' }}>
                     {selectedImage && (
                         <div className="image-preview-container">
                             <img src={selectedImage} alt="Preview" className="image-preview" />

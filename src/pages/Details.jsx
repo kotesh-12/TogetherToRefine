@@ -38,17 +38,33 @@ export default function Details() {
                 });
             }
 
-            // 2. Update Teacher Allotments (Teacher only)
+            // 2. Update Student Allotments (Student only)
+            if (userRole === 'student') {
+                const q = query(collection(db, "student_allotments"), where("uid", "==", uid));
+                const snap = await getDocs(q);
+                snap.forEach(d => {
+                    promises.push(updateDoc(d.ref, { name: newName, studentName: newName }));
+                });
+            }
+
+            // 3. Update Teacher Allotments & Groups (Teacher only)
             if (userRole === 'teacher') {
                 const q = query(collection(db, "teacher_allotments"), where("userId", "==", uid));
                 const snap = await getDocs(q);
                 snap.forEach(d => {
-                    // Update both name fields to be safe
                     promises.push(updateDoc(d.ref, { name: newName, teacherName: newName }));
+                });
+
+                // Update 'groups' metadata where this teacher is the owner/teacher
+                // Note: Groups usually link by teacherId
+                const qGroup = query(collection(db, "groups"), where("teacherId", "==", uid));
+                const snapGroup = await getDocs(qGroup);
+                snapGroup.forEach(d => {
+                    promises.push(updateDoc(d.ref, { teacherName: newName }));
                 });
             }
 
-            // 3. Institution Name Propagation
+            // 4. Institution Name Propagation
             if (userRole === 'institution') {
                 // Update Students/Teachers linked to this Institution
                 const q = query(collection(db, "users"), where("institutionId", "==", uid));
