@@ -131,38 +131,30 @@ export default function Timetable() {
                 return;
             }
 
-            // 2. Fetch Timetables
-            // ISSUE: IDs are "10_A". Since multiple schools use "10_A", this is a collision.
-            // Solution: We must fetch by query: collection("timetables").where("class", "==", "10").where("section","==","A").where("institutionId", "==", userData.institutionId)
-
+            // 2. Fetch Timetables from Targets
             const scheduleMap = {};
+            days.forEach(d => scheduleMap[d] = {});
 
             // Group allotments by class/section
             const targets = [];
-
             allotments.forEach(a => {
                 if (a.classAssigned && a.section) {
-                    // Normalize Class
                     const raw = String(a.classAssigned);
                     const cls = raw.replace(/(\d+)(st|nd|rd|th)/i, '$1');
                     const sec = String(a.section).trim();
-
                     targets.push({ cls, sec, raw, subject: a.subject });
                 }
             });
-
-            // unique targets
             const uniqueTargets = [...new Set(targets.map(t => `${t.cls}_${t.sec}`))];
 
-            // FETCH PROMISES using QUERY not DOC ID
+            // Query Logic
             const promises = uniqueTargets.map(async (key) => {
                 const [cls, sec] = key.split('_');
-                // Must match exact class stored (usually normalized or raw). Try both?
-                // Best: Query where institutionId == myInst AND section == sec
-                // Then client-side filter for class matches to handle "10" vs "10th"
+                // Query by InstID + Section strictly first
                 const qT = query(collection(db, "timetables"), where("institutionId", "==", userData.institutionId), where("section", "==", sec));
                 const snapT = await getDocs(qT);
-                // Find exact class match
+
+                // Client-side filter for Class (handling 10 vs 10th)
                 const doc = snapT.docs.find(d => {
                     const dCls = String(d.data().class).replace(/(\d+)(st|nd|rd|th)/i, '$1');
                     return dCls === cls;
@@ -172,10 +164,45 @@ export default function Timetable() {
 
             const results = await Promise.all(promises);
 
-            // ... (Process results similar to before)
-            // For brevity, I will defer full 'fetchMyTimetable' rewrite to a separate step if needed, 
-            // but let's fix 'fetchTimetable' (Single Class View) first which is the main leak.
-        } catch (e) { console.error(e); }
+            // 3. Merge Logic
+            results.forEach(docSnap => {
+                if (!docSnap || !docSnap.exists()) return;
+                const data = docSnap.data();
+                const tSchedule = data.schedule || {};
+                const tClass = data.class;
+                const tSection = data.section;
+
+                days.forEach(day => {
+                    if (!tSchedule[day]) return;
+                    Object.keys(tSchedule[day]).forEach(pId => {
+                        const cell = tSchedule[day][pId];
+                        const val = typeof cell === 'object' ? (cell.subject || '') : cell;
+
+                        // MATCH LOGIC: Check Subject OR Name
+                        const mySubject = (userData.subject || '').toLowerCase().trim();
+                        const myName = (userData.name || '').toLowerCase().trim();
+                        const cellText = String(val).toLowerCase();
+
+                        // Match Conditions
+                        const subjectMatch = mySubject && cellText.includes(mySubject);
+                        const nameMatch = myName && cellText.includes(myName);
+
+                        if (subjectMatch || nameMatch) {
+                            // Found a slot!
+                            scheduleMap[day][pId] = {
+                                subject: `${val} (${tClass}-${tSection})`,
+                                span: cell.span || 1
+                            };
+                        }
+                    });
+                });
+            });
+
+            setMySchedule(scheduleMap);
+        } catch (e) {
+            console.error(e);
+            setMySchedule({});
+        }
         setLoading(false);
     };
 

@@ -7,6 +7,32 @@ import ReactMarkdown from 'react-markdown';
 import { db } from '../firebase';
 import { collection, addDoc, query, orderBy, onSnapshot, limit, serverTimestamp, where, doc, updateDoc } from 'firebase/firestore';
 
+// Helper Component for Typewriter Effect
+const TypewriterMessage = ({ text }) => {
+    const [displayedText, setDisplayedText] = useState('');
+    const indexRef = useRef(0);
+
+    useEffect(() => {
+        indexRef.current = 0;
+        setDisplayedText('');
+        const interval = setInterval(() => {
+            setDisplayedText((prev) => {
+                if (indexRef.current < text.length) {
+                    const char = text.charAt(indexRef.current);
+                    indexRef.current++;
+                    return prev + char;
+                } else {
+                    clearInterval(interval);
+                    return prev;
+                }
+            });
+        }, 5);
+        return () => clearInterval(interval);
+    }, [text]);
+
+    return <ReactMarkdown>{displayedText}</ReactMarkdown>;
+};
+
 export default function FourWayLearning() {
     const navigate = useNavigate();
     const { user: authUser, userData } = useUser();
@@ -352,7 +378,11 @@ export default function FourWayLearning() {
                         {msg.image && <img src={msg.image} alt="User" style={{ maxWidth: '100%', borderRadius: '8px', marginBottom: '10px' }} />}
                         {/* TEXT CONTENT (Markdown Rendered) */}
                         <div className="markdown-content">
-                            <ReactMarkdown>{msg.text}</ReactMarkdown>
+                            {msg.role === 'ai' && idx === chats[activeTab].length - 1 && !msg.isError ? (
+                                <TypewriterMessage text={msg.text} />
+                            ) : (
+                                <ReactMarkdown>{msg.text}</ReactMarkdown>
+                            )}
                         </div>
 
                         {/* SPEAKER BUTTON */}

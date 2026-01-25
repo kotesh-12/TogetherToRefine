@@ -8,6 +8,35 @@ import { useUser } from '../context/UserContext';
 import ReactMarkdown from 'react-markdown';
 import BottomNav from '../components/BottomNav';
 
+// Helper Component for Typewriter Effect
+const TypewriterMessage = ({ text, onComplete }) => {
+    const [displayedText, setDisplayedText] = useState('');
+    const indexRef = useRef(0);
+
+    useEffect(() => {
+        indexRef.current = 0;
+        setDisplayedText('');
+
+        const interval = setInterval(() => {
+            setDisplayedText((prev) => {
+                if (indexRef.current < text.length) {
+                    const char = text.charAt(indexRef.current);
+                    indexRef.current++;
+                    return prev + char;
+                } else {
+                    clearInterval(interval);
+                    if (onComplete) onComplete();
+                    return prev;
+                }
+            });
+        }, 5); // Fast Speed: 5ms per char
+
+        return () => clearInterval(interval);
+    }, [text]);
+
+    return <ReactMarkdown>{displayedText}</ReactMarkdown>;
+};
+
 export default function TTRAI() {
     const navigate = useNavigate();
     const { user: authUser, userData } = useUser();
@@ -211,6 +240,7 @@ export default function TTRAI() {
             let responseText = "";
 
             try {
+                // Limit history to 6 to speed up processing
                 let historyForApi = messages.slice(-10).map(m => ({
                     role: m.sender === 'user' ? 'user' : 'model',
                     parts: [{ text: m.text || "" }]
@@ -324,7 +354,11 @@ export default function TTRAI() {
                         <div key={idx} className={`message-bubble ${msg.sender === 'user' ? 'message-user' : 'message-ai'}`}>
                             {msg.image && <img src={msg.image} alt="User Upload" className="message-image" />}
                             <div className="markdown-content">
-                                <ReactMarkdown>{msg.text}</ReactMarkdown>
+                                {msg.sender === 'ai' && idx === messages.length - 1 && !msg.isError ? (
+                                    <TypewriterMessage text={msg.text} />
+                                ) : (
+                                    <ReactMarkdown>{msg.text}</ReactMarkdown>
+                                )}
                             </div>
                             {msg.sender === 'ai' && (
                                 <button onClick={() => speak(msg.text)} className="speak-button">
