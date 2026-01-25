@@ -10,7 +10,7 @@ export default function Sidebar({ isOpen }) {
     // Base Routes
     const routes = [
         { path: '/', label: 'Dashboard', icon: '🏠', roles: ['all'] }, // Redirects to accurate dashboard
-        { path: '/my-class', label: 'My Class', icon: '🏫', roles: ['student', 'teacher'] },
+        { path: '/group', label: 'My Class', icon: '🏫', roles: ['student', 'teacher'] },
         { path: '/attendance', label: 'Attendance', icon: '📅', roles: ['student', 'teacher'] },
         { path: '/timetable', label: 'Timetable', icon: '🕒', roles: ['student', 'teacher'] },
         { path: '/exam', label: 'Exams', icon: '📝', roles: ['student', 'teacher'] },
