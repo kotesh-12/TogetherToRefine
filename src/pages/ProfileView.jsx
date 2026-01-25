@@ -59,6 +59,11 @@ export default function ProfileView() {
     }, [location]);
 
     const [feedbackStats, setFeedbackStats] = useState({ received: 0, given: 0, score: 0 });
+    const [userPhotos, setUserPhotos] = useState([
+        "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&q=80",
+        "https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?w=400&q=80",
+        "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=400&q=80"
+    ]);
 
     useEffect(() => {
         if (!profileData?.id) return;
@@ -223,19 +228,17 @@ export default function ProfileView() {
                     </div>
 
                     {/* Grid of Empty Posts (Placeholder) */}
+                    {/* Grid of Photos */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px' }}>
-                        {[1, 2, 3, 4, 5, 6].map(i => (
+                        {userPhotos.map((photoUrl, i) => (
                             <div key={i} style={{
                                 aspectRatio: '1/1',
                                 background: 'var(--divider)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '24px',
-                                color: 'var(--bg-surface)',
-                                cursor: 'pointer'
+                                position: 'relative',
+                                cursor: 'pointer',
+                                overflow: 'hidden'
                             }}>
-                                📷
+                                <img src={photoUrl} alt="Post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             </div>
                         ))}
                     </div>
