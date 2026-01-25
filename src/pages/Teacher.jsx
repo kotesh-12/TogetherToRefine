@@ -154,6 +154,7 @@ export default function Teacher() {
                     <div className="teacher-actions-container">
                         <button className="btn" onClick={handleGoToGroups}>Go to Groups</button>
                         <button className="btn btn-attendance" onClick={() => handleCardClick('/attendance')}>Mark Attendance</button>
+                        <button className="btn" style={{ background: '#e84393', color: 'white' }} onClick={() => handleCardClick('/4-way-learning')}>4-Way Learning</button>
                         <button className="btn btn-library" onClick={() => handleCardClick('/video-library')}>Video Library</button>
                         <button className="btn btn-feedback" onClick={() => handleCardClick('/general-feedback')}>Feedback</button>
                         <button className="btn btn-timetable" onClick={() => handleCardClick('/timetable')}>Timetable</button>
