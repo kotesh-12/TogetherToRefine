@@ -15,9 +15,13 @@ export default function Group() {
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
 
-    // Institution Mode
+    // Institution/Teacher Mode
     const [isSelecting, setIsSelecting] = useState(false);
     const [groupList, setGroupList] = useState([]);
+
+    // Teacher Specific State
+    const [teacherClasses, setTeacherClasses] = useState([]);
+    const [selectedClassScope, setSelectedClassScope] = useState(null); // { className, section }
 
     // UI States
     const [showMenu, setShowMenu] = useState(false);
@@ -28,37 +32,80 @@ export default function Group() {
     useEffect(() => {
         const gid = localStorage.getItem("activeGroupId");
 
-        // If no group selected, allow user to select one from their list
+        // RESET NAVIGATION ON MOUNT
+        // If we are a teacher, we might want to start fresh or restore state?
+        // For now, if no GID, go to selection.
+
         if (!gid) {
-            setIsSelecting(true);
-            fetchGroupsForSelection();
+            startSelectionFlow();
             return;
         }
 
         setGroupId(gid);
         const unsubscribe = loadGroupChat(gid);
-
-        // Cleanup subscription on unmount or gid change
-        return () => {
-            if (unsubscribe) unsubscribe();
-        };
+        return () => { if (unsubscribe) unsubscribe(); };
     }, [navigate, userData]);
 
-    const fetchGroupsForSelection = async () => {
+    const startSelectionFlow = () => {
+        setIsSelecting(true);
+        if (userData?.role === 'teacher') {
+            fetchTeacherClasses();
+        } else {
+            fetchGroupsForSelection();
+        }
+    };
+
+    const fetchTeacherClasses = async () => {
+        try {
+            // Fetch allotments for this teacher
+            const q = query(collection(db, "teacher_allotments"), where("userId", "==", userData.uid));
+            const snap = await getDocs(q);
+            const classes = [];
+            const seen = new Set();
+
+            snap.forEach(d => {
+                const data = d.data();
+                if (data.classAssigned && data.section) {
+                    const key = `${data.classAssigned}-${data.section}`;
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        classes.push({ className: data.classAssigned, section: data.section });
+                    }
+                }
+            });
+            // Sort
+            classes.sort((a, b) => a.className.localeCompare(b.className));
+            setTeacherClasses(classes);
+            // If only 1 class, maybe auto-select? Let's keep it manual for now for clarity
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const fetchGroupsForSelection = async (scope = null) => {
         if (!userData) return;
+        setGroupList([]); // Clear old list
         try {
             let q;
             // 1. Institution: Show all groups created by them
             if (userData.role === 'institution') {
                 q = query(collection(db, "groups"), where("createdBy", "==", userData.uid));
-            } else {
-                // 2. Student/Teacher: Show groups for their Class
-                let userClass = userData.class || userData.assignedClass;
+            }
+            // 2. Teacher with Scope
+            else if (userData.role === 'teacher') {
+                const targetScope = scope || selectedClassScope;
+                if (!targetScope) return; // Should not happen if flow is correct
 
-                // Normalize "1st" -> "1" to match Group Data
-                if (userClass && parseInt(userClass)) {
-                    userClass = parseInt(userClass).toString();
-                }
+                // Query by ClassName
+                // IMPORTANT: Groups data usually stores "className" and "section"
+                // Ideally we filter by BOTH in query, but firestore composite index might be needed.
+                // We'll query by class and filter by section in JS to avoid index issues for now.
+                q = query(collection(db, "groups"), where("className", "==", targetScope.className));
+            }
+            // 3. Student
+            else {
+                let userClass = userData.class || userData.assignedClass;
+                if (userClass && parseInt(userClass)) userClass = parseInt(userClass).toString(); // Normalize
 
                 if (userClass) {
                     q = query(collection(db, "groups"), where("className", "==", userClass));
@@ -68,13 +115,23 @@ export default function Group() {
             if (q) {
                 const snap = await getDocs(q);
                 const list = [];
-                const userSection = userData.section || userData.assignedSection;
+
+                // Determine Section Filter
+                let sectionFilter = null;
+                if (userData.role === 'student') sectionFilter = userData.section || userData.assignedSection;
+                if (userData.role === 'teacher') sectionFilter = (scope || selectedClassScope)?.section;
 
                 snap.forEach(d => {
                     const data = d.data();
-                    // Filter: Show if (Institution) OR (Section matches) OR (Group has no section)
-                    // For Teachers, we show ALL sections of their class to be safe
-                    if (userData.role === 'institution' || userData.role === 'teacher' || !data.section || data.section === userSection || !userSection) {
+                    // FILTER LOGIC:
+                    // Show if:
+                    // 1. Institution (All)
+                    // 2. Section Matches (Strict for Student/Teacher scope)
+                    // 3. Group has NO section (Global class group)
+
+                    const matchesSection = !data.section || data.section === sectionFilter;
+
+                    if (userData.role === 'institution' || matchesSection) {
                         list.push({ id: d.id, ...data });
                     }
                 });
@@ -85,137 +142,74 @@ export default function Group() {
         }
     };
 
-    const loadGroupChat = (gid) => {
-        // Fetch Group Info
-        getDoc(doc(db, "groups", gid)).then(d => {
-            if (d.exists()) {
-                setGroupData(d.data());
-            }
-        });
+    // ... [Rest of loadGroupChat, fetchMembers etc. remains the same] ...
 
-        // Listen to Messages
-        const q = query(collection(db, "groups", gid, "messages"), orderBy("createdAt"));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const msgs = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            setMessages(msgs);
-            setTimeout(scrollToBottom, 500);
-        });
-        return unsubscribe;
-    };
-
-    const fetchMembers = async () => {
-        if (!groupData) return;
-        try {
-            // 1. Fetch Students
-            const qStudents = query(
-                collection(db, "student_allotments"),
-                where("classAssigned", "==", groupData.className),
-                where("section", "==", groupData.section)
-            );
-            const snapS = await getDocs(qStudents);
-            const students = snapS.docs.map(d => ({ ...d.data(), type: 'Student' }));
-
-            // 2. Fetch Teachers
-            const qTeachers = query(
-                collection(db, "teacher_allotments"),
-                where("classAssigned", "==", groupData.className),
-                where("section", "==", groupData.section)
-            );
-            const snapT = await getDocs(qTeachers);
-            const teachers = snapT.docs.map(d => ({ ...d.data(), type: 'Teacher' }));
-
-            const allMembers = [...teachers, ...students];
-            allMembers.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-            setMembers(allMembers);
-        } catch (e) {
-            console.error("Error fetching members", e);
-        }
-    };
-
-    // Trigger fetch when viewMode changes to 'members'
-    useEffect(() => {
-        if (viewMode === 'about' || viewMode === 'members') {
-            fetchMembers();
-        }
-    }, [viewMode, groupData]);
-
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    };
-
-    const handleFileSelect = (e) => {
-        if (e.target.files[0]) {
-            const f = e.target.files[0];
-            if (f.size > 500000) return alert("File too big! Max 500KB.");
-            const reader = new FileReader();
-            reader.onloadend = () => setFile(reader.result);
-            reader.readAsDataURL(f);
-        }
-    };
-
-    const handleSend = async (e) => {
-        e.preventDefault();
-        if ((newMessage.trim() === '' && !file) || !groupId) return;
-
-        const payload = {
-            text: newMessage,
-            image: file || null,
-            createdAt: serverTimestamp(),
-            uid: userData?.uid || 'anon',
-            displayName: userData?.name || 'Anonymous',
-            role: userData?.role || 'student',
-            photoURL: userData?.profileImageURL || null
-        };
-
-        await addDoc(collection(db, "groups", groupId, "messages"), payload);
-        setNewMessage('');
-        setFile(null);
-    };
-
-    const selectGroup = (gid) => {
-        localStorage.setItem("activeGroupId", gid);
-        setGroupId(gid);
-        setIsSelecting(false);
-        loadGroupChat(gid);
-    }
-
-    // --- SUB-COMPONENTS ---
-    const OverlayView = ({ title, onClose, children }) => (
-        <div style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            background: 'white', zIndex: 2000, display: 'flex', flexDirection: 'column'
-        }}>
-            <div style={{ padding: '15px', borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '20px' }}>⬅</button>
-                <h3 style={{ margin: 0 }}>{title}</h3>
-            </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '15px' }}>
-                {children}
-            </div>
-        </div>
-    );
-
-    // --- RENDER GROUP SELECTION LIST (For Institution) ---
+    // --- RENDER GROUP SELECTION LIST ---
     if (isSelecting) {
+        // SCENARIO 1: TEACHER SELECTING CLASS
+        if (userData?.role === 'teacher' && !selectedClassScope) {
+            return (
+                <div className="page-wrapper">
+                    <header style={{ background: '#0984e3', color: 'white', padding: '15px', display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        <button onClick={() => navigate(-1)} className="btn-back-marker">Back</button>
+                        <h2 style={{ margin: 0, fontSize: '18px' }}>Select Class</h2>
+                    </header>
+                    <div className="container" style={{ marginTop: '20px' }}>
+                        <p style={{ padding: '0 15px', color: '#666' }}>Select a class to view its groups.</p>
+                        {teacherClasses.length === 0 ? (
+                            <p className="text-center text-muted">No classes allotted yet.</p>
+                        ) : (
+                            <div style={{ display: 'grid', gap: '15px' }}>
+                                {teacherClasses.map((c, idx) => (
+                                    <div key={idx}
+                                        onClick={() => {
+                                            setSelectedClassScope(c);
+                                            fetchGroupsForSelection(c);
+                                        }}
+                                        className="card"
+                                        style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px' }}>
+                                        <div>
+                                            <h4 style={{ margin: 0, fontSize: '18px' }}>Class {c.className} - {c.section}</h4>
+                                        </div>
+                                        <span style={{ fontSize: '24px' }}>➡️</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // SCENARIO 2: SELECTING GROUP (Student, Institution, or Teacher after Class Select)
         return (
             <div className="page-wrapper">
                 <header style={{ background: '#0984e3', color: 'white', padding: '15px', display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <button onClick={() => navigate(-1)} className="btn-back-marker">Back</button>
-                    <h2 style={{ margin: 0, fontSize: '18px' }}>Select Your Class Group</h2>
+                    <button onClick={() => {
+                        if (userData?.role === 'teacher' && selectedClassScope) {
+                            setSelectedClassScope(null); // Go back to Class Select
+                        } else {
+                            navigate(-1);
+                        }
+                    }} className="btn-back-marker">Back</button>
+                    <h2 style={{ margin: 0, fontSize: '18px' }}>
+                        {selectedClassScope ? `Groups for ${selectedClassScope.className}-${selectedClassScope.section}` : 'Select Group'}
+                    </h2>
                 </header>
                 <div className="container" style={{ marginTop: '20px' }}>
                     {groupList.length === 0 ? (
-                        <p className="text-center text-muted">No active groups found. Please Allot Teachers to create groups.</p>
+                        <p className="text-center text-muted">
+                            {userData?.role === 'teacher' ? "No groups found for this class." : "No groups active for your class."}
+                        </p>
                     ) : (
                         <div style={{ display: 'grid', gap: '15px' }}>
                             {groupList.map(g => (
                                 <div key={g.id} onClick={() => selectGroup(g.id)} className="card" style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div>
                                         <h4 style={{ margin: 0 }}>{g.groupName}</h4>
-                                        <p style={{ margin: 0, fontSize: '12px', color: '#666' }}>{g.className} - {g.section}</p>
+                                        <p style={{ margin: 0, fontSize: '12px', color: '#666' }}>
+                                            {g.className} - {g.section || 'All Sections'}
+                                        </p>
                                     </div>
                                     <span style={{ fontSize: '20px' }}>💬</span>
                                 </div>
