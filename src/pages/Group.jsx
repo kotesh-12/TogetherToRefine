@@ -161,36 +161,108 @@ export default function Group() {
 
     const loadGroupChat = (gid) => {
         if (!gid) return;
+
         // Fetch group data
         const groupRef = doc(db, "groups", gid);
-        getDoc(groupRef).then(docSnap => {
+        const unsubscribeMsg = null; // Placeholder if we need to unsubscribe from doc? No, just messages.
+
+        getDoc(groupRef).then(async (docSnap) => {
             if (docSnap.exists()) {
-                setGroupData({ id: docSnap.id, ...docSnap.data() });
+                const gData = { id: docSnap.id, ...docSnap.data() };
+                setGroupData(gData);
+
+                // FETCH MEMBERS DYNAMICALLY (Based on Class/Section)
+                if (gData.className && gData.createdBy) {
+                    const memberList = [];
+                    const instId = gData.createdBy;
+
+                    try {
+                        // 1. Fetch Students
+                        const qS = query(
+                            collection(db, "student_allotments"),
+                            where("createdBy", "==", instId),
+                            where("classAssigned", "==", gData.className),
+                            where("section", "==", gData.section || 'A') // Default to A if generic? Or handle 'All'?
+                        );
+                        // If section is missing or 'All', typically we might want all, but usually groups are specific.
+                        // Ideally check logic: if !gData.section, maybe fetch all sections? 
+                        // For now sticking to strict match if gData.section exists.
+
+                        // Refined Logic:
+                        let finalQS = qS;
+                        if (!gData.section) {
+                            // If group has no section, maybe it's a whole class group?
+                            finalQS = query(collection(db, "student_allotments"),
+                                where("createdBy", "==", instId),
+                                where("classAssigned", "==", gData.className)
+                            );
+                        }
+
+                        const snapS = await getDocs(finalQS);
+                        snapS.forEach(d => {
+                            const md = d.data();
+                            memberList.push({
+                                id: md.studentId || md.userId || d.id,
+                                name: md.name || md.studentName,
+                                type: 'Student',
+                                role: 'student',
+                                rollNumber: md.rollNumber || 'N/A'
+                            });
+                        });
+
+                        // 2. Fetch Teachers (Assigned to this class/section)
+                        let qT;
+                        if (gData.section) {
+                            qT = query(collection(db, "teacher_allotments"),
+                                where("createdBy", "==", instId),
+                                where("classAssigned", "==", gData.className),
+                                where("section", "==", gData.section)
+                            );
+                        } else {
+                            qT = query(collection(db, "teacher_allotments"),
+                                where("createdBy", "==", instId),
+                                where("classAssigned", "==", gData.className)
+                            );
+                        }
+                        const snapT = await getDocs(qT);
+                        snapT.forEach(d => {
+                            const md = d.data();
+                            // Fix duplication if teacher assigned multiple times? Map handles unique IDs usually, but list needs filter.
+                            memberList.push({
+                                id: md.teacherId || md.userId || d.id,
+                                name: md.name || md.teacherName,
+                                type: 'Teacher',
+                                role: 'teacher',
+                                subject: md.subject || 'Class Teacher'
+                            });
+                        });
+
+                        // Deduplicate (just in case)
+                        const uniqueMembers = [];
+                        const seenIds = new Set();
+                        memberList.forEach(m => {
+                            if (!seenIds.has(m.id)) {
+                                seenIds.add(m.id);
+                                uniqueMembers.push(m);
+                            }
+                        });
+
+                        setMembers(uniqueMembers);
+                    } catch (err) {
+                        console.error("Error fetching group members:", err);
+                        setMembers([]);
+                    }
+                } else {
+                    setMembers([]); // Cannot resolve members without class info
+                }
+
             } else {
                 console.log("No such group!");
                 setGroupData(null);
                 localStorage.removeItem("activeGroupId");
-                setIsSelecting(true); // Go back to selection
+                setIsSelecting(true);
             }
         }).catch(e => console.error("Error fetching group data:", e));
-
-        // Fetch members (simplified for now, could be more complex)
-        // This is a placeholder, actual member fetching would depend on your data structure
-        // For now, let's assume groupData contains member UIDs or we fetch from a 'members' subcollection
-        // For this example, we'll just show the current user as a member.
-        // A more robust solution would involve fetching from a 'users' collection based on UIDs stored in the group.
-        const fetchMembers = async () => {
-            if (!groupData?.members) return; // Assuming groupData has a 'members' array of UIDs
-            const memberDetails = [];
-            for (const memberUid of groupData.members) {
-                const userDoc = await getDoc(doc(db, "users", memberUid));
-                if (userDoc.exists()) {
-                    memberDetails.push({ uid: userDoc.id, ...userDoc.data() });
-                }
-            }
-            setMembers(memberDetails);
-        };
-        // fetchMembers(); // Uncomment if groupData.members is implemented
 
         // Listen for messages
         const messagesQuery = query(
