@@ -373,6 +373,7 @@ export default function Attendance() {
         setList([]);
         try {
             const colName = view === 'teachers' ? 'teacher_allotments' : 'student_allotments';
+            const creatorId = role === 'institution' ? userData.uid : userData.institutionId;
             let q;
 
             if (view === 'students') {
@@ -386,20 +387,19 @@ export default function Attendance() {
                     const v = n % 100;
                     const suffix = suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0];
                     if (n !== 11 && n !== 12 && n !== 13) {
-                        // Logic handles general cases, but explicit check for 11/12/13 is safer with simple array
-                        // Actually the calc `suffixes[v]` for v=11 is undefined (len 4), so it falls to `suffixes[0]` i.e "th". Correct.
+                        // suffix logic
                     }
                     variants.push(`${n}${suffix}`);
                 }
 
                 if (sec) {
-                    q = query(collection(db, colName), where('classAssigned', 'in', variants), where('section', '==', sec), where('createdBy', '==', userData.institutionId));
+                    q = query(collection(db, colName), where('classAssigned', 'in', variants), where('section', '==', sec), where('createdBy', '==', creatorId));
                 } else {
-                    q = query(collection(db, colName), where('classAssigned', 'in', variants), where('createdBy', '==', userData.institutionId));
+                    q = query(collection(db, colName), where('classAssigned', 'in', variants), where('createdBy', '==', creatorId));
                 }
             } else {
                 // Fetch All Allotments to find Teachers linked to this Institution
-                q = query(collection(db, colName), where('createdBy', '==', userData.uid));
+                q = query(collection(db, colName), where('createdBy', '==', creatorId));
             }
 
             const snapshot = await getDocs(q);
@@ -830,81 +830,143 @@ export default function Attendance() {
                             </div>
                         )}
 
-                        {list.map((item, index) => {
-                            const suspended = isSuspended(item);
-                            return (
-                                <div key={item.id} style={{
-                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                    padding: '12px', borderBottom: '1px solid #eee',
-                                    background: suspended ? '#f3a683' : (item.status === 'present' ? '#e6ffec' : (item.status === 'absent' ? '#ffe6e6' : 'white')),
-                                    opacity: suspended && role === 'teacher' ? 0.6 : 1
-                                }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                        {/* Number Count */}
-                                        <div style={{ fontWeight: 'bold', color: '#636e72', fontSize: '14px', width: '25px' }}>
-                                            {index + 1}.
-                                        </div>
-                                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#dfe6e9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
-                                            {item.name.charAt(0)}
-                                        </div>
-                                        <div>
-                                            <div style={{ fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                {item.name}
-                                                {suspended && <span style={{ fontSize: '10px', background: '#d63031', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>SUSPENDED</span>}
+                        {view === 'teachers' ? (
+                            <div style={{ overflowX: 'auto', background: 'white', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
+                                    <thead>
+                                        <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #dfe6e9', color: '#636e72', fontSize: '13px', textTransform: 'uppercase' }}>
+                                            <th style={{ padding: '15px', textAlign: 'center', width: '60px' }}>S.No</th>
+                                            <th style={{ padding: '15px', textAlign: 'left' }}>Teacher Name</th>
+                                            <th style={{ padding: '15px', textAlign: 'left' }}>Subject</th>
+                                            <th style={{ padding: '15px', textAlign: 'center' }}>Attendance</th>
+                                            <th style={{ padding: '15px', textAlign: 'center' }}>Total Days (Month)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {list.map((item, index) => {
+                                            const suspended = isSuspended(item);
+                                            const d = new Date(selectedDate);
+                                            const totalDays = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+
+                                            return (
+                                                <tr key={item.id} style={{ borderBottom: '1px solid #f1f2f6', background: item.status === 'present' ? '#e6ffec' : (item.status === 'absent' ? '#fff0f0' : 'white') }}>
+                                                    <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#b2bec3' }}>{index + 1}</td>
+                                                    <td style={{ padding: '12px', fontWeight: 'bold', color: '#2d3436' }}>{item.name}</td>
+                                                    <td style={{ padding: '12px', color: '#636e72' }}>{item.subject || '-'}</td>
+                                                    <td style={{ padding: '12px', textAlign: 'center' }}>
+                                                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                                                            <button
+                                                                disabled={suspended}
+                                                                onClick={() => markAttendance(item.id, 'present')}
+                                                                title="Mark Present"
+                                                                style={{
+                                                                    width: '35px', height: '35px', borderRadius: '6px', border: 'none', fontWeight: 'bold',
+                                                                    cursor: suspended ? 'not-allowed' : 'pointer',
+                                                                    background: item.status === 'present' ? '#00b894' : '#ecf0f1',
+                                                                    color: item.status === 'present' ? 'white' : '#b2bec3',
+                                                                    transition: 'all 0.2s'
+                                                                }}>
+                                                                P
+                                                            </button>
+                                                            <button
+                                                                disabled={suspended}
+                                                                onClick={() => markAttendance(item.id, 'absent')}
+                                                                title="Mark Absent"
+                                                                style={{
+                                                                    width: '35px', height: '35px', borderRadius: '6px', border: 'none', fontWeight: 'bold',
+                                                                    cursor: suspended ? 'not-allowed' : 'pointer',
+                                                                    background: item.status === 'absent' ? '#d63031' : '#ecf0f1',
+                                                                    color: item.status === 'absent' ? 'white' : '#b2bec3',
+                                                                    transition: 'all 0.2s'
+                                                                }}>
+                                                                A
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                    <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#6c5ce7' }}>{totalDays}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            list.map((item, index) => {
+                                const suspended = isSuspended(item);
+                                return (
+                                    <div key={item.id} style={{
+                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                        padding: '12px', borderBottom: '1px solid #eee',
+                                        background: suspended ? '#f3a683' : (item.status === 'present' ? '#e6ffec' : (item.status === 'absent' ? '#ffe6e6' : 'white')),
+                                        opacity: suspended && role === 'teacher' ? 0.6 : 1
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                            {/* Number Count */}
+                                            <div style={{ fontWeight: 'bold', color: '#636e72', fontSize: '14px', width: '25px' }}>
+                                                {index + 1}.
                                             </div>
-                                            <div style={{ fontSize: '13px', color: '#636e72' }}>{item.classAssigned} {item.subject ? `• ${item.subject}` : ''}</div>
+                                            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#dfe6e9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                                                {item.name.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <div style={{ fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    {item.name}
+                                                    {suspended && <span style={{ fontSize: '10px', background: '#d63031', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>SUSPENDED</span>}
+                                                </div>
+                                                <div style={{ fontSize: '13px', color: '#636e72' }}>{item.classAssigned} {item.subject ? `• ${item.subject}` : ''}</div>
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+
+                                            {/* Actual Stats Display (Visible to Everyone) */}
+                                            <div style={{ textAlign: 'center', marginRight: '15px', minWidth: '50px' }}>
+                                                <div style={{ fontWeight: 'bold', fontSize: '14px', color: item.percentage < 75 ? '#d63031' : '#00b894' }}>
+                                                    {item.percentage}%
+                                                </div>
+                                                <div style={{ fontSize: '10px', color: '#636e72', fontWeight: '500' }}>
+                                                    {item.statsData?.present || 0} / {item.statsData?.total || 0} classes
+                                                </div>
+                                            </div>
+
+                                            {/* Institution Suspends Students */}
+                                            {role === 'institution' && view === 'students' ? (
+                                                <button
+                                                    onClick={() => handleSuspend(item.id, item.suspendedUntil)}
+                                                    style={{ border: 'none', background: '#d63031', color: 'white', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+                                                >
+                                                    {suspended ? 'Lift Suspension' : 'Suspend ⛔'}
+                                                </button>
+                                            ) : (
+                                                /* Normal Attendance Buttons (Teachers or Institution->Teachers) */
+                                                <>
+                                                    <button
+                                                        disabled={suspended}
+                                                        onClick={() => markAttendance(item.id, 'present')}
+                                                        style={{
+                                                            padding: '6px 14px', borderRadius: '6px', border: 'none',
+                                                            cursor: suspended ? 'not-allowed' : 'pointer',
+                                                            background: item.status === 'present' ? '#00b894' : '#ecf0f1', color: item.status === 'present' ? 'white' : '#2d3436'
+                                                        }}>
+                                                        P
+                                                    </button>
+                                                    <button
+                                                        disabled={suspended}
+                                                        onClick={() => markAttendance(item.id, 'absent')}
+                                                        style={{
+                                                            padding: '6px 14px', borderRadius: '6px', border: 'none',
+                                                            cursor: suspended ? 'not-allowed' : 'pointer',
+                                                            background: item.status === 'absent' ? '#d63031' : '#ecf0f1', color: item.status === 'absent' ? 'white' : '#2d3436'
+                                                        }}>
+                                                        A
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
-
-                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-
-                                        {/* Actual Stats Display (Visible to Everyone) */}
-                                        <div style={{ textAlign: 'center', marginRight: '15px', minWidth: '50px' }}>
-                                            <div style={{ fontWeight: 'bold', fontSize: '14px', color: item.percentage < 75 ? '#d63031' : '#00b894' }}>
-                                                {item.percentage}%
-                                            </div>
-                                            <div style={{ fontSize: '10px', color: '#636e72', fontWeight: '500' }}>
-                                                {item.statsData?.present || 0} / {item.statsData?.total || 0} classes
-                                            </div>
-                                        </div>
-
-                                        {/* Institution Suspends Students */}
-                                        {role === 'institution' && view === 'students' ? (
-                                            <button
-                                                onClick={() => handleSuspend(item.id, item.suspendedUntil)}
-                                                style={{ border: 'none', background: '#d63031', color: 'white', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
-                                            >
-                                                {suspended ? 'Lift Suspension' : 'Suspend ⛔'}
-                                            </button>
-                                        ) : (
-                                            /* Normal Attendance Buttons (Teachers or Institution->Teachers) */
-                                            <>
-                                                <button
-                                                    disabled={suspended}
-                                                    onClick={() => markAttendance(item.id, 'present')}
-                                                    style={{
-                                                        padding: '6px 14px', borderRadius: '6px', border: 'none',
-                                                        cursor: suspended ? 'not-allowed' : 'pointer',
-                                                        background: item.status === 'present' ? '#00b894' : '#ecf0f1', color: item.status === 'present' ? 'white' : '#2d3436'
-                                                    }}>
-                                                    P
-                                                </button>
-                                                <button
-                                                    disabled={suspended}
-                                                    onClick={() => markAttendance(item.id, 'absent')}
-                                                    style={{
-                                                        padding: '6px 14px', borderRadius: '6px', border: 'none',
-                                                        cursor: suspended ? 'not-allowed' : 'pointer',
-                                                        background: item.status === 'absent' ? '#d63031' : '#ecf0f1', color: item.status === 'absent' ? 'white' : '#2d3436'
-                                                    }}>
-                                                    A
-                                                </button>
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })}
+                                );
+                            })
+                        )}
                     </div>
 
                     {list.length > 0 && (
