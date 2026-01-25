@@ -9,6 +9,11 @@ export default defineConfig({
     VitePWA({
       registerType: 'prompt',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      workbox: {
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true // This combined with prompt allows seamless takeover when accepted
+      },
       manifest: {
         name: 'TogetherToRefine',
         short_name: 'TTR',

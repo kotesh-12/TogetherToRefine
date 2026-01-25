@@ -15,6 +15,17 @@ export default function UpdateManager() {
         },
     });
 
+    // Periodic check for updates every 1 hour
+    React.useEffect(() => {
+        const interval = setInterval(() => {
+            if (updateServiceWorker) {
+                console.log("Checking for SW updates...");
+                updateServiceWorker();
+            }
+        }, 60 * 60 * 1000);
+        return () => clearInterval(interval);
+    }, [updateServiceWorker]);
+
     const close = () => setNeedRefresh(false);
 
     if (!needRefresh) return null;
