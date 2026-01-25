@@ -164,10 +164,20 @@ export default function Timetable() {
 
             const results = await Promise.all(promises);
 
+            let configSet = false;
+
             // 3. Merge Logic
             results.forEach(docSnap => {
                 if (!docSnap || !docSnap.exists()) return;
                 const data = docSnap.data();
+
+                // Set the Period Interval Config from the first valid timetable found
+                // This ensures the columns match the data keys (p1 vs period_1 etc)
+                if (!configSet && data.periods) {
+                    setPeriodConfig(data.periods);
+                    configSet = true;
+                }
+
                 const tSchedule = data.schedule || {};
                 const tClass = data.class;
                 const tSection = data.section;
