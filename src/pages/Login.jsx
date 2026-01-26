@@ -415,6 +415,8 @@ export default function Login() {
                 <div className="toggle-link" onClick={toggleMode}>
                     {isLogin ? "Don't have an account? Sign up" : "Already have an account? Login"}
                 </div>
+                {/* DEBUG VERSION */}
+                <div style={{ marginTop: '20px', fontSize: '10px', color: '#b2bec3' }}>v0.0.30</div>
             </div >
         </div >
     );
