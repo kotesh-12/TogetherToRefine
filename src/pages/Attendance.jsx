@@ -100,7 +100,7 @@ export default function Attendance() {
         fetchData();
     }, [selectedClass, selectedSection, selectedDate, view, role, userData, instId]);
 
-    const fetchData = async () => {
+    const fetchMyStats = async () => {
         if (!userData?.uid) return;
         try {
             let mergedDocs = [];

@@ -347,6 +347,91 @@ export default function Timetable() {
         // return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    // --- State Handler Functions (Fixing Reference Errors) ---
+
+    // 1. Fetch Teacher Allotments (for Suggestions)
+    const fetchAllotments = async () => {
+        if (!instId) return;
+        try {
+            // New Schema
+            const q1 = query(collection(db, "teacher_allotments"), where("institutionId", "==", instId));
+            const snap1 = await getDocs(q1);
+
+            // Legacy
+            const q2 = query(collection(db, "teacher_allotments"), where("createdBy", "==", instId));
+            const snap2 = await getDocs(q2);
+
+            // Merge
+            const unique = new Set();
+            const process = (docs) => {
+                docs.forEach(d => {
+                    const data = d.data();
+                    const label = `${data.subject || 'General'} (${data.name || data.teacherName})`;
+                    unique.add(label);
+                    // Also just Name?
+                    if (data.name) unique.add(data.name);
+                });
+            };
+            process(snap1.docs);
+            process(snap2.docs);
+
+            setAllottedTeachers(Array.from(unique));
+        } catch (e) { console.error(e); }
+    };
+
+    // 2. Period Config Handlers
+    const updatePeriod = (index, field, value) => {
+        const newConfig = [...periodConfig];
+        newConfig[index] = { ...newConfig[index], [field]: value };
+        setPeriodConfig(newConfig);
+    };
+
+    const movePeriod = (index, direction) => {
+        if (index + direction < 0 || index + direction >= periodConfig.length) return;
+        const newConfig = [...periodConfig];
+        const temp = newConfig[index];
+        newConfig[index] = newConfig[index + direction];
+        newConfig[index + direction] = temp;
+        setPeriodConfig(newConfig);
+    };
+
+    const removePeriod = (index) => {
+        if (!window.confirm("Delete this period column? Data will be lost.")) return;
+        const newConfig = periodConfig.filter((_, i) => i !== index);
+        setPeriodConfig(newConfig);
+    };
+
+    const addPeriod = () => {
+        const newId = `p_custom_${Date.now()}`;
+        setPeriodConfig([...periodConfig, { id: newId, name: 'New Period', type: 'class' }]);
+    };
+
+    // 3. Timetable Cell Handler
+    const handleCellChange = (day, pId, field, value) => {
+        setTimetable(prev => {
+            const daySchedule = prev[day] || {};
+            const cell = daySchedule[pId] || {};
+
+            // If field is 'subject' (the text value) or 'span'
+            // We store objects now: { subject: "Maths", span: 1 }
+            // Legacy might be string. We convert to object.
+
+            const newCell = typeof cell === 'object' ? { ...cell } : { subject: cell, span: 1 };
+
+            if (field === 'subject') newCell.subject = value;
+            else if (field === 'span') newCell.span = value;
+
+            return {
+                ...prev,
+                [day]: {
+                    ...daySchedule,
+                    [pId]: newCell
+                }
+            };
+        });
+    };
+
+
 
     const finalTimetable = viewMode === 'personal' ? mySchedule : timetable;
 
