@@ -71,8 +71,18 @@ app.post('/api/fetch-url', async (req, res) => {
 
 app.post('/api/chat', async (req, res) => {
     try {
-        const { history, message, image, mimeType } = req.body;
-        const chat = model.startChat({ history: history || [] });
+        const { history, message, image, mimeType, systemInstruction } = req.body;
+
+        let chatModel = model;
+        // If a system instruction is provided, create a request-specific model instance
+        if (systemInstruction) {
+            chatModel = genAI.getGenerativeModel({
+                model: currentModelName,
+                systemInstruction: systemInstruction
+            });
+        }
+
+        const chat = chatModel.startChat({ history: history || [] });
 
         let parts = [{ text: message || " " }];
         if (image) {
