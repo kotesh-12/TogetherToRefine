@@ -321,7 +321,7 @@ export default function Login() {
     return (
         <div className="login-container">
             <div className="card login-card" style={{ textAlign: 'center' }}>
-                <img src="/logo.png" alt="TTR Logo" style={{ width: '80px', height: 'auto', marginBottom: '10px' }} />
+                <img src="/logo2.png" alt="TTR Logo" style={{ width: '80px', height: 'auto', marginBottom: '10px' }} />
                 <h2 className="login-title">{isLogin ? 'Login' : 'Sign Up'}</h2>
                 {error && <div className="error-text">{error}</div>}
 

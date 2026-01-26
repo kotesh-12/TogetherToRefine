@@ -208,7 +208,7 @@ export default function Header({ onToggleSidebar }) {
                     onClick={() => navigate('/')}
                     style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
                 >
-                    <img src="/logo.png" alt="TTR Logo" style={{ height: '32px', width: 'auto' }} />
+                    <img src="/logo2.png" alt="TTR Logo" style={{ height: '32px', width: 'auto' }} />
                     <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#1a73e8', letterSpacing: '-0.5px' }}>
                         Together To Refine
                     </div>
