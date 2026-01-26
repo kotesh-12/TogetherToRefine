@@ -426,7 +426,10 @@ export default function Attendance() {
 
                 // Query B: InstitutionId (Robust/New)
                 let qB;
-                if (sec) {
+                // Treat 'All' or empty as no section filter
+                const isSectionValid = sec && sec !== 'All';
+
+                if (isSectionValid) {
                     qB = query(collection(db, colName), where('classAssigned', 'in', variants), where('section', '==', sec), where('institutionId', '==', creatorId));
                 } else {
                     qB = query(collection(db, colName), where('classAssigned', 'in', variants), where('institutionId', '==', creatorId));

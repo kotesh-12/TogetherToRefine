@@ -234,19 +234,22 @@ export default function Timetable() {
             const rawCls = selectedClass || '';
             const normalizedCls = rawCls.replace(/(\d+)(st|nd|rd|th)/i, '$1');
 
+            // Normalize: Trim inputs
+            const safeSec = (selectedSection || '').trim();
+
             const q1 = query(
                 collection(db, "timetables"),
                 where("institutionId", "==", instId),
                 where("class", "in", [rawCls, normalizedCls]),
-                where("section", "==", selectedSection)
+                where("section", "==", safeSec)
             );
 
             // Legacy Query
             const q2 = query(
                 collection(db, "timetables"),
-                where("createdBy", "==", instId), // Legacy check
+                where("createdBy", "==", instId),
                 where("class", "in", [rawCls, normalizedCls]),
-                where("section", "==", selectedSection)
+                where("section", "==", safeSec)
             );
 
             const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
@@ -282,11 +285,13 @@ export default function Timetable() {
             // BUT we must fix it. 
             // Proposal: User "INST_ID_10_A" as Doc ID.
 
-            const docId = `${userData.uid}_${selectedClass}_${selectedSection}`;
+            const cleanClass = (selectedClass || '').trim();
+            const cleanSection = (selectedSection || '').trim();
+            const docId = `${userData.uid}_${cleanClass}_${cleanSection}`;
 
             await setDoc(doc(db, "timetables", docId), {
-                class: selectedClass,
-                section: selectedSection,
+                class: cleanClass,
+                section: cleanSection,
                 schedule: timetable,
                 periods: periodConfig,
                 updatedBy: userData.uid,

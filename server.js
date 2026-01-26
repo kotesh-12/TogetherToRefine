@@ -76,9 +76,12 @@ app.post('/api/chat', async (req, res) => {
         let chatModel = model;
         // If a system instruction is provided, create a request-specific model instance
         if (systemInstruction) {
+            const today = new Date().toDateString();
+            const timeCtx = `\nCurrent Date: ${today}\n`;
+
             chatModel = genAI.getGenerativeModel({
                 model: currentModelName,
-                systemInstruction: systemInstruction
+                systemInstruction: systemInstruction + timeCtx
             });
         }
 
