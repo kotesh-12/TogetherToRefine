@@ -134,6 +134,7 @@ export function UserProvider({ children }) {
                         };
 
                         // Fast Path: Check Local Cache first for immediate feedback
+                        // Fast Path: Check Local Cache first for immediate feedback
                         if (cachedCollection) {
                             console.log("Using cached collection for speed:", cachedCollection);
                             // Optimistically try to subscribe to cached collection
@@ -143,10 +144,6 @@ export function UserProvider({ children }) {
                             // No cache? Full scan.
                             await detectFull();
                         }
-
-                        // Slow Path: Full Detection
-                        await detectFull();
-
                     } catch (err) {
                         console.error("Error detecting user role:", err);
                         setLoading(false);
