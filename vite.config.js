@@ -6,16 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 export default defineConfig({
   plugins: [
     react(),
-    VitePWA({
-      selfDestroying: true, // NUCLEAR OPTION: This generates a SW that immediately unregisters itself.
-      registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
-      workbox: {
-        cleanupOutdatedCaches: true,
-        clientsClaim: true,
-        skipWaiting: true
-      }
-    })
+    // VitePWA({...}) DISABLED FOR MANUAL KILL SWITCH
   ],
   server: {
     host: true, // Allow external access (e.g. mobile testing)
