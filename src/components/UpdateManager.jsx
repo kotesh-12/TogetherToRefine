@@ -17,5 +17,17 @@ export default function UpdateManager() {
         },
     });
 
+    // Re-added: Periodic check for updates every 15 minutes to keep app fresh
+    // even if kept open in background.
+    React.useEffect(() => {
+        const interval = setInterval(() => {
+            if (updateServiceWorker) {
+                console.log("Checking for SW updates (Interval)...");
+                updateServiceWorker();
+            }
+        }, 15 * 60 * 1000);
+        return () => clearInterval(interval);
+    }, [updateServiceWorker]);
+
     return null; // No UI needed for auto-update
 }
