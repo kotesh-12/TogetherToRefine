@@ -7,39 +7,13 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      selfDestroying: true, // NUCLEAR OPTION: This generates a SW that immediately unregisters itself.
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       workbox: {
         cleanupOutdatedCaches: true,
         clientsClaim: true,
-        skipWaiting: true // This combined with prompt allows seamless takeover when accepted
-      },
-      manifest: {
-        name: 'TogetherToRefine',
-        short_name: 'TTR',
-        description: 'Advanced AI Education Platform',
-        theme_color: '#ffffff',
-        start_url: '/',
-        display: 'standalone',
-        background_color: '#ffffff',
-        icons: [
-          {
-            src: 'pwa-192x192.png',
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: 'pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png'
-          },
-          {
-            src: 'logo2.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any maskable'
-          }
-        ]
+        skipWaiting: true
       }
     })
   ],
