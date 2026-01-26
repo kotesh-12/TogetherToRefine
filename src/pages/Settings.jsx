@@ -139,7 +139,7 @@ export default function Settings() {
                     <SettingItem
                         icon="ℹ️"
                         title="App Version"
-                        value="v0.0.34"
+                        value="v0.0.35"
                         action={() => { }}
                     />
                 </div>

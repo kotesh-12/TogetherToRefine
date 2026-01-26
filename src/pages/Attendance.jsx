@@ -405,28 +405,15 @@ export default function Attendance() {
                 const classNum = selectedClass;
                 const sec = selectedSection;
 
-                // Robust Query for mixed data (1 vs 1st)
-                const variants = [classNum];
-                if (!isNaN(classNum)) {
-                    const n = parseInt(classNum, 10);
-                    const suffixes = ["th", "st", "nd", "rd"];
-                    const v = n % 100;
-                    const suffix = suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0];
-                    variants.push(`${n}${suffix}`);
-                }
+                // BROAD FETCH STRATEGY:
+                // Query all students for this institution, then filter client-side.
+                // This bypasses issues with "10" vs "10th" vs "Class 10" mismatch in Firestore indexes or fields.
 
                 // Query A: CreatedBy (Legacy)
-                fetchPromises.push(getDocs(query(collection(db, colName), where('classAssigned', 'in', variants), where('createdBy', '==', creatorId))));
+                fetchPromises.push(getDocs(query(collection(db, colName), where('createdBy', '==', creatorId))));
 
                 // Query B: InstitutionId (Robust/New)
-                fetchPromises.push(getDocs(query(collection(db, colName), where('classAssigned', 'in', variants), where('institutionId', '==', creatorId))));
-
-                // Query C: Fallback for Students - Check if allotments have 'institutionId' field at all, if not check by 'createdBy' logic again but looser?
-                // Actually, let's keep it simple. But ensuring we handle the case where 'sec' is 'A' but data stores 'A '
-                if (sec) {
-                    const secVariants = [sec, sec.trim(), ` ${sec} `];
-                    // Manual filter after fetching might be safer if indexes are missing
-                }
+                fetchPromises.push(getDocs(query(collection(db, colName), where('institutionId', '==', creatorId))));
             } else {
                 // View == Teachers
                 // Query A: CreatedBy
@@ -450,11 +437,32 @@ export default function Attendance() {
 
             let rawList = Array.from(uniqueMap.values());
 
-            // CLIENT-SIDE SECTION FILTER (Robust Filter)
-            if (view === 'students' && selectedSection && selectedSection !== 'All') {
-                const targetSec = selectedSection.trim().toLowerCase();
+            // CLIENT-SIDE FILTERING (Robust)
+            if (view === 'students') {
+                const targetSec = (selectedSection || '').trim().toLowerCase();
+                // Normalized Target Class: "10th" -> "10"
+                const targetClassRaw = (selectedClass || '').toLowerCase().trim();
+                const targetClassNorm = targetClassRaw.replace(/(\d+)(st|nd|rd|th)/i, '$1');
+
                 rawList = rawList.filter(item => {
-                    return (item.section || '').trim().toLowerCase() === targetSec;
+                    // Check Section (if not All)
+                    if (targetSec && targetSec !== 'all') {
+                        if ((item.section || '').trim().toLowerCase() !== targetSec) return false;
+                    }
+
+                    // Check Class (Loose Match)
+                    const itemClass = (item.classAssigned || '').toLowerCase().trim();
+                    const itemClassNorm = itemClass.replace(/(\d+)(st|nd|rd|th)/i, '$1');
+
+                    // Match conditions: Exact, Normalized, or contained
+                    const match = (
+                        itemClass === targetClassRaw ||
+                        itemClassNorm === targetClassNorm ||
+                        itemClass === targetClassNorm ||
+                        itemClassNorm === targetClassRaw
+                    );
+
+                    return match;
                 });
             }
 
