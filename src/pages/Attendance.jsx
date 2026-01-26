@@ -416,29 +416,19 @@ export default function Attendance() {
                 }
 
                 // Query A: CreatedBy (Legacy)
-                let qA;
-                if (sec) {
-                    qA = query(collection(db, colName), where('classAssigned', 'in', variants), where('section', '==', sec), where('createdBy', '==', creatorId));
-                } else {
-                    qA = query(collection(db, colName), where('classAssigned', 'in', variants), where('createdBy', '==', creatorId));
-                }
-                fetchPromises.push(getDocs(qA));
+                fetchPromises.push(getDocs(query(collection(db, colName), where('classAssigned', 'in', variants), where('createdBy', '==', creatorId))));
 
                 // Query B: InstitutionId (Robust/New)
-                let qB;
-                // Treat 'All' or empty as no section filter
-                const isSectionValid = sec && sec !== 'All';
+                fetchPromises.push(getDocs(query(collection(db, colName), where('classAssigned', 'in', variants), where('institutionId', '==', creatorId))));
 
-                if (isSectionValid) {
-                    qB = query(collection(db, colName), where('classAssigned', 'in', variants), where('section', '==', sec), where('institutionId', '==', creatorId));
-                } else {
-                    qB = query(collection(db, colName), where('classAssigned', 'in', variants), where('institutionId', '==', creatorId));
+                // Query C: Fallback for Students - Check if allotments have 'institutionId' field at all, if not check by 'createdBy' logic again but looser?
+                // Actually, let's keep it simple. But ensuring we handle the case where 'sec' is 'A' but data stores 'A '
+                if (sec) {
+                    const secVariants = [sec, sec.trim(), ` ${sec} `];
+                    // Manual filter after fetching might be safer if indexes are missing
                 }
-                fetchPromises.push(getDocs(qB));
-
             } else {
-                // Fetch All Allotments to find Teachers linked to this Institution
-
+                // View == Teachers
                 // Query A: CreatedBy
                 fetchPromises.push(getDocs(query(collection(db, colName), where('createdBy', '==', creatorId))));
 
@@ -459,6 +449,14 @@ export default function Attendance() {
             });
 
             let rawList = Array.from(uniqueMap.values());
+
+            // CLIENT-SIDE SECTION FILTER (Robust Filter)
+            if (view === 'students' && selectedSection && selectedSection !== 'All') {
+                const targetSec = selectedSection.trim().toLowerCase();
+                rawList = rawList.filter(item => {
+                    return (item.section || '').trim().toLowerCase() === targetSec;
+                });
+            }
 
             // SELF-HEALING: If allotments are missing 'userId', try to find and link the real User UID.
             // This fixes the bug where students can't see attendance marked by teachers because it was keyed to a random ID.
