@@ -67,9 +67,12 @@ export default function Timetable() {
     }, [selectedClass, selectedSection, userData, viewMode]);
 
     // Helper ID
-    const instId = userData?.role === 'institution' ? userData.uid : userData.institutionId;
+    const instId = userData?.role === 'institution' ? userData.uid : userData?.institutionId;
+
+    if (!userData) return <div className="p-4 text-center">Loading User Data...</div>;
 
     const fetchAllTimetables = async () => {
+        if (!instId) return; // Guard against crash
         setLoading(true);
         try {
             // Filter by Institution ID
@@ -212,6 +215,7 @@ export default function Timetable() {
     };
 
     const fetchTimetable = async () => {
+        if (!instId) return;
         setLoading(true);
         try {
             // Normalize class: "10th" -> "10", "1st" -> "1"
@@ -456,6 +460,7 @@ export default function Timetable() {
                         {overviewData.length === 0 && !loading && <p className="text-center">No timetables found.</p>}
 
                         {overviewData.map((data) => {
+                            if (!data) return null;
                             const periods = data.periods || defaultPeriodConfig;
                             const schedule = data.schedule || {};
                             return (

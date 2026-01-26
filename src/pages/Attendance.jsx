@@ -9,7 +9,11 @@ import { useUser } from '../context/UserContext';
 export default function Attendance() {
     const { userData } = useUser();
     const navigate = useNavigate();
-    const role = userData?.role;
+
+    // Prevent crash if context is loading
+    if (!userData) return <div className="p-4 text-center">Loading...</div>;
+
+    const role = userData.role;
 
     // View State
     const [view, setView] = useState('students');
