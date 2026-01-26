@@ -22,8 +22,8 @@ if (!API_KEY) {
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 // --- DYNAMIC MODEL FALLBACK SYSTEM ---
-// Based on list-mode check: gemini-2.0-flash is available.
-let currentModelName = "gemini-2.0-flash";
+// Based on list-mode check: gemini-1.5-flash is stable.
+let currentModelName = "gemini-1.5-flash";
 let model = genAI.getGenerativeModel({ model: currentModelName });
 
 async function initAI() {
