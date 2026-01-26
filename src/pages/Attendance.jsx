@@ -633,11 +633,8 @@ export default function Attendance() {
             }
         }
 
-        // 2. Institution Restriction Check
-        if (view === 'students' && role === 'institution') {
-            alert("Institutions cannot mark Student Attendance directly. Use suspension controls only.");
-            return;
-        }
+        // 2. Institution Restriction Check - REMOVED to allow Inst access
+        // if (view === 'students' && role === 'institution') { ... }
 
         // 3. "Only 1 Time" Rule (Duplicate Check)
         if (person.status !== 'pending') {
@@ -999,39 +996,39 @@ export default function Attendance() {
                                                 </div>
                                             </div>
 
-                                            {/* Institution Suspends Students */}
-                                            {role === 'institution' && view === 'students' ? (
+                                            {/* Institution Suspends Students + Mark Attendance */}
+                                            <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                                                {role === 'institution' && view === 'students' && (
+                                                    <button
+                                                        onClick={() => handleSuspend(item.id, item.suspendedUntil)}
+                                                        style={{ border: 'none', background: '#d63031', color: 'white', padding: '5px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '10px', height: '30px', marginRight: '5px' }}
+                                                        title="Suspend Student"
+                                                    >
+                                                        {suspended ? 'Lift' : '⛔'}
+                                                    </button>
+                                                )}
+
                                                 <button
-                                                    onClick={() => handleSuspend(item.id, item.suspendedUntil)}
-                                                    style={{ border: 'none', background: '#d63031', color: 'white', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
-                                                >
-                                                    {suspended ? 'Lift Suspension' : 'Suspend ⛔'}
+                                                    disabled={suspended}
+                                                    onClick={() => markAttendance(item.id, 'present')}
+                                                    style={{
+                                                        padding: '6px 14px', borderRadius: '6px', border: 'none',
+                                                        cursor: suspended ? 'not-allowed' : 'pointer',
+                                                        background: item.status === 'present' ? '#00b894' : '#ecf0f1', color: item.status === 'present' ? 'white' : '#2d3436'
+                                                    }}>
+                                                    P
                                                 </button>
-                                            ) : (
-                                                /* Normal Attendance Buttons (Teachers or Institution->Teachers) */
-                                                <>
-                                                    <button
-                                                        disabled={suspended}
-                                                        onClick={() => markAttendance(item.id, 'present')}
-                                                        style={{
-                                                            padding: '6px 14px', borderRadius: '6px', border: 'none',
-                                                            cursor: suspended ? 'not-allowed' : 'pointer',
-                                                            background: item.status === 'present' ? '#00b894' : '#ecf0f1', color: item.status === 'present' ? 'white' : '#2d3436'
-                                                        }}>
-                                                        P
-                                                    </button>
-                                                    <button
-                                                        disabled={suspended}
-                                                        onClick={() => markAttendance(item.id, 'absent')}
-                                                        style={{
-                                                            padding: '6px 14px', borderRadius: '6px', border: 'none',
-                                                            cursor: suspended ? 'not-allowed' : 'pointer',
-                                                            background: item.status === 'absent' ? '#d63031' : '#ecf0f1', color: item.status === 'absent' ? 'white' : '#2d3436'
-                                                        }}>
-                                                        A
-                                                    </button>
-                                                </>
-                                            )}
+                                                <button
+                                                    disabled={suspended}
+                                                    onClick={() => markAttendance(item.id, 'absent')}
+                                                    style={{
+                                                        padding: '6px 14px', borderRadius: '6px', border: 'none',
+                                                        cursor: suspended ? 'not-allowed' : 'pointer',
+                                                        background: item.status === 'absent' ? '#d63031' : '#ecf0f1', color: item.status === 'absent' ? 'white' : '#2d3436'
+                                                    }}>
+                                                    A
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 );

@@ -542,6 +542,55 @@ export default function Timetable() {
                             </span>
                         )}
                     </div>
+
+                    {/* Institution Controls */}
+                    {isInstitution && viewMode !== 'overview' && (
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            {!isEditing ? (
+                                <button
+                                    onClick={() => setIsEditing(true)}
+                                    style={{
+                                        background: '#0984e3', color: 'white', border: 'none', padding: '10px 20px',
+                                        borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px',
+                                        boxShadow: '0 4px 6px rgba(9, 132, 227, 0.2)'
+                                    }}
+                                >
+                                    ✏️ Edit Schedule
+                                </button>
+                            ) : (
+                                <>
+                                    <button
+                                        onClick={() => setStructureMode(!structureMode)}
+                                        style={{
+                                            background: structureMode ? '#e17055' : '#6c5ce7', color: 'white', border: 'none',
+                                            padding: '8px 15px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold'
+                                        }}
+                                    >
+                                        {structureMode ? 'Done Structure' : '⚙️ Structure'}
+                                    </button>
+                                    <button
+                                        onClick={saveTimetable}
+                                        style={{
+                                            background: '#00b894', color: 'white', border: 'none', padding: '8px 20px',
+                                            borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold',
+                                            boxShadow: '0 4px 6px rgba(0, 184, 148, 0.2)'
+                                        }}
+                                    >
+                                        💾 Save
+                                    </button>
+                                    <button
+                                        onClick={() => { setIsEditing(false); setStructureMode(false); }}
+                                        style={{
+                                            background: '#d63031', color: 'white', border: 'none', padding: '8px 15px',
+                                            borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold'
+                                        }}
+                                    >
+                                        Cancel
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* ZOOM CONTROLS (Floating or Inline) */}
