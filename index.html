@@ -58,6 +58,69 @@
       <div>Loading TTR...</div>
     </div>
   </div>
+  <script>
+    (function () {
+      // NUCLEAR UPDATE CHECKER (Runs before React)
+      const CHECK_INTERVAL = 30000; // 30 sec
+
+      function checkForUpdate() {
+        console.log("🔍 Checking for updates (Raw Script)...");
+        fetch('/version.json?t=' + Date.now())
+          .then(res => res.json())
+          .then(data => {
+            const serverVersion = data.version;
+            const localVersion = localStorage.getItem('app_version');
+            console.log(`Server: ${serverVersion}, Local: ${localVersion}`);
+
+            // Detect mismatch (e.g. Server 0.0.30, Local 0.0.18)
+            if (serverVersion && localVersion && serverVersion !== localVersion) {
+              console.log("⚠️ Version Mismatch Detected! Forcing Update UI...");
+
+              // Only show if not already showing
+              if (!document.getElementById('nuclear-update-banner')) {
+                const banner = document.createElement('div');
+                banner.id = 'nuclear-update-banner';
+                banner.innerHTML = `
+                  <div style="position:fixed; bottom:0; left:0; right:0; background:#d63031; color:white; padding:20px; text-align:center; z-index:99999; box-shadow:0 -5px 20px rgba(0,0,0,0.3);">
+                    <h2 style="margin:0 0 10px 0;">New Update Available! (${serverVersion})</h2>
+                    <p style="margin:0 0 15px 0;">You are on an old version (${localVersion || 'Unknown'}). Please update to continue.</p>
+                    <button id="force-update-btn" style="background:white; color:#d63031; border:none; padding:10px 25px; font-size:16px; font-weight:bold; border-radius:30px; cursor:pointer;">
+                      🚀 Update Now
+                    </button>
+                    <div style="margin-top:10px; font-size:10px; opacity:0.8;">Force Reloads & Clears Cache</div>
+                  </div>
+                `;
+                document.body.appendChild(banner);
+
+                // Add Click Handler
+                document.getElementById('force-update-btn').onclick = function () {
+                  console.log("☢️ Executing Nuclear Update...");
+                  // 1. Unregister all SWs
+                  if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(regs => {
+                      regs.forEach(r => r.unregister());
+                    });
+                  }
+                  // 2. Clear Storage
+                  localStorage.setItem('app_version', serverVersion);
+                  // 3. Force Reload
+                  window.location.reload(true);
+                };
+              }
+            } else if (serverVersion) {
+              // If match, ensure local is set (first run fix)
+              localStorage.setItem('app_version', serverVersion);
+            }
+          })
+          .catch(e => console.error("Update check failed:", e));
+      }
+
+      // Run immediately
+      checkForUpdate();
+      // Run every 30s
+      setInterval(checkForUpdate, CHECK_INTERVAL);
+    })();
+  </script>
   <script type="module" src="/src/main.jsx"></script>
 </body>
 
