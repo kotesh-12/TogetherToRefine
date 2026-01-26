@@ -59,7 +59,7 @@ export default function ProfileView() {
     }, [location]);
 
     const [feedbackStats, setFeedbackStats] = useState({ received: 0, given: 0, score: 0 });
-    const [userPhotos, setUserPhotos] = useState([
+    const [userPhotos] = useState([
         "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&q=80",
         "https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?w=400&q=80",
         "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=400&q=80"

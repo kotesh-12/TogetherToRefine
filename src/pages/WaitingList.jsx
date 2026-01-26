@@ -112,7 +112,7 @@ export default function WaitingList() {
                             snap.forEach(d => updateDoc(d.ref, { status: 'allotted', completedAt: new Date() }));
 
                             alert(`✅ Validated student ${uid}. They should now be able to login.`);
-                        } catch (e) {
+                        } catch {
                             try {
                                 await updateDoc(doc(db, "teachers", uid), { approved: true, updatedAt: new Date() });
 

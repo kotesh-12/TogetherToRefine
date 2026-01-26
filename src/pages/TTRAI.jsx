@@ -98,7 +98,7 @@ export default function TTRAI() {
                             ...repSnap.docs.map(d => `- REPORT: ${d.data().description}`)
                         ]
                     };
-                } catch (e) { }
+                } catch (e) { console.error(e); }
             }
             setUserContext(context);
         };
