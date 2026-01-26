@@ -13,7 +13,7 @@ export default function Attendance() {
 
     // View State
     const [view, setView] = useState('students');
-    const [selectedClass, setSelectedClass] = useState('');
+    const [selectedClass, setSelectedClass] = useState('10');
     const [selectedSection, setSelectedSection] = useState('A');
     const [subject, setSubject] = useState(''); // New: Subject Context
     const [list, setList] = useState([]);
