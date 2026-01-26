@@ -93,18 +93,39 @@
                 document.body.appendChild(banner);
 
                 // Add Click Handler
+                // Add Click Handler
                 document.getElementById('force-update-btn').onclick = function () {
+                  const btn = document.getElementById('force-update-btn');
+                  btn.innerText = "⏳ Cleaning...";
+                  btn.disabled = true;
+
                   console.log("☢️ Executing Nuclear Update...");
-                  // 1. Unregister all SWs
-                  if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.getRegistrations().then(regs => {
-                      regs.forEach(r => r.unregister());
-                    });
+
+                  async function nukeAndReload() {
+                    try {
+                      // 1. Unregister SWs
+                      if ('serviceWorker' in navigator) {
+                        const regs = await navigator.serviceWorker.getRegistrations();
+                        for (let r of regs) await r.unregister();
+                      }
+
+                      // 2. Clear Caches
+                      const keys = await caches.keys();
+                      await Promise.all(keys.map(k => caches.delete(k)));
+
+                      // 3. Clear Storage
+                      localStorage.setItem('app_version', serverVersion);
+
+                      // 4. Force Reload with Cache Busting
+                      console.log("Reloading...");
+                      window.location.href = window.location.pathname + "?t=" + Date.now();
+                    } catch (e) {
+                      console.error("Nuke failed", e);
+                      window.location.reload(true);
+                    }
                   }
-                  // 2. Clear Storage
-                  localStorage.setItem('app_version', serverVersion);
-                  // 3. Force Reload
-                  window.location.reload(true);
+
+                  nukeAndReload();
                 };
               }
             } else if (serverVersion) {

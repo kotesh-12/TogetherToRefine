@@ -44,21 +44,21 @@ export default function UpdateManager() {
             }}>
                 <span>🚀 Update Available!</span>
                 <button
-                    onClick={() => {
-                        // Clear all caches aggressively
-                        if ('serviceWorker' in navigator) {
-                            navigator.serviceWorker.getRegistrations().then(registrations => {
-                                for (let registration of registrations) {
-                                    registration.unregister();
-                                }
-                            });
-                        }
-                        caches.keys().then((names) => {
-                            names.forEach((name) => {
-                                caches.delete(name);
-                            });
-                        });
-                        window.location.reload(true);
+                    onClick={async () => {
+                        const btn = document.activeElement;
+                        if (btn) btn.innerText = "Cleaning...";
+
+                        try {
+                            if ('serviceWorker' in navigator) {
+                                const regs = await navigator.serviceWorker.getRegistrations();
+                                await Promise.all(regs.map(r => r.unregister()));
+                            }
+                            const keys = await caches.keys();
+                            await Promise.all(keys.map(k => caches.delete(k)));
+                        } catch (e) { console.error(e); }
+
+                        // Force reload to current URL with cache busting
+                        window.location.href = window.location.pathname + "?t=" + Date.now();
                     }}
                     style={{
                         background: '#0984e3', border: 'none', color: 'white',
