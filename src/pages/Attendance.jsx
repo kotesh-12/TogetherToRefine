@@ -14,6 +14,7 @@ export default function Attendance() {
     if (!userData) return <div className="p-4 text-center">Loading...</div>;
 
     const role = userData.role;
+    const instId = role === 'institution' ? userData.uid : userData.institutionId;
 
     // View State
     const [view, setView] = useState('students');
@@ -97,9 +98,9 @@ export default function Attendance() {
     useEffect(() => {
         if (role === 'student') return;
         fetchData();
-    }, [view, selectedClass, selectedSection, subject, selectedDate, role]);
+    }, [selectedClass, selectedSection, selectedDate, view, role, userData, instId]);
 
-    const fetchMyStats = async () => {
+    const fetchData = async () => {
         if (!userData?.uid) return;
         try {
             let mergedDocs = [];

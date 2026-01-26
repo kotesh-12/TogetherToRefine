@@ -75,10 +75,22 @@ export default function Timetable() {
         if (!instId) return; // Guard against crash
         setLoading(true);
         try {
-            // Filter by Institution ID
-            const q = query(collection(db, "timetables"), where("institutionId", "==", instId));
-            const snap = await getDocs(q);
-            const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            // Query 1: New Schema (institutionId)
+            const q1 = query(collection(db, "timetables"), where("institutionId", "==", instId));
+
+            // Query 2: Legacy Schema (createdBy)
+            const q2 = query(collection(db, "timetables"), where("createdBy", "==", instId));
+
+            const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+
+            // Merge & Dedupe
+            const map = new Map();
+            snap1.docs.forEach(d => map.set(d.id, { id: d.id, ...d.data() }));
+            snap2.docs.forEach(d => {
+                if (!map.has(d.id)) map.set(d.id, { id: d.id, ...d.data() });
+            });
+
+            const list = Array.from(map.values());
 
             // Sort: Nursery->LKG..->1->10
             const classOrder = ['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
@@ -347,6 +359,16 @@ export default function Timetable() {
 
                 {/* Controls */}
                 <div className="card" style={{ marginBottom: '20px', display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+
+                    {/* DEBUG PANEL FOR INSTITUTION */}
+                    {userData?.role === 'institution' && (
+                        <div style={{ width: '100%', padding: '10px', background: '#fff3cd', border: '1px solid #ffeeba', color: '#856404', fontSize: '11px', marginBottom: '10px' }}>
+                            <strong>🔧 Diagnostic Info (Visible only to you):</strong><br />
+                            <strong>My Inst ID:</strong> {instId} <br />
+                            <strong>Records Found:</strong> {overviewData.length} (Overview) / {Object.keys(timetable).length > 0 ? 'Found' : '0'} (Single)<br />
+                            <strong>View Mode:</strong> {viewMode} | <strong>Selected Class:</strong> {selectedClass}
+                        </div>
+                    )}
 
                     {/* ...Existing Controls... */}
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
