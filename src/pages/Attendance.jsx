@@ -395,9 +395,13 @@ export default function Attendance() {
 
             if (!creatorId) {
                 console.warn("No creator/institution ID found, aborting fetch.");
+                setDebugLogs(prev => [...prev, "Abort: No Creator ID (Inst/Admin ID) found on User Data."]);
                 setLoading(false);
                 return;
             }
+
+            console.log(`FetchData Start | Role: ${role} | View: ${view} | Creator: ${creatorId} | Class: ${selectedClass} | Sec: ${selectedSection}`);
+
 
             const fetchPromises = [];
 
@@ -1064,30 +1068,21 @@ export default function Attendance() {
                         </div>
                     )}
 
-                    {/* DEBUG PANEL FOR INSTITUTION */}
-                    {role === 'institution' && (
-                        <div style={{ marginTop: '50px', padding: '20px', background: '#fff', border: '1px solid #fab1a0', borderRadius: '8px' }}>
-                            <h4 style={{ color: '#d63031' }}>🛠️ Diagnostic Panel (Visible to Admin)</h4>
-                            <div style={{ fontSize: '12px', fontFamily: 'monospace', color: '#636e72' }}>
-                                <p><strong>Institution ID:</strong> {instId}</p>
-                                <p><strong>View Mode:</strong> {view}</p>
-                                <p><strong>Target Class/Sec:</strong> {selectedClass} - {selectedSection}</p>
+                    {/* DEBUG PANEL (Visible to Inst & Teacher for Debugging) */}
+                    {(role === 'institution' || role === 'teacher') && (
+                        <div style={{ marginTop: '50px', padding: '10px', background: '#fff', border: '1px solid #fab1a0', borderRadius: '8px', fontSize: '11px', opacity: 0.8 }}>
+                            <h4 style={{ color: '#d63031', margin: 0 }}>🛠️ Debug Diagnostics</h4>
+                            <div style={{ fontFamily: 'monospace', color: '#636e72' }}>
+                                <p><strong>UID:</strong> {userData.uid}</p>
+                                <p><strong>Inst ID:</strong> {instId}</p>
+                                <p><strong>View:</strong> {view}</p>
+                                <p><strong>Selected:</strong> {selectedClass}-{selectedSection}</p>
                                 <p><strong>List Count:</strong> {list.length}</p>
-                                <p><strong>Last Error:</strong> {debugLogs[debugLogs.length - 1] || 'None'}</p>
+                                <p><strong>Logs:</strong></p>
+                                <ul style={{ paddingLeft: '20px', margin: '5px 0' }}>
+                                    {debugLogs.slice(-5).map((l, i) => <li key={i}>{l}</li>)}
+                                </ul>
                             </div>
-                            <button
-                                onClick={async () => {
-                                    try {
-                                        const q = query(collection(db, "student_allotments"), where("createdBy", "==", instId));
-                                        const s = await getDocs(q);
-                                        alert(`Diagnostic Fetch: Found ${s.size} students created by this ID.`);
-                                        console.log("Diag Docs:", s.docs.map(d => d.data()));
-                                    } catch (e) { alert("Diag Error: " + e.message); }
-                                }}
-                                style={{ marginTop: '10px', background: '#2d3436', color: 'white', border: 'none', padding: '5px 10px', cursor: 'pointer' }}
-                            >
-                                Run Direct DB Check
-                            </button>
                         </div>
                     )}
 
