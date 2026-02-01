@@ -12,16 +12,16 @@ export default function UpdateManager() {
                 const data = await res.json();
                 const latestVersion = data.version;
 
-                const currentVersion = localStorage.getItem('app_version');
+                const currentVersion = localStorage.getItem('ttr_version');
 
                 if (currentVersion && currentVersion !== latestVersion) {
                     // Update found!
                     console.log(`New version found: ${latestVersion} (Current: ${currentVersion})`);
                     setUpdateAvailable(true);
+                } else {
+                    // Only update local storage if no update is pending (meaning we are up to date)
+                    localStorage.setItem('ttr_version', latestVersion);
                 }
-
-                // Always update local storage to latest after check
-                localStorage.setItem('app_version', latestVersion);
             } catch (e) {
                 console.error("Version check failed", e);
             }
@@ -56,6 +56,10 @@ export default function UpdateManager() {
                             const keys = await caches.keys();
                             await Promise.all(keys.map(k => caches.delete(k)));
                         } catch (e) { console.error(e); }
+
+                        // Update version record so we don't loop
+                        // Let main.jsx handle the setItem on reload to be safe
+                        localStorage.removeItem('ttr_version');
 
                         // Force reload to current URL with cache busting
                         window.location.href = window.location.pathname + "?t=" + Date.now();
