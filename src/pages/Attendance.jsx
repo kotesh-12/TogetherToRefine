@@ -433,7 +433,20 @@ export default function Attendance() {
                     // Safer Fallback: Query by 'assignedClass' (legacy user field) or 'classAssigned'
                     // Only fetch if we have a specific class selected
                     if (selectedClass) {
-                        fetchPromises.push(getDocs(query(collection(db, colName), where('classAssigned', '==', selectedClass))));
+                        // Generate variants: "10", "10th", "Class 10", "Grade 10"
+                        const baseVal = selectedClass.replace(/[^0-9]/g, ''); // Extract '10'
+                        const variants = [
+                            selectedClass,
+                            baseVal,
+                            `${baseVal}th`,
+                            `Class ${baseVal}`,
+                            `Grade ${baseVal}`
+                        ];
+                        // Remove duplicates/empty
+                        const uniqueVariants = [...new Set(variants)].filter(Boolean);
+
+                        console.log("Using Fallback Variants:", uniqueVariants);
+                        fetchPromises.push(getDocs(query(collection(db, colName), where('classAssigned', 'in', uniqueVariants))));
                     }
                 }
             } else {
