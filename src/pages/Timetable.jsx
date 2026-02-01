@@ -38,7 +38,7 @@ export default function Timetable() {
     const [mySchedule, setMySchedule] = useState({});
     const [allotmentCount, setAllotmentCount] = useState(0); // Restore
     const [overviewData, setOverviewData] = useState([]);
-    const [conflicts, setConflicts] = useState({}); // Stores conflict msgs: "Monday_p1" -> "Busy in 10-A"
+
 
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']; // Restore
 
@@ -120,12 +120,7 @@ export default function Timetable() {
 
             allotments = [...allotments, ...r1];
 
-            // ... (Rest of fetchMyTimetable logic remains mostly same, but we need to ensure getDoc later checks institution)
-            // Actually, getDoc(doc(db, "timetables", id)) is direct ID access.
-            // IDs are currently "10_A". This is NOT unique across institutions! CLASH RISK.
             // FIX: ID should be "INST_ID_10_A". 
-            // RETROFIT: We must check if the doc belongs to my institution.
-
             // For now, let's keep logic but filter the DOC results.
 
             if (allotments.length === 0) {
@@ -805,11 +800,7 @@ export default function Timetable() {
                                                                             fontSize: '14px', outline: 'none', background: 'transparent'
                                                                         }}
                                                                     />
-                                                                    {conflicts && conflicts[`${day}_${p.id}`] && (
-                                                                        <div style={{ color: '#d63031', fontSize: '10px', fontWeight: 'bold', margin: '2px 5px', background: '#ffeaa7', padding: '3px', borderRadius: '4px', border: '1px solid #fab1a0' }}>
-                                                                            ⚠ {conflicts[`${day}_${p.id}`]}
-                                                                        </div>
-                                                                    )}
+
                                                                     {/* Merge Control */}
                                                                     <div style={{ background: '#f1f2f6', padding: '2px 5px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', color: '#636e72' }}>
                                                                         <span>Span:</span>

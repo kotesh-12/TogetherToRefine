@@ -23,27 +23,9 @@ export default function MainLayout() {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    const handleForceUpdate = () => {
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function (registrations) {
-                for (let registration of registrations) {
-                    registration.unregister();
-                }
-            });
-        }
-        if ('caches' in window) {
-            caches.keys().then((names) => {
-                names.forEach((name) => {
-                    caches.delete(name);
-                });
-            });
-        }
-        window.location.reload(true);
-    };
 
-    // Show Update Button logic
-    const dashboardPaths = ['/student', '/teacher', '/institution', '/admin'];
-    const showUpdateBtn = dashboardPaths.some(path => location.pathname.startsWith(path));
+
+
 
     return (
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>

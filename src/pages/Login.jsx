@@ -34,7 +34,7 @@ export default function Login() {
 
         if (user) {
             if (userData && userData.role) {
-                console.log("User already logged in. Redirecting...", userData.role);
+
 
                 // CRITICAL FIX: Ensure profile is REALLY completed before dashboard access
                 // Check for core fields that might be missing even if flag is true
@@ -43,7 +43,7 @@ export default function Login() {
                 const isInstitutionIncomplete = userData.role === 'institution' && (!userData.schoolName); // Basic check
 
                 if (!userData.profileCompleted || isStudentIncomplete || isTeacherIncomplete || isInstitutionIncomplete) {
-                    console.log("Profile incomplete (detected missing fields). Redirecting to Details.");
+
                     navigate('/details');
                     return;
                 }
@@ -148,7 +148,7 @@ export default function Login() {
                 // Determine if we are returning from a redirect flow
                 const result = await getRedirectResult(auth);
                 if (result) {
-                    console.log("Redirect Result Found:", result.user.email);
+
                     setLoading(true);
 
                     const user = result.user;
@@ -210,29 +210,28 @@ export default function Login() {
         try {
             if (isLogin) {
                 // Login Logic
-                console.log("Attempting SignInWithEmailAndPassword...", email);
                 const userCredential = await signInWithEmailAndPassword(auth, email, password);
-                console.log("User Logged In:", userCredential.user.uid);
                 const uid = userCredential.user.uid;
 
+
                 const { role: dbRole, isNew, approved } = await checkUserExists(uid);
-                console.log("Checked Role:", dbRole, "IsNew:", isNew, "Approved:", approved);
+
 
                 if (dbRole) {
                     if (isNew) {
-                        console.log("Redirecting to Details...");
+
                         navigate('/details');
                         return;
                     } else {
                         if (approved === false) {
                             navigate('/pending-approval');
                         } else {
-                            console.log("Redirecting to Role Page:", dbRole);
+
                             redirectToRolePage(dbRole);
                         }
                     }
                 } else {
-                    console.log("Role not found in DB. Navigate to details for setup.");
+
                     navigate('/details');
                 }
 
@@ -258,7 +257,7 @@ export default function Login() {
                 // We will JUST navigate to Details with the desired ROLE.
                 // Details.jsx will handle the actual large form submission and correct collection.
 
-                console.log("New User Signup. Navigating to Details Setup.");
+
                 navigate('/details', { state: { role } });
                 return;
             }
@@ -284,7 +283,7 @@ export default function Login() {
         try {
             const result = await signInWithPopup(auth, provider);
             const user = result.user;
-            console.log("Google Popup Success:", user.email);
+
 
             // Check existing user role
             // Check existing user role

@@ -103,7 +103,7 @@ export default function Allotment() {
     // 3. INJECT: null + newName -> Finds Subject (without name) and appends newName
     const updateTimetableTeacher = async (classIds, section, subject, oldName, newName, instId) => {
         try {
-            console.log(`Updating Timetable: ${classIds} ${section} | ${subject}: ${oldName} -> ${newName}`);
+
 
             // Query 1: New Schema
             const q1 = query(
@@ -136,7 +136,7 @@ export default function Allotment() {
 
                 let scheduleChanged = false;
                 const schedule = data.schedule || {};
-                const newSchedule = JSON.parse(JSON.stringify(schedule));
+                const newSchedule = typeof structuredClone === 'function' ? structuredClone(schedule) : JSON.parse(JSON.stringify(schedule));
 
                 Object.keys(newSchedule).forEach(day => {
                     Object.keys(newSchedule[day]).forEach(pId => {
@@ -184,7 +184,7 @@ export default function Allotment() {
             });
 
             await Promise.all(updates);
-            console.log("Timetable Updated Successfully.");
+            // console.log("Timetable Updated Successfully.");
         } catch (e) {
             console.error("Timetable Update Failed:", e);
         }
