@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import AIBadge from '../components/AIBadge';
-import AnnouncementBar from '../components/AnnouncementBar';
+
 
 
 import { useUser } from '../context/UserContext';

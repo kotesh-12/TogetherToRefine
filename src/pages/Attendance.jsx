@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, setDoc, doc, updateDoc } from 'firebase/firestore';
-import AnnouncementBar from '../components/AnnouncementBar';
+
 import AIBadge from '../components/AIBadge';
 import { useUser } from '../context/UserContext';
 
