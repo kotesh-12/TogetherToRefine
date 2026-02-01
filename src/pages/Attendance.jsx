@@ -941,7 +941,7 @@ export default function Attendance() {
                         {loading && <p className="text-center">Loading...</p>}
                         {!loading && list.length === 0 && (
                             <div className="text-center text-muted">
-                                {view === 'students' && !cls ? "Select a Class." : "No records found."}
+                                {view === 'students' && !selectedClass ? "Select a Class." : "No records found."}
                             </div>
                         )}
 
