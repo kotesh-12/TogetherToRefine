@@ -143,28 +143,29 @@ export default function Allotment() {
                         const cell = newSchedule[day][pId];
                         let val = typeof cell === 'object' ? (cell.subject || '') : cell;
 
-                        // Check for SUBJECT match (Case insensitive)
-                        // Escaping special regex chars in subject just in case
+                        // Check for SUBJECT match with BOUNDARIES
+                        // We use a custom boundary check because \b fails for symbols like "C++"
+                        // Logic: PRE takes Start or Non-Word. POST checks for End or Non-Word.
                         const escapedSub = subject.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                        const subRegex = new RegExp(escapedSub, 'i');
 
-                        if (subRegex.test(val)) {
-                            // Slot contains the Subject.
-                            // We need to Rewrite the teacher part.
-                            // Strategy: Look for "Subject" followed optionally by " (Anything)"
-                            // Regex: /(Subject)(\s*\(.*?\))?/gi
+                        // Regex:
+                        // Group 1: (^|[^a-zA-Z0-9_])  -> Prefix (Start or Non-Word)
+                        // Group 2: (Subject)           -> The Subject
+                        // Group 3: (\s*\(.*?\))?       -> Optional Existing Name " (John)"
+                        // Lookahead: (?=$|[^a-zA-Z0-9_]) -> Followed by End or Non-Word
 
-                            const tokenRegex = new RegExp(`(${escapedSub})(\\s*\\(.*?\\))?`, 'gi');
+                        const tokenRegex = new RegExp(`(^|[^a-zA-Z0-9_])(${escapedSub})(\\s*\\(.*?\\))?(?=$|[^a-zA-Z0-9_])`, 'gi');
 
+                        if (tokenRegex.test(val)) {
                             if (newName) {
                                 // REPLACE / INJECT Mode -> "Subject (NewName)"
-                                // We replace the match with "Subject (NewName)"
-                                val = val.replace(tokenRegex, `$1 (${newName})`);
+                                // Keep Prefix ($1), Keep Subject ($2), Discard Old Name ($3), Add New Name
+                                val = val.replace(tokenRegex, `$1$2 (${newName})`);
                                 scheduleChanged = true;
                             } else {
                                 // REMOVE Mode -> "Subject"
-                                // We remove the parens part, keeping just the subject
-                                val = val.replace(tokenRegex, '$1');
+                                // Keep Prefix ($1), Keep Subject ($2), Discard Old Name ($3)
+                                val = val.replace(tokenRegex, '$1$2');
                                 scheduleChanged = true;
                             }
                         }
