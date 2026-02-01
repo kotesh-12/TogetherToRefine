@@ -25,15 +25,40 @@ export default async function handler(req, res) {
     // Clean Key (remove potential quotes from copy-paste errors)
     const cleanKey = API_KEY.replace(/["']/g, "").trim();
 
-    const { history, message, image, mimeType } = req.body;
+    const { history, message, image, mimeType, userContext } = req.body;
+
+    // Construct System Instruction (The "Brain")
+    let systemInstruction = "You are TTR AI, an advanced academic assistant for the TogetherToRefine platform.";
+    if (userContext) {
+        systemInstruction += `\n\nUser Context:\n- Role: ${userContext.role}\n- Name: ${userContext.name}`;
+        if (userContext.class) systemInstruction += `\n- Class: ${userContext.class}`;
+        if (userContext.adminData) {
+            systemInstruction += `\n- Recent Admin Events: ${JSON.stringify(userContext.adminData)}`;
+        }
+
+        // Role-Specific Behavior Rules
+        if (userContext.role === 'student') {
+            systemInstruction += "\n\nGuidelines:\n- Be encouraging and simple.\n- Help with homework explanations but don't just give answers.\n- Focus on learning growth.";
+        } else if (userContext.role === 'teacher') {
+            systemInstruction += "\n\nGuidelines:\n- Assist with lesson planning and student psychology.\n- Provide professional, concise advice.\n- Analyze trends if asked.";
+        } else if (userContext.role === 'System Admin') {
+            systemInstruction += "\n\nGuidelines:\n- You have high-level oversight.\n- Analyze feedback and reports critically.\n- Be concise and executive.";
+        }
+    }
 
     const tryGenerate = async (modelName) => {
         try {
             const genAI = new GoogleGenerativeAI(cleanKey);
-            const model = genAI.getGenerativeModel({ model: modelName });
+            // Inject System Instruction here
+            const model = genAI.getGenerativeModel({
+                model: modelName,
+                systemInstruction: {
+                    parts: [{ text: systemInstruction }],
+                    role: "model"
+                }
+            });
 
             // Format history for API (ensure correct role sequences)
-            // Note: This logic is partially in frontend, but good to ensure valid history here
             const chat = model.startChat({ history: history || [] });
 
             let parts = [{ text: message || " " }];
