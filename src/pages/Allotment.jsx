@@ -143,43 +143,29 @@ export default function Allotment() {
                         const cell = newSchedule[day][pId];
                         let val = typeof cell === 'object' ? (cell.subject || '') : cell;
 
-                        // Clean comparison
-                        const lowerVal = val.toLowerCase().trim();
-                        const lowerSub = subject.toLowerCase().trim();
+                        // Check for SUBJECT match (Case insensitive)
+                        // Escaping special regex chars in subject just in case
+                        const escapedSub = subject.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        const subRegex = new RegExp(escapedSub, 'i');
 
-                        if (lowerVal.includes(lowerSub)) {
-                            // CASE 1 & 2: MATCH OLD NAME
-                            if (oldName && lowerVal.includes(oldName.toLowerCase().trim())) {
-                                if (newName) {
-                                    // REPLACE
-                                    // RegExp to match name with or without parens, case insensitive
-                                    // E.g. "Maths (John)" -> "Maths (Mary)"
-                                    // E.g. "John Maths" -> "Mary Maths"
-                                    val = val.replace(new RegExp(oldName, 'gi'), newName);
-                                } else {
-                                    // REMOVE
-                                    // Strip Name AND surrounding Parens/Whitespace
-                                    // "Maths (John)" -> "Maths"
-                                    // "Maths(John)" -> "Maths"
-                                    let temp = val.replace(new RegExp(`\\s*\\(\\s*${oldName}\\s*\\)`, 'gi'), '');
-                                    if (temp === val) {
-                                        // Try without parens
-                                        temp = val.replace(new RegExp(oldName, 'gi'), '');
-                                    }
-                                    val = temp.trim();
-                                }
+                        if (subRegex.test(val)) {
+                            // Slot contains the Subject.
+                            // We need to Rewrite the teacher part.
+                            // Strategy: Look for "Subject" followed optionally by " (Anything)"
+                            // Regex: /(Subject)(\s*\(.*?\))?/gi
+
+                            const tokenRegex = new RegExp(`(${escapedSub})(\\s*\\(.*?\\))?`, 'gi');
+
+                            if (newName) {
+                                // REPLACE / INJECT Mode -> "Subject (NewName)"
+                                // We replace the match with "Subject (NewName)"
+                                val = val.replace(tokenRegex, `$1 (${newName})`);
                                 scheduleChanged = true;
-                            }
-                            // CASE 3: INJECT NEW TEACHER (Into Empty/Subject-Only Slots)
-                            else if (!oldName && newName) {
-                                // Only inject if it DOES NOT already have parens (implying another teacher)
-                                if (!val.includes('(') && !val.includes(')')) {
-                                    // "Maths" -> "Maths (Mary)"
-                                    // Check exact subject match or close content to avoid "Maths II" getting "Maths (Mary)" logic mixed up?
-                                    // For now, if it includes subject and no parens, we claim it.
-                                    val = `${val.trim()} (${newName})`;
-                                    scheduleChanged = true;
-                                }
+                            } else {
+                                // REMOVE Mode -> "Subject"
+                                // We remove the parens part, keeping just the subject
+                                val = val.replace(tokenRegex, '$1');
+                                scheduleChanged = true;
                             }
                         }
 
