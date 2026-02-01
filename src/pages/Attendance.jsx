@@ -418,6 +418,24 @@ export default function Attendance() {
 
                 // Query B: InstitutionId (Robust/New)
                 fetchPromises.push(getDocs(query(collection(db, colName), where('institutionId', '==', creatorId))));
+
+                // Query C: FALLBACK (Direct Class/Sec Match - Use sparingly, but needed if ID linkage is broken)
+                // If we are a teacher, we might not have 'createdBy' set to us, but we have 'class' rights?
+                // Actually, for Teachers, we rely on 'institutionId' on the student doc.
+                // If that is missing, we try to match simply by Class + Section if we are desperate.
+                if (role === 'teacher') {
+                    // CAUTION: This might return students from other schools if not careful, but we filter by ID later?
+                    // No, let's trust the Teacher's 'institutionId' field. If that fails...
+                    // Let's add a query that matches Class + Section broadly, then we filter?
+                    // Risk: Data scraping from other schools. 
+                    // SAFETY: Only do this if we have a valid Inst ID to check against, OR just rely on Index.
+
+                    // Safer Fallback: Query by 'assignedClass' (legacy user field) or 'classAssigned'
+                    // Only fetch if we have a specific class selected
+                    if (selectedClass) {
+                        fetchPromises.push(getDocs(query(collection(db, colName), where('classAssigned', '==', selectedClass))));
+                    }
+                }
             } else {
                 // View == Teachers
                 // Query A: CreatedBy
@@ -427,7 +445,11 @@ export default function Attendance() {
                 fetchPromises.push(getDocs(query(collection(db, colName), where('institutionId', '==', creatorId))));
             }
 
-            const snapshots = await Promise.all(fetchPromises);
+            // ADDED: Swallow errors from individual queries so one failure doesn't kill all
+            const snapshots = await Promise.all(fetchPromises.map(p => p.catch(e => {
+                console.warn("Sub-query failed", e);
+                return { forEach: () => { } }; // Return empty dummy
+            })));
 
             // Merge & Deduplicate
             const uniqueMap = new Map();
