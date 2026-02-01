@@ -69,7 +69,7 @@
           .then(res => res.json())
           .then(data => {
             const serverVersion = data.version;
-            const localVersion = localStorage.getItem('app_version');
+            const localVersion = localStorage.getItem('ttr_version');
             console.log(`Server: ${serverVersion}, Local: ${localVersion}`);
 
             // Detect mismatch (e.g. Server 0.0.30, Local 0.0.18)
@@ -113,8 +113,8 @@
                       const keys = await caches.keys();
                       await Promise.all(keys.map(k => caches.delete(k)));
 
-                      // 3. Clear Storage
-                      localStorage.setItem('app_version', serverVersion);
+                      // 3. Clear Storage - REMOVE old key to force main.jsx to set it fresh
+                      localStorage.removeItem('ttr_version');
 
                       // 4. Force Reload with Cache Busting
                       console.log("Reloading...");
@@ -130,7 +130,7 @@
               }
             } else if (serverVersion) {
               // If match, ensure local is set (first run fix)
-              localStorage.setItem('app_version', serverVersion);
+              if (!localVersion) localStorage.setItem('ttr_version', serverVersion);
             }
           })
           .catch(e => console.error("Update check failed:", e));
