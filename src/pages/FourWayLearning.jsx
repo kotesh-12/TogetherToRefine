@@ -205,6 +205,49 @@ export default function FourWayLearning() {
             let promptText = "";
             let topic = currentInput || "Explain this image";
 
+            // TTR UNIVERSE: MASTER CHARACTER LIST
+            // We inject this context so the AI uses consistent peronalities.
+            const UNIVERSE_CONTEXT = `
+                **TTR UNIVERSE - CHARACTER RULES:**
+                Use these specific characters if the topic relates to their concept. Do NOT invent random names if a TTR Character exists.
+                
+                **PHYSICS:**
+                - Proton -> **Pranav** (Positive Leader)
+                - Electron -> **Esha** (Energetic Runner)
+                - Neutron -> **Neel** (Calm, Neutral)
+                - Gravity -> **Gajraj** (Heavy Giant)
+                - Friction -> **Firoz** (Rough Blocker)
+                - Velocity -> **Veer** (Speedster)
+                - Light -> **Lux** (The Flash)
+                - Time -> **Tara** (The Watcher)
+                
+                **CHEMISTRY:**
+                - Atom -> **Anu** (Tiny Block)
+                - Bond -> **Bandhan** (The Glue)
+                - Carbon -> **Kabir** (King of Life)
+                - Oxygen -> **Ojas** (The Burner)
+                
+                **BIOLOGY:**
+                - Cell -> **Chaitanya** (The City)
+                - Nucleus -> **Nawab** (The Boss)
+                - DNA -> **Dina** (The Blueprint)
+                - Mitochondria -> **Mitran** (Powerhouse)
+                - Brain -> **Brain** (CPU)
+                
+                **MATH:**
+                - Zero -> **Shoonya** (The Void)
+                - Infinity -> **Anant** (Endless)
+                - Pi -> **Pie** (Circle Master)
+                - X (Variable) -> **Xavier** (The Mystery)
+                
+                **TECH:**
+                - Code -> **Coda**
+                - Bug -> **Glitch**
+                - AI -> **Aio**
+                
+                **General Rule:** If no specific character matches, use Indian names (Aarav, Diya) with distinct personalities.
+            `;
+
             if (activeTab === 'teaching') {
                 promptText = `
                     Act as a wise and encouraging Indian Teacher (Guru) teaching a student.
@@ -223,7 +266,8 @@ export default function FourWayLearning() {
                 `;
             } else if (activeTab === 'fictional') {
                 promptText = `
-                    Explain "${topic}" by creating a fictional story using **Indian characters (e.g., Aarav, Diya, Arjun, Krishna)**, **Indian settings (e.g., ancient Nalanda, modern Mumbai, a village in Kerala, or usage of Indian History)**.
+                    Explain "${topic}" by creating a fictional story using the **TTR Universe Characters**.
+                    ${UNIVERSE_CONTEXT}
                     
                     **CRITICAL INSTRUCTION:**
                     - The story MUST use the concept as a key mechanism.
@@ -233,9 +277,10 @@ export default function FourWayLearning() {
             } else if (activeTab === 'storytelling') {
                 promptText = `
                     Tell a compelling story revolving around "${topic}" set in India.
+                    ${UNIVERSE_CONTEXT}
                     
                     **CRITICAL INSTRUCTION:**
-                    - Use Indian names and cultural references.
+                    - Use the TTR Characters where applicable.
                     - The story **MUST** carry a strong moral lesson (teaching honesty, kindness, bravery, or integrity) alongside the educational topic.
                     - Example theme: "Knowledge without character is dangerous."
                     - Ensure the narrative flow naturally explains the topic.
