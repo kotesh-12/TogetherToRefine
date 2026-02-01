@@ -201,13 +201,29 @@ export default function Timetable() {
                         // MATCH LOGIC: Check Subject OR Name
                         const mySubject = (userData.subject || '').toLowerCase().trim();
                         const myName = (userData.name || '').toLowerCase().trim();
-                        const cellText = String(val).toLowerCase();
+                        const cellText = String(val).toLowerCase().trim();
 
-                        // Match Conditions
-                        const subjectMatch = mySubject && cellText.includes(mySubject);
-                        const nameMatch = myName && cellText.includes(myName);
+                        const subjectFound = mySubject && cellText.includes(mySubject);
+                        const nameFound = myName && cellText.includes(myName);
+                        // Check for any grouping symbols that imply a specific person is assigned
+                        const hasParentheses = /[(){}[\]]/.test(cellText);
 
-                        if (subjectMatch || nameMatch) {
+                        // Strict Filter Logic
+                        let isMySlot = false;
+                        if (nameFound) {
+                            isMySlot = true; // Name matched explicitly -> Definitely Me
+                        } else if (subjectFound) {
+                            // Subject matched, but Name did not match. 
+                            // If there are parentheses '(', it likely implies another teacher's name is there (e.g., "Maths (Alice)")
+                            // Since nameFound is false, that name is NOT me. So ignore it.
+                            if (hasParentheses) {
+                                isMySlot = false;
+                            } else {
+                                isMySlot = true; // "Maths" or "Maths II" -> Likely Me
+                            }
+                        }
+
+                        if (isMySlot) {
                             // Found a slot!
                             scheduleMap[day][pId] = {
                                 subject: `${val} (${tClass}-${tSection})`,

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, addDoc, deleteDoc, doc, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, deleteDoc, updateDoc, doc, orderBy } from 'firebase/firestore'; // Added updateDoc
 import AnnouncementBar from '../components/AnnouncementBar';
 import AIBadge from '../components/AIBadge';
 import { useUser } from '../context/UserContext';
@@ -21,6 +21,10 @@ export default function VideoLibrary() {
     // State
     const [videos, setVideos] = useState([]);
     const [loading, setLoading] = useState(false);
+
+    // Editing State
+    const [editingId, setEditingId] = useState(null); // ID of video being edited
+    const [editTitle, setEditTitle] = useState('');
 
     // Add Video State (Teachers/Institution)
     const [showAdd, setShowAdd] = useState(false);
@@ -114,6 +118,7 @@ export default function VideoLibrary() {
                 url: newVideo.url, // Save original URL, ReactPlayer handles the rest
                 createdBy: userData.uid,
                 authorName: userData.name,
+                institutionId: userData.institutionId, // Track Institution
                 timestamp: new Date()
             });
             setShowAdd(false);
@@ -133,6 +138,29 @@ export default function VideoLibrary() {
             setVideos(prev => prev.filter(v => v.id !== id));
         } catch (e) {
             console.error(e);
+            alert("Error deleting: " + e.message);
+        }
+    };
+
+    const startEditing = (video) => {
+        setEditingId(video.id);
+        setEditTitle(video.title);
+    };
+
+    const handleUpdate = async (id) => {
+        if (!editTitle.trim()) return alert("Title cannot be empty");
+        try {
+            await updateDoc(doc(db, "videos", id), {
+                title: editTitle
+            });
+
+            // Update local state
+            setVideos(prev => prev.map(v => v.id === id ? { ...v, title: editTitle } : v));
+            setEditingId(null);
+            setEditTitle('');
+        } catch (e) {
+            console.error(e);
+            alert("Error updating: " + e.message);
         }
     };
 
@@ -224,58 +252,91 @@ export default function VideoLibrary() {
                         </div>
                     )}
 
-                    {videos.map(video => (
-                        <div key={video.id} className="card" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '100%' }}>
-                            {/* Native Iframe for Maximum Reliability */}
-                            <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
-                                {getYouTubeID(video.url) ? (
-                                    <iframe
-                                        src={`https://www.youtube.com/embed/${getYouTubeID(video.url)}?rel=0&modestbranding=1`}
-                                        title={video.title}
-                                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 0 }}
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                        allowFullScreen
-                                        loading="lazy"
-                                    />
-                                ) : (
-                                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-                                        Invalid Video URL
-                                    </div>
-                                )}
-                            </div>
+                    {videos.map(video => {
+                        // Permission Check
+                        // 1. Institution: Can manage ALL videos
+                        // 2. Teacher: Can manage ONLY their own videos
+                        const canManage = role === 'institution' || (role === 'teacher' && video.createdBy === userData?.uid);
+                        const isEditing = editingId === video.id;
 
-                            {/* Info */}
-                            <div style={{ padding: '15px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                                    <h4 style={{ margin: 0, color: '#2d3436', fontSize: '16px', lineHeight: '1.4' }}>{video.title}</h4>
-                                    {(role === 'teacher' || role === 'institution') && (
-                                        <button
-                                            onClick={() => handleDelete(video.id)}
-                                            style={{ background: 'none', border: 'none', color: '#ff7675', cursor: 'pointer', fontSize: '16px', marginLeft: '10px' }}
-                                            title="Delete Video"
-                                        >🗑️</button>
+                        return (
+                            <div key={video.id} className="card" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '100%' }}>
+                                {/* Native Iframe */}
+                                <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
+                                    {getYouTubeID(video.url) ? (
+                                        <iframe
+                                            src={`https://www.youtube.com/embed/${getYouTubeID(video.url)}?rel=0&modestbranding=1`}
+                                            title={video.title}
+                                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 0 }}
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                            allowFullScreen
+                                            loading="lazy"
+                                        />
+                                    ) : (
+                                        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+                                            Invalid Video URL
+                                        </div>
                                     )}
                                 </div>
-                                <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: '#636e72' }}>
-                                    <span style={{
-                                        background: '#dfe6e9',
-                                        padding: '4px 8px',
-                                        borderRadius: '4px',
-                                        fontWeight: '600',
-                                        color: '#2d3436'
-                                    }}>
-                                        {video.subject}
-                                    </span>
-                                    <span>{video.timestamp?.seconds ? new Date(video.timestamp.seconds * 1000).toLocaleDateString() : 'Just now'}</span>
-                                </div>
-                                {(role === 'teacher' || role === 'institution') && (
-                                    <div style={{ fontSize: '11px', color: '#b2bec3', marginTop: '8px', textAlign: 'right' }}>
-                                        Target: {video.targetClass}
+
+                                {/* Info */}
+                                <div style={{ padding: '15px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                                        {isEditing ? (
+                                            <div style={{ flex: 1, marginRight: '10px' }}>
+                                                <input
+                                                    value={editTitle}
+                                                    onChange={(e) => setEditTitle(e.target.value)}
+                                                    className="input-field"
+                                                    style={{ marginBottom: '5px', padding: '5px' }}
+                                                    autoFocus
+                                                />
+                                                <div style={{ display: 'flex', gap: '5px' }}>
+                                                    <button className="btn" style={{ padding: '2px 8px', fontSize: '11px' }} onClick={() => handleUpdate(video.id)}>Save</button>
+                                                    <button className="btn-outline" style={{ padding: '2px 8px', fontSize: '11px' }} onClick={() => setEditingId(null)}>Cancel</button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <h4 style={{ margin: 0, color: '#2d3436', fontSize: '16px', lineHeight: '1.4' }}>{video.title}</h4>
+                                        )}
+
+                                        {/* Action Buttons */}
+                                        {canManage && !isEditing && (
+                                            <div style={{ display: 'flex', gap: '5px' }}>
+                                                <button
+                                                    onClick={() => startEditing(video)}
+                                                    style={{ background: 'none', border: 'none', color: '#0984e3', cursor: 'pointer', fontSize: '16px' }}
+                                                    title="Modify Title"
+                                                >✏️</button>
+                                                <button
+                                                    onClick={() => handleDelete(video.id)}
+                                                    style={{ background: 'none', border: 'none', color: '#ff7675', cursor: 'pointer', fontSize: '16px' }}
+                                                    title="Delete Video"
+                                                >🗑️</button>
+                                            </div>
+                                        )}
                                     </div>
-                                )}
+                                    <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: '#636e72' }}>
+                                        <span style={{
+                                            background: '#dfe6e9',
+                                            padding: '4px 8px',
+                                            borderRadius: '4px',
+                                            fontWeight: '600',
+                                            color: '#2d3436'
+                                        }}>
+                                            {video.subject}
+                                        </span>
+                                        <span>{video.timestamp?.seconds ? new Date(video.timestamp.seconds * 1000).toLocaleDateString() : 'Just now'}</span>
+                                    </div>
+                                    {(role === 'teacher' || role === 'institution') && (
+                                        <div style={{ fontSize: '11px', color: '#b2bec3', marginTop: '8px', textAlign: 'right' }}>
+                                            By: {video.authorName} | Target: {video.targetClass}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
         </div>

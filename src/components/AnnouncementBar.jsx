@@ -41,18 +41,37 @@ export default function TopBar({ title, leftIcon = 'home', backPath, onMenuClick
 
                 // Find the first relevant announcement
                 const relevant = announcements.find(a => {
-                    // Global announcements are for everyone
+                    // 1. Global announcements are for everyone (Priority)
                     if (a.type === 'global') return true;
 
+                    // If no user data (e.g. new user just signed up), only show global
+                    if (!userData) return false;
+
                     // Filtering based on Role
-                    if ((userData && userData.role === 'admin') || (user && user.email === 'admin@ttr.com')) {
-                        return false;
+                    if (userData.role === 'admin' || userData.email === 'admin@ttr.com') {
+                        return false; // Admins don't need to see specific school announcements here usually
+                    }
+
+                    // 2. Institution Scoping:
+                    // If announcement has an authorId (Institution SCoped), User MUST have matching institutionId
+                    if (a.authorId) {
+                        if (!userData.institutionId) return false; // User has no institution assigned -> Hide Inst posts
+                        if (a.authorId !== userData.institutionId) return false; // IDs don't match -> Hide
                     }
 
                     if (userData.role === 'student') {
                         // Matches Class AND (Section is 'All' OR Section Matches)
-                        // Cast to string for comparison safety
                         const userClass = userData.class?.toString();
+
+                        // New User Safety: If I don't have a class assigned, I can't match specific class announcements
+                        // Only allow 'All' if it's GLOBAL (handled above). But here, 'All' usually means 'All classes in this school'
+                        if (!userClass) return false;
+
+                        // SCOPING: If it's an institution post, it MUST match my institution
+                        if (a.role === 'institution' || a.authorId) {
+                            if (a.authorId !== userData.institutionId) return false;
+                        }
+
                         const targetClass = a.targetClass?.toString();
 
                         if (a.targetClass === 'All' || targetClass === userClass) {
@@ -64,14 +83,9 @@ export default function TopBar({ title, leftIcon = 'home', backPath, onMenuClick
                     }
 
                     if (userData.role === 'teacher') {
-                        // Teachers see announcements for their assigned class or from their institution
-                        // Or simply all announcements from their institution?
-                        // For now, let's allow them to see what their students see + Institution posts
-                        if (a.role === 'institution') return true;
-
-                        // Own announcements?
-                        if (a.authorId === userData.uid) return true;
-
+                        // Teachers seeing announcements from their institution
+                        if (a.role === 'institution' || a.authorId === userData.institutionId) return true;
+                        if (a.authorId === userData.uid) return true; // Own posts
                         return false;
                     }
 

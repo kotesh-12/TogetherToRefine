@@ -153,8 +153,10 @@ export function UserProvider({ children }) {
                 detectAndSubscribe();
 
             } else {
+                console.log("User Logged Out. Clearing Data.");
                 setUserData(null);
                 setLoading(false);
+                localStorage.removeItem('user_collection_cache'); // Clear cache on logout
             }
         });
 

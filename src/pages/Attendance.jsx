@@ -1064,6 +1064,33 @@ export default function Attendance() {
                         </div>
                     )}
 
+                    {/* DEBUG PANEL FOR INSTITUTION */}
+                    {role === 'institution' && (
+                        <div style={{ marginTop: '50px', padding: '20px', background: '#fff', border: '1px solid #fab1a0', borderRadius: '8px' }}>
+                            <h4 style={{ color: '#d63031' }}>🛠️ Diagnostic Panel (Visible to Admin)</h4>
+                            <div style={{ fontSize: '12px', fontFamily: 'monospace', color: '#636e72' }}>
+                                <p><strong>Institution ID:</strong> {instId}</p>
+                                <p><strong>View Mode:</strong> {view}</p>
+                                <p><strong>Target Class/Sec:</strong> {selectedClass} - {selectedSection}</p>
+                                <p><strong>List Count:</strong> {list.length}</p>
+                                <p><strong>Last Error:</strong> {debugLogs[debugLogs.length - 1] || 'None'}</p>
+                            </div>
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        const q = query(collection(db, "student_allotments"), where("createdBy", "==", instId));
+                                        const s = await getDocs(q);
+                                        alert(`Diagnostic Fetch: Found ${s.size} students created by this ID.`);
+                                        console.log("Diag Docs:", s.docs.map(d => d.data()));
+                                    } catch (e) { alert("Diag Error: " + e.message); }
+                                }}
+                                style={{ marginTop: '10px', background: '#2d3436', color: 'white', border: 'none', padding: '5px 10px', cursor: 'pointer' }}
+                            >
+                                Run Direct DB Check
+                            </button>
+                        </div>
+                    )}
+
                 </div>
             </div>
         </div>

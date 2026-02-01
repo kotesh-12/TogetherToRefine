@@ -120,7 +120,15 @@ export default function AdminDashboard() {
         if (!confirm("Approve this Institution?")) return;
         try {
             await updateDoc(doc(db, "institutions", id), { approved: true });
+
+            // 1. Remove from Pending List
             setPendingInstitutions(prev => prev.filter(i => i.id !== id));
+
+            // 2. Update status in All Institutions List (Fixes View button issue)
+            setAllInstitutions(prev => prev.map(inst =>
+                inst.id === id ? { ...inst, approved: true } : inst
+            ));
+
             alert("Institution Approved!");
         } catch (e) {
             alert("Error: " + e.message);

@@ -35,6 +35,19 @@ export default function Login() {
         if (user) {
             if (userData && userData.role) {
                 console.log("User already logged in. Redirecting...", userData.role);
+
+                // CRITICAL FIX: Ensure profile is REALLY completed before dashboard access
+                // Check for core fields that might be missing even if flag is true
+                const isStudentIncomplete = userData.role === 'student' && (!userData.class || !userData.institutionId);
+                const isTeacherIncomplete = userData.role === 'teacher' && (!userData.subject || !userData.institutionId);
+                const isInstitutionIncomplete = userData.role === 'institution' && (!userData.schoolName); // Basic check
+
+                if (!userData.profileCompleted || isStudentIncomplete || isTeacherIncomplete || isInstitutionIncomplete) {
+                    console.log("Profile incomplete (detected missing fields). Redirecting to Details.");
+                    navigate('/details');
+                    return;
+                }
+
                 if (userData.approved === false) {
                     navigate('/pending-approval', { replace: true });
                 } else {
@@ -209,6 +222,7 @@ export default function Login() {
                     if (isNew) {
                         console.log("Redirecting to Details...");
                         navigate('/details');
+                        return;
                     } else {
                         if (approved === false) {
                             navigate('/pending-approval');
@@ -232,25 +246,21 @@ export default function Login() {
                     uid = userCredential.user.uid;
                 }
 
-                // Generate Permanent ID (PID)
-                const prefix = role === 'student' ? 'ST' : (role === 'teacher' ? 'TE' : (role === 'institution' ? 'IN' : 'AD'));
-                const randomNum = Math.floor(100000 + Math.random() * 900000); // 6 digit random
-                const pid = `${prefix}-${randomNum}`;
-
+                // Minimal User Record to start
                 const userData = {
                     email,
-                    role,
-                    name,
-                    gender,
-                    pid, // Save PID
+                    role, // Role is critical for routing
                     createdAt: new Date(),
                     profileCompleted: false
                 };
 
-                const collectionName = role === 'institution' ? "institutions" : (role === 'teacher' ? "teachers" : "users");
-                await setDoc(doc(db, collectionName, uid), userData);
+                // Store simplified record in 'users' temporarily or let Details handle it.
+                // We will JUST navigate to Details with the desired ROLE.
+                // Details.jsx will handle the actual large form submission and correct collection.
 
+                console.log("New User Signup. Navigating to Details Setup.");
                 navigate('/details', { state: { role } });
+                return;
             }
         } catch (err) {
             console.error(err);
@@ -289,6 +299,7 @@ export default function Login() {
             } else {
                 // Pass the selected role from the UI dropdown (state 'role') to Details page
                 navigate('/details', { state: { role: role } });
+                return;
             }
 
         } catch (err) {

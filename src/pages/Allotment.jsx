@@ -96,11 +96,134 @@ export default function Allotment() {
         fetchEntries();
     }, [role, cls, sec]);
 
+    // Helper to update Timetable text
+    // Modes:
+    // 1. REPLACE: oldName + newName -> Swaps them
+    // 2. REMOVE: oldName + null -> Removes oldName
+    // 3. INJECT: null + newName -> Finds Subject (without name) and appends newName
+    const updateTimetableTeacher = async (classIds, section, subject, oldName, newName, instId) => {
+        try {
+            console.log(`Updating Timetable: ${classIds} ${section} | ${subject}: ${oldName} -> ${newName}`);
+            const q = query(
+                collection(db, "timetables"),
+                where("institutionId", "==", instId),
+                where("section", "==", section)
+            );
+            const snap = await getDocs(q);
+
+            const updates = [];
+            snap.docs.forEach(d => {
+                const data = d.data();
+                const dClass = String(data.class).replace(/(\d+)(st|nd|rd|th)/i, '$1');
+                const targetClass = String(classIds[0]).replace(/(\d+)(st|nd|rd|th)/i, '$1');
+
+                if (dClass !== targetClass) return;
+
+                let scheduleChanged = false;
+                const schedule = data.schedule || {};
+                const newSchedule = JSON.parse(JSON.stringify(schedule));
+
+                Object.keys(newSchedule).forEach(day => {
+                    Object.keys(newSchedule[day]).forEach(pId => {
+                        const cell = newSchedule[day][pId];
+                        let val = typeof cell === 'object' ? (cell.subject || '') : cell;
+
+                        // Clean comparison
+                        const lowerVal = val.toLowerCase().trim();
+                        const lowerSub = subject.toLowerCase().trim();
+
+                        if (lowerVal.includes(lowerSub)) {
+                            // CASE 1 & 2: MATCH OLD NAME
+                            if (oldName && lowerVal.includes(oldName.toLowerCase().trim())) {
+                                if (newName) {
+                                    // REPLACE
+                                    // RegExp to match name with or without parens, case insensitive
+                                    // E.g. "Maths (John)" -> "Maths (Mary)"
+                                    // E.g. "John Maths" -> "Mary Maths"
+                                    val = val.replace(new RegExp(oldName, 'gi'), newName);
+                                } else {
+                                    // REMOVE
+                                    // Strip Name AND surrounding Parens/Whitespace
+                                    // "Maths (John)" -> "Maths"
+                                    // "Maths(John)" -> "Maths"
+                                    let temp = val.replace(new RegExp(`\\s*\\(\\s*${oldName}\\s*\\)`, 'gi'), '');
+                                    if (temp === val) {
+                                        // Try without parens
+                                        temp = val.replace(new RegExp(oldName, 'gi'), '');
+                                    }
+                                    val = temp.trim();
+                                }
+                                scheduleChanged = true;
+                            }
+                            // CASE 3: INJECT NEW TEACHER (Into Empty/Subject-Only Slots)
+                            else if (!oldName && newName) {
+                                // Only inject if it DOES NOT already have parens (implying another teacher)
+                                if (!val.includes('(') && !val.includes(')')) {
+                                    // "Maths" -> "Maths (Mary)"
+                                    // Check exact subject match or close content to avoid "Maths II" getting "Maths (Mary)" logic mixed up?
+                                    // For now, if it includes subject and no parens, we claim it.
+                                    val = `${val.trim()} (${newName})`;
+                                    scheduleChanged = true;
+                                }
+                            }
+                        }
+
+                        // Save back
+                        if (typeof cell === 'object') {
+                            newSchedule[day][pId] = { ...cell, subject: val };
+                        } else {
+                            newSchedule[day][pId] = val;
+                        }
+                    });
+                });
+
+                if (scheduleChanged) {
+                    updates.push(updateDoc(doc(db, "timetables", d.id), { schedule: newSchedule }));
+                }
+            });
+
+            await Promise.all(updates);
+            console.log("Timetable Updated Successfully.");
+        } catch (e) {
+            console.error("Timetable Update Failed:", e);
+        }
+    };
+
     const handleAdd = async () => {
         if (!name || !extra || !cls || !sec || !role) return alert('Fill all fields');
 
         try {
             const finalUserId = personToAllot?.userId || selectedUserId || null;
+            const instId = (userData?.role === 'institution' ? userData.uid : userData?.institutionId);
+
+            // CHECK FOR EXISTING TEACHER (COLLISION)
+            if (role === 'teacher') {
+                const existing = entries.find(e => e.subject.toLowerCase() === extra.toLowerCase());
+                if (existing) {
+                    if (!window.confirm(`'${existing.name}' is already assigned as '${existing.subject}' teacher for ${cls}-${sec}.\n\nDo you want to REPLACE them with '${name}'?`)) {
+                        return;
+                    }
+
+                    // 1. Update Allotment
+                    await updateDoc(doc(db, "teacher_allotments", existing.id), {
+                        name: name,
+                        teacherId: finalUserId,
+                        userId: finalUserId,
+                        updatedAt: new Date()
+                    });
+
+                    // 2. Update Group
+                    const groupId = `${extra}_${cls}_${sec}`.replace(/\s+/g, "_").toUpperCase();
+                    await updateDoc(doc(db, "groups", groupId), { teacherName: name }).catch(e => console.log("Group update skipped"));
+
+                    // 3. Update Timetable (Old Name -> New Name)
+                    await updateTimetableTeacher([cls], sec, extra, existing.name, name, instId);
+
+                    alert(`Replaced ${existing.name} with ${name} successfully!`);
+                    setName(''); setExtra(''); setSelectedUserId(null); fetchEntries();
+                    return;
+                }
+            }
 
             const colName = role === 'teacher' ? 'teacher_allotments' : 'student_allotments';
             const docData = {
@@ -109,19 +232,17 @@ export default function Allotment() {
                 section: sec,
                 [role === 'teacher' ? 'subject' : 'age']: extra,
                 createdBy: currentUser ? currentUser.uid : 'unknown',
-                institutionId: (userData?.role === 'institution' ? userData.uid : userData?.institutionId) || null, // Robust Link
+                institutionId: instId || null,
                 userId: finalUserId
             };
             if (role === 'teacher' && finalUserId) docData.teacherId = finalUserId;
 
-            // Add to main allotment collection
             await addDoc(collection(db, colName), docData);
 
-            // AUTO-CREATE GROUP if Teacher
+            // Group Creation
             if (role === 'teacher') {
                 const subject = extra;
                 const groupId = `${subject}_${cls}_${sec}`.replace(/\s+/g, "_").toUpperCase();
-
                 await setDoc(doc(db, "groups", groupId), {
                     groupName: `${subject} (${cls}-${sec})`,
                     subject: subject,
@@ -132,50 +253,32 @@ export default function Allotment() {
                     createdAt: new Date(),
                     type: 'academic'
                 });
-                console.log("Group Created:", groupId);
-            }
 
-            // Update Profile Link (For both Waiting List and Manual Selection)
-            if (finalUserId) {
-                try {
-                    // Trust 'users' collection for manual selection, or respect legacy logic if waiting list
-                    const userColl = (personToAllot?.role === 'teacher') ? 'teachers' : 'users';
-
-                    await setDoc(doc(db, userColl, finalUserId), {
-                        approved: true,
-                        assignedClass: cls,
-                        assignedSection: sec,
-                        class: cls,
-                        section: sec,
-                        ...(role === 'teacher' ? { subject: extra } : { age: extra }),
-                        updatedAt: new Date()
-                    }, { merge: true });
-                } catch (profErr) {
-                    console.warn("Could not update original user profile. Allotment created regardless.", profErr);
-                    // Do not block the flow
+                // INJECT into Timetable (Subject-Only slots get Name)
+                if (instId) {
+                    await updateTimetableTeacher([cls], sec, extra, null, name, instId);
                 }
             }
 
-            // If this was from waiting list, update the admission status!
-            if (personToAllot) {
-                const admRef = doc(db, "admissions", personToAllot.id);
-                // Verify doc exists before update - though checking ID is usually enough
-                await updateDoc(admRef, {
-                    status: 'allotted',
-                    assignedClass: cls,
-                    assignedSection: sec,
-                    allottedAt: new Date()
-                });
+            // Profile Updates
+            if (finalUserId) {
+                try {
+                    const userColl = (personToAllot?.role === 'teacher') ? 'teachers' : 'users';
+                    await setDoc(doc(db, userColl, finalUserId), {
+                        approved: true, assignedClass: cls, assignedSection: sec, class: cls, section: sec,
+                        ...(role === 'teacher' ? { subject: extra } : { age: extra }), updatedAt: new Date()
+                    }, { merge: true });
+                } catch (profErr) { }
+            }
 
-                alert(`${name} has been successfully allotted to Class ${cls}-${sec}!\nStudy Group '${extra} (${cls}-${sec})' has been created.`);
+            if (personToAllot) {
+                await updateDoc(doc(db, "admissions", personToAllot.id), { status: 'allotted', assignedClass: cls, assignedSection: sec, allottedAt: new Date() });
+                alert(`${name} allotted to ${cls}-${sec}!`);
                 navigate('/waiting-list');
                 return;
             }
 
-            setName('');
-            setExtra('');
-            setSelectedUserId(null); // Clear selection
-            fetchEntries();
+            setName(''); setExtra(''); setSelectedUserId(null); fetchEntries();
         } catch (e) {
             console.error(e);
             alert("Error adding entry");
@@ -186,12 +289,36 @@ export default function Allotment() {
         if (!window.confirm('Delete?')) return;
         const colName = role === 'teacher' ? 'teacher_allotments' : 'student_allotments';
 
-        // If teacher, attempt to delete the Group as well? 
-        // Current logic doesn't delete group on allotment delete, but maybe it should?
-        // Leaving as is to minimize destructive side effects unless requested.
+        // Fetch to get details before delete
+        try {
+            const entryRef = doc(db, colName, id);
+            const entrySnap = await getDoc(entryRef);
 
-        await deleteDoc(doc(db, colName, id));
-        fetchEntries();
+            if (entrySnap.exists()) {
+                const entry = entrySnap.data();
+
+                // If it's a teacher, clean up Timetable
+                if (role === 'teacher') {
+                    const instId = userData?.role === 'institution' ? userData.uid : userData?.institutionId;
+                    if (instId && entry.name && entry.subject && entry.classAssigned && entry.section) {
+                        await updateTimetableTeacher(
+                            [entry.classAssigned],
+                            entry.section,
+                            entry.subject,
+                            entry.name,
+                            null, // Remove mode
+                            instId
+                        );
+                    }
+                }
+            }
+
+            await deleteDoc(entryRef);
+            fetchEntries();
+        } catch (e) {
+            console.error(e);
+            alert("Delete failed");
+        }
     };
 
     const initiateTransfer = (entry) => {
@@ -283,6 +410,12 @@ export default function Allotment() {
                         section: targetSection
                     }, { merge: true });
                 } catch (e) { }
+            }
+
+            // 5. Update Timetable (Remove Teacher Name from OLD Class)
+            const instId = userData?.role === 'institution' ? userData.uid : userData?.institutionId;
+            if (instId) {
+                await updateTimetableTeacher([oldClass], oldSection, subject, transferTarget.name, null, instId);
             }
 
             alert("Transfer Successful!");

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { collection, getDocs, doc, setDoc, getDoc, addDoc, deleteDoc, query, where, updateDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { useUser } from '../context/UserContext';
 
 export default function Details() {
@@ -22,6 +22,17 @@ export default function Details() {
     // Form states
     const [formData, setFormData] = useState({});
     const [initialData, setInitialData] = useState({}); // To detecting changes
+
+    const handleBack = async () => {
+        // If it's a new user setting up for the first time, Back means Logout/Cancel to avoid redirect loops
+        if (!initialData || Object.keys(initialData).length === 0) {
+            await signOut(auth);
+            navigate('/');
+        } else {
+            // If editing existing profile, just go back
+            navigate(-1);
+        }
+    };
 
     // DATA PROPAGATION HELPER (DML-like Cascading Update)
     const propagateUserUpdates = async (uid, userRole, newName, newSubject = null) => {
@@ -164,8 +175,9 @@ export default function Details() {
         if (role === 'student' || role === 'teacher') {
             const fetchInstitutions = async () => {
                 try {
-                    // Fetch from 'institutions' collection
-                    const querySnapshot = await getDocs(collection(db, "institutions"));
+                    // Fetch only APPROVED institutions
+                    const q = query(collection(db, "institutions"), where("approved", "==", true));
+                    const querySnapshot = await getDocs(q);
                     const list = [];
                     querySnapshot.forEach((doc) => {
                         list.push({ id: doc.id, ...doc.data() });
@@ -349,6 +361,22 @@ export default function Details() {
 
     return (
         <div className="container">
+            <button
+                onClick={handleBack}
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    color: '#6c5ce7',
+                    fontWeight: 'bold',
+                    marginBottom: '10px'
+                }}
+            >
+                ← Back
+            </button>
             <header className="details-header">
                 {role ? `${role.charAt(0).toUpperCase() + role.slice(1)} Profile Setup` : 'Complete Your Profile'}
             </header>
@@ -356,205 +384,209 @@ export default function Details() {
             <div className="card details-card">
                 <form onSubmit={handleSubmit}>
 
-                    {/* Role Status and Change Option - HIDDEN to enforce Rule: Role cannot be changed */}
-                    <div className="role-status-box">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span><strong>Role:</strong> {role ? role.toUpperCase() : 'NOT SELECTED'}</span>
-                            {/* User Rule: Role cannot be changed. Removed logic to unlock role. */}
-                        </div>
-                    </div>
-
-
-                    {/* Fallback Role Selection if not detected */}
+                    {/* 1. ROLE SELECTION (Show ONLY if role is not set) */}
                     {!role && (
-                        <div className="form-group fallback-role-box">
-                            <label className="warning-label">⚠️ Please select your role to continue:</label>
-                            <select value={role} onChange={(e) => setRole(e.target.value)} className="input-field" required>
-                                <option value="">-- Select Role --</option>
-                                <option value="student">Student</option>
-                                <option value="teacher">Teacher</option>
-                                <option value="institution">Institution</option>
+                        <div className="form-group fallback-role-box" style={{ background: '#fff3cd', padding: '20px', borderRadius: '10px', border: '1px solid #ffeeba' }}>
+                            <h3 style={{ marginTop: 0, color: '#856404' }}>Welcome! Please select your path:</h3>
+                            <p style={{ fontSize: '14px', color: '#856404' }}>To customize your profile, we need to know who you are.</p>
+
+                            <label className="warning-label" style={{ display: 'block', marginBottom: '10px' }}>I am a:</label>
+                            <select value={role} onChange={(e) => setRole(e.target.value)} className="input-field" style={{ fontSize: '16px', padding: '10px' }} required>
+                                <option value="">-- Choose Your Role --</option>
+                                <option value="student">👨‍🎓 Student</option>
+                                <option value="teacher">👩‍🏫 Teacher</option>
+                                <option value="institution">🏫 Institution / School</option>
                             </select>
                         </div>
                     )}
 
-                    {/* Teacher Fields */}
-                    {role === 'teacher' && (
-                        <div className="form-group">
-                            <h3 style={{ borderBottom: '2px solid #0984e3', paddingBottom: '5px', marginBottom: '15px', color: '#0984e3' }}>👨‍🏫 Teacher Details</h3>
-
-                            <label>First Name</label>
-                            <input name="firstName" value={formData.firstName || ''} className="input-field" required onChange={handleChange} />
-
-                            <label>Second Name</label>
-                            <input name="secondName" value={formData.secondName || ''} className="input-field" required onChange={handleChange} />
-
-                            <label>Subject Specialization</label>
-                            <input
-                                name="subject"
-                                value={formData.subject || ''}
-                                className="input-field"
-                                placeholder="e.g. Mathematics, Science"
-                                required
-                                onChange={handleChange}
-                            // Subject is now editable by Teacher
-                            />
-                            {/* <p style={{ fontSize: '11px', color: '#d63031', marginTop: '-5px' }}>* Subject is assigned by Institution</p> */}
-
-                            <label>Gender</label>
-                            <select name="gender" value={formData.gender || ''} className="input-field" onChange={handleChange}>
-                                <option value="" disabled>Select Gender</option>
-                                <option>Male</option><option>Female</option><option>Other</option>
-                            </select>
-
-                            <label>Age (Date of Birth)</label>
-                            <input type="date" name="dob" value={formData.dob || ''} className="input-field" required onChange={handleChange} />
-
-                            <label className="text-muted">Experience</label>
-                            <div className="experience-container">
-                                <select name="expYears" value={formData.expYears || '0 Years'} className="input-field" onChange={handleChange}>
-                                    <option>0 Years</option><option>1 Year</option><option>2 Years</option><option>3 Years</option><option>4 Years</option><option>5+ Years</option>
-                                </select>
-                                <select name="expMonths" value={formData.expMonths || '0 Months'} className="input-field" onChange={handleChange}>
-                                    <option>0 Months</option><option>6 Months</option><option>11 Months</option>
-                                </select>
+                    {/* 2. FORM FIELDS (Show ONLY if role is set) */}
+                    {role && (
+                        <div className="role-specific-form fade-in">
+                            <div className="role-status-box" style={{ marginBottom: '20px', padding: '10px', background: '#e2e6ea', borderRadius: '5px' }}>
+                                <strong>Selected Role:</strong> {role.toUpperCase()}
+                                <span onClick={() => { if (!passedRole) setRole(''); }} style={{ float: 'right', cursor: 'pointer', color: 'blue', fontSize: '12px', textDecoration: 'underline' }}>
+                                    {!passedRole && "(Change)"}
+                                </span>
                             </div>
 
-                            <label className="checkbox-label">
-                                <input type="checkbox" name="noExp" checked={formData.noExp || false} onChange={handleChange} /> No Experience
-                            </label>
+                            {/* Teacher Fields */}
+                            {role === 'teacher' && (
+                                <div className="form-group">
+                                    <h3 style={{ borderBottom: '2px solid #0984e3', paddingBottom: '5px', marginBottom: '15px', color: '#0984e3' }}>👨‍🏫 Teacher Details</h3>
 
-                            <label style={{ color: '#d63031', fontWeight: 'bold', marginTop: '15px' }}>Apply to School/Institution:</label>
-                            {institutions.length === 0 && <p style={{ color: 'red', fontSize: '12px' }}>No registered institutions found. You cannot submit without selecting one.</p>}
-                            <p style={{ fontSize: '12px', color: '#666', marginTop: '-5px', marginBottom: '10px' }}>Select the school you want to join. They will receive your application.</p>
-                            <select
-                                name="institutionId"
-                                value={formData.institutionId || ''}
-                                className="input-field"
-                                required
-                                onChange={handleChange}
-                                disabled={!!initialData.institutionId} // Rule: Cannot change Institution Name
-                            >
-                                <option value="" disabled>Select a School to Apply</option>
-                                {institutions.map(inst => (
-                                    <option key={inst.id} value={inst.id}>{inst.schoolName || inst.name || "Unnamed"}</option>
-                                ))}
-                            </select>
+                                    <label>First Name</label>
+                                    <input name="firstName" value={formData.firstName || ''} className="input-field" required onChange={handleChange} />
+
+                                    <label>Second Name</label>
+                                    <input name="secondName" value={formData.secondName || ''} className="input-field" required onChange={handleChange} />
+
+                                    <label>Subject Specialization</label>
+                                    <input
+                                        name="subject"
+                                        value={formData.subject || ''}
+                                        className="input-field"
+                                        placeholder="e.g. Mathematics, Science"
+                                        required
+                                        onChange={handleChange}
+                                    // Subject is now editable by Teacher
+                                    />
+                                    {/* <p style={{ fontSize: '11px', color: '#d63031', marginTop: '-5px' }}>* Subject is assigned by Institution</p> */}
+
+                                    <label>Gender</label>
+                                    <select name="gender" value={formData.gender || ''} className="input-field" onChange={handleChange}>
+                                        <option value="" disabled>Select Gender</option>
+                                        <option>Male</option><option>Female</option><option>Other</option>
+                                    </select>
+
+                                    <label>Age (Date of Birth)</label>
+                                    <input type="date" name="dob" value={formData.dob || ''} className="input-field" required onChange={handleChange} />
+
+                                    <label className="text-muted">Experience</label>
+                                    <div className="experience-container">
+                                        <select name="expYears" value={formData.expYears || '0 Years'} className="input-field" onChange={handleChange}>
+                                            <option>0 Years</option><option>1 Year</option><option>2 Years</option><option>3 Years</option><option>4 Years</option><option>5+ Years</option>
+                                        </select>
+                                        <select name="expMonths" value={formData.expMonths || '0 Months'} className="input-field" onChange={handleChange}>
+                                            <option>0 Months</option><option>6 Months</option><option>11 Months</option>
+                                        </select>
+                                    </div>
+
+                                    <label className="checkbox-label">
+                                        <input type="checkbox" name="noExp" checked={formData.noExp || false} onChange={handleChange} /> No Experience
+                                    </label>
+
+                                    <label style={{ color: '#d63031', fontWeight: 'bold', marginTop: '15px' }}>Apply to School/Institution:</label>
+                                    {institutions.length === 0 && <p style={{ color: 'red', fontSize: '12px' }}>No registered institutions found. You cannot submit without selecting one.</p>}
+                                    <p style={{ fontSize: '12px', color: '#666', marginTop: '-5px', marginBottom: '10px' }}>Select the school you want to join. They will receive your application.</p>
+                                    <select
+                                        name="institutionId"
+                                        value={formData.institutionId || ''}
+                                        className="input-field"
+                                        required
+                                        onChange={handleChange}
+                                        disabled={!!initialData.institutionId} // Rule: Cannot change Institution Name
+                                    >
+                                        <option value="" disabled>Select a School to Apply</option>
+                                        {institutions.map(inst => (
+                                            <option key={inst.id} value={inst.id}>{inst.schoolName || inst.name || "Unnamed"}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
+                            {/* Student Fields */}
+                            {role === 'student' && (
+                                <div className="form-group">
+                                    <h3 style={{ borderBottom: '2px solid #00b894', paddingBottom: '5px', marginBottom: '15px', color: '#00b894' }}>🎓 Student Details</h3>
+
+                                    <label>First Name</label>
+                                    <input name="firstName" value={formData.firstName || ''} className="input-field" required onChange={handleChange} />
+
+                                    <label>Second Name</label>
+                                    <input name="secondName" value={formData.secondName || ''} className="input-field" required onChange={handleChange} />
+
+                                    <label>Class</label>
+                                    <select name="class" value={formData.class || 'Nursery'} className="input-field" onChange={handleChange}>
+                                        <option>Nursery</option>
+                                        {['LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'].map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+
+                                    <label style={{ color: '#d63031', fontWeight: 'bold', marginTop: '15px' }}>Apply to School/Institution:</label>
+                                    {institutions.length === 0 && <p style={{ color: 'red', fontSize: '12px' }}>No registered institutions found. You cannot submit without selecting one.</p>}
+                                    <select
+                                        name="institutionId"
+                                        value={formData.institutionId || ''}
+                                        className="input-field"
+                                        required
+                                        onChange={handleChange}
+                                        disabled={!!initialData.institutionId} // Rule: Cannot change Institution Name
+                                    >
+                                        <option value="" disabled>Select a School to Apply</option>
+                                        {institutions.map(inst => (
+                                            <option key={inst.id} value={inst.id}>{inst.schoolName || inst.name || "Unnamed"}</option>
+                                        ))}
+                                    </select>
+
+                                    <label>Gender</label>
+                                    <select name="gender" value={formData.gender || ''} className="input-field" onChange={handleChange}>
+                                        <option value="" disabled>Select Gender</option>
+                                        <option>Male</option><option>Female</option><option>Other</option>
+                                    </select>
+
+                                    <label>Age (Date of Birth)</label>
+                                    <input type="date" name="dob" value={formData.dob || ''} className="input-field" required onChange={handleChange} />
+
+                                    <label className="text-muted">Father Name</label>
+                                    <input name="fatherName" value={formData.fatherName || ''} className="input-field" onChange={handleChange} />
+
+                                    <label className="text-muted">Mother Name</label>
+                                    <input name="motherName" value={formData.motherName || ''} className="input-field" onChange={handleChange} />
+
+                                    <label className="text-muted">Prizes</label>
+                                    <textarea name="prizes" value={formData.prizes || ''} className="input-field" placeholder="Mention prizes received, if any" onChange={handleChange}></textarea>
+                                </div>
+                            )}
+
+                            {/* Institution Fields */}
+                            {role === 'institution' && (
+                                <div className="form-group">
+                                    <h3 style={{ borderBottom: '2px solid #6c5ce7', paddingBottom: '5px', marginBottom: '15px', color: '#6c5ce7' }}>🏫 Institution Registration</h3>
+
+                                    <label>Chairman Name</label>
+                                    <input name="chairmanName" value={formData.chairmanName || ''} className="input-field" required onChange={handleChange} />
+
+                                    <label>Principal Name</label>
+                                    <input name="principalName" value={formData.principalName || ''} className="input-field" required onChange={handleChange} />
+
+                                    <label>School Name</label>
+                                    <input name="schoolName" value={formData.schoolName || ''} className="input-field" required onChange={handleChange} />
+
+                                    <label>Establishment Year</label>
+                                    <input type="date" name="estYear" value={formData.estYear || ''} className="input-field" required onChange={handleChange} />
+
+                                    <label className="text-muted">Chairman Profile Link <span style={{ fontSize: '12px', color: '#888' }}>(Optional)</span></label>
+                                    <input type="url" name="chairmanLink" value={formData.chairmanLink || ''} className="input-field" onChange={handleChange} />
+
+                                    <label className="text-muted">Principal Profile Link <span style={{ fontSize: '12px', color: '#888' }}>(Optional)</span></label>
+                                    <input type="url" name="principalLink" value={formData.principalLink || ''} className="input-field" onChange={handleChange} />
+
+                                    <h4 className="section-header">📞 Institution Contact Details</h4>
+                                    <p className="text-muted help-text">This will be visible to students for admissions/inquiries.</p>
+
+                                    <label>Official Phone Number</label>
+                                    <input name="phoneNumber" type="tel" value={formData.phoneNumber || ''} className="input-field" placeholder="+91 9876543210" required onChange={handleChange} />
+
+                                    <label className="checkbox-label-sm">
+                                        <input
+                                            type="checkbox"
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setFormData(prev => ({ ...prev, whatsappNumber: prev.phoneNumber }));
+                                                }
+                                            }}
+                                        />
+                                        WhatsApp number is same as Phone Number
+                                    </label>
+
+                                    <label>WhatsApp Number</label>
+                                    <input name="whatsappNumber" type="tel" value={formData.whatsappNumber || ''} className="input-field" placeholder="+91 9876543210" required onChange={handleChange} />
+
+                                    <h4 className="section-header">🚑 Emergency & Safety Contacts</h4>
+                                    <p className="text-muted help-text">These numbers will be shown to your students in the Report Harassment page.</p>
+
+                                    <label>Local Police Station Name</label>
+                                    <input name="localPoliceName" value={formData.localPoliceName || ''} className="input-field" placeholder="e.g. Banjara Hills PS" required onChange={handleChange} />
+
+                                    <label>Local Police Phone Number</label>
+                                    <input name="localPolicePhone" value={formData.localPolicePhone || ''} className="input-field" placeholder="e.g. 040-23456789" required onChange={handleChange} />
+                                </div>
+                            )}
+                            <div className="submit-container">
+                                <button type="submit" className="btn submit-button">Submit Details</button>
+                            </div>
                         </div>
                     )}
-
-                    {/* Student Fields */}
-                    {role === 'student' && (
-                        <div className="form-group">
-                            <h3 style={{ borderBottom: '2px solid #00b894', paddingBottom: '5px', marginBottom: '15px', color: '#00b894' }}>🎓 Student Details</h3>
-
-                            <label>First Name</label>
-                            <input name="firstName" value={formData.firstName || ''} className="input-field" required onChange={handleChange} />
-
-                            <label>Second Name</label>
-                            <input name="secondName" value={formData.secondName || ''} className="input-field" required onChange={handleChange} />
-
-                            <label>Class</label>
-                            <select name="class" value={formData.class || 'Nursery'} className="input-field" onChange={handleChange}>
-                                <option>Nursery</option>
-                                {['LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'].map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
-
-                            <label style={{ color: '#d63031', fontWeight: 'bold', marginTop: '15px' }}>Apply to School/Institution:</label>
-                            {institutions.length === 0 && <p style={{ color: 'red', fontSize: '12px' }}>No registered institutions found. You cannot submit without selecting one.</p>}
-                            <select
-                                name="institutionId"
-                                value={formData.institutionId || ''}
-                                className="input-field"
-                                required
-                                onChange={handleChange}
-                                disabled={!!initialData.institutionId} // Rule: Cannot change Institution Name
-                            >
-                                <option value="" disabled>Select a School to Apply</option>
-                                {institutions.map(inst => (
-                                    <option key={inst.id} value={inst.id}>{inst.schoolName || inst.name || "Unnamed"}</option>
-                                ))}
-                            </select>
-
-                            <label>Gender</label>
-                            <select name="gender" value={formData.gender || ''} className="input-field" onChange={handleChange}>
-                                <option value="" disabled>Select Gender</option>
-                                <option>Male</option><option>Female</option><option>Other</option>
-                            </select>
-
-                            <label>Age (Date of Birth)</label>
-                            <input type="date" name="dob" value={formData.dob || ''} className="input-field" required onChange={handleChange} />
-
-                            <label className="text-muted">Father Name</label>
-                            <input name="fatherName" value={formData.fatherName || ''} className="input-field" onChange={handleChange} />
-
-                            <label className="text-muted">Mother Name</label>
-                            <input name="motherName" value={formData.motherName || ''} className="input-field" onChange={handleChange} />
-
-                            <label className="text-muted">Prizes</label>
-                            <textarea name="prizes" value={formData.prizes || ''} className="input-field" placeholder="Mention prizes received, if any" onChange={handleChange}></textarea>
-                        </div>
-                    )}
-
-                    {/* Institution Fields */}
-                    {role === 'institution' && (
-                        <div className="form-group">
-                            <h3 style={{ borderBottom: '2px solid #6c5ce7', paddingBottom: '5px', marginBottom: '15px', color: '#6c5ce7' }}>🏫 Institution Registration</h3>
-
-                            <label>Chairman Name</label>
-                            <input name="chairmanName" value={formData.chairmanName || ''} className="input-field" required onChange={handleChange} />
-
-                            <label>Principal Name</label>
-                            <input name="principalName" value={formData.principalName || ''} className="input-field" required onChange={handleChange} />
-
-                            <label>School Name</label>
-                            <input name="schoolName" value={formData.schoolName || ''} className="input-field" required onChange={handleChange} />
-
-                            <label>Establishment Year</label>
-                            <input type="date" name="estYear" value={formData.estYear || ''} className="input-field" required onChange={handleChange} />
-
-                            <label className="text-muted">Chairman Profile Link</label>
-                            <input type="url" name="chairmanLink" value={formData.chairmanLink || ''} className="input-field" onChange={handleChange} />
-
-                            <label className="text-muted">Principal Profile Link</label>
-                            <input type="url" name="principalLink" value={formData.principalLink || ''} className="input-field" onChange={handleChange} />
-
-                            <h4 className="section-header">📞 Institution Contact Details</h4>
-                            <p className="text-muted help-text">This will be visible to students for admissions/inquiries.</p>
-
-                            <label>Official Phone Number</label>
-                            <input name="phoneNumber" type="tel" value={formData.phoneNumber || ''} className="input-field" placeholder="+91 9876543210" required onChange={handleChange} />
-
-                            <label className="checkbox-label-sm">
-                                <input
-                                    type="checkbox"
-                                    onChange={(e) => {
-                                        if (e.target.checked) {
-                                            setFormData(prev => ({ ...prev, whatsappNumber: prev.phoneNumber }));
-                                        }
-                                    }}
-                                />
-                                WhatsApp number is same as Phone Number
-                            </label>
-
-                            <label>WhatsApp Number</label>
-                            <input name="whatsappNumber" type="tel" value={formData.whatsappNumber || ''} className="input-field" placeholder="+91 9876543210" required onChange={handleChange} />
-
-                            <h4 className="section-header">🚑 Emergency & Safety Contacts</h4>
-                            <p className="text-muted help-text">These numbers will be shown to your students in the Report Harassment page.</p>
-
-                            <label>Local Police Station Name</label>
-                            <input name="localPoliceName" value={formData.localPoliceName || ''} className="input-field" placeholder="e.g. Banjara Hills PS" required onChange={handleChange} />
-
-                            <label>Local Police Phone Number</label>
-                            <input name="localPolicePhone" value={formData.localPolicePhone || ''} className="input-field" placeholder="e.g. 040-23456789" required onChange={handleChange} />
-                        </div>
-                    )}
-
-                    <div className="submit-container">
-                        <button type="submit" className="btn submit-button">Submit Details</button>
-                    </div>
-
                 </form>
 
                 {/* Debug Info */}
