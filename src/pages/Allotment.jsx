@@ -104,15 +104,30 @@ export default function Allotment() {
     const updateTimetableTeacher = async (classIds, section, subject, oldName, newName, instId) => {
         try {
             console.log(`Updating Timetable: ${classIds} ${section} | ${subject}: ${oldName} -> ${newName}`);
-            const q = query(
+
+            // Query 1: New Schema
+            const q1 = query(
                 collection(db, "timetables"),
                 where("institutionId", "==", instId),
                 where("section", "==", section)
             );
-            const snap = await getDocs(q);
+
+            // Query 2: Legacy Schema (some older docs might only have createdBy)
+            const q2 = query(
+                collection(db, "timetables"),
+                where("createdBy", "==", instId),
+                where("section", "==", section)
+            );
+
+            const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+
+            // Merge results by ID to handle overlaps
+            const combinedDocs = new Map();
+            snap1.docs.forEach(d => combinedDocs.set(d.id, d));
+            snap2.docs.forEach(d => combinedDocs.set(d.id, d));
 
             const updates = [];
-            snap.docs.forEach(d => {
+            combinedDocs.forEach(d => {
                 const data = d.data();
                 const dClass = String(data.class).replace(/(\d+)(st|nd|rd|th)/i, '$1');
                 const targetClass = String(classIds[0]).replace(/(\d+)(st|nd|rd|th)/i, '$1');
