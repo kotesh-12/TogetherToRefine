@@ -71,8 +71,11 @@ export default function Attendance() {
                     const uniqueClasses = Array.from(uniqueMap.values());
 
                     setTeacherClasses(uniqueClasses);
-                    // Auto-select first if available
-                    if (uniqueClasses.length > 0 && !selectedClass) {
+                    // Auto-select first if available (Overriding default '10' helps show actual data immediately)
+                    if (uniqueClasses.length > 0) {
+                        // FORCE UPDATE: Even if '10' is selected, if the teacher teaches '9', switch to '9'.
+                        // We check if the current 'selectedClass' is actually in the teacher's list?
+                        // Actually, simpler is just to default to the first one found.
                         setSelectedClass(uniqueClasses[0].class);
                         setSelectedSection(uniqueClasses[0].section);
                     }
