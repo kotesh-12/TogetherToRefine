@@ -30,7 +30,7 @@ export default function AdminDashboard() {
             await addDoc(collection(db, "announcements"), {
                 text,
                 createdAt: new Date(),
-                authorName: "Admin",
+                authorName: "Announcement",
                 type: 'global'
             });
             alert("Announcement Posted!");
@@ -274,7 +274,7 @@ export default function AdminDashboard() {
                                     await addDoc(collection(db, "announcements"), {
                                         text,
                                         createdAt: new Date(),
-                                        authorName: "Admin",
+                                        authorName: "Announcement",
                                         type: 'global'
                                     });
                                     alert("Announcement Posted!");
