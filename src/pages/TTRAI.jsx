@@ -266,7 +266,7 @@ export default function TTRAI() {
     };
 
     return (
-        <div className="ttr-ai-wrapper" style={{ display: 'flex', height: '100vh', flexDirection: 'row', overflow: 'hidden', background: '#f5f6fa' }}>
+        <div className="ttr-ai-wrapper" style={{ display: 'flex', height: '100vh', flexDirection: 'row', overflow: 'hidden', background: 'var(--bg-body)' }}>
 
             {/* 1. LEFT SIDEBAR (History) */}
             <div className={`ai-sidebar ${showSidebar ? 'mobile-visible' : ''}`} style={{
@@ -306,7 +306,7 @@ export default function TTRAI() {
             </div>
 
             {/* 2. MAIN CHAT AREA */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', background: '#ffffff' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', background: 'var(--bg-surface)', color: 'var(--text-main)' }}>
                 <Header onToggleSidebar={() => setShowSidebar(!showSidebar)} />
 
                 {/* Mobile History Toggle */}
@@ -334,7 +334,7 @@ export default function TTRAI() {
                     <div ref={messagesEndRef} />
                 </div>
 
-                <div className="input-area" style={{ borderTop: '1px solid #eee', padding: '15px', paddingBottom: '25px', marginBottom: '0', background: '#fff' }}>
+                <div className="input-area" style={{ borderTop: '1px solid var(--divider)', padding: '15px', paddingBottom: '25px', marginBottom: '0', background: 'var(--bg-surface)' }}>
                     {selectedImage && (
                         <div className="image-preview-container">
                             <img src={selectedImage} alt="Preview" className="image-preview" />
@@ -362,6 +362,7 @@ export default function TTRAI() {
                             onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                             placeholder={selectedImage ? "Add topic..." : "Ask TTR AI anything..."}
                             className="chat-input"
+                            style={{ background: 'var(--bg-body)', color: 'var(--text-main)', border: '1px solid var(--divider)' }}
                             autoComplete="off"
                         />
                         <button onClick={handleSend} disabled={loading} className="send-button">➤</button>

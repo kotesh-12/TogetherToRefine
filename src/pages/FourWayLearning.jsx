@@ -363,19 +363,19 @@ export default function FourWayLearning() {
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#f5f6fa', fontFamily: "'Segoe UI', sans-serif" }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--bg-body)', color: 'var(--text-main)', fontFamily: "'Segoe UI', sans-serif" }}>
 
             {/* HEADER */}
-            <div style={{ background: 'white', borderBottom: '1px solid #eee', flexShrink: 0 }}>
+            <div style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--divider)', flexShrink: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', padding: '10px 15px' }}>
                     <button
                         onClick={() => setShowSidebar(true)}
-                        style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', marginRight: '15px', color: '#2d3436' }}
+                        style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', marginRight: '15px', color: 'var(--text-main)' }}
                     >
                         ☰
                     </button>
                     <button className="btn-back-marker" onClick={() => navigate(-1)}>Back</button>
-                    <h1 style={{ margin: '0 0 0 15px', fontSize: '18px', color: '#2d3436' }}>Four-Way Learning</h1>
+                    <h1 style={{ margin: '0 0 0 15px', fontSize: '18px', color: 'var(--text-main)' }}>Four-Way Learning</h1>
                 </div>
 
                 <div style={{ display: 'flex', overflowX: 'auto', padding: '0 10px', scrollbarWidth: 'none' }}>
@@ -386,7 +386,7 @@ export default function FourWayLearning() {
                             style={{
                                 flex: 1, padding: '15px 10px', background: 'none', border: 'none',
                                 borderBottom: activeTab === m.id ? '3px solid #6c5ce7' : '3px solid transparent',
-                                color: activeTab === m.id ? '#6c5ce7' : '#636e72',
+                                color: activeTab === m.id ? '#6c5ce7' : 'var(--text-muted)',
                                 fontWeight: activeTab === m.id ? 'bold' : 'normal',
                                 cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s'
                             }}
@@ -410,8 +410,8 @@ export default function FourWayLearning() {
                     <div key={idx} style={{
                         alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
                         maxWidth: '85%',
-                        background: msg.role === 'user' ? '#6c5ce7' : 'white',
-                        color: msg.role === 'user' ? 'white' : '#2d3436',
+                        background: msg.role === 'user' ? '#6c5ce7' : 'var(--bg-surface)',
+                        color: msg.role === 'user' ? 'white' : 'var(--text-main)',
                         padding: '10px 14px',
                         borderRadius: '12px',
                         borderBottomRightRadius: msg.role === 'user' ? '2px' : '12px',
@@ -442,11 +442,11 @@ export default function FourWayLearning() {
                         )}
                     </div>
                 ))}
-                {loading && <div style={{ alignSelf: 'flex-start', background: 'white', padding: '10px 20px', borderRadius: '20px', color: '#666' }}>Thinking...</div>}
+                {loading && <div style={{ alignSelf: 'flex-start', background: 'var(--bg-surface)', padding: '10px 20px', borderRadius: '20px', color: 'var(--text-muted)' }}>Thinking...</div>}
             </div>
 
             {/* INPUT AREA */}
-            <div style={{ padding: '15px', background: 'white', borderTop: '1px solid #eee', flexShrink: 0 }}>
+            <div style={{ padding: '15px', background: 'var(--bg-surface)', borderTop: '1px solid var(--divider)', flexShrink: 0 }}>
                 {activeTab === 'teaching' && (
                     <div style={{ marginBottom: '10px', display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div style={{ display: 'flex', gap: '10px' }}>
@@ -500,7 +500,7 @@ export default function FourWayLearning() {
                         {isListening ? '⏹️' : '🎙️'}
                     </button>
 
-                    <input type="text" value={inputs[activeTab]} onChange={(e) => setInputs(prev => ({ ...prev, [activeTab]: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && handleGenerate()} placeholder={`Ask in ${currentMode?.title} mode...`} style={{ flex: 1, padding: '12px 15px', borderRadius: '25px', border: '1px solid #dfe6e9', outline: 'none' }} />
+                    <input type="text" value={inputs[activeTab]} onChange={(e) => setInputs(prev => ({ ...prev, [activeTab]: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && handleGenerate()} placeholder={`Ask in ${currentMode?.title} mode...`} style={{ flex: 1, padding: '12px 15px', borderRadius: '25px', border: '1px solid var(--divider)', background: 'var(--bg-body)', color: 'var(--text-main)', outline: 'none' }} />
                     <button onClick={handleGenerate} disabled={loading || (!inputs[activeTab] && !selectedImage)} style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#6c5ce7', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>➤</button>
                 </div>
             </div>
