@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 // Service Worker is now managed by UpdateManager.jsx
-const APP_VERSION = '0.0.45'; // UPDATED
+const APP_VERSION = '0.0.46'; // UPDATED
 console.log("TTR App Version:", APP_VERSION);
 
 // NUCLEAR FIX: Force unregister old Service Workers if version mismatches
