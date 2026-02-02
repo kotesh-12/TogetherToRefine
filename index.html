@@ -65,7 +65,7 @@
 
       function checkForUpdate() {
         console.log("🔍 Checking for updates (Raw Script)...");
-        fetch('/version.json?t=' + Date.now())
+        fetch('/version.json?t=' + Date.now(), { cache: "no-store" })
           .then(res => res.json())
           .then(data => {
             const serverVersion = data.version;

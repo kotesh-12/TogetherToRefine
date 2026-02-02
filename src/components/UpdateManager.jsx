@@ -7,7 +7,7 @@ export default function UpdateManager() {
         const checkVersion = async () => {
             try {
                 // Fetch latest version from server with cache-busting
-                const res = await fetch('/version.json?t=' + Date.now());
+                const res = await fetch('/version.json?t=' + Date.now(), { cache: "no-store" });
                 if (!res.ok) return;
                 const data = await res.json();
                 const latestVersion = data.version;
