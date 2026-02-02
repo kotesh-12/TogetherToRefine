@@ -111,16 +111,30 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--bg-body);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: #cbd5e1;
+  /* Slate 300 */
   border-radius: 5px;
+  border: 2px solid var(--bg-body);
+  /* Creates padding effect */
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: #94a3b8;
+  /* Slate 400 */
+}
+
+[data-theme='Dark'] ::-webkit-scrollbar-thumb {
+  background: #475569;
+  /* Slate 600 */
+}
+
+[data-theme='Dark'] ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+  /* Slate 500 */
 }
 
 /* Utilities */
@@ -497,7 +511,8 @@ body {
 }
 
 .markdown-content code {
-  background: rgba(0, 0, 0, 0.1);
+  background: var(--divider);
+  color: var(--text-main);
   padding: 2px 4px;
   border-radius: 4px;
   font-family: monospace;
@@ -553,7 +568,8 @@ body {
 }
 
 .update-modal {
-  background: white;
+  background: var(--bg-surface);
+  color: var(--text-main);
   padding: 30px;
   border-radius: 20px;
   max-width: 90%;
