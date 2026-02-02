@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      filename: 'sw-v44.js', // BREAKING CHANGE: Rename SW to kill potential zombie workers
+      filename: 'sw-v45.js', // BREAKING CHANGE: Rename SW to kill potential zombie workers
       includeAssets: ['favicon.ico', 'logo.png', 'logo2.png'],
       manifest: {
         name: 'Together To Refine',
@@ -43,6 +43,7 @@ export default defineConfig({
         ]
       },
       workbox: {
+        navigateFallbackDenylist: [/^\/api/], // Do NOT cache API calls
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true
