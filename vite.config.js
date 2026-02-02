@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      filename: 'sw-v43.js', // BREAKING CHANGE: Rename SW to kill potential zombie workers
+      filename: 'sw-v44.js', // BREAKING CHANGE: Rename SW to kill potential zombie workers
       includeAssets: ['favicon.ico', 'logo.png', 'logo2.png'],
       manifest: {
         name: 'Together To Refine',

@@ -58,12 +58,13 @@ export default function UpdateManager() {
                                 }
                                 const keys = await caches.keys();
                                 await Promise.all(keys.map(k => caches.delete(k)));
-                                localStorage.clear(); // Clear everything
+                                // Do NOT clear localStorage to preserve Login Session
+                                localStorage.removeItem('ttr_version');
                             } catch (e) { console.error(e); }
 
                             // Force reload with unique version param to bypass browser cache
                             // This ensures the server gives us the new index.html
-                            window.location.href = window.location.origin + "/nuke.html?t=" + Date.now();
+                            window.location.href = window.location.origin + "/?v=" + Date.now();
                         }}
                         style={{
                             background: '#0984e3', border: 'none', color: 'white',
