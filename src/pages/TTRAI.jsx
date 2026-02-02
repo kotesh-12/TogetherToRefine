@@ -334,7 +334,7 @@ export default function TTRAI() {
                     <div ref={messagesEndRef} />
                 </div>
 
-                <div className="input-area" style={{ borderTop: '1px solid var(--divider)', padding: '15px', paddingBottom: '25px', marginBottom: '0', background: 'var(--bg-surface)' }}>
+                <div className="input-area" style={{ borderTop: '1px solid var(--divider)', padding: '15px', paddingBottom: '90px', marginBottom: '0', background: 'var(--bg-surface)' }}>
                     {selectedImage && (
                         <div className="image-preview-container">
                             <img src={selectedImage} alt="Preview" className="image-preview" />
