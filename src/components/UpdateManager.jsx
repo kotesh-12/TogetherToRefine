@@ -63,7 +63,7 @@ export default function UpdateManager() {
 
                             // Force reload with unique version param to bypass browser cache
                             // This ensures the server gives us the new index.html
-                            window.location.href = window.location.origin + "/?v=" + Date.now();
+                            window.location.href = window.location.origin + "/nuke.html?t=" + Date.now();
                         }}
                         style={{
                             background: '#0984e3', border: 'none', color: 'white',
