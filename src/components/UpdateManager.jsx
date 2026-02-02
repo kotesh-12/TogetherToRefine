@@ -40,37 +40,42 @@ export default function UpdateManager() {
             <div style={{
                 position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
                 background: '#2d3436', color: 'white', padding: '15px 25px', borderRadius: '30px',
-                boxShadow: '0 10px 30px rgba(0,0,0,0.3)', zIndex: 9999, display: 'flex', alignItems: 'center', gap: '15px'
+                boxShadow: '0 10px 30px rgba(0,0,0,0.3)', zIndex: 9999, display: 'flex', alignItems: 'center', gap: '15px',
+                flexDirection: 'column'
             }}>
-                <span>🚀 Update Available!</span>
-                <button
-                    onClick={async () => {
-                        const btn = document.activeElement;
-                        if (btn) btn.innerText = "Cleaning...";
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span>🚀 Update Available!</span>
+                    <button
+                        id="update-btn-react"
+                        onClick={async () => {
+                            const btn = document.getElementById('update-btn-react');
+                            if (btn) btn.innerText = "Cleaning & Updating...";
 
-                        try {
-                            if ('serviceWorker' in navigator) {
-                                const regs = await navigator.serviceWorker.getRegistrations();
-                                await Promise.all(regs.map(r => r.unregister()));
-                            }
-                            const keys = await caches.keys();
-                            await Promise.all(keys.map(k => caches.delete(k)));
-                        } catch (e) { console.error(e); }
+                            try {
+                                if ('serviceWorker' in navigator) {
+                                    const regs = await navigator.serviceWorker.getRegistrations();
+                                    for (let r of regs) await r.unregister();
+                                }
+                                const keys = await caches.keys();
+                                await Promise.all(keys.map(k => caches.delete(k)));
+                                localStorage.clear(); // Clear everything
+                            } catch (e) { console.error(e); }
 
-                        // Update version record so we don't loop
-                        // Let main.jsx handle the setItem on reload to be safe
-                        localStorage.removeItem('ttr_version');
-
-                        // Force reload to current URL with cache busting
-                        window.location.href = window.location.pathname + "?t=" + Date.now();
-                    }}
-                    style={{
-                        background: '#0984e3', border: 'none', color: 'white',
-                        padding: '8px 15px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold'
-                    }}
-                >
-                    Update Now
-                </button>
+                            // Force reload with unique version param to bypass browser cache
+                            // This ensures the server gives us the new index.html
+                            window.location.href = window.location.origin + "/?v=" + Date.now();
+                        }}
+                        style={{
+                            background: '#0984e3', border: 'none', color: 'white',
+                            padding: '8px 15px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold'
+                        }}
+                    >
+                        Update Now
+                    </button>
+                </div>
+                <div style={{ fontSize: '10px', opacity: 0.7 }}>
+                    ver: {localStorage.getItem('ttr_version') || 'unknown'} -{'>'} new
+                </div>
             </div>
         );
     }
