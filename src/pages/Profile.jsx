@@ -4,6 +4,7 @@ import { signOut } from 'firebase/auth';
 import { doc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { useUser } from '../context/UserContext';
+import DeviceManagement from '../components/DeviceManagement';
 
 export default function Profile() {
     const navigate = useNavigate();
@@ -102,6 +103,8 @@ export default function Profile() {
                     <button className="btn" style={{ backgroundColor: '#0984e3' }} onClick={() => navigate('/details')}>✏️ Edit Profile</button>
                     <button className="btn" style={{ backgroundColor: '#d63031' }} onClick={handleLogout}>🚪 Logout</button>
                 </div>
+
+                <DeviceManagement />
             </div>
         </div>
     );

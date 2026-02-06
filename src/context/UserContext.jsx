@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { auth, db } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
+import { registerSession, clearLocalSession } from '../utils/sessionManager';
 
 const UserContext = createContext();
 
@@ -12,19 +13,43 @@ export function UserProvider({ children }) {
 
     useEffect(() => {
         let unsubscribeSnapshot = null;
+        let unsubscribeSession = null;
 
         const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
             console.log("Auth State Changed:", currentUser ? "User Logged In" : "User Logged Out");
             setUser(currentUser);
 
-            // Cleanup previous snapshot listener
+            // Cleanup previous listeners
             if (unsubscribeSnapshot) {
                 unsubscribeSnapshot();
                 unsubscribeSnapshot = null;
             }
+            if (unsubscribeSession) {
+                unsubscribeSession();
+                unsubscribeSession = null;
+            }
 
             if (currentUser) {
                 setLoading(true);
+
+                // --- SESSION MANAGEMENT START ---
+                // We fire this asynchronously so we don't block the Role Check
+                registerSession(currentUser.uid).then((sessionId) => {
+                    if (sessionId) {
+                        const sessionRef = doc(db, 'users', currentUser.uid, 'sessions', sessionId);
+                        unsubscribeSession = onSnapshot(sessionRef, (docSnap) => {
+                            // If document is deleted, it means this session was revoked
+                            if (!docSnap.exists()) {
+                                console.log("Current session revoked. Signing out.");
+                                auth.signOut().then(() => {
+                                    clearLocalSession();
+                                    alert("You have been signed out from this device.");
+                                });
+                            }
+                        });
+                    }
+                }).catch(e => console.error("Session Init Error:", e));
+                // --- SESSION MANAGEMENT END ---
 
                 const detectFull = async () => {
                     console.time("RoleDetection");
@@ -173,6 +198,7 @@ export function UserProvider({ children }) {
             clearTimeout(timer);
             unsubscribeAuth();
             if (unsubscribeSnapshot) unsubscribeSnapshot();
+            if (unsubscribeSession) unsubscribeSession();
         };
     }, []);
 

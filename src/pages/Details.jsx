@@ -241,13 +241,25 @@ export default function Details() {
             isMajorUpdate = true;
         } else {
             // 2. Existing User -> Check specific fields
+            // If Not Approved, allow changes freely (correction mode)
+            // If Approved, changing Institution is Major.
+            const isApproved = initialData.approved === true;
+
             if (role === 'student') {
-                if (String(formData.institutionId) !== String(initialData.institutionId) ||
-                    String(formData.class) !== String(initialData.class)) {
+                if (isApproved) {
+                    if (String(formData.institutionId) !== String(initialData.institutionId) ||
+                        String(formData.class) !== String(initialData.class)) {
+                        isMajorUpdate = true;
+                    }
+                } else {
                     isMajorUpdate = true;
                 }
             } else if (role === 'teacher') {
-                if (String(formData.institutionId) !== String(initialData.institutionId)) {
+                if (isApproved) {
+                    if (String(formData.institutionId) !== String(initialData.institutionId)) {
+                        isMajorUpdate = true;
+                    }
+                } else {
                     isMajorUpdate = true;
                 }
             }
@@ -324,6 +336,25 @@ export default function Details() {
                     institutionName: instName,
                     approved: false
                 }, { merge: true });
+
+                // CLEANUP: Cancel/Delete ALL previous 'waiting' admission requests to avoid confusion
+                // (e.g. if I applied to School A, then changed to School B, School A request should die)
+                try {
+                    const qAdmissions = query(
+                        collection(db, "admissions"),
+                        where("userId", "==", userId),
+                        where("status", "==", "waiting")
+                    );
+                    const snapAdmissions = await getDocs(qAdmissions);
+                    const cleanupPromises = [];
+                    snapAdmissions.forEach((d) => {
+                        console.log(`Deleting obsolete admission request: ${d.id}`);
+                        cleanupPromises.push(deleteDoc(d.ref));
+                    });
+                    if (cleanupPromises.length > 0) await Promise.all(cleanupPromises);
+                } catch (cleanupErr) {
+                    console.warn("Cleanup of old admissions failed (non-fatal):", cleanupErr);
+                }
 
                 // Create Admission Request
                 await addDoc(collection(db, "admissions"), {
@@ -465,7 +496,7 @@ export default function Details() {
                                         className="input-field"
                                         required
                                         onChange={handleChange}
-                                        disabled={!!initialData.institutionId} // Rule: Cannot change Institution Name
+                                        disabled={!!initialData.institutionId && initialData.approved === true} // Allow edit if NOT approved
                                     >
                                         <option value="" disabled>Select a School to Apply</option>
                                         {institutions.map(inst => (
@@ -500,7 +531,7 @@ export default function Details() {
                                         className="input-field"
                                         required
                                         onChange={handleChange}
-                                        disabled={!!initialData.institutionId} // Rule: Cannot change Institution Name
+                                        disabled={!!initialData.institutionId && initialData.approved === true} // Allow edit if NOT approved
                                     >
                                         <option value="" disabled>Select a School to Apply</option>
                                         {institutions.map(inst => (

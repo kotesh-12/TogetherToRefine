@@ -127,8 +127,11 @@ export default function PendingApproval() {
                 {statusMsg && <p style={{ color: '#d63031', fontWeight: 'bold' }}>{statusMsg}</p>}
 
                 <div style={{ marginTop: '30px' }}>
-                    <button className="btn" onClick={checkStatus} disabled={loading}>
+                    <button className="btn" onClick={checkStatus} disabled={loading} style={{ marginRight: '10px' }}>
                         {loading ? 'Checking...' : 'Check Status ⟳'}
+                    </button>
+                    <button className="btn" onClick={() => navigate('/details')} style={{ backgroundColor: '#6c5ce7' }}>
+                        ✏️ Edit Details
                     </button>
                 </div>
 
