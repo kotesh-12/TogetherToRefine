@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
 export default function WaitingList() {
@@ -10,31 +10,40 @@ export default function WaitingList() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetchWaitingList();
-    }, []);
+        const auth = getAuth();
+        const user = auth.currentUser;
+        let q;
 
-    const fetchWaitingList = async () => {
-        try {
-            const auth = getAuth(); // Import getAuth if needed or use from firebase.js if exported
-            const user = auth.currentUser;
+        if (user) {
+            q = query(collection(db, "admissions"),
+                where("status", "==", "waiting"),
+                where("institutionId", "==", user.uid)
+            );
+        } else {
+            // Fallback for demo/testing
+            q = query(collection(db, "admissions"), where("status", "==", "waiting"));
+        }
 
-            let q;
-            if (user) {
-                q = query(collection(db, "admissions"),
-                    where("status", "==", "waiting"),
-                    where("institutionId", "==", user.uid)
-                );
-            } else {
-                // Fallback for demo/testing if not logged in (though they should be)
-                q = query(collection(db, "admissions"), where("status", "==", "waiting"));
-            }
-            const snap = await getDocs(q);
+        // Real-time listener to fix stale data issues
+        const unsubscribe = onSnapshot(q, (snap) => {
             const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             setWaiting(list);
-        } catch (e) {
-            console.error(e);
-        } finally {
             setLoading(false);
+        }, (error) => {
+            console.error("Waiting List Error:", error);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, []);
+
+    const handleRemove = async (id, name) => {
+        if (!window.confirm(`Are you sure you want to remove ${name}? This acts as a rejection.`)) return;
+        try {
+            await deleteDoc(doc(db, "admissions", id));
+        } catch (e) {
+            console.error("Remove failed:", e);
+            alert("Failed to remove: " + e.message);
         }
     };
 
@@ -78,9 +87,14 @@ export default function WaitingList() {
                                         {p.role === 'teacher' ? `Sub: ${p.subject}` : `Age: ${p.age}`}
                                     </span>
                                 </div>
-                                <button className="btn" style={{ backgroundColor: '#6c5ce7', height: 'fit-content' }} onClick={() => handleAllot(p)}>
-                                    Allot Class ➡
-                                </button>
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <button className="btn" style={{ backgroundColor: '#6c5ce7', height: 'fit-content' }} onClick={() => handleAllot(p)}>
+                                        Allot Class ➡
+                                    </button>
+                                    <button className="btn" style={{ backgroundColor: '#d63031', height: 'fit-content' }} onClick={() => handleRemove(p.id, p.name)}>
+                                        ✖ Remove
+                                    </button>
+                                </div>
                             </div>
                         ))}
                     </div>

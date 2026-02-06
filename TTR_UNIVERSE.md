@@ -2,9 +2,9 @@
 "The Avengers of Education" - Consistent mental models for every student.
 
 ## ⚛️ PHYSICS (The Forces & Matter)
-1.  **Proton** -> **Pranav** (The Positive Leader, stays in center).
-2.  **Electron** -> **Esha** (The Energetic Runner, always spinning around).
-3.  **Neutron** -> **Neel** (The Calm Peacemaker, neutral).
+1.  **Proton** -> **Pro** (The Positive Leader, stays in center).
+2.  **Electron** -> **Ele** (The Energetic Runner, always spinning around).
+3.  **Neutron** -> **Neu** (The Calm Peacemaker, neutral).
 4.  **Gravity** -> **Gajraj** (The Heavy Giant, pulls everyone together).
 5.  **Friction** -> **Firoz** (The Rough Blocker, tries to stop movement).
 6.  **Velocity** -> **Veer** (The Speedster with Direction).
