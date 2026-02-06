@@ -40,7 +40,8 @@ export default function Allotment() {
                 if (instId) {
                     q = query(collection(db, "users"), where("role", "==", "teacher"), where("institutionId", "==", instId));
                 } else {
-                    q = query(collection(db, "users"), where("role", "==", "teacher"));
+                    setExistingTeachers([]); // Prevent global leak
+                    return;
                 }
                 const snap = await getDocs(q);
                 setExistingTeachers(snap.docs.map(d => ({ uid: d.id, ...d.data() })));
