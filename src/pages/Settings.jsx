@@ -1,14 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
+import { getAuth, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
 
 export default function Settings() {
     const navigate = useNavigate();
     const { userData } = useUser();
+    const auth = getAuth();
 
     // States
     const [isDesktop, setIsDesktop] = useState(false);
     const [theme, setTheme] = useState(localStorage.getItem('app_theme') || 'Light');
+
+    // Password Change State
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
 
     useEffect(() => {
         // Sync Desktop Mode state with actual DOM
@@ -56,6 +67,57 @@ export default function Settings() {
         setTheme(newTheme);
     };
 
+    const handleChangePassword = async () => {
+        setError('');
+        setSuccess('');
+        setLoading(true);
+
+        if (newPassword !== confirmPassword) {
+            setError("New passwords do not match.");
+            setLoading(false);
+            return;
+        }
+
+        if (newPassword.length < 6) {
+            setError("Password should be at least 6 characters.");
+            setLoading(false);
+            return;
+        }
+
+        const user = auth.currentUser;
+        if (!user) {
+            setError("No user logged in.");
+            setLoading(false);
+            return;
+        }
+
+        try {
+            // Re-authenticate
+            const credential = EmailAuthProvider.credential(user.email, currentPassword);
+            await reauthenticateWithCredential(user, credential);
+
+            // Update Password
+            await updatePassword(user, newPassword);
+            setSuccess("Password updated successfully!");
+            setTimeout(() => {
+                setShowPasswordModal(false);
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+                setSuccess('');
+            }, 2000);
+        } catch (err) {
+            console.error(err);
+            if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+                setError("Incorrect current password.");
+            } else {
+                setError("Failed to update password: " + err.message);
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const navigateToDashboard = () => {
         const role = userData?.role || 'student';
         navigate(role === 'admin' ? '/admin' : role === 'institution' ? '/institution' : role === 'teacher' ? '/teacher' : '/student');
@@ -98,6 +160,13 @@ export default function Settings() {
 
                 <div style={{ background: 'var(--bg-surface)', borderTop: '1px solid var(--divider)', borderBottom: '1px solid var(--divider)' }}>
                     {/* General */}
+                    <SettingItem
+                        icon="🔑"
+                        title="Change Password"
+                        subtitle="Update your login password"
+                        action={() => setShowPasswordModal(true)}
+                    />
+
                     <SettingItem
                         icon="🏠"
                         title="Dashboard"
@@ -149,6 +218,84 @@ export default function Settings() {
                     Made with ❤️ for Education
                 </div>
             </div>
+
+            {/* Change Password Modal */}
+            {showPasswordModal && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+                    background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    zIndex: 1000
+                }}>
+                    <div style={{
+                        background: 'var(--bg-surface)', padding: '25px', borderRadius: '12px',
+                        width: '90%', maxWidth: '400px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
+                    }}>
+                        <h3 style={{ margin: '0 0 20px 0', color: 'var(--text-main)' }}>Change Password</h3>
+
+                        {error && <div style={{ color: '#eb4d4b', fontSize: '14px', marginBottom: '15px', background: '#ffe6e6', padding: '10px', borderRadius: '5px' }}>{error}</div>}
+                        {success && <div style={{ color: '#009432', fontSize: '14px', marginBottom: '15px', background: '#e6ffe6', padding: '10px', borderRadius: '5px' }}>{success}</div>}
+
+                        <div style={{ marginBottom: '15px' }}>
+                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', color: 'var(--text-muted)' }}>Current Password</label>
+                            <input
+                                type="password"
+                                className="input-field"
+                                value={currentPassword}
+                                onChange={e => setCurrentPassword(e.target.value)}
+                                style={{ width: '100%' }}
+                            />
+                        </div>
+
+                        <div style={{ marginBottom: '15px' }}>
+                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', color: 'var(--text-muted)' }}>New Password</label>
+                            <input
+                                type="password"
+                                className="input-field"
+                                value={newPassword}
+                                onChange={e => setNewPassword(e.target.value)}
+                                style={{ width: '100%' }}
+                            />
+                        </div>
+
+                        <div style={{ marginBottom: '20px' }}>
+                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px', color: 'var(--text-muted)' }}>Confirm New Password</label>
+                            <input
+                                type="password"
+                                className="input-field"
+                                value={confirmPassword}
+                                onChange={e => setConfirmPassword(e.target.value)}
+                                style={{ width: '100%' }}
+                            />
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <button
+                                className="btn"
+                                onClick={handleChangePassword}
+                                disabled={loading}
+                                style={{ flex: 1, backgroundColor: '#0984e3' }}
+                            >
+                                {loading ? 'Updating...' : 'Update Password'}
+                            </button>
+                            <button
+                                className="btn"
+                                onClick={() => {
+                                    setShowPasswordModal(false);
+                                    setError('');
+                                    setSuccess('');
+                                    setCurrentPassword('');
+                                    setNewPassword('');
+                                    setConfirmPassword('');
+                                }}
+                                disabled={loading}
+                                style={{ flex: 1, backgroundColor: '#b2bec3' }}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
