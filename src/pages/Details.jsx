@@ -132,7 +132,7 @@ export default function Details() {
                     let userDoc = await getDoc(doc(db, "users", user.uid));
                     if (userDoc.exists()) {
                         const data = userDoc.data();
-                        setRole(data.role);
+                        setRole(data.role || 'student'); // Fallback to 'student' if role field is missing
                         setFormData(data);
                         setInitialData(data); // Capture baseline
                         setIsRoleLocked(true);
@@ -141,7 +141,7 @@ export default function Details() {
                         userDoc = await getDoc(doc(db, "teachers", user.uid));
                         if (userDoc.exists()) {
                             const data = userDoc.data();
-                            setRole('teacher');
+                            setRole(data.role || 'teacher'); // Fallback to 'teacher'
                             setFormData(data);
                             setInitialData(data); // Capture baseline
                             setIsRoleLocked(true);
@@ -150,7 +150,7 @@ export default function Details() {
                             userDoc = await getDoc(doc(db, "institutions", user.uid));
                             if (userDoc.exists()) {
                                 const data = userDoc.data();
-                                setRole('institution');
+                                setRole(data.role || 'institution'); // Fallback to 'institution'
                                 setFormData(data);
                                 setInitialData(data); // Capture baseline
                                 setIsRoleLocked(true);
@@ -295,6 +295,7 @@ export default function Details() {
                 console.log("✅ Safe Update Detected. Updating profile without resetting approval.");
                 await setDoc(doc(db, collectionName, userId), {
                     ...formData,
+                    role: role, // Ensure role is saved
                     name: newDisplayName,
                     pid: finalPid,
                     profileCompleted: true,
@@ -319,6 +320,7 @@ export default function Details() {
             // 1. Update Core Profile
             await setDoc(doc(db, collectionName, userId), {
                 ...formData,
+                role: role, // Ensure role is saved
                 name: newDisplayName,
                 pid: finalPid,
                 profileCompleted: true,

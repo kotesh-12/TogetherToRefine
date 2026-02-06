@@ -114,8 +114,8 @@ export default function PendingApproval() {
     };
 
     return (
-        <div className="container" style={{ textAlign: 'center', marginTop: '50px' }}>
-            <div className="card" style={{ maxWidth: '500px', margin: '0 auto', padding: '40px' }}>
+        <div className="container" style={{ textAlign: 'center', marginTop: '100px', paddingBottom: '50px' }}>
+            <div className="card" style={{ maxWidth: '600px', margin: '0 auto', padding: '40px' }}>
                 <div style={{ fontSize: '60px', marginBottom: '20px' }}>⏳</div>
                 <h2 style={{ color: '#0984e3' }}>Application Pending</h2>
                 <p style={{ fontSize: '16px', color: '#555', lineHeight: '1.6' }}>
@@ -126,21 +126,22 @@ export default function PendingApproval() {
 
                 {statusMsg && <p style={{ color: '#d63031', fontWeight: 'bold' }}>{statusMsg}</p>}
 
-                <div style={{ marginTop: '30px' }}>
-                    <button className="btn" onClick={checkStatus} disabled={loading} style={{ marginRight: '10px' }}>
+                <div style={{ marginTop: '30px', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
+                    <button className="btn" onClick={checkStatus} disabled={loading} style={{ width: '200px' }}>
                         {loading ? 'Checking...' : 'Check Status ⟳'}
                     </button>
-                    <button className="btn" onClick={() => navigate('/details')} style={{ backgroundColor: '#6c5ce7' }}>
+
+                    <button className="btn" onClick={() => navigate('/details')} style={{ backgroundColor: '#6c5ce7', width: '200px' }}>
                         ✏️ Edit Details
                     </button>
                 </div>
 
                 {/* Debug Info */}
-                <div style={{ marginTop: '20px', fontSize: '12px', color: '#aaa' }}>
+                <div style={{ marginTop: '30px', fontSize: '12px', color: '#aaa' }}>
                     UID: {getAuth().currentUser?.uid || 'Not Logged In'}
                 </div>
                 <div style={{ marginTop: '15px' }}>
-                    <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', textDecoration: 'underline' }}>
+                    <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', textDecoration: 'underline', fontSize: '14px' }}>
                         Logout
                     </button>
                 </div>
