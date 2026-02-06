@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
-import { collection, query, where, getDocs, addDoc, deleteDoc, doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, deleteDoc, doc, updateDoc, setDoc, getDoc, limit } from 'firebase/firestore';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
 import AIBadge from '../components/AIBadge';
@@ -84,12 +84,26 @@ export default function Allotment() {
 
     const fetchEntries = async () => {
         if (!cls || !sec || !role) return;
-        const colName = role === 'teacher' ? 'teacher_allotments' : 'student_allotments';
-        const q = query(collection(db, colName), where('classAssigned', '==', cls), where('section', '==', sec));
-        const snapshot = await getDocs(q);
-        const list = [];
-        snapshot.forEach(d => list.push({ id: d.id, ...d.data() }));
-        setEntries(list);
+
+        try {
+            const colName = role === 'teacher' ? 'teacher_allotments' : 'student_allotments';
+
+            // Standard query with constraints
+            // We use spread operator to easily add more constraints later if needed
+            const q = query(
+                collection(db, colName),
+                where('classAssigned', '==', cls),
+                where('section', '==', sec),
+                limit(50) // SCALABILITY: Prevent loading too many rows at once
+            );
+
+            const snapshot = await getDocs(q);
+            const list = [];
+            snapshot.forEach(d => list.push({ id: d.id, ...d.data() }));
+            setEntries(list);
+        } catch (e) {
+            console.error("Data fetch error:", e);
+        }
     };
 
     useEffect(() => {
