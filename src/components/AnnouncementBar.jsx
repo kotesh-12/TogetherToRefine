@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 
 export default function AnnouncementBar() {
     const { userData } = useUser();
-    const [scrollingText, setScrollingText] = useState('Welcome to Together To Refine!');
+    const [announcement, setAnnouncement] = useState('Welcome to Together To Refine!');
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -21,13 +21,15 @@ export default function AnnouncementBar() {
             if (!snapshot.empty) {
                 const announcements = snapshot.docs.map(d => d.data());
 
-                // Filter for ALL relevant announcements
-                const relevantList = announcements.filter(a => {
+                // Find ONLY the latest relevant announcement (as it worked previously)
+                const relevant = announcements.find(a => {
                     if (a.type === 'global') return true;
                     if (!userData) return false;
 
+                    // Role-based filtering
                     if (userData.role === 'admin' || userData.email === 'admin@ttr.com') return false;
 
+                    // Institution scoping
                     if (a.authorId && a.authorId !== userData.institutionId) return false;
 
                     if (userData.role === 'student') {
@@ -53,23 +55,19 @@ export default function AnnouncementBar() {
                     return false;
                 });
 
-                if (relevantList.length > 0) {
-                    // Join them for a continuous scrolling effect
-                    const joinedText = relevantList.map(a => {
-                        let text = a.text;
-                        if (a.authorName) text = `${a.authorName}: ${text}`;
-                        return `📢 ${text}`;
-                    }).join(' \u00A0\u00A0\u00A0\u00A0 | \u00A0\u00A0\u00A0\u00A0 ');
-
-                    setScrollingText(joinedText);
+                if (relevant) {
+                    let text = relevant.text;
+                    if (relevant.authorName) text = `${relevant.authorName}: ${text}`;
+                    setAnnouncement(text);
                 } else {
+                    // Fallback to latest global if no specific match
                     const latestGlobal = announcements.find(a => a.type === 'global');
                     if (latestGlobal) {
                         let text = latestGlobal.text;
                         if (latestGlobal.authorName) text = `${latestGlobal.authorName}: ${text}`;
-                        setScrollingText(`📢 ${text}`);
+                        setAnnouncement(text);
                     } else {
-                        setScrollingText('Welcome to Together To Refine!');
+                        setAnnouncement('Welcome to Together To Refine!');
                     }
                 }
             }
@@ -81,7 +79,7 @@ export default function AnnouncementBar() {
         <div className="ttr-announcement-wrapper">
             <div className="announcement-bar" onClick={() => navigate('/announcements')}>
                 <div className="scrolling-text">
-                    <span>{scrollingText}</span>
+                    <span>📢 {announcement}</span>
                 </div>
             </div>
         </div>
