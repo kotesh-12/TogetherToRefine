@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 
 export default function AnnouncementBar() {
     const { userData } = useUser();
-    const [announcement, setAnnouncement] = useState('Welcome to Together To Refine!');
+    const [scrollingText, setScrollingText] = useState('Welcome to Together To Refine!');
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -21,8 +21,8 @@ export default function AnnouncementBar() {
             if (!snapshot.empty) {
                 const announcements = snapshot.docs.map(d => d.data());
 
-                // Find the first relevant announcement
-                const relevant = announcements.find(a => {
+                // Filter for ALL relevant announcements
+                const relevantList = announcements.filter(a => {
                     if (a.type === 'global') return true;
                     if (!userData) return false;
 
@@ -53,18 +53,23 @@ export default function AnnouncementBar() {
                     return false;
                 });
 
-                if (relevant) {
-                    let text = relevant.text;
-                    if (relevant.authorName) text = `${relevant.authorName}: ${text}`;
-                    setAnnouncement(text);
+                if (relevantList.length > 0) {
+                    // Join them for a continuous scrolling effect
+                    const joinedText = relevantList.map(a => {
+                        let text = a.text;
+                        if (a.authorName) text = `${a.authorName}: ${text}`;
+                        return `📢 ${text}`;
+                    }).join(' \u00A0\u00A0\u00A0\u00A0 | \u00A0\u00A0\u00A0\u00A0 ');
+
+                    setScrollingText(joinedText);
                 } else {
                     const latestGlobal = announcements.find(a => a.type === 'global');
                     if (latestGlobal) {
                         let text = latestGlobal.text;
                         if (latestGlobal.authorName) text = `${latestGlobal.authorName}: ${text}`;
-                        setAnnouncement(text);
+                        setScrollingText(`📢 ${text}`);
                     } else {
-                        setAnnouncement('Welcome to Together To Refine!');
+                        setScrollingText('Welcome to Together To Refine!');
                     }
                 }
             }
@@ -76,7 +81,7 @@ export default function AnnouncementBar() {
         <div className="ttr-announcement-wrapper">
             <div className="announcement-bar" onClick={() => navigate('/announcements')}>
                 <div className="scrolling-text">
-                    <span>📢 {announcement}</span>
+                    <span>{scrollingText}</span>
                 </div>
             </div>
         </div>

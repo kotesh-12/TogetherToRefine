@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, serverTimestamp, writeBatch, doc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 
 export default function InstitutionFee() {
@@ -15,25 +16,27 @@ export default function InstitutionFee() {
 
     const navigate = useNavigate();
 
-    // Fetch Recently Created Fees
-    useEffect(() => {
-        if (!userData) return;
-        const fetchRecent = async () => {
-            const q = query(
-                collection(db, "fees"),
-                where("institutionId", "==", userData.uid), // Institution creates fees
-                orderBy("createdAt", "desc"),
-                limit(10)
-            );
-            // Without index, orderBy might fail initially. Can remove orderBy if needed or create index.
-            // Simplified for now:
-            const simpleQ = query(collection(db, "fees"), where("institutionId", "==", userData.uid));
+    // Standard Class Options
+    const classOptions = ['Nursery', 'LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
 
+    useEffect(() => {
+        if (!userData || !userData.uid) return;
+        const fetchRecent = async () => {
             try {
-                const snap = await getDocs(simpleQ);
-                const list = snap.docs.map(d => d.data());
-                // Client side sort
-                list.sort((a, b) => b.createdAt - a.createdAt);
+                const q = query(
+                    collection(db, "fees"),
+                    where("institutionId", "==", userData.uid)
+                );
+
+                const snap = await getDocs(q);
+                const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                list.sort((a, b) => {
+                    const timeA = a.createdAt?.seconds || 0;
+                    const timeB = b.createdAt?.seconds || 0;
+                    return timeB - timeA;
+                });
+
                 setRecentFees(list.slice(0, 10));
             } catch (e) {
                 console.error("Error fetching fees", e);
@@ -44,7 +47,15 @@ export default function InstitutionFee() {
 
     const handleAssignFee = async (e) => {
         e.preventDefault();
-        if (!targetClass || !title || !amount || !dueDate) return alert("Please fill all fields");
+        console.log("🚀 Starting Fee Assignment...");
+
+        if (!userData || !userData.uid) {
+            return alert("Error: Institution session not found. Please refresh.");
+        }
+
+        if (!targetClass || !title || !amount || !dueDate) {
+            return alert("Please fill all fields");
+        }
 
         setLoading(true);
 
@@ -60,41 +71,44 @@ export default function InstitutionFee() {
             const studentSnap = await getDocs(qStudents);
 
             if (studentSnap.empty) {
-                alert(`No students found in Class ${targetClass}`);
+                alert(`No students found in Class ${targetClass}. Please ensure students have selected this school and class in their profile.`);
                 setLoading(false);
                 return;
             }
 
-            // 2. Create Fee Record for EACH student
-            const batchPromises = studentSnap.docs.map(studentDoc => {
-                return addDoc(collection(db, "fees"), {
+            console.log(`✅ Found ${studentSnap.size} students. Assigning...`);
+
+            // 2. Batch write
+            const batch = writeBatch(db);
+
+            studentSnap.docs.forEach(studentDoc => {
+                const feeRef = doc(collection(db, "fees"));
+                batch.set(feeRef, {
                     studentId: studentDoc.id,
-                    studentName: studentDoc.data().name,
+                    studentName: studentDoc.data().name || `${studentDoc.data().firstName || ''} ${studentDoc.data().secondName || ''}`.trim() || "Student",
                     institutionId: userData.uid,
                     title,
                     amount: Number(amount),
                     dueDate,
+                    class: targetClass,
                     status: 'pending',
                     createdAt: serverTimestamp()
                 });
             });
 
-            await Promise.all(batchPromises);
+            await batch.commit();
 
             alert(`✅ Fee Assigned successfully to ${studentSnap.size} students in Class ${targetClass}!`);
 
-            // Reset Form
             setTitle('');
             setAmount('');
             setDueDate('');
+            setRecentFees(prev => [{ title, class: targetClass, amount, createdAt: { seconds: Date.now() / 1000 } }, ...prev].slice(0, 10));
             setLoading(false);
 
-            // Refresh list (optimistic)
-            setRecentFees(prev => [{ title, targetClass, amount, createdAt: new Date() }, ...prev]);
-
         } catch (error) {
-            console.error("Error assigning fee:", error);
-            alert("Failed to assign fee.");
+            console.error("❌ Error assigning fee:", error);
+            alert(`Failed to assign fee: ${error.message}`);
             setLoading(false);
         }
     };
@@ -117,8 +131,8 @@ export default function InstitutionFee() {
                             required
                         >
                             <option value="">Select Class</option>
-                            {[...Array(12)].map((_, i) => (
-                                <option key={i + 1} value={`${i + 1}`}>Class {i + 1}</option>
+                            {classOptions.map(cls => (
+                                <option key={cls} value={cls}>{cls}</option>
                             ))}
                         </select>
                     </div>
@@ -172,8 +186,11 @@ export default function InstitutionFee() {
                 ) : (
                     <ul style={{ listStyle: 'none', padding: 0 }}>
                         {recentFees.map((fee, idx) => (
-                            <li key={idx} style={{ padding: '10px', borderBottom: '1px solid #eee', fontSize: '14px' }}>
-                                <strong>{fee.title}</strong> for Class <strong>{fee.targetClass || 'N/A'}</strong> - ₹{fee.amount}
+                            <li key={fee.id || idx} style={{ padding: '10px', borderBottom: '1px solid #eee', fontSize: '14px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span><strong>{fee.title}</strong> - {fee.class || fee.targetClass}</span>
+                                    <span style={{ color: '#27ae60', fontWeight: 'bold' }}>₹{fee.amount}</span>
+                                </div>
                             </li>
                         ))}
                     </ul>
@@ -182,5 +199,3 @@ export default function InstitutionFee() {
         </div>
     );
 }
-
-

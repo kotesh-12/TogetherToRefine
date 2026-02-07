@@ -3,7 +3,7 @@
     top: 0;
     z-index: 999;
     background-color: var(--bg-surface);
-    /* Break out of .main-content-area padding (24px desktop) */
+    /* Break out of .main-content-area padding */
     margin-top: -24px;
     margin-left: -24px;
     margin-right: -24px;
@@ -16,23 +16,24 @@
 .announcement-bar {
     background: linear-gradient(90deg, #6c5ce7, #a29bfe);
     color: white;
-    padding: 10px 0;
+    padding: 12px 0;
     display: flex;
     align-items: center;
     cursor: pointer;
     white-space: nowrap;
     overflow: hidden;
     position: relative;
-    height: 40px;
+    min-height: 40px;
 }
 
 .scrolling-text {
     display: inline-block;
     white-space: nowrap;
     padding-left: 100%;
-    animation: scroll-announcement 25s linear infinite;
+    animation: scroll-announcement 30s linear infinite;
     font-weight: 500;
-    font-size: 0.95rem;
+    font-size: 1.1rem;
+    /* Slightly larger for clarity */
 }
 
 /* Pause on hover */
@@ -56,15 +57,5 @@
         margin-left: -10px;
         margin-right: -10px;
         width: calc(100% + 20px);
-        margin-bottom: 15px;
-    }
-
-    .announcement-bar {
-        padding: 8px 0;
-        height: 36px;
-    }
-
-    .scrolling-text {
-        font-size: 0.85rem;
     }
 }
