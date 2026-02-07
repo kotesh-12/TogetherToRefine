@@ -11,21 +11,21 @@ export default function AnnouncementBar() {
     const [announcement, setAnnouncement] = useState('Welcome to Together To Refine!');
     const navigate = useNavigate();
 
-    // Helper to normalize class names for matching (e.g. "1" -> "1st")
     const normalizeClass = (c) => {
         if (!c) return '';
-        const s = String(c).trim();
+        let s = String(c).trim().toLowerCase();
+        s = s.replace(/(st|nd|rd|th)$/, '');
         if (s === '1') return '1st';
         if (s === '2') return '2nd';
         if (s === '3') return '3rd';
-        if (s >= '4' && s <= '10') return s + 'th';
-        return s;
+        const num = parseInt(s);
+        if (!isNaN(num) && num >= 4 && num <= 12) return num + 'th';
+        return s.charAt(0).toUpperCase() + s.slice(1);
     };
 
     useEffect(() => {
         if (!userData) return;
 
-        // Fetch multiple recent announcements to filter client-side
         const q = query(collection(db, "announcements"), orderBy("createdAt", "desc"), limit(20));
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -36,34 +36,19 @@ export default function AnnouncementBar() {
                     if (a.type === 'global') return true;
                     if (!userData) return false;
 
-                    // Role-based filtering
-                    if (userData.role === 'admin' || userData.email === 'admin@ttr.com') return false;
-
-                    // Institution scoping
                     const instId = userData.role === 'institution' ? userData.uid : userData.institutionId;
                     if (a.authorId && a.authorId !== instId) return false;
 
                     if (userData.role === 'student') {
                         const userClass = normalizeClass(userData.class);
-                        if (!userClass) return false;
-
                         const targetClass = normalizeClass(a.targetClass);
                         if (a.targetClass === 'All' || targetClass === userClass) {
                             if (a.targetSection === 'All' || a.targetSection === userData.section) return true;
                         }
                         return false;
                     }
-
-                    if (userData.role === 'teacher') {
-                        // Teachers see what their institution posts
-                        return true;
-                    }
-
-                    if (userData.role === 'institution') {
-                        // Institutions see what they themselves post
-                        return true;
-                    }
-
+                    if (userData.role === 'teacher') return true;
+                    if (userData.role === 'institution') return true;
                     return false;
                 });
 
@@ -77,8 +62,6 @@ export default function AnnouncementBar() {
                         let text = latestGlobal.text;
                         if (latestGlobal.authorName) text = `${latestGlobal.authorName}: ${text}`;
                         setAnnouncement(text);
-                    } else {
-                        setAnnouncement('Welcome to Together To Refine!');
                     }
                 }
             }
@@ -89,8 +72,9 @@ export default function AnnouncementBar() {
     return (
         <div className="ttr-announcement-wrapper">
             <div className="announcement-bar" onClick={() => navigate('/announcements')}>
-                <div className="scrolling-text">
-                    <span>📢 {announcement} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 📢 {announcement}</span>
+                <div className="ticker-wrapper">
+                    <div className="ticker-item">📢 {announcement}</div>
+                    <div className="ticker-item">📢 {announcement}</div>
                 </div>
             </div>
         </div>

@@ -15,31 +15,38 @@
 .announcement-bar {
     background: linear-gradient(90deg, #6c5ce7, #a29bfe);
     color: white;
-    padding: 10px 0;
+    padding: 12px 0;
     display: flex;
     align-items: center;
     cursor: pointer;
     white-space: nowrap;
     overflow: hidden;
     position: relative;
-    min-height: 35px;
+    min-height: 40px;
 }
 
-.scrolling-text {
-    display: inline-block;
+/* Realistic Seamless Ticker */
+.ticker-wrapper {
+    display: flex;
     white-space: nowrap;
-    animation: scroll-announcement 30s linear infinite;
-    font-weight: 500;
-    font-size: 1rem;
-    padding-left: 20%;
-    /* Reduced to make Loop feel tighter */
+    width: fit-content;
+    animation: ticker-animation 30s linear infinite;
+    will-change: transform;
 }
 
-.announcement-bar:hover .scrolling-text {
+.ticker-item {
+    padding-right: 15vw;
+    /* Large consistent gap between repetitions */
+    font-weight: 500;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.announcement-bar:hover .ticker-wrapper {
     animation-play-state: paused;
 }
 
-@keyframes scroll-announcement {
+@keyframes ticker-animation {
     0% {
         transform: translateX(0);
     }
@@ -47,8 +54,6 @@
     100% {
         transform: translateX(-50%);
     }
-
-    /* Half transition because we doubled the text in JSX */
 }
 
 @media (max-width: 768px) {
