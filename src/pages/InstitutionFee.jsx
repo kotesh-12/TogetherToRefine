@@ -16,18 +16,40 @@ export default function InstitutionFee() {
 
     const navigate = useNavigate();
 
-    // Standard Class Options
-    const classOptions = ['Nursery', 'LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
+    // Flexible Class Options - UI shows 1, 2, 3... but matches 1st, 2nd, 3rd...
+    const classOptions = [
+        { label: 'Nursery', value: 'Nursery' },
+        { label: 'LKG', value: 'LKG' },
+        { label: 'UKG', value: 'UKG' },
+        { label: '1', value: '1st' },
+        { label: '2', value: '2nd' },
+        { label: '3', value: '3rd' },
+        { label: '4', value: '4th' },
+        { label: '5', value: '5th' },
+        { label: '6', value: '6th' },
+        { label: '7', value: '7th' },
+        { label: '8', value: '8th' },
+        { label: '9', value: '9th' },
+        { label: '10', value: '10th' }
+    ];
 
-    // Helper to normalize class names for matching (e.g. "1" -> "1st")
+    // Robust Normalizer: Handles "10", "10th", "10 ", etc.
     const normalizeClass = (c) => {
         if (!c) return '';
-        const s = String(c).trim();
+        let s = String(c).trim().toLowerCase();
+
+        // Remove 'st', 'nd', 'rd', 'th' suffices to get pure number for comparison
+        s = s.replace(/(st|nd|rd|th)$/, '');
+
+        // Return matching ordinal for consistency in DB, or original name for non-numeric
         if (s === '1') return '1st';
         if (s === '2') return '2nd';
         if (s === '3') return '3rd';
-        if (s >= '4' && s <= '10') return s + 'th';
-        return s;
+        const num = parseInt(s);
+        if (!isNaN(num) && num >= 4 && num <= 12) return num + 'th';
+
+        // Return capitalized original for things like 'Nursery'
+        return s.charAt(0).toUpperCase() + s.slice(1);
     };
 
     useEffect(() => {
@@ -58,24 +80,22 @@ export default function InstitutionFee() {
 
     const handleAssignFee = async (e) => {
         if (e) e.preventDefault();
-        console.log("🚀 Starting Fee Assignment Process...");
 
         const instId = userData?.uid;
         if (!instId) {
-            alert("Error: Institution ID not found. Please log in again.");
+            alert("Error: Session expired. Please refresh.");
             return;
         }
 
         if (!targetClass || !title || !amount || !dueDate) {
-            alert("Please fill all fields: Class, Title, Amount, and Due Date.");
+            alert("Please fill all fields.");
             return;
         }
 
         setLoading(true);
 
         try {
-            // Step 1: Query students (Wide query to handle class mismatches)
-            console.log(`Searching for students in school: ${instId}...`);
+            // STEP 1: Query all students in the school
             const qStudents = query(
                 collection(db, "users"),
                 where("role", "==", "student"),
@@ -84,7 +104,7 @@ export default function InstitutionFee() {
 
             const studentSnap = await getDocs(qStudents);
 
-            // Step 2: Client-side filter with NORMALIZATION
+            // STEP 2: Normalize and match
             const normalizedTarget = normalizeClass(targetClass);
             const filteredStudents = studentSnap.docs.filter(d => {
                 const sClass = normalizeClass(d.data().class);
@@ -92,15 +112,12 @@ export default function InstitutionFee() {
             });
 
             if (filteredStudents.length === 0) {
-                console.warn(`No students matched class ${normalizedTarget}.`);
-                alert(`No students found in Class ${targetClass}. \n\nTotal students in school: ${studentSnap.size}. \nEnsure students have their class set correctly in their profile.`);
+                alert(`No students found in Class ${targetClass}. \n\nPlease verify that students have updated their profile to this class.`);
                 setLoading(false);
                 return;
             }
 
-            console.log(`✅ Found ${filteredStudents.length} students. Proceeding with Batch Write...`);
-
-            // Step 3: Batch Execution
+            // STEP 3: Batch Write
             const batch = writeBatch(db);
 
             filteredStudents.forEach(studentDoc => {
@@ -120,19 +137,18 @@ export default function InstitutionFee() {
             });
 
             await batch.commit();
-            console.log("🎉 Success! Batch committed.");
 
-            alert(`✅ Done! Fees assigned to ${filteredStudents.length} students in ${targetClass}.`);
+            alert(`✅ Success! Fee assigned to ${filteredStudents.length} students in Class ${targetClass}.`);
 
-            // Clean up
+            // Reset
             setTitle('');
             setAmount('');
             setDueDate('');
-            setRecentFees(prev => [{ id: 'new-' + Date.now(), title, class: targetClass, amount, createdAt: { seconds: Date.now() / 1000 } }, ...prev].slice(0, 10));
+            setRecentFees(prev => [{ id: 'new-' + Date.now(), title, class: normalizedTarget, amount, createdAt: { seconds: Date.now() / 1000 } }, ...prev].slice(0, 10));
             setLoading(false);
 
         } catch (error) {
-            console.error("❌ CRTITICAL ERROR:", error);
+            console.error("Error:", error);
             alert(`Failed: ${error.message}`);
             setLoading(false);
         }
@@ -140,21 +156,22 @@ export default function InstitutionFee() {
 
     return (
         <div className="page-wrapper" style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
-            <button className="btn" onClick={() => navigate(-1)} style={{ marginBottom: '20px', background: '#f8f9fa', color: '#333' }}>
+            <button className="btn" onClick={() => navigate(-1)} style={{ marginBottom: '20px', background: '#f1f2f6', color: '#2f3542' }}>
                 ← Back
             </button>
             <h2 style={{ textAlign: 'center', marginBottom: '30px' }}>💰 Fee Management</h2>
 
             <div className="card" style={{ padding: '30px' }}>
-                <h3>Assign New Fee</h3>
-                {/* Wrapped back in a form for enter-key support */}
+                <h3>Add New Fee Item</h3>
                 <form onSubmit={handleAssignFee} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
                     <div>
                         <label style={{ display: 'block', fontWeight: 'bold', fontSize: '13px', marginBottom: '10px' }}>Select Class</label>
                         <select className="input-field" value={targetClass} onChange={e => setTargetClass(e.target.value)} required>
                             <option value="">-- Choose Class --</option>
-                            {classOptions.map(cls => <option key={cls} value={cls}>{cls}</option>)}
+                            {classOptions.map(opt => (
+                                <option key={opt.value} value={opt.value}>Class {opt.label}</option>
+                            ))}
                         </select>
                     </div>
 
@@ -186,17 +203,17 @@ export default function InstitutionFee() {
                             marginTop: '10px'
                         }}
                     >
-                        {loading ? 'Processing... Please Wait' : '🚀 CONFIRM AND ASSIGN FEE'}
+                        {loading ? 'Processing...' : '🚀 ASSIGN FEE TO CLASS'}
                     </button>
                 </form>
             </div>
 
-            <div className="card" style={{ marginTop: '30px', borderLeft: '5px solid #3498db' }}>
+            <div className="card" style={{ marginTop: '30px' }}>
                 <h3 style={{ marginBottom: '15px' }}>🕒 Recent Activity</h3>
-                {recentFees.length === 0 ? <p className="text-muted">No activity yet.</p> : (
+                {recentFees.length === 0 ? <p className="text-muted">No recent assignments found.</p> : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         {recentFees.map(f => (
-                            <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '15px', background: '#f9f9f9', borderRadius: '8px' }}>
+                            <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '15px', background: '#f8f9fa', borderRadius: '8px', borderLeft: '4px solid #3498db' }}>
                                 <span><strong>{f.title}</strong> ({f.class || 'Class'})</span>
                                 <span style={{ color: '#27ae60', fontWeight: 'bold' }}>₹{f.amount}</span>
                             </div>
