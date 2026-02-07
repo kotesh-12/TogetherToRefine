@@ -16,7 +16,7 @@ export default function InstitutionFee() {
 
     const navigate = useNavigate();
 
-    // Flexible Class Options - UI shows 1, 2, 3... but matches 1st, 2nd, 3rd...
+    // Mapping for UI
     const classOptions = [
         { label: 'Nursery', value: 'Nursery' },
         { label: 'LKG', value: 'LKG' },
@@ -33,22 +33,15 @@ export default function InstitutionFee() {
         { label: '10', value: '10th' }
     ];
 
-    // Robust Normalizer: Handles "10", "10th", "10 ", etc.
     const normalizeClass = (c) => {
         if (!c) return '';
         let s = String(c).trim().toLowerCase();
-
-        // Remove 'st', 'nd', 'rd', 'th' suffices to get pure number for comparison
         s = s.replace(/(st|nd|rd|th)$/, '');
-
-        // Return matching ordinal for consistency in DB, or original name for non-numeric
         if (s === '1') return '1st';
         if (s === '2') return '2nd';
         if (s === '3') return '3rd';
         const num = parseInt(s);
         if (!isNaN(num) && num >= 4 && num <= 12) return num + 'th';
-
-        // Return capitalized original for things like 'Nursery'
         return s.charAt(0).toUpperCase() + s.slice(1);
     };
 
@@ -60,72 +53,74 @@ export default function InstitutionFee() {
                     collection(db, "fees"),
                     where("institutionId", "==", userData.uid)
                 );
-
                 const snap = await getDocs(q);
                 const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-                list.sort((a, b) => {
-                    const timeA = a.createdAt?.seconds || 0;
-                    const timeB = b.createdAt?.seconds || 0;
-                    return timeB - timeA;
-                });
-
+                list.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
                 setRecentFees(list.slice(0, 10));
             } catch (e) {
-                console.error("Error fetching recent fees:", e);
+                console.error("Fetch Error:", e);
             }
         };
         fetchRecent();
     }, [userData]);
 
     const handleAssignFee = async (e) => {
-        if (e) e.preventDefault();
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
 
-        const instId = userData?.uid;
-        if (!instId) {
-            alert("Error: Session expired. Please refresh.");
+        console.log("Submit clicked");
+
+        // Failsafe for missing data
+        if (!userData || !userData.uid) {
+            window.alert("Institution session not found. Please log out and log in again.");
             return;
         }
 
         if (!targetClass || !title || !amount || !dueDate) {
-            alert("Please fill all fields.");
+            window.alert("Please fill all fields: Class, Title, Amount, and Due Date.");
+            return;
+        }
+
+        if (!window.confirm(`Assign fee "${title}" of ₹${amount} to all students in Class ${targetClass}?`)) {
             return;
         }
 
         setLoading(true);
 
         try {
-            // STEP 1: Query all students in the school
-            const qStudents = query(
+            const instId = userData.uid;
+
+            // 1. Fetch Students
+            const q = query(
                 collection(db, "users"),
                 where("role", "==", "student"),
                 where("institutionId", "==", instId)
             );
 
-            const studentSnap = await getDocs(qStudents);
-
-            // STEP 2: Normalize and match
+            const snap = await getDocs(q);
             const normalizedTarget = normalizeClass(targetClass);
-            const filteredStudents = studentSnap.docs.filter(d => {
+
+            const students = snap.docs.filter(d => {
                 const sClass = normalizeClass(d.data().class);
                 return sClass === normalizedTarget;
             });
 
-            if (filteredStudents.length === 0) {
-                alert(`No students found in Class ${targetClass}. \n\nPlease verify that students have updated their profile to this class.`);
+            if (students.length === 0) {
+                window.alert(`No students found in Class ${targetClass} (normalized: ${normalizedTarget}).\n\nTotal students in school: ${snap.size}.\n\nPlease ensure students have selected this school in their profile.`);
                 setLoading(false);
                 return;
             }
 
-            // STEP 3: Batch Write
+            // 2. Batch write
             const batch = writeBatch(db);
-
-            filteredStudents.forEach(studentDoc => {
-                const sData = studentDoc.data();
+            students.forEach(sDoc => {
+                const data = sDoc.data();
                 const feeRef = doc(collection(db, "fees"));
                 batch.set(feeRef, {
-                    studentId: studentDoc.id,
-                    studentName: sData.name || `${sData.firstName || ''} ${sData.secondName || ''}`.trim() || "Student",
+                    studentId: sDoc.id,
+                    studentName: data.name || `${data.firstName || ''} ${data.secondName || ''}`.trim() || "Student",
                     institutionId: instId,
                     title,
                     amount: Number(amount),
@@ -138,37 +133,51 @@ export default function InstitutionFee() {
 
             await batch.commit();
 
-            alert(`✅ Success! Fee assigned to ${filteredStudents.length} students in Class ${targetClass}.`);
+            window.alert(`✅ SUCCESS! Fee assigned to ${students.length} students.`);
 
-            // Reset
+            // Reset fields
             setTitle('');
             setAmount('');
             setDueDate('');
-            setRecentFees(prev => [{ id: 'new-' + Date.now(), title, class: normalizedTarget, amount, createdAt: { seconds: Date.now() / 1000 } }, ...prev].slice(0, 10));
             setLoading(false);
 
-        } catch (error) {
-            console.error("Error:", error);
-            alert(`Failed: ${error.message}`);
+            // Optimistic update
+            setRecentFees(prev => [{
+                id: 'new-' + Date.now(),
+                title,
+                amount,
+                class: normalizedTarget,
+                createdAt: { seconds: Date.now() / 1000 }
+            }, ...prev].slice(0, 10));
+
+        } catch (err) {
+            console.error("Assignment Critical Error:", err);
+            window.alert("Failed: " + err.message);
             setLoading(false);
         }
     };
 
     return (
-        <div className="page-wrapper" style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
-            <button className="btn" onClick={() => navigate(-1)} style={{ marginBottom: '20px', background: '#f1f2f6', color: '#2f3542' }}>
+        <div className="page-wrapper" style={{ padding: '20px', maxWidth: '800px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
+            <button className="btn" onClick={() => navigate(-1)} style={{ marginBottom: '20px', background: '#eee', color: '#333' }}>
                 ← Back
             </button>
-            <h2 style={{ textAlign: 'center', marginBottom: '30px' }}>💰 Fee Management</h2>
 
-            <div className="card" style={{ padding: '30px' }}>
-                <h3>Add New Fee Item</h3>
-                <form onSubmit={handleAssignFee} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <h2 style={{ textAlign: 'center', color: '#2c3e50', marginBottom: '30px' }}>💰 Fee Management</h2>
 
+            <div className="card" style={{ padding: '30px', boxShadow: '0 8px 16px rgba(0,0,0,0.1)' }}>
+                <h3>➕ Create New Fee Structure</h3>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '20px' }}>
                     <div>
-                        <label style={{ display: 'block', fontWeight: 'bold', fontSize: '13px', marginBottom: '10px' }}>Select Class</label>
-                        <select className="input-field" value={targetClass} onChange={e => setTargetClass(e.target.value)} required>
-                            <option value="">-- Choose Class --</option>
+                        <label style={{ display: 'block', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' }}>Target Class</label>
+                        <select
+                            className="input-field"
+                            value={targetClass}
+                            onChange={e => setTargetClass(e.target.value)}
+                            style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px' }}
+                        >
+                            <option value="">-- Select Class --</option>
                             {classOptions.map(opt => (
                                 <option key={opt.value} value={opt.value}>Class {opt.label}</option>
                             ))}
@@ -176,51 +185,85 @@ export default function InstitutionFee() {
                     </div>
 
                     <div>
-                        <label style={{ display: 'block', fontWeight: 'bold', fontSize: '13px', marginBottom: '10px' }}>Fee Title</label>
-                        <input className="input-field" placeholder="e.g. Monthly Tuition Fee" value={title} onChange={e => setTitle(e.target.value)} required />
+                        <label style={{ display: 'block', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' }}>Fee Title</label>
+                        <input
+                            className="input-field"
+                            placeholder="e.g. Exam Fee Term 2"
+                            value={title}
+                            onChange={e => setTitle(e.target.value)}
+                            style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px' }}
+                        />
                     </div>
 
                     <div style={{ display: 'flex', gap: '15px' }}>
                         <div style={{ flex: 1 }}>
-                            <label style={{ display: 'block', fontWeight: 'bold', fontSize: '13px', marginBottom: '10px' }}>Amount (₹)</label>
-                            <input type="number" className="input-field" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} required />
+                            <label style={{ display: 'block', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' }}>Amount (₹)</label>
+                            <input
+                                type="number"
+                                className="input-field"
+                                placeholder="5000"
+                                value={amount}
+                                onChange={e => setAmount(e.target.value)}
+                                style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px' }}
+                            />
                         </div>
                         <div style={{ flex: 1 }}>
-                            <label style={{ display: 'block', fontWeight: 'bold', fontSize: '13px', marginBottom: '10px' }}>Due Date</label>
-                            <input type="date" className="input-field" value={dueDate} onChange={e => setDueDate(e.target.value)} required />
+                            <label style={{ display: 'block', fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' }}>Due Date</label>
+                            <input
+                                type="date"
+                                className="input-field"
+                                value={dueDate}
+                                onChange={e => setDueDate(e.target.value)}
+                                style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px' }}
+                            />
                         </div>
                     </div>
 
                     <button
-                        type="submit"
+                        onClick={handleAssignFee}
                         disabled={loading}
                         className="btn"
                         style={{
-                            background: '#2ecc71',
+                            marginTop: '10px',
+                            background: loading ? '#95a5a6' : '#27ae60',
+                            color: 'white',
                             padding: '18px',
                             fontSize: '16px',
                             fontWeight: 'bold',
-                            marginTop: '10px'
+                            border: 'none',
+                            borderRadius: '10px',
+                            cursor: loading ? 'wait' : 'pointer',
+                            transition: 'all 0.3s'
                         }}
                     >
-                        {loading ? 'Processing...' : '🚀 ASSIGN FEE TO CLASS'}
+                        {loading ? '⚡ Assigning to Batch...' : 'Assign Fee to All Selected Students'}
                     </button>
-                </form>
+                </div>
             </div>
 
             <div className="card" style={{ marginTop: '30px' }}>
-                <h3 style={{ marginBottom: '15px' }}>🕒 Recent Activity</h3>
-                {recentFees.length === 0 ? <p className="text-muted">No recent assignments found.</p> : (
+                <h3 style={{ marginBottom: '15px' }}>🕒 Recent Assignments</h3>
+                {recentFees.length === 0 ? (
+                    <p style={{ textAlign: 'center', color: '#7f8c8d' }}>No assignments yet.</p>
+                ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        {recentFees.map(f => (
-                            <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '15px', background: '#f8f9fa', borderRadius: '8px', borderLeft: '4px solid #3498db' }}>
-                                <span><strong>{f.title}</strong> ({f.class || 'Class'})</span>
-                                <span style={{ color: '#27ae60', fontWeight: 'bold' }}>₹{f.amount}</span>
+                        {recentFees.map(fee => (
+                            <div key={fee.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '15px', background: '#f9f9f9', borderRadius: '8px', borderLeft: '4px solid #3498db' }}>
+                                <div>
+                                    <div style={{ fontWeight: 'bold' }}>{fee.title}</div>
+                                    <div style={{ fontSize: '12px', color: '#7f8c8d' }}>Class: {fee.class}</div>
+                                </div>
+                                <div style={{ fontWeight: 'bold', color: '#27ae60' }}>₹{fee.amount}</div>
                             </div>
                         ))}
                     </div>
                 )}
             </div>
+
+            <style>{`
+                .btn:active { transform: scale(0.98); }
+                .input-field:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 2px rgba(52,152,219,0.2); }
+            `}</style>
         </div>
     );
 }
