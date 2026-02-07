@@ -9,7 +9,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       filename: 'sw-v46.js', // BREAKING CHANGE: Rename SW to kill potential zombie workers
-      includeAssets: ['favicon.ico', 'logo.png', 'logo2.png'],
+      includeAssets: ['logo.png', 'logo2.png'],
       manifest: {
         name: 'Together To Refine',
         short_name: 'TTR',

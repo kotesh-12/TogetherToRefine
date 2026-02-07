@@ -3,7 +3,7 @@ import { useUser } from '../context/UserContext';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, doc, updateDoc, addDoc, serverTimestamp, orderBy, limit } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 
 export default function StudentFee() {

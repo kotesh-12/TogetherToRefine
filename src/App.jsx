@@ -24,7 +24,7 @@ const Exam = lazy(() => import('./pages/Exam'));
 const Health = lazy(() => import('./pages/Health'));
 const FeedbackOverview = lazy(() => import('./pages/FeedbackOverview'));
 const Report = lazy(() => import('./pages/Report'));
-const FourWayLearning = lazy(() => import('./pages/FourWayLearning.jsx'));
+const FourWayLearning = lazy(() => import('./pages/FourWayLearning'));
 const PendingApproval = lazy(() => import('./pages/PendingApproval'));
 const VideoLibrary = lazy(() => import('./pages/VideoLibrary'));
 const SelectFeedbackTarget = lazy(() => import('./pages/SelectFeedbackTarget'));
