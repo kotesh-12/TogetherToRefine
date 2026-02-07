@@ -58,6 +58,7 @@ initAI();
 
 // --- ROUTES ---
 
+// --- 1. PROXY ENDPOINT (Fixes CORS for local development) ---
 app.post('/api/fetch-url', async (req, res) => {
     try {
         const { url } = req.body;
@@ -74,8 +75,6 @@ function generateTTRSystemPrompt(context) {
     const now = new Date();
     const dateTimeString = now.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: 'full', timeStyle: 'medium' });
 
-    // --- SHARED PROTOCOLS (UNIVERSAL CONSTANTS) ---
-    // These ensure a consistent "Universe" across all user types (Students, Teachers, Institutions)
     // --- SHARED PROTOCOLS (UNIVERSAL CONSTANTS) ---
     // These ensure a consistent "Universe" across all user types (Students, Teachers, Institutions)
 
@@ -294,6 +293,7 @@ app.post('/api/chat', async (req, res) => {
             systemInstruction: finalSystemInstruction
         });
 
+        // Map history to Google's format if it's not already
         const chat = chatModel.startChat({ history: history || [] });
 
         let parts = [{ text: message || " " }];

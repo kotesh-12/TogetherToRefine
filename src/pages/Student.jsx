@@ -198,6 +198,10 @@ export default function Student() {
                         <h3>🕵️ UPIDs (Private)</h3>
                         <p style={{ fontSize: '13px', margin: '5px 0 0' }}>View your anonymous ID history.</p>
                     </div>
+                    <div className="card" onClick={() => handleCardClick('/fees/student')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #2ecc71, #27ae60)', color: 'white' }}>
+                        <h3>💸 Pay Fees</h3>
+                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>View dues & payment history.</p>
+                    </div>
                 </div>
 
                 {/* Exam Results Section (New) */}

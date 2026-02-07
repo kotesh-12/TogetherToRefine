@@ -11,7 +11,9 @@ export default function AdminDashboard() {
         students: 0,
         teachers: 0,
         institutions: 0,
-        feedbacks: 0
+        feedbacks: 0,
+        totalFees: 0,
+        collectedFees: 0
     });
     const [pendingInstitutions, setPendingInstitutions] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -90,8 +92,23 @@ export default function AdminDashboard() {
                     students: usersSnap.size,
                     teachers: teacherSnap.size,
                     institutions: instSnap.size,
+                    inputs: instSnap.size,
                     feedbacks: feedbackSnap.size
                 });
+
+                // Fee Stats
+                let total = 0;
+                let collected = 0;
+                const feesSnap = await getDocs(collection(db, "fees"));
+                feesSnap.forEach(d => {
+                    const data = d.data();
+                    total += Number(data.amount || 0);
+                    if (data.status === 'paid') {
+                        collected += Number(data.amount || 0);
+                    }
+                });
+
+                setStats(prev => ({ ...prev, totalFees: total, collectedFees: collected }));
 
                 // Pending Institutions Logic & All Institutions
                 const pending = [];

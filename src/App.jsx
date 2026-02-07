@@ -37,6 +37,8 @@ const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const InstitutionDetailsAdmin = lazy(() => import('./pages/InstitutionDetailsAdmin'));
 const Onboarding = lazy(() => import('./pages/Onboarding'));
 const Settings = lazy(() => import('./pages/Settings'));
+const StudentFee = lazy(() => import('./pages/StudentFee'));
+const InstitutionFee = lazy(() => import('./pages/InstitutionFee'));
 
 
 import ProtectedRoute from './components/ProtectedRoute';
@@ -91,6 +93,7 @@ function App() {
                 <Route element={<ProtectedRoute allowedRoles={['student']} />}>
                   <Route path="/student" element={<Student />} />
                   <Route path="/upid-history" element={<UpidHistory />} />
+                  <Route path="/fees/student" element={<StudentFee />} />
                 </Route>
 
                 {/* Teacher Only */}
@@ -107,6 +110,7 @@ function App() {
                   <Route path="/allotment" element={<Allotment />} />
                   <Route path="/notification" element={<Notification />} />
                   <Route path="/faculty-feedback" element={<FacultyFeedback />} />
+                  <Route path="/fees/institution" element={<InstitutionFee />} />
                 </Route>
               </Route>
 

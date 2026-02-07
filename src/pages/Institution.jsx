@@ -192,6 +192,10 @@ export default function Institution() {
                         <span style={{ fontSize: '28px', marginBottom: '8px' }}>👨‍🏫</span>
                         <span>Teachers</span>
                     </button>
+                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#2c3e50', color: 'white' }} onClick={() => handleCardClick('/fees/institution')}>
+                        <span style={{ fontSize: '28px', marginBottom: '8px' }}>💰</span>
+                        <span>Fee Mgmt</span>
+                    </button>
                 </div>
 
                 <div className="card" style={{ padding: '20px', borderRadius: '15px' }}>
