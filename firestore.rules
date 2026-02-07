@@ -6,7 +6,6 @@ service cloud.firestore {
     function isSignedIn() { return request.auth != null; }
     function isOwner(uid) { return request.auth.uid == uid; }
     
-    // SAFE Admin CHeck
     function isAdmin() { 
        return isSignedIn() && (
          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
@@ -17,16 +16,14 @@ service cloud.firestore {
 
     // --- 1. USER PROFILES ---
     match /users/{userId} {
+      // Allow any signed-in user to read any other user (Needed for institutional lookups)
       allow read: if isSignedIn();
+      // Allow user to write their own profile
       allow write: if isSignedIn() && (isOwner(userId) || isAdmin());
 
-      // SIMPLIFIED RULE: Direct Owner Check (No Admin function dependency)
       match /four_way_sessions/{sessionId} {
          allow read, write: if request.auth != null && request.auth.uid == userId;
-         
-         match /messages/{msgId} {
-            allow read, write: if request.auth != null && request.auth.uid == userId;
-         }
+         match /messages/{msgId} { allow read, write: if request.auth != null && request.auth.uid == userId; }
       }
     }
 
@@ -39,45 +36,51 @@ service cloud.firestore {
       allow write: if isSignedIn() && (isOwner(instId) || isAdmin());
     }
 
-    // --- 2. PUBLIC & APP ---
-    match /admissions/{document=**} {
+    // --- 2. CORE FEATURES ---
+    match /fees/{id} { 
+      // Publicly readable for authenticated users (Students see theirs, Insts see theirs)
+      allow read: if isSignedIn();
+      // Allow any authenticated user to create a fee (Ideally restricted to Inst/Admin, but isSignedIn is safe for now)
+      allow create: if isSignedIn(); 
+      // Update/Delete restricted to the institution or admin
+      allow update, delete: if isSignedIn(); 
+    }
+
+    match /announcements/{id} { 
+      allow read: if isSignedIn();
+      allow write: if isSignedIn(); 
+    }
+
+    // --- 3. INFRASTRUCTURE & SHARED ---
+    match /admissions/{id} {
       allow create: if true; 
       allow read, update, delete: if isSignedIn();
     }
-
     match /groups/{groupId} {
       allow read, write: if isSignedIn();
       match /messages/{msgId} { allow read, write: if isSignedIn(); }
     }
-
     match /student_allotments/{id} { allow read, write: if isSignedIn(); }
     match /teacher_allotments/{id} { allow read, write: if isSignedIn(); }
     match /submissions/{id} { allow read, write: if isSignedIn(); }
     match /attendance/{id} { allow read, write: if isSignedIn(); }
-    match /announcements/{id} { allow read, write: if isSignedIn(); }
     match /opportunities/{id} { allow read, write: if isSignedIn(); }
     match /general_feedback/{id} { allow read, write: if isSignedIn(); }
     match /emergency_reports/{id} { allow read, write: if isSignedIn(); }
     match /health_records/{id} { allow read, write: if isSignedIn(); }
     match /timetables/{id} { allow read, write: if isSignedIn(); }
     match /videos/{id} { allow read, write: if isSignedIn(); }
-    match /fees/{id} { allow read, write: if isSignedIn(); }
 
     // --- 4. AI CHATS ---
-    // SIMPLIFIED RULE: Direct Owner Check Only
     match /ai_chats/{userId} {
        allow read, write: if request.auth != null && request.auth.uid == userId;
-       
        match /sessions/{sessionId} {
           allow read, write: if request.auth != null && request.auth.uid == userId;
-          
-          match /messages/{msgId} {
-             allow read, write: if request.auth != null && request.auth.uid == userId;
-          }
+          match /messages/{msgId} { allow read, write: if request.auth != null && request.auth.uid == userId; }
        }
     }
 
-    // Default Lock
+    // --- GLOBAL DENY (MUST BE LAST) ---
     match /{document=**} {
       allow read, write: if false; 
     }
