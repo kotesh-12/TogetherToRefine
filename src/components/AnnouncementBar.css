@@ -1,9 +1,8 @@
 .ttr-announcement-wrapper {
     position: sticky;
     top: 0;
-    z-index: 999;
+    z-index: 1000;
     background-color: var(--bg-surface);
-    /* Break out of .main-content-area padding */
     margin-top: -24px;
     margin-left: -24px;
     margin-right: -24px;
@@ -16,27 +15,26 @@
 .announcement-bar {
     background: linear-gradient(90deg, #6c5ce7, #a29bfe);
     color: white;
-    padding: 12px 0;
+    padding: 10px 0;
     display: flex;
     align-items: center;
     cursor: pointer;
     white-space: nowrap;
     overflow: hidden;
     position: relative;
-    min-height: 40px;
+    min-height: 35px;
 }
 
 .scrolling-text {
     display: inline-block;
     white-space: nowrap;
-    padding-left: 100%;
     animation: scroll-announcement 30s linear infinite;
     font-weight: 500;
-    font-size: 1.1rem;
-    /* Slightly larger for clarity */
+    font-size: 1rem;
+    padding-left: 20%;
+    /* Reduced to make Loop feel tighter */
 }
 
-/* Pause on hover */
 .announcement-bar:hover .scrolling-text {
     animation-play-state: paused;
 }
@@ -47,8 +45,10 @@
     }
 
     100% {
-        transform: translateX(-100%);
+        transform: translateX(-50%);
     }
+
+    /* Half transition because we doubled the text in JSX */
 }
 
 @media (max-width: 768px) {

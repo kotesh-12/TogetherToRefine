@@ -11,6 +11,17 @@ export default function AnnouncementBar() {
     const [announcement, setAnnouncement] = useState('Welcome to Together To Refine!');
     const navigate = useNavigate();
 
+    // Helper to normalize class names for matching (e.g. "1" -> "1st")
+    const normalizeClass = (c) => {
+        if (!c) return '';
+        const s = String(c).trim();
+        if (s === '1') return '1st';
+        if (s === '2') return '2nd';
+        if (s === '3') return '3rd';
+        if (s >= '4' && s <= '10') return s + 'th';
+        return s;
+    };
+
     useEffect(() => {
         if (!userData) return;
 
@@ -21,7 +32,6 @@ export default function AnnouncementBar() {
             if (!snapshot.empty) {
                 const announcements = snapshot.docs.map(d => d.data());
 
-                // Find ONLY the latest relevant announcement (as it worked previously)
                 const relevant = announcements.find(a => {
                     if (a.type === 'global') return true;
                     if (!userData) return false;
@@ -30,12 +40,14 @@ export default function AnnouncementBar() {
                     if (userData.role === 'admin' || userData.email === 'admin@ttr.com') return false;
 
                     // Institution scoping
-                    if (a.authorId && a.authorId !== userData.institutionId) return false;
+                    const instId = userData.role === 'institution' ? userData.uid : userData.institutionId;
+                    if (a.authorId && a.authorId !== instId) return false;
 
                     if (userData.role === 'student') {
-                        const userClass = userData.class?.toString();
+                        const userClass = normalizeClass(userData.class);
                         if (!userClass) return false;
-                        const targetClass = a.targetClass?.toString();
+
+                        const targetClass = normalizeClass(a.targetClass);
                         if (a.targetClass === 'All' || targetClass === userClass) {
                             if (a.targetSection === 'All' || a.targetSection === userData.section) return true;
                         }
@@ -43,13 +55,13 @@ export default function AnnouncementBar() {
                     }
 
                     if (userData.role === 'teacher') {
-                        if (a.role === 'institution' || a.authorId === userData.institutionId) return true;
-                        return false;
+                        // Teachers see what their institution posts
+                        return true;
                     }
 
                     if (userData.role === 'institution') {
-                        if (a.authorId === userData.uid) return true;
-                        return false;
+                        // Institutions see what they themselves post
+                        return true;
                     }
 
                     return false;
@@ -60,7 +72,6 @@ export default function AnnouncementBar() {
                     if (relevant.authorName) text = `${relevant.authorName}: ${text}`;
                     setAnnouncement(text);
                 } else {
-                    // Fallback to latest global if no specific match
                     const latestGlobal = announcements.find(a => a.type === 'global');
                     if (latestGlobal) {
                         let text = latestGlobal.text;
@@ -79,7 +90,7 @@ export default function AnnouncementBar() {
         <div className="ttr-announcement-wrapper">
             <div className="announcement-bar" onClick={() => navigate('/announcements')}>
                 <div className="scrolling-text">
-                    <span>📢 {announcement}</span>
+                    <span>📢 {announcement} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 📢 {announcement}</span>
                 </div>
             </div>
         </div>
