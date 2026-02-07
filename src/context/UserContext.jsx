@@ -3,7 +3,6 @@ import { auth, db } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import { registerSession, clearLocalSession } from '../utils/sessionManager';
-import SplashScreen from '../components/SplashScreen';
 
 const UserContext = createContext();
 
@@ -11,14 +10,11 @@ export function UserProvider({ children }) {
     const [user, setUser] = useState(null);
     const [userData, setUserData] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [minLoadTimePassed, setMinLoadTimePassed] = useState(false);
+
 
     useEffect(() => {
         let unsubscribeSnapshot = null;
         let unsubscribeSession = null;
-
-        // Enforce minimum splash screen time to allow animation to finish
-        const splashTimer = setTimeout(() => setMinLoadTimePassed(true), 2500);
 
         const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
             console.log("Auth State Changed:", currentUser ? "User Logged In" : "User Logged Out");
@@ -200,7 +196,6 @@ export function UserProvider({ children }) {
         }, 4000);
 
         return () => {
-            clearTimeout(splashTimer);
             clearTimeout(failsafeTimer);
             unsubscribeAuth();
             if (unsubscribeSnapshot) unsubscribeSnapshot();
@@ -218,8 +213,11 @@ export function UserProvider({ children }) {
 
     return (
         <UserContext.Provider value={values}>
-            {(loading || !minLoadTimePassed) ? (
-                <SplashScreen />
+            {loading ? (
+                <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div className="spinner" style={{ width: '40px', height: '40px', borderRadius: '50%', border: '4px solid #f3f3f3', borderTop: '4px solid #3498db', animation: 'spin 1s linear infinite' }}></div>
+                    <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+                </div>
             ) : children}
         </UserContext.Provider>
     );
