@@ -61,6 +61,7 @@ service cloud.firestore {
     match /health_records/{id} { allow read, write: if isSignedIn(); }
     match /timetables/{id} { allow read, write: if isSignedIn(); }
     match /videos/{id} { allow read, write: if isSignedIn(); }
+    match /fees/{id} { allow read, write: if isSignedIn(); }
 
     // --- 4. AI CHATS ---
     // SIMPLIFIED RULE: Direct Owner Check Only

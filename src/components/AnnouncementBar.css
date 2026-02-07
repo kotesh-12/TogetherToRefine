@@ -1,25 +1,46 @@
-.announcement-bar {
-    background: linear-gradient(90deg, #1a73e8, #4285f4);
-    color: white;
-    padding: 8px 0;
+.ttr-announcement-wrapper {
+    position: sticky;
+    top: 0;
+    z-index: 999;
+    background-color: var(--bg-surface);
+    /* Break out of .main-content-area padding (24px desktop) */
+    margin-top: -24px;
+    margin-left: -24px;
+    margin-right: -24px;
+    margin-bottom: 20px;
+    width: calc(100% + 48px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
     overflow: hidden;
-    white-space: nowrap;
-    position: relative;
-    cursor: pointer;
-    z-index: 1000;
-    height: 36px;
+}
+
+.announcement-bar {
+    background: linear-gradient(90deg, #6c5ce7, #a29bfe);
+    color: white;
+    padding: 10px 0;
     display: flex;
     align-items: center;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    position: relative;
+    height: 40px;
 }
 
-.scrolling-content {
+.scrolling-text {
     display: inline-block;
+    white-space: nowrap;
     padding-left: 100%;
-    animation: scroll-left 20s linear infinite;
+    animation: scroll-announcement 25s linear infinite;
     font-weight: 500;
+    font-size: 0.95rem;
 }
 
-@keyframes scroll-left {
+/* Pause on hover */
+.announcement-bar:hover .scrolling-text {
+    animation-play-state: paused;
+}
+
+@keyframes scroll-announcement {
     0% {
         transform: translateX(0);
     }
@@ -29,6 +50,21 @@
     }
 }
 
-.scrolling-content:hover {
-    animation-play-state: paused;
+@media (max-width: 768px) {
+    .ttr-announcement-wrapper {
+        margin-top: -10px;
+        margin-left: -10px;
+        margin-right: -10px;
+        width: calc(100% + 20px);
+        margin-bottom: 15px;
+    }
+
+    .announcement-bar {
+        padding: 8px 0;
+        height: 36px;
+    }
+
+    .scrolling-text {
+        font-size: 0.85rem;
+    }
 }
