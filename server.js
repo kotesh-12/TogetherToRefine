@@ -4,12 +4,25 @@ import dotenv from 'dotenv';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import rateLimit from 'express-rate-limit'; // Import Rate Limit
 
 dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+
+// --- RATE LIMITER CONFIGURATION ---
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per windowMs
+    message: { error: 'Too many requests from this IP, please try again after 15 minutes' },
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+
+// Apply global limiter to API routes (Specific to chat below)
+// app.use('/api/', apiLimiter);
 
 const PORT = 5000;
 const API_KEY = process.env.GEMINI_API_KEY;
@@ -265,7 +278,17 @@ function generateTTRSystemPrompt(context) {
     `;
 }
 
-app.post('/api/chat', async (req, res) => {
+// --- MIDDLEWARE: Basic Auth Check (Can be enhanced with Admin SDK later) ---
+const verifyAuth = (req, res, next) => {
+    // For now, checks if a userContext or history is present, ensuring it's not a blind ping.
+    // In production, you would verify req.headers.authorization with Firebase Admin SDK.
+    if (!req.body.userContext && !req.body.history && !req.body.message) {
+        return res.status(400).json({ error: "Invalid Request Payload" });
+    }
+    next();
+};
+
+app.post('/api/chat', apiLimiter, verifyAuth, async (req, res) => {
     try {
         const { history, message, image, mimeType, userContext, systemInstruction } = req.body;
 
