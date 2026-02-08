@@ -33,7 +33,8 @@ const ProtectedRoute = ({ allowedRoles }) => {
 
     // APPROVAL CHECK (Bug Fix)
     // If they are allowed by role, but NOT approved yet, send to pending.
-    if ((userData.role === 'student' || userData.role === 'teacher') && userData.approved === false) {
+    // SECURE FIX: Check explicitly for !== true to catch undefined/null cases
+    if ((userData.role === 'student' || userData.role === 'teacher') && userData.approved !== true) {
         return <Navigate to="/pending-approval" replace />;
     }
 
