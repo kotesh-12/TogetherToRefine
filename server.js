@@ -5,6 +5,14 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import rateLimit from 'express-rate-limit'; // Import Rate Limit
+import admin from 'firebase-admin';
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const serviceAccount = require("./serviceAccountKey.json");
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+});
 
 dotenv.config();
 
@@ -306,25 +314,24 @@ const verifyAuth = async (req, res, next) => {
         return res.status(400).json({ error: "Invalid Request Payload" });
     }
 
-    // 2. [TODO: Full Admin SDK Verify]
-    // For now, we rely on the Firestore Rules and Rate Limits.
-    // To fully fix VULN-002, we need the Service Account JSON file.
-    // Once you add that file, uncomment the code below:
-
-    /*
+    // 2. [SECURE: Full Admin SDK Verify]
+    // VULN-002 FIXED: We now verify the token signature with Google's public keys.
     const token = req.headers.authorization?.split('Bearer ')[1];
-    if (!token) return res.status(401).json({ error: 'No auth token provided' });
-    
+
+    // Allow basic ping/health check if needed, but for AI chat, we demand a token.
+    if (!token) {
+        return res.status(401).json({ error: 'No auth token provided' });
+    }
+
     try {
         const decodedToken = await admin.auth().verifyIdToken(token);
         req.user = decodedToken;
+        // Proceed to the route
         next();
     } catch (error) {
-        return res.status(401).json({ error: 'Invalid token' });
+        console.error("Auth Error:", error.message);
+        return res.status(401).json({ error: 'Invalid or Expired Token' });
     }
-    */
-
-    next();
 };
 
 // --- REFINED RATE LIMITERS ---
