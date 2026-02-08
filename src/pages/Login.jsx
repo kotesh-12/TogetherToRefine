@@ -70,7 +70,10 @@ export default function Login() {
     }, [user, userData, userLoading, navigate]);
 
     // PREVENT FLASH: Show loading if checking auth OR if user is found (waiting for redirect)
-    if (userLoading || user) {
+    // PREVENT FLASH: Show loading ONLY while checking auth.
+    // Once UserContext finishes loading (userLoading=false), let useEffect handle redirects.
+    // If no redirect happens (e.g. user not fully setup), fall through to render Login form.
+    if (userLoading) {
         return (
             <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <div className="spinner" style={{ width: '40px', height: '40px', borderRadius: '50%', border: '4px solid #f3f3f3', borderTop: '4px solid #3498db', animation: 'spin 1s linear infinite' }}></div>
