@@ -39,7 +39,7 @@ export default function Header({ onToggleSidebar }) {
     const handleSuggestionClick = (item) => {
         setIsSearchMode(false);
         setSearchTerm('');
-        navigate('/profileview', { state: { target: item } });
+        navigate('/profile-view', { state: { target: item } });
     };
 
     // Auto-Search with improved filtering and robust error handling
