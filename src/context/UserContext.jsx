@@ -84,6 +84,7 @@ export function UserProvider({ children }) {
                             // 1. Set Data IMMEDIATELY
                             setUserData({ ...instSnap.data(), uid: currentUser.uid, role: (instSnap.data().role || 'institution').toLowerCase() });
                             setLoading(false);
+                            sessionStorage.setItem('user_collection_cache', 'institutions');
 
                             // 2. Subscribe for updates
                             unsubscribeSnapshot = onSnapshot(instRef, (d) => {
@@ -94,6 +95,7 @@ export function UserProvider({ children }) {
                             // 1. Set Data IMMEDIATELY
                             setUserData({ ...teachSnap.data(), uid: currentUser.uid, role: (teachSnap.data().role || 'teacher').toLowerCase() });
                             setLoading(false);
+                            sessionStorage.setItem('user_collection_cache', 'teachers');
 
                             // 2. Subscribe
                             unsubscribeSnapshot = onSnapshot(teachRef, (d) => {
@@ -104,6 +106,7 @@ export function UserProvider({ children }) {
                             // 1. Set Data IMMEDIATELY
                             setUserData({ ...userSnap.data(), uid: currentUser.uid, role: (userSnap.data().role || 'student').toLowerCase() });
                             setLoading(false);
+                            sessionStorage.setItem('user_collection_cache', 'users');
 
                             // 2. Subscribe
                             unsubscribeSnapshot = onSnapshot(userRef, (d) => {
@@ -121,11 +124,37 @@ export function UserProvider({ children }) {
                     }
                 };
 
-                detectFull();
+                // OPTIMIZATION: Check Cache First
+                const cachedCollection = sessionStorage.getItem('user_collection_cache');
+                if (cachedCollection) {
+                    console.log("Using cached collection:", cachedCollection);
+                    unsubscribeSnapshot = onSnapshot(doc(db, cachedCollection, currentUser.uid), (d) => {
+                        if (d.exists()) {
+                            const data = d.data();
+                            let role = data.role;
+                            if (!role) {
+                                if (cachedCollection === 'institutions') role = 'institution';
+                                else if (cachedCollection === 'teachers') role = 'teacher';
+                                else role = 'student';
+                            }
+                            setUserData({ ...data, uid: currentUser.uid, role: role.toLowerCase() });
+                            setLoading(false);
+                        } else {
+                            sessionStorage.removeItem('user_collection_cache');
+                            detectFull();
+                        }
+                    }, (err) => {
+                        console.error("Cache subscribe error", err);
+                        detectFull();
+                    });
+                } else {
+                    detectFull();
+                }
 
             } else {
                 setUserData(null);
                 setLoading(false);
+                sessionStorage.removeItem('user_collection_cache');
             }
         });
 
