@@ -249,17 +249,27 @@ export default function TTRAI() {
 
         } catch (error) {
             console.error(error);
-            let errorMsg = error.message;
-            let isConfigError = false;
-            if (errorMsg.includes("API key") || errorMsg.includes("403") || errorMsg.includes("key not valid") || errorMsg.includes("expired")) {
-                errorMsg = "System Configuration Error: API Key is invalid or expired.";
-                isConfigError = true;
+            // OFFLINE HANDLING: If fetch fails due to network
+            if (!navigator.onLine) {
+                setMessages(prev => [...prev, {
+                    text: "⚠️ **Offline**: Message could not be sent. Check your internet connection.",
+                    sender: 'ai',
+                    isError: true
+                }]);
+            } else {
+                let errorMsg = error.message;
+                // ... existing error handling ...
+                let isConfigError = false;
+                if (errorMsg.includes("API key") || errorMsg.includes("403") || errorMsg.includes("key not valid") || errorMsg.includes("expired")) {
+                    errorMsg = "System Configuration Error: API Key is invalid or expired.";
+                    isConfigError = true;
+                }
+                setMessages(prev => [...prev, {
+                    text: "⚠️ **" + (isConfigError ? "Service Update" : "Error") + "**: " + errorMsg,
+                    sender: 'ai',
+                    isError: true
+                }]);
             }
-            setMessages(prev => [...prev, {
-                text: "⚠️ **" + (isConfigError ? "Service Update" : "Error") + "**: " + errorMsg,
-                sender: 'ai',
-                isError: true
-            }]);
         } finally {
             setLoading(false);
         }
