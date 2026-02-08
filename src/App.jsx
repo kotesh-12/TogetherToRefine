@@ -39,6 +39,7 @@ const Onboarding = lazy(() => import('./pages/Onboarding'));
 const Settings = lazy(() => import('./pages/Settings'));
 const StudentFee = lazy(() => import('./pages/StudentFee'));
 const InstitutionFee = lazy(() => import('./pages/InstitutionFee'));
+const Announcements = lazy(() => import('./pages/Announcements'));
 
 
 import ProtectedRoute from './components/ProtectedRoute';
@@ -80,7 +81,10 @@ function App() {
                   <Route path="/select-feedback-target" element={<SelectFeedbackTarget />} />
                   <Route path="/attendance" element={<Attendance />} />
                   <Route path="/timetable" element={<Timetable />} />
+                  <Route path="/attendance" element={<Attendance />} />
+                  <Route path="/timetable" element={<Timetable />} />
                   <Route path="/exam" element={<Exam />} />
+                  <Route path="/announcements" element={<Announcements />} />
                 </Route>
 
                 {/* Admin Route */}

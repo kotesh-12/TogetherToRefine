@@ -5,6 +5,14 @@
   text-align: center;
 }
 
+.app-header {
+  position: relative;
+  z-index: 10000;
+  background-color: var(--bg-surface);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  padding: 10px 20px;
+}
+
 .logo {
   height: 6em;
   padding: 1.5em;
@@ -584,40 +592,7 @@ button.btn.google-btn:hover {
   transform: scale(0.98);
 }
 
-/* =========================================
-   Announcement Bar Styles
-   ========================================= */
-.announcement-bar {
-  background: linear-gradient(90deg, #6c5ce7, #a29bfe);
-  color: white;
-  padding: 10px 0;
-  display: flex;
-  align-items: center;
-}
 
-.scrolling-text {
-  display: inline-block;
-  white-space: nowrap;
-  padding-left: 100%;
-  animation: scroll-announcement 20s linear infinite;
-  font-weight: 500;
-  font-size: 1rem;
-}
-
-/* Pause on hover */
-.announcement-bar:hover .scrolling-text {
-  animation-play-state: paused;
-}
-
-@keyframes scroll-announcement {
-  0% {
-    transform: translateX(0);
-  }
-
-  100% {
-    transform: translateX(-100%);
-  }
-}
 
 /* =========================================
    Layout & Mobile Responsive Adjustments
@@ -710,26 +685,3 @@ button.btn.google-btn:hover {
 /* =========================================
    Announcement Bar Full-Width Fix
    ========================================= */
-.ttr-announcement-wrapper {
-  position: sticky;
-  top: 0;
-  z-index: 999;
-  background-color: var(--bg-surface);
-  /* Break out of .main-content-area padding (24px desktop) */
-  margin-top: -24px;
-  margin-left: -24px;
-  margin-right: -24px;
-  margin-bottom: 20px;
-  width: calc(100% + 48px);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-}
-
-@media (max-width: 768px) {
-  .ttr-announcement-wrapper {
-    /* Break out of .main-content-area padding (10px mobile) */
-    margin-top: -10px;
-    margin-left: -10px;
-    margin-right: -10px;
-    width: calc(100% + 20px);
-  }
-}

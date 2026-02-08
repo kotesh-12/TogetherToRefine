@@ -1,7 +1,7 @@
 .ttr-announcement-wrapper {
     position: sticky;
     top: 0;
-    z-index: 1000;
+    z-index: 1;
     background-color: var(--bg-surface);
     margin-top: -24px;
     margin-left: -24px;
@@ -13,16 +13,19 @@
 }
 
 .announcement-bar {
-    background: linear-gradient(90deg, #6c5ce7, #a29bfe);
-    color: white;
-    padding: 12px 0;
+    background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+    /* Professional Dark Blue -> Bright Blue */
+    color: #ffffff;
+    padding: 10px 0;
+    /* Balanced padding */
     display: flex;
     align-items: center;
     cursor: pointer;
     white-space: nowrap;
     overflow: hidden;
     position: relative;
-    min-height: 40px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Realistic Seamless Ticker */
@@ -30,16 +33,23 @@
     display: flex;
     white-space: nowrap;
     width: fit-content;
-    animation: ticker-animation 30s linear infinite;
+    animation: ticker-animation 40s linear infinite;
+    /* Slower, smoother scroll */
     will-change: transform;
 }
 
 .ticker-item {
     padding-right: 15vw;
     /* Large consistent gap between repetitions */
-    font-weight: 500;
-    font-size: 1.1rem;
+    font-weight: 600;
+    /* Slightly bolder for readability */
+    font-size: 0.95rem;
+    /* Clean professional size */
+    letter-spacing: 0.5px;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .announcement-bar:hover .ticker-wrapper {

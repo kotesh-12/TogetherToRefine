@@ -80,7 +80,7 @@ export default function Header({ onToggleSidebar }) {
                         if (name && name.toLowerCase().includes(lowerTerm)) {
                             // Important: Capture the real userId (teacherId) if available to fetch profile pic later
                             const realId = data.teacherId || data.userId || d.id;
-                            uniqueResults.set(realId, { id: realId, ...data, type: 'Teacher', collection: 'teacher_allotments' });
+                            uniqueResults.set(realId, { id: realId, ...data, name: name, type: 'Teacher', collection: 'teacher_allotments' });
                         }
                     });
                 } else if (userData.role === 'teacher') {
@@ -92,7 +92,7 @@ export default function Header({ onToggleSidebar }) {
                         const name = data.name || data.studentName;
                         if (name && name.toLowerCase().includes(lowerTerm)) {
                             const realId = data.studentId || data.userId || d.id;
-                            uniqueResults.set(realId, { id: realId, ...data, type: 'Student', collection: 'student_allotments' });
+                            uniqueResults.set(realId, { id: realId, ...data, name: name, type: 'Student', collection: 'student_allotments' });
                         }
                     });
                 } else if (userData.role === 'institution') {
@@ -104,7 +104,7 @@ export default function Header({ onToggleSidebar }) {
                         const data = d.data();
                         if ((data.name || '').toLowerCase().includes(lowerTerm)) {
                             const realId = data.teacherId || data.userId || d.id;
-                            uniqueResults.set(realId, { id: realId, ...data, type: 'Teacher' });
+                            uniqueResults.set(realId, { id: realId, ...data, name: data.name || '', type: 'Teacher' });
                         }
                     });
 
@@ -115,7 +115,7 @@ export default function Header({ onToggleSidebar }) {
                         const data = d.data();
                         if ((data.name || '').toLowerCase().includes(lowerTerm)) {
                             const realId = data.studentId || data.userId || d.id;
-                            uniqueResults.set(realId, { id: realId, ...data, type: 'Student' });
+                            uniqueResults.set(realId, { id: realId, ...data, name: data.name || '', type: 'Student' });
                         }
                     });
                 }
@@ -198,7 +198,7 @@ export default function Header({ onToggleSidebar }) {
 
     // DEFAULT HEADER
     return (
-        <header className="app-header">
+        <header className="app-header" style={{ position: 'relative', zIndex: 100000 }}>
             {/* Left: Logo & Menu */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                 <button onClick={onToggleSidebar} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '24px', color: '#5f6368' }}>

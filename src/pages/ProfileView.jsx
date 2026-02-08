@@ -133,9 +133,40 @@ export default function ProfileView() {
     const isInstitution = profileData.type === 'Institution' || profileData.role === 'institution';
     const isTeacher = profileData.type === 'Teacher' || profileData.role === 'teacher';
 
+
     return (
         <div className="page-wrapper" style={{ background: 'var(--bg-body)', minHeight: '100vh', color: 'var(--text-main)' }}>
-            <AnnouncementBar title={profileData.name || "Profile"} leftIcon="back" />
+            {/* Custom Header for Profile View */}
+            <div style={{
+                background: 'linear-gradient(90deg, #6c5ce7, #a29bfe)',
+                padding: '12px 20px',
+                display: 'flex',
+                alignItems: 'center',
+                color: 'white',
+                position: 'sticky',
+                top: 0,
+                zIndex: 1100,
+                boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+            }}>
+                <button
+                    onClick={() => navigate(-1)}
+                    style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'white',
+                        fontSize: '24px',
+                        cursor: 'pointer',
+                        marginRight: '15px',
+                        display: 'flex',
+                        alignItems: 'center'
+                    }}
+                >
+                    ←
+                </button>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>
+                    {profileData.name || profileData.studentName || profileData.teacherName || "Profile"}
+                </h3>
+            </div>
 
             <div className="container" style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
 
@@ -157,7 +188,7 @@ export default function ProfileView() {
                                 <img src={profileData.profileImageURL} alt={profileData.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : (
                                 <span style={{ fontSize: '32px', fontWeight: 'bold', color: 'var(--text-muted)' }}>
-                                    {profileData.name ? profileData.name.charAt(0).toUpperCase() : '?'}
+                                    {profileData.name || profileData.studentName || profileData.teacherName || profileData.institutionName || '?'}
                                 </span>
                             )}
                         </div>
@@ -166,7 +197,7 @@ export default function ProfileView() {
                     {/* Stats & Info */}
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <h2 style={{ fontSize: '20px', margin: 0, fontWeight: '600' }}>{profileData.name}</h2>
+                            <h2 style={{ fontSize: '20px', margin: 0, fontWeight: '600' }}>{profileData.name || profileData.studentName || profileData.teacherName || profileData.institutionName || "Unknown User"}</h2>
                             <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{profileData.type || profileData.role}</span>
                             {isInstitution && <span style={{ fontSize: '12px', color: 'var(--primary)', marginTop: '2px' }}>Verified Institution</span>}
                         </div>
