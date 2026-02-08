@@ -205,6 +205,22 @@ export default function Login() {
             }
         }
 
+        // Password Strength Validation (VULN-011)
+        if (!isLogin) {
+            if (password.length < 8) {
+                setError('Password must be at least 8 characters long.');
+                return;
+            }
+            if (!/[A-Z]/.test(password)) {
+                setError('Password must contain at least one uppercase letter.');
+                return;
+            }
+            if (!/[0-9]/.test(password)) {
+                setError('Password must contain at least one number.');
+                return;
+            }
+        }
+
         setLoading(true);
 
         try {

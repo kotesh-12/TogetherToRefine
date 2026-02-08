@@ -9,8 +9,12 @@ const INCLUDED_FILES = [
     'firestore.rules',
     'server.js',
     'src/App.jsx',
-    'src/context/UserContext.jsx',
-    'src/App.css'
+    'src/App.css',
+    'src/firebase.js',
+    'src/components/ProtectedRoute.jsx',
+    'src/pages/Login.jsx',
+    'src/pages/Signup.jsx',
+    'src/pages/Details.jsx'
 ];
 
 function generateContext() {
@@ -62,7 +66,7 @@ function generateContext() {
     console.log(`1. Open ${OUTPUT_FILE}`);
     console.log(`2. Copy all text.`);
     console.log(`3. Paste into https://claude.ai (Free Web Chat)`);
-    console.log(`4. Ask: "Review this code for unused imports, potential bugs, and optimization opportunities."`);
+    console.log(`4. Ask: "Conduct a Final Go-Live Audit. Verify that previously identified critical vulnerabilities (VULN 1-20) are patched. Review code quality, performance logic, and security posture for a production launch."`);
 }
 
 generateContext();

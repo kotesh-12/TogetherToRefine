@@ -622,13 +622,7 @@ export default function Details() {
                     )}
                 </form>
 
-                {/* Debug Info */}
-                <div style={{ marginTop: '30px', borderTop: '1px solid #ddd', paddingTop: '10px', fontSize: '11px', color: '#999' }}>
-                    <strong>Debug Info:</strong><br />
-                    UID: {userId || '...'}<br />
-                    Current Role State: {role || 'None'}<br />
-                    Collection Found: {role === 'teacher' ? 'Teachers' : (role === 'institution' ? 'Institutions' : 'Users/None')}
-                </div>
+                {/* Debug Info Removed for Security */}
             </div>
         </div>
     );

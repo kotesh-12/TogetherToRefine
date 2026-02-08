@@ -338,8 +338,12 @@ const verifyAuth = async (req, res, next) => {
 const generalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
 const chatLimiter = rateLimit({
     windowMs: 1 * 60 * 1000,
-    max: 10, // 10 AI requests per minute per IP
-    message: { error: 'AI Limit Exceeded. Wait 1 min.' }
+    max: 10, // 10 AI requests per minute per USER
+    message: { error: 'AI Limit Exceeded. Wait 1 min.' },
+    keyGenerator: (req) => {
+        // VULN-007 FIXED: Rate limit by User ID if authenticated, fallback to IP
+        return req.user ? req.user.uid : req.ip;
+    }
 });
 
 app.post('/api/chat', chatLimiter, verifyAuth, async (req, res) => {

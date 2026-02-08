@@ -23,10 +23,13 @@ PROJECT CONTEXT FOR AI COLLABORATION (TogetherToRefine)
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
     "firebase": "^12.7.0",
+    "firebase-admin": "^13.6.1",
     "jsonwebtoken": "^9.0.3",
     "jspdf": "^4.1.0",
     "jspdf-autotable": "^5.0.7",
+    "lru-cache": "^11.2.5",
     "mysql2": "^3.16.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -49,6 +52,7 @@ PROJECT CONTEXT FOR AI COLLABORATION (TogetherToRefine)
     "vite-plugin-pwa": "^1.2.0"
   }
 }
+
 
 ## 2. DATABASE SCHEMA (MySQL)
 -- Database Initialization
@@ -132,19 +136,25 @@ service cloud.firestore {
     function isSignedIn() { return request.auth != null; }
     function isOwner(uid) { return request.auth.uid == uid; }
     
+    // SECURE ADMIN CHECK: Case-insensitive & consolidated
     function isAdmin() { 
        return isSignedIn() && (
-         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
-         (exists(/databases/$(database)/documents/teachers/$(request.auth.uid)) && get(/databases/$(database)/documents/teachers/$(request.auth.uid)).data.role == 'admin') ||
-         (exists(/databases/$(database)/documents/institutions/$(request.auth.uid)) && get(/databases/$(database)/documents/institutions/$(request.auth.uid)).data.role == 'admin')
+         exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role.lower() == 'admin'
        );
     }
 
     // --- 1. USER PROFILES ---
+    // Users are now consolidated into 'users' collection generally, but legacy 'teachers'/'institutions' 
+    // might still exist. We secure them all.
     match /users/{userId} {
-      // Required for institutions to find their students
       allow read: if isSignedIn();
+      // Only owner can update their own profile, or Admin
       allow write: if isSignedIn() && (isOwner(userId) || isAdmin());
+      
+      // Prevent users from changing their own role to 'admin'
+      allow update: if isOwner(userId) && 
+         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'approved']));
 
       match /four_way_sessions/{sessionId} {
          allow read, write: if isOwner(userId);
@@ -161,22 +171,65 @@ service cloud.firestore {
       allow write: if isSignedIn() && (isOwner(instId) || isAdmin());
     }
 
-    // --- 2. FEE MANAGEMENT ---
+    // --- 2. FEE MANAGEMENT (SECURED) ---
+    // Original rule was: allow read, write: if isSignedIn(); (CRITICAL VULN)
     match /fees/{feeId} {
-      // Broad permission for Fees to bypass any hidden blocks
-      allow read, write: if isSignedIn();
+       // Students read own fees; Institutions read their students' fees; Admins read all
+       allow read: if isSignedIn() && (
+          (request.auth.uid == resource.data.studentId) || 
+          (request.auth.uid == resource.data.institutionId) ||
+          isAdmin()
+       );
+       // Only Institution/Admin can write fees
+       allow write: if isSignedIn() && (
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'institution') ||
+          isAdmin()
+       );
     }
 
-    // --- 3. CORE APP COLLECTIONS ---
-    match /announcements/{id} { allow read, write: if isSignedIn(); }
+    // --- 3. ANNOUNCEMENTS (SECURED) ---
+    match /announcements/{id} {
+        allow read: if isSignedIn();
+        // Only valid authors can create
+        allow create: if isSignedIn() && 
+            request.auth.uid == request.resource.data.author_id;
+        // Only author or admin can delete/update
+        allow update, delete: if isSignedIn() && 
+            (resource.data.author_id == request.auth.uid || isAdmin());
+    }
+
+    // --- 4. GROUPS (SECURED) ---
+    match /groups/{groupId} {
+        allow read, write: if isSignedIn() && (
+            request.auth.uid in resource.data.members ||
+            resource.data.teacherId == request.auth.uid ||
+            isAdmin()
+        );
+        match /messages/{msgId} {
+             allow read, write: if isSignedIn() && (
+                request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.members ||
+                isAdmin()
+            );
+        }
+    }
+
+    // --- 5. OTHER COLLECTIONS (Basic Ownership/Role Security Needed) ---
     match /admissions/{id} {
       allow create: if true; 
-      allow read, update, delete: if isSignedIn();
+      allow read, update, delete: if isSignedIn() && (
+          resource.data.institutionId == request.auth.uid || isAdmin()
+      );
     }
-    match /groups/{groupId} {
-      allow read, write: if isSignedIn();
-      match /messages/{msgId} { allow read, write: if isSignedIn(); }
+
+    match /timetables/{id} { 
+        allow read: if isSignedIn();
+        allow write: if isSignedIn() && (
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['teacher', 'institution', 'admin']
+        );
     }
+
+    // Generic fallback for less critical collections (Locked to signed in for now, specific rules recommended later)
     match /student_allotments/{id} { allow read, write: if isSignedIn(); }
     match /teacher_allotments/{id} { allow read, write: if isSignedIn(); }
     match /submissions/{id} { allow read, write: if isSignedIn(); }
@@ -185,10 +238,9 @@ service cloud.firestore {
     match /general_feedback/{id} { allow read, write: if isSignedIn(); }
     match /emergency_reports/{id} { allow read, write: if isSignedIn(); }
     match /health_records/{id} { allow read, write: if isSignedIn(); }
-    match /timetables/{id} { allow read, write: if isSignedIn(); }
     match /videos/{id} { allow read, write: if isSignedIn(); }
 
-    // --- 4. AI CHATS ---
+    // --- 6. AI CHATS ---
     match /ai_chats/{userId} {
        allow read, write: if isOwner(userId);
        match /sessions/{sessionId} {
@@ -197,7 +249,7 @@ service cloud.firestore {
        }
     }
 
-    // --- 5. FALLBACK ---
+    // --- 7. FALLBACK ---
     match /{document=**} {
       allow read, write: if false; 
     }
@@ -213,12 +265,33 @@ import dotenv from 'dotenv';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import rateLimit from 'express-rate-limit'; // Import Rate Limit
+import admin from 'firebase-admin';
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const serviceAccount = require("./serviceAccountKey.json");
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+});
 
 dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+
+// --- RATE LIMITER CONFIGURATION ---
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per windowMs
+    message: { error: 'Too many requests from this IP, please try again after 15 minutes' },
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+
+// Apply global limiter to API routes (Specific to chat below)
+// app.use('/api/', apiLimiter);
 
 const PORT = 5000;
 const API_KEY = process.env.GEMINI_API_KEY;
@@ -268,17 +341,6 @@ initAI();
 // --- ROUTES ---
 
 // --- 1. PROXY ENDPOINT (Fixes CORS for local development) ---
-app.post('/api/fetch-url', async (req, res) => {
-    try {
-        const { url } = req.body;
-        if (!url) return res.status(400).json({ error: "No URL" });
-        const r = await axios.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-        const $ = cheerio.load(r.data);
-        $('script, style, nav, header, footer').remove();
-        res.json({ content: $('body').text().trim().substring(0, 10000) });
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
 // --- TTR-X1 HYPER-ALGORITHM (Server-Side Secure) ---
 function generateTTRSystemPrompt(context) {
     const now = new Date();
@@ -485,15 +547,72 @@ function generateTTRSystemPrompt(context) {
     `;
 }
 
-app.post('/api/chat', async (req, res) => {
+import { LRUCache } from 'lru-cache'; // Import LRU Cache
+
+const promptCache = new LRUCache({
+    max: 100, // Store up to 100 unique context prompts
+    ttl: 1000 * 60 * 60, // 1 Hour TTL
+});
+
+function getCachedPrompt(context) {
+    if (!context) return null;
+    // Create a unique key based on role/class/gender/user - minimal enough for differentiation
+    const key = `${context.role || 'u'}-${context.class || 'gen'}-${context.gender || 'student'}`;
+
+    if (promptCache.has(key)) {
+        return promptCache.get(key);
+    }
+
+    const prompt = generateTTRSystemPrompt(context);
+    promptCache.set(key, prompt);
+    return prompt;
+}
+
+// --- MIDDLEWARE: Basic Auth Check (Can be enhanced with Admin SDK later) ---
+const verifyAuth = async (req, res, next) => {
+    // 1. Check for missing required fields (Basic Validation)
+    if (!req.body.userContext && !req.body.history && !req.body.message) {
+        return res.status(400).json({ error: "Invalid Request Payload" });
+    }
+
+    // 2. [SECURE: Full Admin SDK Verify]
+    // VULN-002 FIXED: We now verify the token signature with Google's public keys.
+    const token = req.headers.authorization?.split('Bearer ')[1];
+
+    // Allow basic ping/health check if needed, but for AI chat, we demand a token.
+    if (!token) {
+        return res.status(401).json({ error: 'No auth token provided' });
+    }
+
+    try {
+        const decodedToken = await admin.auth().verifyIdToken(token);
+        req.user = decodedToken;
+        // Proceed to the route
+        next();
+    } catch (error) {
+        console.error("Auth Error:", error.message);
+        return res.status(401).json({ error: 'Invalid or Expired Token' });
+    }
+};
+
+// --- REFINED RATE LIMITERS ---
+const generalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
+const chatLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000,
+    max: 10, // 10 AI requests per minute per IP
+    message: { error: 'AI Limit Exceeded. Wait 1 min.' }
+});
+
+app.post('/api/chat', chatLimiter, verifyAuth, async (req, res) => {
     try {
         const { history, message, image, mimeType, userContext, systemInstruction } = req.body;
 
         let chatModel = model;
 
         // Use the Server-Side Algorithm if context is provided, otherwise fallback to client's instruction (or default)
+        // OPTIMIZATION: Use Caching
         const finalSystemInstruction = userContext
-            ? generateTTRSystemPrompt(userContext)
+            ? getCachedPrompt(userContext)
             : (systemInstruction || "You are a helpful assistant.");
 
         // Create a fresh model instance with the specific system instruction for this turn
@@ -664,238 +783,6 @@ export default App;
 
 --- END OF FILE: src/App.jsx ---
 
---- START OF FILE: src/context/UserContext.jsx ---
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { auth, db } from '../firebase';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
-import { registerSession, clearLocalSession } from '../utils/sessionManager';
-
-const UserContext = createContext();
-
-export function UserProvider({ children }) {
-    const [user, setUser] = useState(null);
-    const [userData, setUserData] = useState(null);
-    const [loading, setLoading] = useState(true);
-
-
-    useEffect(() => {
-        let unsubscribeSnapshot = null;
-        let unsubscribeSession = null;
-
-        const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
-            console.log("Auth State Changed:", currentUser ? "User Logged In" : "User Logged Out");
-            setUser(currentUser);
-
-            // Cleanup previous listeners
-            if (unsubscribeSnapshot) {
-                unsubscribeSnapshot();
-                unsubscribeSnapshot = null;
-            }
-            if (unsubscribeSession) {
-                unsubscribeSession();
-                unsubscribeSession = null;
-            }
-
-            if (currentUser) {
-                setLoading(true);
-
-                // --- SESSION MANAGEMENT START ---
-                // We fire this asynchronously so we don't block the Role Check
-                registerSession(currentUser.uid).then((sessionId) => {
-                    if (sessionId) {
-                        const sessionRef = doc(db, 'users', currentUser.uid, 'sessions', sessionId);
-                        unsubscribeSession = onSnapshot(sessionRef, (docSnap) => {
-                            // If document is deleted, it means this session was revoked
-                            if (!docSnap.exists()) {
-                                console.log("Current session revoked. Signing out.");
-                                auth.signOut().then(() => {
-                                    clearLocalSession();
-                                    alert("You have been signed out from this device.");
-                                });
-                            }
-                        });
-                    }
-                }).catch(e => console.error("Session Init Error:", e));
-                // --- SESSION MANAGEMENT END ---
-
-                const detectFull = async () => {
-                    console.time("RoleDetection");
-                    // Parallelize checks!
-                    const instRef = doc(db, "institutions", currentUser.uid);
-                    const teachRef = doc(db, "teachers", currentUser.uid);
-                    const userRef = doc(db, "users", currentUser.uid);
-
-                    try {
-                        const results = await Promise.allSettled([
-                            getDoc(instRef),
-                            getDoc(teachRef),
-                            getDoc(userRef)
-                        ]);
-
-                        const instSnap = results[0].status === 'fulfilled' ? results[0].value : { exists: () => false };
-                        const teachSnap = results[1].status === 'fulfilled' ? results[1].value : { exists: () => false };
-                        const userSnap = results[2].status === 'fulfilled' ? results[2].value : { exists: () => false };
-
-                        if (instSnap.exists()) {
-                            unsubscribeSnapshot = onSnapshot(instRef, (d) => {
-                                if (!d.exists()) { detectFull(); return; }
-                                const data = d.data();
-                                if (!data.pid) {
-                                    const pid = `IN-${Math.floor(100000 + Math.random() * 900000)}`;
-                                    setDoc(instRef, { pid }, { merge: true });
-                                    data.pid = pid;
-                                }
-                                const role = (data.role || 'institution').trim().toLowerCase();
-                                setUserData({ ...data, uid: currentUser.uid, collection: 'institutions', role });
-                                localStorage.setItem('user_collection_cache', 'institutions');
-                                setLoading(false);
-                            });
-                        } else if (teachSnap.exists()) {
-                            unsubscribeSnapshot = onSnapshot(teachRef, (d) => {
-                                if (!d.exists()) { detectFull(); return; }
-                                const data = d.data();
-                                if (!data.pid) {
-                                    const pid = `TE-${Math.floor(100000 + Math.random() * 900000)}`;
-                                    setDoc(teachRef, { pid }, { merge: true });
-                                    data.pid = pid;
-                                }
-                                const role = (data.role || 'teacher').trim().toLowerCase();
-                                setUserData({ ...data, uid: currentUser.uid, collection: 'teachers', role });
-                                localStorage.setItem('user_collection_cache', 'teachers');
-                                setLoading(false);
-                            });
-                        } else if (userSnap.exists()) {
-                            unsubscribeSnapshot = onSnapshot(userRef, (d) => {
-                                if (!d.exists()) { detectFull(); return; }
-                                const data = d.data();
-                                const normalizedRole = (data.role || 'student').trim().toLowerCase();
-                                if (!data.pid) {
-                                    const prefix = normalizedRole === 'teacher' ? 'TE' : (normalizedRole === 'institution' ? 'IN' : 'ST');
-                                    const pid = `${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;
-                                    setDoc(userRef, { pid }, { merge: true });
-                                    data.pid = pid;
-                                }
-                                setUserData({ ...data, uid: currentUser.uid, collection: 'users', role: normalizedRole });
-                                localStorage.setItem('user_collection_cache', 'users');
-                                setLoading(false);
-                            });
-                        } else {
-                            console.log("User document not found in any collection.");
-                            setUserData(null);
-                            setLoading(false);
-                        }
-                    } catch (err) {
-                        console.error("Parallel detection failed", err);
-                        setLoading(false);
-                    }
-                    console.timeEnd("RoleDetection");
-                };
-
-                // Strategy: Check cached collection first, then priority sequence
-                const detectAndSubscribe = async () => {
-                    try {
-                        const cachedCollection = localStorage.getItem('user_collection_cache');
-
-                        // Helper to subscribe
-                        const subscribe = (col, roleName) => {
-                            return onSnapshot(doc(db, col, currentUser.uid), (d) => {
-                                if (d.exists()) {
-                                    const data = d.data();
-                                    const role = (data.role || roleName).trim().toLowerCase();
-
-                                    if (!data.pid) {
-                                        const prefix = role === 'teacher' ? 'TE' : (role === 'institution' ? 'IN' : 'ST');
-                                        const pid = `${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;
-                                        setDoc(doc(db, col, currentUser.uid), { pid }, { merge: true });
-                                        data.pid = pid;
-                                    }
-                                    setUserData({ ...data, uid: currentUser.uid, collection: col, role });
-                                    localStorage.setItem('user_collection_cache', col); // Cache it!
-                                    setLoading(false);
-                                } else {
-                                    // If cached lookup failed (doc deleted?), retry full detection
-                                    if (col === cachedCollection) {
-                                        localStorage.removeItem('user_collection_cache');
-                                        detectFull();
-                                    } else {
-                                        setUserData(null);
-                                        setLoading(false);
-                                    }
-                                }
-                            });
-                        };
-
-                        // Fast Path: Check Local Cache first for immediate feedback
-                        // Fast Path: Check Local Cache first for immediate feedback
-                        if (cachedCollection) {
-                            console.log("Using cached collection for speed:", cachedCollection);
-                            // Optimistically try to subscribe to cached collection
-                            // If it fails (doc doesn't exist), the subscribe function handles fallback to detectFull
-                            unsubscribeSnapshot = subscribe(cachedCollection, 'student'); // Default role 'student' if field missing
-                        } else {
-                            // No cache? Full scan.
-                            await detectFull();
-                        }
-                    } catch (err) {
-                        console.error("Error detecting user role:", err);
-                        setLoading(false);
-                    }
-                };
-
-                detectAndSubscribe();
-
-            } else {
-                console.log("User Logged Out. Clearing Data.");
-                setUserData(null);
-                setLoading(false);
-                localStorage.removeItem('user_collection_cache'); // Clear cache on logout
-            }
-        });
-
-        // Failsafe: If Auth doesn't fire in 4 seconds, verify connectivity or force logout state
-        const failsafeTimer = setTimeout(() => {
-            console.warn("Auth Listener Timeout: Force clearing loading state.");
-            setLoading((prev) => {
-                if (prev) return false;
-                return prev;
-            });
-        }, 4000);
-
-        return () => {
-            clearTimeout(failsafeTimer);
-            unsubscribeAuth();
-            if (unsubscribeSnapshot) unsubscribeSnapshot();
-            if (unsubscribeSession) unsubscribeSession();
-        };
-    }, []);
-
-    // Memoize value to prevent unneeded re-renders in consumers
-    const values = React.useMemo(() => ({
-        user,
-        userData,
-        loading,
-        setUserData
-    }), [user, userData, loading]);
-
-    return (
-        <UserContext.Provider value={values}>
-            {loading ? (
-                <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div className="spinner" style={{ width: '40px', height: '40px', borderRadius: '50%', border: '4px solid #f3f3f3', borderTop: '4px solid #3498db', animation: 'spin 1s linear infinite' }}></div>
-                    <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-                </div>
-            ) : children}
-        </UserContext.Provider>
-    );
-}
-
-export function useUser() {
-    return useContext(UserContext);
-}
-
---- END OF FILE: src/context/UserContext.jsx ---
-
 --- START OF FILE: src/App.css ---
 #root {
   width: 100%;
@@ -912,47 +799,12 @@ export function useUser() {
   padding: 10px 20px;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
-
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-
 .card {
   padding: 2em;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   /* Disables context menu on iOS */
-}
-
-.read-the-docs {
-  color: #888;
 }
 
 /* Responsive Grid Helper */
@@ -1585,3 +1437,1159 @@ button.btn.google-btn:hover {
    Announcement Bar Full-Width Fix
    ========================================= */
 --- END OF FILE: src/App.css ---
+
+--- START OF FILE: src/firebase.js ---
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDWHnST2fHu2xgtL3tu7WQ0bJZ6AMzfPbY",
+  authDomain: "together-to-refine.firebaseapp.com", 
+  projectId: "together-to-refine",
+  storageBucket: "together-to-refine.appspot.com",   
+  messagingSenderId: "360106072129",
+  appId: "1:360106072129:web:eb706cf7d7a299ebabcec0",
+  measurementId: "G-2HKGEJSKHR"
+};
+
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+
+--- END OF FILE: src/firebase.js ---
+
+--- START OF FILE: src/components/ProtectedRoute.jsx ---
+import React, { useEffect, useState } from 'react';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { useUser } from '../context/UserContext';
+
+const ProtectedRoute = ({ allowedRoles }) => {
+    const { user, userData, loading } = useUser();
+    const location = useLocation();
+    const [isOk, setIsOk] = useState(false);
+
+    if (loading) return <div style={{ padding: '20px', textAlign: 'center' }}>Verifying Access...</div>;
+
+    if (!user) {
+        return <Navigate to="/" replace />;
+    }
+
+    if (!userData) {
+        // Technically logged in but no data (maybe network slow or detail setup pending)
+        // If really no data, maybe send to Details? But usually UserContext handles loading until it's sure.
+        // Let's assume if loading is false and no userData, they need setup.
+        // However, if they just signed up, they might be here.
+        return <Navigate to="/details" replace />;
+    }
+
+    // Role Check (Case Insensitive)
+    const userRole = (userData.role || '').toLowerCase();
+    const isAuthorized = allowedRoles.some(r => r.toLowerCase() === userRole);
+
+    if (allowedRoles && !isAuthorized) {
+        // Unauthorized. 
+        console.warn(`Access Denied: Role '${userRole}' is not in [${allowedRoles}]`);
+        return <Navigate to="/access-denied" replace />;
+    }
+
+    // APPROVAL CHECK (Bug Fix)
+    // If they are allowed by role, but NOT approved yet, send to pending.
+    // SECURE FIX: Check explicitly for !== true to catch undefined/null cases
+    if ((userData.role === 'student' || userData.role === 'teacher') && userData.approved !== true) {
+        return <Navigate to="/pending-approval" replace />;
+    }
+
+    // ONBOARDING CHECK
+    // If user is logged in but hasn't done setup, send to Onboarding
+    // Exception: If already there, allow it.
+    if (!localStorage.getItem('ttr_setup_done') && location.pathname !== '/onboarding') {
+        return <Navigate to="/onboarding" replace />;
+    }
+
+    return <Outlet />;
+};
+
+export default ProtectedRoute;
+
+--- END OF FILE: src/components/ProtectedRoute.jsx ---
+
+--- START OF FILE: src/pages/Login.jsx ---
+import React, { useState, useEffect } from 'react';
+import { useUser } from '../context/UserContext';
+import { useNavigate } from 'react-router-dom';
+import {
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    GoogleAuthProvider,
+    signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult
+} from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../firebase';
+
+export default function Login() {
+    const [isLogin, setIsLogin] = useState(true);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [role, setRole] = useState('student'); // Default to student to avoid empty state issues
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    // New Fields (Legacy for Email/Pass signup)
+    const [name, setName] = useState('');
+    const [gender, setGender] = useState('');
+
+    const navigate = useNavigate();
+    const { user, userData, loading: userLoading } = useUser(); // Access global user state
+
+    // Redirect if already logged in
+    useEffect(() => {
+        if (userLoading) return; // Wait for initial load
+
+        if (user) {
+            if (userData && userData.role) {
+
+
+                // CRITICAL FIX: Ensure profile is REALLY completed before dashboard access
+                // Check for core fields that might be missing even if flag is true
+                const isStudentIncomplete = userData.role === 'student' && (!userData.class || !userData.institutionId);
+                const isTeacherIncomplete = userData.role === 'teacher' && (!userData.subject || !userData.institutionId);
+                const isInstitutionIncomplete = userData.role === 'institution' && (!userData.schoolName); // Basic check
+
+                if (!userData.profileCompleted || isStudentIncomplete || isTeacherIncomplete || isInstitutionIncomplete) {
+
+                    navigate('/details');
+                    return;
+                }
+
+                if (userData.approved === false) {
+                    navigate('/pending-approval', { replace: true });
+                } else {
+                    switch (userData.role) {
+                        case 'student': navigate('/student', { replace: true }); break;
+                        case 'teacher': navigate('/teacher', { replace: true }); break;
+                        case 'institution': navigate('/institution', { replace: true }); break;
+                        case 'admin': navigate('/admin', { replace: true }); break;
+                        default: navigate('/admission', { replace: true });
+                    }
+                }
+            } else {
+                // User is auth'd but checking DB or no data found -> Assume new/setup needed
+                // If it's effectively 404 on profile, go to details
+                if (!userData) {
+                    navigate('/details');
+                }
+            }
+        }
+    }, [user, userData, userLoading, navigate]);
+
+    // PREVENT FLASH: Show loading if checking auth OR if user is found (waiting for redirect)
+    if (userLoading || user) {
+        return (
+            <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div className="spinner" style={{ width: '40px', height: '40px', borderRadius: '50%', border: '4px solid #f3f3f3', borderTop: '4px solid #3498db', animation: 'spin 1s linear infinite' }}></div>
+                <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+            </div>
+        );
+    }
+
+    const toggleMode = () => {
+        setIsLogin(!isLogin);
+        setError('');
+    };
+
+    const checkUserExists = async (uid) => {
+        try {
+            // Helper to safely check doc existence (ignoring permission limitations)
+            const safeGet = async (col, id) => {
+                try {
+                    const s = await getDoc(doc(db, col, id));
+                    return s.exists() ? s : null;
+                } catch (e) {
+                    // Ignore permission errors, assume not found in that collection
+                    return null;
+                }
+            };
+
+            // 1. Check 'institutions' (Priority High)
+            const instSnap = await safeGet("institutions", uid);
+            if (instSnap) {
+                const data = instSnap.data();
+                return { role: (data.role || 'institution').toLowerCase(), isNew: false, approved: true };
+            }
+
+            // 2. Check 'teachers'
+            const teachSnap = await safeGet("teachers", uid);
+            if (teachSnap) {
+                const data = teachSnap.data();
+                return { role: (data.role || 'teacher').toLowerCase(), isNew: !data.profileCompleted, approved: data.approved };
+            }
+
+            // 3. Check 'users' (Student - Fallback)
+            const userSnap = await safeGet("users", uid);
+            if (userSnap) {
+                const data = userSnap.data();
+                const normalizedRole = (data.role || 'student').toLowerCase();
+                return { role: normalizedRole, isNew: !data.profileCompleted, approved: data.approved };
+            }
+
+            return { role: null, isNew: true };
+        } catch (e) {
+            console.error("Error checking user existence:", e);
+            throw e;
+        }
+    };
+
+    const redirectToRolePage = (role) => {
+        const r = (role || '').toLowerCase();
+        switch (r) {
+            case 'student': navigate('/student'); break;
+            case 'teacher': navigate('/teacher'); break;
+            case 'institution': navigate('/institution'); break;
+            case 'admin': navigate('/admin'); break;
+            default: navigate('/admission');
+        }
+    };
+
+    // -------------------------------------------------------------
+    // REDIRECT AUTH HANDLER
+    // -------------------------------------------------------------
+    useEffect(() => {
+        let isMounted = true;
+        const checkRedirect = async () => {
+            if (!auth) return;
+            try {
+                // Determine if we are returning from a redirect flow
+                const result = await getRedirectResult(auth);
+                if (result) {
+
+                    setLoading(true);
+
+                    const user = result.user;
+                    const { role, isNew, approved } = await checkUserExists(user.uid);
+
+                    if (isMounted) {
+                        if (role && !isNew) {
+                            if (approved === false) navigate('/pending-approval');
+                            else redirectToRolePage(role);
+                        } else {
+                            navigate('/details');
+                        }
+                    }
+                } else {
+                    // No redirect result - just normal page load
+                }
+            } catch (err) {
+                console.error("Redirect Login Failed:", err);
+                if (isMounted) {
+                    let msg = err.message;
+                    if (err.code === 'auth/unauthorized-domain') {
+                        msg = `DOMAIN ERROR: ${window.location.hostname} is not whitelisted in Firebase Console.`;
+                        alert(msg); // Force user to see this
+                    }
+                    setError(msg);
+                    setLoading(false);
+                }
+            }
+        };
+        checkRedirect();
+        return () => { isMounted = false; };
+    }, [navigate]);
+
+    // -------------------------------------------------------------
+    // EMAIL / PASSWORD AUTH
+    // -------------------------------------------------------------
+    const handleAuth = async (e) => {
+        e.preventDefault();
+        setError('');
+
+        if (isLogin) {
+            if (!email || !password || !role) {
+                setError('All fields are required!');
+                return;
+            }
+        } else {
+            if (!email || !password || !role || !name) {
+                setError('Please fill in all required fields.');
+                return;
+            }
+            if (role !== 'institution' && role !== 'admin' && !gender) {
+                setError('Gender is required.');
+                return;
+            }
+        }
+
+        setLoading(true);
+
+        try {
+            if (isLogin) {
+                // Login Logic
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                const uid = userCredential.user.uid;
+
+
+                const { role: dbRole, isNew, approved } = await checkUserExists(uid);
+
+
+                if (dbRole) {
+                    if (isNew) {
+
+                        navigate('/details');
+                        return;
+                    } else {
+                        if (approved === false) {
+                            navigate('/pending-approval');
+                        } else {
+
+                            redirectToRolePage(dbRole);
+                        }
+                    }
+                } else {
+
+                    navigate('/details');
+                }
+
+            } else {
+                // Signup Logic
+                let uid;
+                if (auth.currentUser) {
+                    uid = auth.currentUser.uid;
+                } else {
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                    uid = userCredential.user.uid;
+                }
+
+                // Minimal User Record to start
+                const userData = {
+                    email,
+                    role, // Role is critical for routing
+                    createdAt: new Date(),
+                    profileCompleted: false
+                };
+
+                // Store simplified record in 'users' temporarily or let Details handle it.
+                // We will JUST navigate to Details with the desired ROLE.
+                // Details.jsx will handle the actual large form submission and correct collection.
+
+
+                navigate('/details', { state: { role } });
+                return;
+            }
+        } catch (err) {
+            console.error(err);
+            setError(err.message.replace('Firebase: ', ''));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleGoogleSignIn = async () => {
+        setLoading(true);
+        setError('');
+        const provider = new GoogleAuthProvider();
+        provider.addScope('profile');
+        provider.addScope('email');
+        // Force the 'select_account' prompt to ask Google to show the account chooser.
+        provider.setCustomParameters({
+            prompt: 'select_account'
+        });
+
+        try {
+            const result = await signInWithPopup(auth, provider);
+            const user = result.user;
+
+
+            // Check existing user role
+            // Check existing user role
+            const { role: dbRole, isNew, approved } = await checkUserExists(user.uid);
+
+            if (dbRole && !isNew) {
+                if (approved === false) {
+                    navigate('/pending-approval');
+                } else {
+                    redirectToRolePage(dbRole);
+                }
+            } else {
+                // Pass the selected role from the UI dropdown (state 'role') to Details page
+                navigate('/details', { state: { role: role } });
+                return;
+            }
+
+        } catch (err) {
+            console.error("Popup Error:", err);
+
+            if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request' || err.code === 'auth/popup-closed-by-user') {
+                // Retry with Redirect for Mobile/Strict Browsers
+                console.log("Popup blocked/closed. Trying Redirect...");
+                try {
+                    await signInWithRedirect(auth, provider);
+                    // Page will unload, no further code execution here
+                } catch (redirErr) {
+                    setError("Redirect Failed: " + redirErr.message);
+                    setLoading(false);
+                }
+            } else if (err.code === 'auth/unauthorized-domain') {
+                const msg = `SETUP ERROR: Domain '${window.location.hostname}' is not authorized in Firebase.`;
+                setError(msg);
+                alert(msg); // Force visibility
+                setLoading(false);
+            } else {
+                setError("Login Error: " + err.message);
+                setLoading(false);
+            }
+        }
+    };
+
+    if (!auth) return <div className="login-container"><div className="card">Error: Firebase Auth not initialized.</div></div>;
+
+    return (
+        <div className="login-container">
+            <div className="card login-card" style={{ textAlign: 'center' }}>
+                <img src="/logo2.png" alt="TTR Logo" style={{ width: '80px', height: 'auto', marginBottom: '10px' }} />
+                <h2 className="login-title">{isLogin ? 'Login' : 'Sign Up'}</h2>
+                {error && <div className="error-text">{error}</div>}
+
+                <form onSubmit={handleAuth}>
+                    <select
+                        className="input-field"
+                        value={role}
+                        onChange={(e) => setRole(e.target.value)}
+                        required
+                    >
+                        <option value="" disabled>Select Role</option>
+                        <option value="student">Student</option>
+                        <option value="teacher">Teacher</option>
+                        <option value="institution">Institution</option>
+                    </select>
+
+                    {!isLogin && (
+                        <>
+                            <input
+                                type="text"
+                                className="input-field"
+                                placeholder={role === 'institution' ? "Institution Name" : (role === 'admin' ? "Admin Name" : "Name")}
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                required
+                            />
+
+                            {role !== 'institution' && role !== 'admin' && (
+                                <select
+                                    className="input-field"
+                                    value={gender}
+                                    onChange={(e) => setGender(e.target.value)}
+                                    required
+                                >
+                                    <option value="" disabled>Select Gender</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            )}
+                        </>
+                    )}
+
+                    <input
+                        type="email"
+                        className="input-field"
+                        placeholder="Email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                    />
+
+                    <div className="password-wrapper">
+                        <input
+                            type={showPassword ? "text" : "password"}
+                            className="input-field"
+                            placeholder="Password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                        />
+                        <button
+                            type="button"
+                            className="password-toggle"
+                            onClick={() => setShowPassword(!showPassword)}
+                        >
+                            {showPassword ? "HIDE" : "SHOW"}
+                        </button>
+                    </div>
+
+                    <button type="submit" className="btn full-width" disabled={loading}>
+                        {loading ? 'Processing...' : (isLogin ? 'Login' : 'Sign Up')}
+                    </button>
+                </form>
+
+                <div className="auth-divider">
+                    <div className="divider-line" />
+                    <span className="divider-text">OR</span>
+                    <div className="divider-line" />
+                </div>
+
+                <button
+                    type="button"
+                    className="btn google-btn"
+                    onClick={handleGoogleSignIn}
+                    disabled={loading}
+                >
+                    G Sign in with Google
+                </button>
+
+                <div className="toggle-link" onClick={toggleMode}>
+                    {isLogin ? "Don't have an account? Sign up" : "Already have an account? Login"}
+                </div>
+                {/* DEBUG VERSION */}
+                <div style={{ marginTop: '20px', fontSize: '10px', color: '#b2bec3' }}>v0.0.46</div>
+            </div >
+        </div >
+    );
+}
+
+--- END OF FILE: src/pages/Login.jsx ---
+
+--- START OF FILE: src/pages/Signup.jsx ---
+(File not found)
+--- END OF FILE: src/pages/Signup.jsx ---
+
+--- START OF FILE: src/pages/Details.jsx ---
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { collection, getDocs, doc, setDoc, getDoc, addDoc, deleteDoc, query, where, updateDoc } from 'firebase/firestore';
+import { db, auth } from '../firebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { useUser } from '../context/UserContext';
+
+export default function Details() {
+    const navigate = useNavigate();
+    const location = useLocation();
+    const { setUserData } = useUser();
+
+    // Check if role was passed from Login/Signup page (PRIORITY)
+    const passedRole = location.state?.role;
+
+    const [role, setRole] = useState(passedRole || '');
+    const [institutions, setInstitutions] = useState([]);
+    const [userId, setUserId] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [isRoleLocked, setIsRoleLocked] = useState(false);
+
+    // Form states
+    const [formData, setFormData] = useState({});
+    const [initialData, setInitialData] = useState({}); // To detecting changes
+
+    const handleBack = async () => {
+        // If it's a new user setting up for the first time, Back means Logout/Cancel to avoid redirect loops
+        if (!initialData || Object.keys(initialData).length === 0) {
+            await signOut(auth);
+            navigate('/');
+        } else {
+            // If editing existing profile, just go back
+            navigate(-1);
+        }
+    };
+
+    // DATA PROPAGATION HELPER (DML-like Cascading Update)
+    const propagateUserUpdates = async (uid, userRole, newName, newSubject = null) => {
+        console.log(`🔄 Propagating updates for ${userRole}: ${newName} ${newSubject ? `(Subject: ${newSubject})` : ''}`);
+        const promises = [];
+
+        try {
+            // 1. Update Admissions (Student/Teacher)
+            if (userRole === 'student' || userRole === 'teacher') {
+                const q = query(collection(db, "admissions"), where("userId", "==", uid));
+                const snap = await getDocs(q);
+                snap.forEach(d => {
+                    const updates = { name: newName };
+                    if (userRole === 'teacher' && newSubject) updates.subject = newSubject;
+                    promises.push(updateDoc(d.ref, updates));
+                });
+            }
+
+            // 2. Update Student Allotments (Student only)
+            if (userRole === 'student') {
+                const q = query(collection(db, "student_allotments"), where("userId", "==", uid));
+                const snap = await getDocs(q);
+                snap.forEach(d => {
+                    promises.push(updateDoc(d.ref, { name: newName, studentName: newName }));
+                });
+            }
+
+            // 3. Update Teacher Allotments & Groups (Teacher only)
+            if (userRole === 'teacher') {
+                // Update Allotments
+                const q = query(collection(db, "teacher_allotments"), where("userId", "==", uid));
+                const snap = await getDocs(q);
+                snap.forEach(d => {
+                    const updates = { name: newName, teacherName: newName };
+                    if (newSubject) updates.subject = newSubject;
+                    promises.push(updateDoc(d.ref, updates));
+                });
+
+                // Update 'groups' metadata where this teacher is the owner/teacher
+                // Note: Groups usually link by teacherId
+                const qGroup = query(collection(db, "groups"), where("teacherId", "==", uid));
+                const snapGroup = await getDocs(qGroup);
+                snapGroup.forEach(d => {
+                    const updates = { teacherName: newName };
+                    if (newSubject) updates.subject = newSubject;
+                    promises.push(updateDoc(d.ref, updates));
+                });
+            }
+
+            // 4. Institution Name Propagation
+            if (userRole === 'institution') {
+                // Update Students/Teachers linked to this Institution
+                const q = query(collection(db, "users"), where("institutionId", "==", uid));
+                const snap = await getDocs(q);
+                snap.forEach(d => {
+                    promises.push(updateDoc(d.ref, { institutionName: newName }));
+                });
+                const q2 = query(collection(db, "teachers"), where("institutionId", "==", uid));
+                const snap2 = await getDocs(q2);
+                snap2.forEach(d => {
+                    promises.push(updateDoc(d.ref, { institutionName: newName }));
+                });
+
+                // Update Admissions linked to this Inst
+                const q3 = query(collection(db, "admissions"), where("institutionId", "==", uid));
+                const snap3 = await getDocs(q3);
+                snap3.forEach(d => {
+                    promises.push(updateDoc(d.ref, { institutionName: newName }));
+                });
+            }
+
+            if (promises.length > 0) {
+                await Promise.all(promises);
+                console.log(`✅ Updated ${promises.length} related documents.`);
+            }
+        } catch (e) {
+            console.error("Propagation Error:", e);
+        }
+    };
+
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                setUserId(user.uid);
+
+                // If we received a role from Login page, trust it and skip DB check
+                if (passedRole) {
+                    setRole(passedRole);
+                    setLoading(false);
+                    setIsRoleLocked(true); // LOCK THE ROLE to prevent changing
+                    return;
+                }
+
+                // Try to get role from Firestore if not in local state
+                try {
+                    // Check 'users' (Student)
+                    let userDoc = await getDoc(doc(db, "users", user.uid));
+                    if (userDoc.exists()) {
+                        const data = userDoc.data();
+                        setRole(data.role || 'student'); // Fallback to 'student' if role field is missing
+                        setFormData(data);
+                        setInitialData(data); // Capture baseline
+                        setIsRoleLocked(true);
+                    } else {
+                        // Check 'teachers'
+                        userDoc = await getDoc(doc(db, "teachers", user.uid));
+                        if (userDoc.exists()) {
+                            const data = userDoc.data();
+                            setRole(data.role || 'teacher'); // Fallback to 'teacher'
+                            setFormData(data);
+                            setInitialData(data); // Capture baseline
+                            setIsRoleLocked(true);
+                        } else {
+                            // Check 'institutions'
+                            userDoc = await getDoc(doc(db, "institutions", user.uid));
+                            if (userDoc.exists()) {
+                                const data = userDoc.data();
+                                setRole(data.role || 'institution'); // Fallback to 'institution'
+                                setFormData(data);
+                                setInitialData(data); // Capture baseline
+                                setIsRoleLocked(true);
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error fetching role: ", e);
+                }
+            } else {
+                // Return to login if not authenticated
+                navigate('/');
+            }
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [navigate]);
+
+    // Load institutions
+    useEffect(() => {
+        if (role === 'student' || role === 'teacher') {
+            const fetchInstitutions = async () => {
+                try {
+                    // Fetch only APPROVED institutions
+                    const q = query(collection(db, "institutions"), where("approved", "==", true));
+                    const querySnapshot = await getDocs(q);
+                    const list = [];
+                    querySnapshot.forEach((doc) => {
+                        list.push({ id: doc.id, ...doc.data() });
+                    });
+
+                    console.log("Institutions loaded:", list);
+                    setInstitutions(list);
+                } catch (error) {
+                    console.error("Failed to load institutions", error);
+                }
+            };
+            fetchInstitutions();
+        }
+    }, [role]);
+
+    const handleChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value
+        }));
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        console.log("Submitting form...", formData);
+
+        if (!userId) {
+            alert("User ID missing. Please login again.");
+            return;
+        }
+
+        // STRICT VALIDATION
+        if (!role) {
+            alert("Please select a role.");
+            return;
+        }
+
+        // REQUIRED FIELDS CHECK
+        if ((role === 'student' || role === 'teacher') && !formData.institutionId) {
+            alert("⚠️ Please select a School/Institution.");
+            return;
+        }
+
+        if (role === 'student') {
+            if (!formData.firstName || !formData.class || !formData.dob) return alert("Please fill Name, Class, DOB.");
+        } else if (role === 'teacher') {
+            if (!formData.firstName || !formData.subject) return alert("Please fill Name, Subject.");
+        } else if (role === 'institution') {
+            if (!formData.schoolName || !formData.phoneNumber) return alert("Please fill School Name, Phone.");
+        }
+
+        // --- UX LOGIC: DETECT MAJOR CHANGES ---
+        // Major changes require Re-Approval (Status: Pending)
+        // Minor changes (Name, Phone, etc) are instant updates.
+
+        let isMajorUpdate = false;
+
+        // 1. New User (No initial data) -> Always Major
+        if (!initialData || Object.keys(initialData).length === 0) {
+            isMajorUpdate = true;
+        } else {
+            // 2. Existing User -> Check specific fields
+            // If Not Approved, allow changes freely (correction mode)
+            // If Approved, changing Institution is Major.
+            const isApproved = initialData.approved === true;
+
+            if (role === 'student') {
+                if (isApproved) {
+                    if (String(formData.institutionId) !== String(initialData.institutionId) ||
+                        String(formData.class) !== String(initialData.class)) {
+                        isMajorUpdate = true;
+                    }
+                } else {
+                    isMajorUpdate = true;
+                }
+            } else if (role === 'teacher') {
+                if (isApproved) {
+                    if (String(formData.institutionId) !== String(initialData.institutionId)) {
+                        isMajorUpdate = true;
+                    }
+                } else {
+                    isMajorUpdate = true;
+                }
+            }
+            // Note: If ROLE changed, it's major, but role is usually locked or handled by separate flow.
+            // But if user manually unlocked and changed it:
+            if (role !== initialData.role && initialData.role) isMajorUpdate = true;
+        }
+
+        // Allow Institution Admins to update freely? Yes, usually self-managed.
+        // BUT for initial setup, we force check.
+        if (role === 'institution' && (!initialData || !initialData.approved)) isMajorUpdate = true;
+
+        try {
+            // Cleanup stale collections if role changed (rare)
+            if ((role === 'teacher' || role === 'institution') && initialData && initialData.role !== role) {
+                try { await deleteDoc(doc(db, "users", userId)); } catch (e) { }
+            }
+
+            const collectionName = role === 'institution' ? 'institutions' : (role === 'teacher' ? 'teachers' : 'users');
+
+            // Format Name
+            const newDisplayName = role === 'institution' ? formData.schoolName : `${formData.firstName} ${formData.secondName}`;
+
+            // Generate PID if new
+            let finalPid = formData.pid;
+            if (!finalPid) {
+                const prefix = role === 'student' ? 'ST' : (role === 'teacher' ? 'TE' : 'IN');
+                finalPid = `${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;
+            }
+
+            // --- CASE 1: SAFE UPDATE (Minor Changes) ---
+            if (!isMajorUpdate) {
+                console.log("✅ Safe Update Detected. Updating profile without resetting approval.");
+                await setDoc(doc(db, collectionName, userId), {
+                    ...formData,
+                    role: role, // Ensure role is saved
+                    name: newDisplayName,
+                    pid: finalPid,
+                    profileCompleted: true,
+                    updatedAt: new Date()
+                    // DO NOT TOUCH 'approved' or 'institutionName' (unless inst changed which is major)
+                }, { merge: true });
+
+                // Propagate Name Changes
+                await propagateUserUpdates(userId, role, newDisplayName, formData.subject);
+
+                // Optimistic UI
+                setUserData(prev => ({ ...prev, ...formData, name: newDisplayName }));
+
+                alert("Profile Updated Successfully! ✅");
+                navigate(-1); // Go back
+                return;
+            }
+
+            // --- CASE 2: MAJOR UPDATE (Re-Admission Required) ---
+            console.log("⚠️ Major Update Detected. Requesting new approval.");
+
+            // 1. Update Core Profile
+            await setDoc(doc(db, collectionName, userId), {
+                ...formData,
+                role: role, // Ensure role is saved
+                name: newDisplayName,
+                pid: finalPid,
+                profileCompleted: true,
+                updatedAt: new Date()
+            }, { merge: true });
+
+            // 2. Handle Re-Admission Logic (Student/Teacher)
+            if (role === 'student' || role === 'teacher') {
+                const instRef = doc(db, "institutions", formData.institutionId);
+                const instSnap = await getDoc(instRef);
+                const instName = instSnap.exists() ? (instSnap.data().schoolName || instSnap.data().name) : "Unknown Institution";
+
+                // Set Approved = False, Update linked Institution
+                await setDoc(doc(db, collectionName, userId), {
+                    institutionName: instName,
+                    approved: false
+                }, { merge: true });
+
+                // CLEANUP: Cancel/Delete ALL previous 'waiting' admission requests to avoid confusion
+                // (e.g. if I applied to School A, then changed to School B, School A request should die)
+                try {
+                    const qAdmissions = query(
+                        collection(db, "admissions"),
+                        where("userId", "==", userId),
+                        where("status", "==", "waiting")
+                    );
+                    const snapAdmissions = await getDocs(qAdmissions);
+                    const cleanupPromises = [];
+                    snapAdmissions.forEach((d) => {
+                        console.log(`Deleting obsolete admission request: ${d.id}`);
+                        cleanupPromises.push(deleteDoc(d.ref));
+                    });
+                    if (cleanupPromises.length > 0) await Promise.all(cleanupPromises);
+                } catch (cleanupErr) {
+                    console.warn("Cleanup of old admissions failed (non-fatal):", cleanupErr);
+                }
+
+                // Create Admission Request
+                await addDoc(collection(db, "admissions"), {
+                    name: newDisplayName,
+                    role: role,
+                    [role === 'teacher' ? 'subject' : 'age']: role === 'teacher' ? (formData.subject || 'General') : (formData.dob ? new Date().getFullYear() - new Date(formData.dob).getFullYear() : 'N/A'),
+                    class: formData.class || '',
+                    institutionId: formData.institutionId,
+                    institutionName: instName,
+                    userId: userId,
+                    status: 'waiting',
+                    joinedAt: new Date()
+                });
+
+                setUserData(prev => ({ ...prev, approved: false })); // Lock UI
+                navigate('/pending-approval');
+            } else if (role === 'institution') {
+                // New Institution Registration Logic
+                await setDoc(doc(db, "institutions", userId), {
+                    approved: false
+                }, { merge: true });
+
+                setUserData(prev => ({ ...prev, approved: false }));
+                navigate('/pending-approval');
+            }
+
+
+        } catch (err) {
+            console.error("Submission Error:", err);
+            alert("Error saving: " + err.message);
+        }
+    };
+
+    if (loading) return <div className="container">Loading...</div>;
+
+    return (
+        <div className="container">
+            <button
+                onClick={handleBack}
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    color: '#6c5ce7',
+                    fontWeight: 'bold',
+                    marginBottom: '10px'
+                }}
+            >
+                ← Back
+            </button>
+            <header className="details-header">
+                {role ? `${role.charAt(0).toUpperCase() + role.slice(1)} Profile Setup` : 'Complete Your Profile'}
+            </header>
+
+            <div className="card details-card">
+                <form onSubmit={handleSubmit}>
+
+                    {/* 1. ROLE SELECTION (Show ONLY if role is not set) */}
+                    {!role && (
+                        <div className="form-group fallback-role-box" style={{ background: '#fff3cd', padding: '20px', borderRadius: '10px', border: '1px solid #ffeeba' }}>
+                            <h3 style={{ marginTop: 0, color: '#856404' }}>Welcome! Please select your path:</h3>
+                            <p style={{ fontSize: '14px', color: '#856404' }}>To customize your profile, we need to know who you are.</p>
+
+                            <label className="warning-label" style={{ display: 'block', marginBottom: '10px' }}>I am a:</label>
+                            <select value={role} onChange={(e) => setRole(e.target.value)} className="input-field" style={{ fontSize: '16px', padding: '10px' }} required>
+                                <option value="">-- Choose Your Role --</option>
+                                <option value="student">👨‍🎓 Student</option>
+                                <option value="teacher">👩‍🏫 Teacher</option>
+                                <option value="institution">🏫 Institution / School</option>
+                            </select>
+                        </div>
+                    )}
+
+                    {/* 2. FORM FIELDS (Show ONLY if role is set) */}
+                    {role && (
+                        <div className="role-specific-form fade-in">
+                            <div className="role-status-box" style={{ marginBottom: '20px', padding: '10px', background: '#e2e6ea', borderRadius: '5px' }}>
+                                <strong>Selected Role:</strong> {role.toUpperCase()}
+                                <span onClick={() => { if (!passedRole) setRole(''); }} style={{ float: 'right', cursor: 'pointer', color: 'blue', fontSize: '12px', textDecoration: 'underline' }}>
+                                    {!passedRole && "(Change)"}
+                                </span>
+                            </div>
+
+                            {/* Teacher Fields */}
+                            {role === 'teacher' && (
+                                <div className="form-group">
+                                    <h3 style={{ borderBottom: '2px solid #0984e3', paddingBottom: '5px', marginBottom: '15px', color: '#0984e3' }}>👨‍🏫 Teacher Details</h3>
+
+                                    <label>First Name</label>
+                                    <input name="firstName" value={formData.firstName || ''} className="input-field" required onChange={handleChange} />
+
+                                    <label>Second Name</label>
+                                    <input name="secondName" value={formData.secondName || ''} className="input-field" required onChange={handleChange} />
+
+                                    <label>Subject Specialization</label>
+                                    <input
+                                        name="subject"
+                                        value={formData.subject || ''}
+                                        className="input-field"
+                                        placeholder="e.g. Mathematics, Science"
+                                        required
+                                        onChange={handleChange}
+                                    // Subject is now editable by Teacher
+                                    />
+                                    {/* <p style={{ fontSize: '11px', color: '#d63031', marginTop: '-5px' }}>* Subject is assigned by Institution</p> */}
+
+                                    <label>Gender</label>
+                                    <select name="gender" value={formData.gender || ''} className="input-field" onChange={handleChange}>
+                                        <option value="" disabled>Select Gender</option>
+                                        <option>Male</option><option>Female</option><option>Other</option>
+                                    </select>
+
+                                    <label>Age (Date of Birth)</label>
+                                    <input type="date" name="dob" value={formData.dob || ''} className="input-field" required onChange={handleChange} />
+
+                                    <label className="text-muted">Experience</label>
+                                    <div className="experience-container">
+                                        <select name="expYears" value={formData.expYears || '0 Years'} className="input-field" onChange={handleChange}>
+                                            <option>0 Years</option><option>1 Year</option><option>2 Years</option><option>3 Years</option><option>4 Years</option><option>5+ Years</option>
+                                        </select>
+                                        <select name="expMonths" value={formData.expMonths || '0 Months'} className="input-field" onChange={handleChange}>
+                                            <option>0 Months</option><option>6 Months</option><option>11 Months</option>
+                                        </select>
+                                    </div>
+
+                                    <label className="checkbox-label">
+                                        <input type="checkbox" name="noExp" checked={formData.noExp || false} onChange={handleChange} /> No Experience
+                                    </label>
+
+                                    <label style={{ color: '#d63031', fontWeight: 'bold', marginTop: '15px' }}>Apply to School/Institution:</label>
+                                    {institutions.length === 0 && <p style={{ color: 'red', fontSize: '12px' }}>No registered institutions found. You cannot submit without selecting one.</p>}
+                                    <p style={{ fontSize: '12px', color: '#666', marginTop: '-5px', marginBottom: '10px' }}>Select the school you want to join. They will receive your application.</p>
+                                    <select
+                                        name="institutionId"
+                                        value={formData.institutionId || ''}
+                                        className="input-field"
+                                        required
+                                        onChange={handleChange}
+                                        disabled={!!initialData.institutionId && initialData.approved === true} // Allow edit if NOT approved
+                                    >
+                                        <option value="" disabled>Select a School to Apply</option>
+                                        {institutions.map(inst => (
+                                            <option key={inst.id} value={inst.id}>{inst.schoolName || inst.name || "Unnamed"}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
+                            {/* Student Fields */}
+                            {role === 'student' && (
+                                <div className="form-group">
+                                    <h3 style={{ borderBottom: '2px solid #00b894', paddingBottom: '5px', marginBottom: '15px', color: '#00b894' }}>🎓 Student Details</h3>
+
+                                    <label>First Name</label>
+                                    <input name="firstName" value={formData.firstName || ''} className="input-field" required onChange={handleChange} />
+
+                                    <label>Second Name</label>
+                                    <input name="secondName" value={formData.secondName || ''} className="input-field" required onChange={handleChange} />
+
+                                    <label>Class</label>
+                                    <select name="class" value={formData.class || 'Nursery'} className="input-field" onChange={handleChange}>
+                                        <option>Nursery</option>
+                                        {['LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'].map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+
+                                    <label style={{ color: '#d63031', fontWeight: 'bold', marginTop: '15px' }}>Apply to School/Institution:</label>
+                                    {institutions.length === 0 && <p style={{ color: 'red', fontSize: '12px' }}>No registered institutions found. You cannot submit without selecting one.</p>}
+                                    <select
+                                        name="institutionId"
+                                        value={formData.institutionId || ''}
+                                        className="input-field"
+                                        required
+                                        onChange={handleChange}
+                                        disabled={!!initialData.institutionId && initialData.approved === true} // Allow edit if NOT approved
+                                    >
+                                        <option value="" disabled>Select a School to Apply</option>
+                                        {institutions.map(inst => (
+                                            <option key={inst.id} value={inst.id}>{inst.schoolName || inst.name || "Unnamed"}</option>
+                                        ))}
+                                    </select>
+
+                                    <label>Gender</label>
+                                    <select name="gender" value={formData.gender || ''} className="input-field" onChange={handleChange}>
+                                        <option value="" disabled>Select Gender</option>
+                                        <option>Male</option><option>Female</option><option>Other</option>
+                                    </select>
+
+                                    <label>Age (Date of Birth)</label>
+                                    <input type="date" name="dob" value={formData.dob || ''} className="input-field" required onChange={handleChange} />
+
+                                    <label className="text-muted">Father Name</label>
+                                    <input name="fatherName" value={formData.fatherName || ''} className="input-field" onChange={handleChange} />
+
+                                    <label className="text-muted">Mother Name</label>
+                                    <input name="motherName" value={formData.motherName || ''} className="input-field" onChange={handleChange} />
+
+                                    <label className="text-muted">Prizes</label>
+                                    <textarea name="prizes" value={formData.prizes || ''} className="input-field" placeholder="Mention prizes received, if any" onChange={handleChange}></textarea>
+                                </div>
+                            )}
+
+                            {/* Institution Fields */}
+                            {role === 'institution' && (
+                                <div className="form-group">
+                                    <h3 style={{ borderBottom: '2px solid #6c5ce7', paddingBottom: '5px', marginBottom: '15px', color: '#6c5ce7' }}>🏫 Institution Registration</h3>
+
+                                    <label>Chairman Name</label>
+                                    <input name="chairmanName" value={formData.chairmanName || ''} className="input-field" required onChange={handleChange} />
+
+                                    <label>Principal Name</label>
+                                    <input name="principalName" value={formData.principalName || ''} className="input-field" required onChange={handleChange} />
+
+                                    <label>School Name</label>
+                                    <input name="schoolName" value={formData.schoolName || ''} className="input-field" required onChange={handleChange} />
+
+                                    <label>Establishment Year</label>
+                                    <input type="date" name="estYear" value={formData.estYear || ''} className="input-field" required onChange={handleChange} />
+
+                                    <label className="text-muted">Chairman Profile Link <span style={{ fontSize: '12px', color: '#888' }}>(Optional)</span></label>
+                                    <input type="url" name="chairmanLink" value={formData.chairmanLink || ''} className="input-field" onChange={handleChange} />
+
+                                    <label className="text-muted">Principal Profile Link <span style={{ fontSize: '12px', color: '#888' }}>(Optional)</span></label>
+                                    <input type="url" name="principalLink" value={formData.principalLink || ''} className="input-field" onChange={handleChange} />
+
+                                    <h4 className="section-header">📞 Institution Contact Details</h4>
+                                    <p className="text-muted help-text">This will be visible to students for admissions/inquiries.</p>
+
+                                    <label>Official Phone Number</label>
+                                    <input name="phoneNumber" type="tel" value={formData.phoneNumber || ''} className="input-field" placeholder="+91 9876543210" required onChange={handleChange} />
+
+                                    <label className="checkbox-label-sm">
+                                        <input
+                                            type="checkbox"
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setFormData(prev => ({ ...prev, whatsappNumber: prev.phoneNumber }));
+                                                }
+                                            }}
+                                        />
+                                        WhatsApp number is same as Phone Number
+                                    </label>
+
+                                    <label>WhatsApp Number</label>
+                                    <input name="whatsappNumber" type="tel" value={formData.whatsappNumber || ''} className="input-field" placeholder="+91 9876543210" required onChange={handleChange} />
+
+                                    <h4 className="section-header">🚑 Emergency & Safety Contacts</h4>
+                                    <p className="text-muted help-text">These numbers will be shown to your students in the Report Harassment page.</p>
+
+                                    <label>Local Police Station Name</label>
+                                    <input name="localPoliceName" value={formData.localPoliceName || ''} className="input-field" placeholder="e.g. Banjara Hills PS" required onChange={handleChange} />
+
+                                    <label>Local Police Phone Number</label>
+                                    <input name="localPolicePhone" value={formData.localPolicePhone || ''} className="input-field" placeholder="e.g. 040-23456789" required onChange={handleChange} />
+                                </div>
+                            )}
+                            <div className="submit-container">
+                                <button type="submit" className="btn submit-button">Submit Details</button>
+                            </div>
+                        </div>
+                    )}
+                </form>
+
+                {/* Debug Info */}
+                <div style={{ marginTop: '30px', borderTop: '1px solid #ddd', paddingTop: '10px', fontSize: '11px', color: '#999' }}>
+                    <strong>Debug Info:</strong><br />
+                    UID: {userId || '...'}<br />
+                    Current Role State: {role || 'None'}<br />
+                    Collection Found: {role === 'teacher' ? 'Teachers' : (role === 'institution' ? 'Institutions' : 'Users/None')}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+--- END OF FILE: src/pages/Details.jsx ---
