@@ -124,10 +124,36 @@ export function UserProvider({ children }) {
                     }
                 };
 
-                // OPTIMIZATION: Check Cache First
+                // --- OPTIMIZATION: Instant Load from Profile Cache ---
+                const cachedProfileJSON = sessionStorage.getItem('user_profile_cache');
+                if (cachedProfileJSON) {
+                    try {
+                        const cachedProfile = JSON.parse(cachedProfileJSON);
+                        if (cachedProfile && cachedProfile.uid === currentUser.uid) {
+                            console.log("Instant Load: Using cached profile.");
+                            setUserData(cachedProfile);
+                            setLoading(false);
+                        }
+                    } catch (e) {
+                        console.error("Cache parsing error", e);
+                    }
+                }
+
+                // Internal helper to update state and cache
+                const updateUserData = (data) => {
+                    setUserData(data);
+                    try {
+                        sessionStorage.setItem('user_profile_cache', JSON.stringify(data));
+                    } catch (e) {
+                        console.warn("Storage full?", e);
+                    }
+                };
+
+                // OPTIMIZATION: Check Collection Cache First (Background Validation)
                 const cachedCollection = sessionStorage.getItem('user_collection_cache');
+
                 if (cachedCollection) {
-                    console.log("Using cached collection:", cachedCollection);
+                    console.log("Verifying with cached collection:", cachedCollection);
                     unsubscribeSnapshot = onSnapshot(doc(db, cachedCollection, currentUser.uid), (d) => {
                         if (d.exists()) {
                             const data = d.data();
@@ -137,17 +163,29 @@ export function UserProvider({ children }) {
                                 else if (cachedCollection === 'teachers') role = 'teacher';
                                 else role = 'student';
                             }
-                            setUserData({ ...data, uid: currentUser.uid, role: role.toLowerCase() });
-                            setLoading(false);
+                            const completeProfile = { ...data, uid: currentUser.uid, role: role.toLowerCase() };
+
+                            // Update State & Cache
+                            updateUserData(completeProfile);
+                            setLoading(false); // Ensure loading is off
                         } else {
+                            // Validation failed - clear bad cache
                             sessionStorage.removeItem('user_collection_cache');
-                            detectFull();
+                            sessionStorage.removeItem('user_profile_cache');
+                            if (!cachedProfileJSON) { // Only fallback if we don't have a cache shown
+                                detectFull();
+                            } else {
+                                // We are showing cached data that is now invalid! Re-run detect.
+                                detectFull();
+                            }
                         }
                     }, (err) => {
                         console.error("Cache subscribe error", err);
-                        detectFull();
+                        // If we didn't have a cache, fallback.
+                        if (!cachedProfileJSON) detectFull();
                     });
                 } else {
+                    // No collection cache? Run full detect
                     detectFull();
                 }
 
@@ -155,6 +193,7 @@ export function UserProvider({ children }) {
                 setUserData(null);
                 setLoading(false);
                 sessionStorage.removeItem('user_collection_cache');
+                sessionStorage.removeItem('user_profile_cache');
             }
         });
 
