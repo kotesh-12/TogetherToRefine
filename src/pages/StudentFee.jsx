@@ -20,38 +20,39 @@ export default function StudentFee() {
         const fetchFees = async () => {
             try {
                 // 1. Find all allotments linked to this student
+                // Query by userId - single field, no index needed
                 const allotQ = query(collection(db, "student_allotments"), where("userId", "==", userData.uid));
                 const allotSnap = await getDocs(allotQ);
                 const myAllotmentIds = allotSnap.docs.map(d => d.id);
 
-                // 2. Fetch Pending Fees
-                // We query by studentId. studentId could be the User UID or the Allotment ID.
+                // 2. Fetch ALL Fees (Pending + Paid)
+                // We avoid composite index (where ... AND where ...)
+                // Instead, we just fetch by studentId IN [...] and filter the rest in JS.
                 const studentIdsToSearch = [userData.uid, ...myAllotmentIds];
 
-                // Firestore 'in' operator supports up to 10 IDs. Usually a student has 1 or 2 allotments.
-                const qPending = query(
+                // Firestore 'in' operator supports up to 10 IDs.
+                const qFees = query(
                     collection(db, "fees"),
-                    where("studentId", "in", studentIdsToSearch),
-                    where("status", "==", "pending")
+                    where("studentId", "in", studentIdsToSearch)
                 );
-                const pendingSnap = await getDocs(qPending);
-                const pendingList = pendingSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-                // Cleanup: Deduplicate if the same fee shows up twice (unlikely but safe)
+                const feeSnap = await getDocs(qFees);
+                const allFees = feeSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                // Client-side filtering
+                const pendingList = allFees.filter(f => f.status === 'pending');
+                const paidList = allFees.filter(f => f.status === 'paid');
+
+                // Sort
+                paidList.sort((a, b) => (b.paidAt?.seconds || 0) - (a.paidAt?.seconds || 0));
+
+                // Cleanup: Deduplicate
                 const uniquePending = Array.from(new Map(pendingList.map(item => [item.id, item])).values());
+                const uniquePaid = Array.from(new Map(paidList.map(item => [item.id, item])).values());
+
                 setFees(uniquePending);
+                setHistory(uniquePaid);
 
-                // 3. Fetch History (Paid)
-                const qHist = query(
-                    collection(db, "fees"),
-                    where("studentId", "in", studentIdsToSearch),
-                    where("status", "==", "paid")
-                );
-                const histSnapshot = await getDocs(qHist);
-                const histList = histSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                histList.sort((a, b) => (b.paidAt?.seconds || 0) - (a.paidAt?.seconds || 0));
-
-                setHistory(histList);
             } catch (error) {
                 console.error("Error fetching fees:", error);
             } finally {
@@ -71,17 +72,24 @@ export default function StudentFee() {
                 status: 'paid',
                 paidAt: serverTimestamp(),
                 transactionId: `TXN-${Date.now()}`,
-                // Link payment to the actual User UID if it was marked against Allotment ID
+                // Link payment to the actual User UID so history stays with the account
                 studentId: userData.uid
             });
 
             alert("Payment Successful! ✅");
 
-            // Refresh UI
-            setFees(prev => prev.filter(f => f.id !== feeId));
+            // Refresh UI locally
             const paidFee = fees.find(f => f.id === feeId);
             if (paidFee) {
-                setHistory(prev => [{ ...paidFee, status: 'paid', paidAt: { seconds: Date.now() / 1000 }, transactionId: `TXN-${Date.now()}` }, ...prev]);
+                const updatedFee = {
+                    ...paidFee,
+                    status: 'paid',
+                    paidAt: { seconds: Date.now() / 1000 },
+                    transactionId: `TXN-${Date.now()}`
+                };
+
+                setFees(prev => prev.filter(f => f.id !== feeId));
+                setHistory(prev => [updatedFee, ...prev]);
             }
 
         } catch (e) {
