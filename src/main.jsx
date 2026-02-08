@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 // Service Worker is now managed by UpdateManager.jsx
-const APP_VERSION = '0.0.46'; // UPDATED
+const APP_VERSION = '0.0.47'; // UPDATED
 console.log("TTR App Version:", APP_VERSION);
 
 // NUCLEAR FIX: Force unregister old Service Workers if version mismatches
@@ -11,23 +11,21 @@ console.log("TTR App Version:", APP_VERSION);
 const storedVersion = localStorage.getItem('ttr_version');
 if (storedVersion && storedVersion !== APP_VERSION) {
   console.log(`Version mismatch (Old: ${storedVersion}, New: ${APP_VERSION}). Clearing cache...`);
+  // Update storage first to prevent loops
+  localStorage.setItem('ttr_version', APP_VERSION);
+
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(registrations => {
-      if (registrations.length === 0) {
-        // No SW found, just update version and proceed
-        localStorage.setItem('ttr_version', APP_VERSION);
-      } else {
-        for (let registration of registrations) {
-          registration.unregister().then(() => console.log("Unregistered legacy SW"));
-        }
-        localStorage.setItem('ttr_version', APP_VERSION);
-        // Reload only if we actually killed something to avoid loop
-        setTimeout(() => window.location.reload(), 500);
+      for (let registration of registrations) {
+        registration.unregister().then(() => console.log("Unregistered legacy SW"));
       }
+      // Reload page once to get fresh assets
+      window.location.reload();
     });
-  } else {
-    localStorage.setItem('ttr_version', APP_VERSION);
   }
+} else {
+  // If no version stored, store it.
+  if (!storedVersion) localStorage.setItem('ttr_version', APP_VERSION);
 }
 
 createRoot(document.getElementById('root')).render(
