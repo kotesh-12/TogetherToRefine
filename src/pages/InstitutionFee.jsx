@@ -8,12 +8,13 @@ import { useNavigate } from 'react-router-dom';
 export default function InstitutionFee() {
     const { userData } = useUser();
     const [targetClass, setTargetClass] = useState('');
+    const [targetSection, setTargetSection] = useState('All');
     const [title, setTitle] = useState('');
     const [amount, setAmount] = useState('');
     const [dueDate, setDueDate] = useState('');
     const [loading, setLoading] = useState(false);
     const [recentFees, setRecentFees] = useState([]);
-    const [stats, setStats] = useState(null); // { totalStudents: 0 }
+    const [stats, setStats] = useState(null);
 
     const navigate = useNavigate();
 
@@ -33,6 +34,8 @@ export default function InstitutionFee() {
         { label: '10', value: '10th' }
     ];
 
+    const sectionOptions = ['All', 'A', 'B', 'C', 'D', 'E'];
+
     const normalizeClass = (c) => {
         if (!c) return '';
         let s = String(c).trim().toLowerCase();
@@ -49,7 +52,6 @@ export default function InstitutionFee() {
         if (!userData || !userData.uid) return;
         const fetchData = async () => {
             try {
-                // 1. Fetch recent unique fees
                 const q = query(
                     collection(db, "fees"),
                     where("institutionId", "==", userData.uid)
@@ -58,7 +60,7 @@ export default function InstitutionFee() {
                 const uniqueItems = {};
                 snap.docs.forEach(d => {
                     const data = d.data();
-                    const key = `${data.title}-${data.class}`;
+                    const key = `${data.title}-${data.class}-${data.section || 'All'}`;
                     if (!uniqueItems[key] || (data.createdAt?.seconds > uniqueItems[key].createdAt?.seconds)) {
                         uniqueItems[key] = { id: d.id, ...data };
                     }
@@ -67,7 +69,6 @@ export default function InstitutionFee() {
                 list.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
                 setRecentFees(list.slice(0, 10));
 
-                // 2. Fetch total student count for this school
                 const qStudents = query(
                     collection(db, "users"),
                     where("institutionId", "==", userData.uid),
@@ -86,8 +87,6 @@ export default function InstitutionFee() {
     const handleAssignFee = async (e) => {
         if (e) e.preventDefault();
 
-        console.log("🚀 Starting Assignment Process...");
-
         if (!userData || !userData.uid) {
             window.alert("Session Error: User not found. Please log in again.");
             return;
@@ -102,25 +101,22 @@ export default function InstitutionFee() {
 
         try {
             const instId = userData.uid;
-
-            // Step 1: Query students in school
-            console.log("Querying students for Institution:", instId);
-            const q = query(
-                collection(db, "users"),
-                where("institutionId", "==", instId)
-            );
-
+            const q = query(collection(db, "users"), where("institutionId", "==", instId));
             const snap = await getDocs(q);
-            console.log(`Query Success: Found ${snap.size} total school members.`);
 
             const normalizedTarget = normalizeClass(targetClass);
             const students = snap.docs.filter(d => {
                 const data = d.data();
-                return data.role === 'student' && normalizeClass(data.class) === normalizedTarget;
+                if (data.role !== 'student') return false;
+
+                const matchesClass = normalizeClass(data.class) === normalizedTarget;
+                const matchesSection = targetSection === 'All' || data.section === targetSection;
+
+                return matchesClass && matchesSection;
             });
 
             if (students.length === 0) {
-                window.alert(`No students found in Class ${targetClass}.\n\nTotal school members: ${snap.size}.\n\nEnsure students have registered with your Institution ID.`);
+                window.alert(`No students found in Class ${targetClass}${targetSection !== 'All' ? ` Section ${targetSection}` : ''}.`);
                 setLoading(false);
                 return;
             }
@@ -130,10 +126,7 @@ export default function InstitutionFee() {
                 return;
             }
 
-            // Step 2: Batch Write
-            console.log(`Planning batch for ${students.length} students...`);
             const batch = writeBatch(db);
-
             students.forEach(sDoc => {
                 const sData = sDoc.data();
                 const feeRef = doc(collection(db, "fees"));
@@ -146,45 +139,39 @@ export default function InstitutionFee() {
                     amount: Number(amount),
                     dueDate,
                     class: normalizedTarget,
+                    section: sData.section || 'N/A',
                     status: 'pending',
                     createdAt: serverTimestamp()
                 });
             });
 
-            console.log("Committing batch...");
             await batch.commit();
-            console.log("✅ Batch commit complete!");
 
-            window.alert(`🎉 SUCCESS!\n\nFee "${title}" has been assigned to ${students.length} students in Class ${targetClass}.`);
+            window.alert(`🎉 SUCCESS! Fee assigned to ${students.length} students.`);
 
-            // UI Reset
             setTitle('');
             setAmount('');
             setDueDate('');
             setLoading(false);
 
-            // Optimistic refresh for recent items
             setRecentFees(prev => [{
                 id: 'new-' + Date.now(),
                 title,
                 amount,
                 class: normalizedTarget,
+                section: targetSection,
                 createdAt: { seconds: Date.now() / 1000 }
             }, ...prev].slice(0, 10));
 
         } catch (err) {
-            console.error("Assignment Critical Error:", err);
-            let msg = err.message;
-            if (err.code === 'permission-denied') {
-                msg = "Permission Denied. I've just deployed fresh security rules to fix this. Please refresh the page and try one more time.";
-            }
-            window.alert("Error: " + msg);
+            console.error("Assignment Error:", err);
+            window.alert("Error: " + err.message);
             setLoading(false);
         }
     };
 
     return (
-        <div className="page-wrapper" style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
+        <div className="page-wrapper" style={{ padding: '20px', maxWidth: '900px', margin: '0 auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
                 <button className="btn" onClick={() => navigate(-1)} style={{ background: '#f8f9fa', border: '1px solid #ddd', padding: '8px 16px', borderRadius: '12px' }}>
                     ← Dashboard
@@ -196,43 +183,27 @@ export default function InstitutionFee() {
                 )}
             </div>
 
-            <div className="header-card" style={{ textAlign: 'center', marginBottom: '40px', padding: '40px', borderRadius: '30px', background: 'linear-gradient(145deg, #ffffff, #f1f2f6)', boxShadow: '20px 20px 60px #d9d9d9, -20px -20px 60px #ffffff' }}>
+            <div className="header-card" style={{ textAlign: 'center', marginBottom: '40px', padding: '40px', borderRadius: '30px', background: 'white', border: '1px solid #f1f2f6', boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}>
                 <h1 style={{ fontSize: '2.5rem', fontWeight: '900', color: '#2d3436', margin: 0 }}>Fee Management</h1>
-                <p style={{ color: '#636e72', marginTop: '10px' }}>Securely assign and track student billing.</p>
+                <p style={{ color: '#636e72', marginTop: '10px' }}>Assign fees by Class and Section with precision.</p>
             </div>
 
             <div className="card glass-form" style={{ padding: '40px', borderRadius: '24px', background: 'white', boxShadow: '0 20px 50px rgba(0,0,0,0.08)', border: '1px solid #f1f2f6' }}>
-                <h3 style={{ marginBottom: '25px', color: '#2d3436' }}>Create Assignment</h3>
+                <h3 style={{ marginBottom: '25px', color: '#2d3436' }}>Create New Assignment</h3>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '20px' }}>
                         <div>
-                            <label style={{ display: 'block', fontWeight: '700', fontSize: '0.85rem', marginBottom: '10px', color: '#2d3436' }}>Select Class</label>
-                            <select
-                                className="input-field"
-                                value={targetClass}
-                                onChange={e => setTargetClass(e.target.value)}
-                                style={{ width: '100%', padding: '15px', borderRadius: '15px', border: '2px solid #f1f2f6', background: '#f8f9fa', fontSize: '1rem', outline: 'none' }}
-                            >
-                                <option value="">-- Choose Class --</option>
-                                {classOptions.map(opt => (
-                                    <option key={opt.value} value={opt.value}>Class {opt.label}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', fontWeight: '700', fontSize: '0.85rem', marginBottom: '10px', color: '#2d3436' }}>Title</label>
+                            <label style={{ display: 'block', fontWeight: '700', fontSize: '0.85rem', marginBottom: '10px', color: '#2d3436' }}>Fee Title</label>
                             <input
                                 className="input-field"
-                                placeholder="Yearly Fee"
+                                placeholder="e.g. Monthly Tuition Fee"
                                 value={title}
                                 onChange={e => setTitle(e.target.value)}
                                 style={{ width: '100%', padding: '15px', borderRadius: '15px', border: '2px solid #f1f2f6', background: '#f8f9fa' }}
                             />
                         </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                         <div>
                             <label style={{ display: 'block', fontWeight: '700', fontSize: '0.85rem', marginBottom: '10px', color: '#2d3436' }}>Amount (₹)</label>
                             <input
@@ -243,6 +214,36 @@ export default function InstitutionFee() {
                                 onChange={e => setAmount(e.target.value)}
                                 style={{ width: '100%', padding: '15px', borderRadius: '15px', border: '2px solid #f1f2f6', background: '#f8f9fa' }}
                             />
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr', gap: '20px', alignItems: 'end' }}>
+                        <div>
+                            <label style={{ display: 'block', fontWeight: '700', fontSize: '0.85rem', marginBottom: '10px', color: '#2d3436' }}>Class</label>
+                            <select
+                                className="input-field"
+                                value={targetClass}
+                                onChange={e => setTargetClass(e.target.value)}
+                                style={{ width: '100%', padding: '15px', borderRadius: '15px', border: '2px solid #f1f2f6', background: '#f8f9fa' }}
+                            >
+                                <option value="">-- Class --</option>
+                                {classOptions.map(opt => (
+                                    <option key={opt.value} value={opt.value}>Class {opt.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', fontWeight: '700', fontSize: '0.85rem', marginBottom: '10px', color: '#2d3436' }}>Section</label>
+                            <select
+                                className="input-field"
+                                value={targetSection}
+                                onChange={e => setTargetSection(e.target.value)}
+                                style={{ width: '100%', padding: '15px', borderRadius: '15px', border: '2px solid #f1f2f6', background: '#f8f9fa' }}
+                            >
+                                {sectionOptions.map(sec => (
+                                    <option key={sec} value={sec}>{sec === 'All' ? 'All Sections' : `Section ${sec}`}</option>
+                                ))}
+                            </select>
                         </div>
                         <div>
                             <label style={{ display: 'block', fontWeight: '700', fontSize: '0.85rem', marginBottom: '10px', color: '#2d3436' }}>Due Date</label>
@@ -274,24 +275,26 @@ export default function InstitutionFee() {
                             transition: 'all 0.3s'
                         }}
                     >
-                        {loading ? '⚡ PROCESSING...' : 'CONFIRM & ASSIGN NOW'}
+                        {loading ? '⚡ PROCESSING...' : 'CONFIRM & ASSIGN FEE'}
                     </button>
                 </div>
             </div>
 
             <div className="history" style={{ marginTop: '50px' }}>
-                <h3 style={{ marginBottom: '20px', fontWeight: '800', color: '#2d3436' }}>🕒 Recent Activity</h3>
+                <h3 style={{ marginBottom: '20px', fontWeight: '800', color: '#2d3436' }}>🕒 Recent Assignments</h3>
                 {recentFees.length === 0 ? (
                     <div style={{ padding: '40px', textAlign: 'center', background: '#f9f9fb', borderRadius: '20px', border: '2px dashed #e0e0e0', color: '#b2bec3' }}>
                         No assignments recorded yet.
                     </div>
                 ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
                         {recentFees.map(fee => (
-                            <div key={fee.id} style={{ background: 'white', padding: '20px', borderRadius: '20px', border: '1px solid #f1f2f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div key={fee.id} style={{ background: 'white', padding: '20px', borderRadius: '20px', border: '1px solid #f1f2f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all 0.3s' }} className="history-item">
                                 <div>
                                     <div style={{ fontWeight: '800', color: '#2d3436' }}>{fee.title}</div>
-                                    <div style={{ fontSize: '0.8rem', color: '#636e72', marginTop: '5px' }}>Class {fee.class}</div>
+                                    <div style={{ fontSize: '0.8rem', color: '#636e72', marginTop: '5px' }}>
+                                        {fee.class} | {fee.section === 'All' ? 'All Sections' : `Sec ${fee.section}`}
+                                    </div>
                                 </div>
                                 <div style={{ fontSize: '1.3rem', fontWeight: '900', color: '#00b894' }}>₹{fee.amount}</div>
                             </div>
@@ -304,6 +307,7 @@ export default function InstitutionFee() {
                 .submit-btn:hover { transform: translateY(-3px); box-shadow: 0 15px 30px rgba(0, 184, 148, 0.4); }
                 .submit-btn:active { transform: scale(0.98); }
                 .input-field:focus { border-color: #00b894 !important; background: white !important; }
+                .history-item:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(0,0,0,0.05); }
             `}</style>
         </div>
     );
