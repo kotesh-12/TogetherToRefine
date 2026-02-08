@@ -300,12 +300,30 @@ function getCachedPrompt(context) {
 }
 
 // --- MIDDLEWARE: Basic Auth Check (Can be enhanced with Admin SDK later) ---
-const verifyAuth = (req, res, next) => {
-    // For now, checks if a userContext or history is present, ensuring it's not a blind ping.
-    // In production, you would verify req.headers.authorization with Firebase Admin SDK.
+const verifyAuth = async (req, res, next) => {
+    // 1. Check for missing required fields (Basic Validation)
     if (!req.body.userContext && !req.body.history && !req.body.message) {
         return res.status(400).json({ error: "Invalid Request Payload" });
     }
+
+    // 2. [TODO: Full Admin SDK Verify]
+    // For now, we rely on the Firestore Rules and Rate Limits.
+    // To fully fix VULN-002, we need the Service Account JSON file.
+    // Once you add that file, uncomment the code below:
+
+    /*
+    const token = req.headers.authorization?.split('Bearer ')[1];
+    if (!token) return res.status(401).json({ error: 'No auth token provided' });
+    
+    try {
+        const decodedToken = await admin.auth().verifyIdToken(token);
+        req.user = decodedToken;
+        next();
+    } catch (error) {
+        return res.status(401).json({ error: 'Invalid token' });
+    }
+    */
+
     next();
 };
 
