@@ -199,9 +199,11 @@ export function UserProvider({ children }) {
 
     return (
         <UserContext.Provider value={values}>
-            {loading ? (
-                <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {/* If loading and ONLINE, show spinner. If OFFLINE, show content (cached) or login */}
+            {loading && navigator.onLine ? (
+                <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
                     <div className="spinner" style={{ width: '40px', height: '40px', borderRadius: '50%', border: '4px solid #f3f3f3', borderTop: '4px solid #3498db', animation: 'spin 1s linear infinite' }}></div>
+                    <p style={{ marginTop: '15px', color: '#666' }}>Connecting to TTR...</p>
                     <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
                 </div>
             ) : children}
