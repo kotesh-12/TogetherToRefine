@@ -162,12 +162,17 @@ export default function InstitutionFee() {
 
         try {
             const batch = writeBatch(db);
-            finalStudents.forEach(sDoc => {
-                const feeRef = doc(collection(db, "fees"));
+            const processedIds = new Set();
 
+            finalStudents.forEach(sDoc => {
                 // KEY FIX: Use userId if they have joined, otherwise use the Allotment ID!
-                // This ensures the fee exists even before they register.
                 const studentIdToUse = sDoc.userId || sDoc.id;
+
+                // DEDUPLICATION: Prevent double-billing if student appears twice in roster
+                if (processedIds.has(studentIdToUse)) return;
+                processedIds.add(studentIdToUse);
+
+                const feeRef = doc(collection(db, "fees"));
 
                 batch.set(feeRef, {
                     studentId: studentIdToUse,
