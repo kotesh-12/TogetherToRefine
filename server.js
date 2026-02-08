@@ -278,6 +278,27 @@ function generateTTRSystemPrompt(context) {
     `;
 }
 
+import { LRUCache } from 'lru-cache'; // Import LRU Cache
+
+const promptCache = new LRUCache({
+    max: 100, // Store up to 100 unique context prompts
+    ttl: 1000 * 60 * 60, // 1 Hour TTL
+});
+
+function getCachedPrompt(context) {
+    if (!context) return null;
+    // Create a unique key based on role/class/gender/user - minimal enough for differentiation
+    const key = `${context.role || 'u'}-${context.class || 'gen'}-${context.gender || 'student'}`;
+
+    if (promptCache.has(key)) {
+        return promptCache.get(key);
+    }
+
+    const prompt = generateTTRSystemPrompt(context);
+    promptCache.set(key, prompt);
+    return prompt;
+}
+
 // --- MIDDLEWARE: Basic Auth Check (Can be enhanced with Admin SDK later) ---
 const verifyAuth = (req, res, next) => {
     // For now, checks if a userContext or history is present, ensuring it's not a blind ping.
@@ -288,15 +309,24 @@ const verifyAuth = (req, res, next) => {
     next();
 };
 
-app.post('/api/chat', apiLimiter, verifyAuth, async (req, res) => {
+// --- REFINED RATE LIMITERS ---
+const generalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
+const chatLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000,
+    max: 10, // 10 AI requests per minute per IP
+    message: { error: 'AI Limit Exceeded. Wait 1 min.' }
+});
+
+app.post('/api/chat', chatLimiter, verifyAuth, async (req, res) => {
     try {
         const { history, message, image, mimeType, userContext, systemInstruction } = req.body;
 
         let chatModel = model;
 
         // Use the Server-Side Algorithm if context is provided, otherwise fallback to client's instruction (or default)
+        // OPTIMIZATION: Use Caching
         const finalSystemInstruction = userContext
-            ? generateTTRSystemPrompt(userContext)
+            ? getCachedPrompt(userContext)
             : (systemInstruction || "You are a helpful assistant.");
 
         // Create a fresh model instance with the specific system instruction for this turn
