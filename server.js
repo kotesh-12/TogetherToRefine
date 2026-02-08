@@ -8,7 +8,20 @@ import rateLimit from 'express-rate-limit'; // Import Rate Limit
 import admin from 'firebase-admin';
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
-const serviceAccount = require("./serviceAccountKey.json");
+
+// DEPLOYMENT CONFIG: Use ENV VAR for Service Account if file is missing
+// In production (Render/Vercel), paste the JSON content into 'FIREBASE_SERVICE_ACCOUNT' env var
+let serviceAccount;
+try {
+    serviceAccount = require("./serviceAccountKey.json");
+} catch (e) {
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+        serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    } else {
+        console.error("CRITICAL ERROR: Service Account Key not found in file or ENV.");
+        process.exit(1);
+    }
+}
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
