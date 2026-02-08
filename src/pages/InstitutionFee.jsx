@@ -19,10 +19,10 @@ export default function InstitutionFee() {
     const [schoolStats, setSchoolStats] = useState({
         total: 0,
         approved: 0,
-        pending: 0,
+        unlinked: 0,
         matchingNow: 0
     });
-    const [allStudents, setAllStudents] = useState([]);
+    const [allStudentAllotments, setAllStudentAllotments] = useState([]);
     const [previewList, setPreviewList] = useState([]);
 
     const navigate = useNavigate();
@@ -72,23 +72,33 @@ export default function InstitutionFee() {
                 const feeList = Object.values(uniqueTitles).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
                 setRecentFees(feeList.slice(0, 5));
 
-                // B. Batch Fetch ALL Students once to keep it fast
-                const qStudents = query(
-                    collection(db, "users"),
-                    where("institutionId", "==", instId),
-                    where("role", "==", "student")
-                );
-                const studentSnap = await getDocs(qStudents);
-                const students = studentSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                // B. Fetch FROM STUDENT_ALLOTMENTS (This is the 40+ list!)
+                // We check both 'createdBy' and 'institutionId' for maximum compatibility
+                const fetchProms = [
+                    getDocs(query(collection(db, "student_allotments"), where("institutionId", "==", instId))),
+                    getDocs(query(collection(db, "student_allotments"), where("createdBy", "==", instId)))
+                ];
 
-                setAllStudents(students);
+                const snaps = await Promise.all(fetchProms);
+                const mergedMap = new Map();
+                snaps.forEach(snap => {
+                    snap.forEach(d => {
+                        if (!mergedMap.has(d.id)) {
+                            mergedMap.set(d.id, { id: d.id, ...d.data() });
+                        }
+                    });
+                });
+
+                const allotments = Array.from(mergedMap.values());
+                console.log(`Found ${allotments.length} student allotments for school.`);
+                setAllStudentAllotments(allotments);
 
                 // Categorize for stats
                 setSchoolStats(prev => ({
                     ...prev,
-                    total: students.length,
-                    approved: students.filter(s => s.approved === true).length,
-                    pending: students.filter(s => s.approved === false).length
+                    total: allotments.length,
+                    approved: allotments.filter(s => s.userId).length, // If it has a userId, they have joined the app
+                    unlinked: allotments.filter(s => !s.userId).length
                 }));
 
             } catch (e) {
@@ -107,44 +117,44 @@ export default function InstitutionFee() {
         }
 
         const normalizedTarget = normalizeClass(targetClass);
-        const filtered = allStudents.filter(s => {
-            const matchesClass = normalizeClass(s.class) === normalizedTarget;
+        const filtered = allStudentAllotments.filter(s => {
+            // Allotments use 'classAssigned' field
+            const matchesClass = normalizeClass(s.classAssigned) === normalizedTarget;
             const matchesSection = targetSection === 'All' || s.section === targetSection;
-            // ONLY assign fees to APPROVED students to prevent complaints
-            return matchesClass && matchesSection && s.approved === true;
+            return matchesClass && matchesSection;
         });
 
         setPreviewList(filtered.slice(0, 10)); // Show top 10 names
         setSchoolStats(prev => ({ ...prev, matchingNow: filtered.length }));
-    }, [targetClass, targetSection, allStudents]);
+    }, [targetClass, targetSection, allStudentAllotments]);
 
     const handleAssignFee = async (e) => {
         if (e) e.preventDefault();
 
         if (!instId) {
-            window.alert("Institution ID not detected. Please try logging in again.");
+            window.alert("Session Error: Please log in again.");
             return;
         }
 
         if (!targetClass || !title || !amount || !dueDate) {
-            window.alert("Please complete the form first.");
+            window.alert("Please complete the form.");
             return;
         }
 
         const normalizedTarget = normalizeClass(targetClass);
-        const finalStudents = allStudents.filter(s => {
-            const matchesClass = normalizeClass(s.class) === normalizedTarget;
+        const finalStudents = allStudentAllotments.filter(s => {
+            const matchesClass = normalizeClass(s.classAssigned) === normalizedTarget;
             const matchesSection = targetSection === 'All' || s.section === targetSection;
-            return matchesClass && matchesSection && s.approved === true;
+            return matchesClass && matchesSection;
         });
 
         if (finalStudents.length === 0) {
-            window.alert(`No approved students found for Class ${targetClass} ${targetSection}.`);
+            window.alert(`No students found for ${targetClass} ${targetSection}.`);
             return;
         }
 
         const totalValue = finalStudents.length * Number(amount);
-        if (!window.confirm(`Found ${finalStudents.length} officially enrolled (Approved) students.\n\nTotal Billing: ₹${totalValue.toLocaleString()}\n\nProceed with assignment?`)) {
+        if (!window.confirm(`Assign fee to ALL ${finalStudents.length} students in this class roster?\n\n(Includes both registered and pending students)\n\nTotal Billing: ₹${totalValue.toLocaleString()}`)) {
             return;
         }
 
@@ -154,11 +164,17 @@ export default function InstitutionFee() {
             const batch = writeBatch(db);
             finalStudents.forEach(sDoc => {
                 const feeRef = doc(collection(db, "fees"));
+
+                // KEY FIX: Use userId if they have joined, otherwise use the Allotment ID!
+                // This ensures the fee exists even before they register.
+                const studentIdToUse = sDoc.userId || sDoc.id;
+
                 batch.set(feeRef, {
-                    studentId: sDoc.id,
-                    studentName: sDoc.name || `${sDoc.firstName || ''} ${sDoc.secondName || ''}`.trim() || "Student",
+                    studentId: studentIdToUse,
+                    allotmentId: sDoc.id, // Keep a reference to the school's record
+                    studentName: sDoc.name || sDoc.studentName || "Student",
                     institutionId: instId,
-                    institutionName: userData.schoolName || userData.name || "Institution Name",
+                    institutionName: userData.schoolName || userData.name || "School",
                     title,
                     amount: Number(amount),
                     dueDate,
@@ -170,7 +186,7 @@ export default function InstitutionFee() {
             });
 
             await batch.commit();
-            window.alert(`✅ Success!\n\nAssigned fee to ${finalStudents.length} students.\n\nPlease note: Pending/Unapproved students were skipped automatically.`);
+            window.alert(`✅ Success!\n\nFee assigned to all ${finalStudents.length} students correctly.`);
 
             setTitle('');
             setAmount('');
@@ -203,14 +219,14 @@ export default function InstitutionFee() {
                 </button>
                 <div style={{ display: 'flex', gap: '10px' }}>
                     <div className="stat-pill" style={{ background: '#e1f5fe', color: '#01579b', padding: '8px 15px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}>
-                        👤 {schoolStats.total} Total Registered
+                        📋 {schoolStats.total} Total Students (Roster)
                     </div>
                     <div className="stat-pill" style={{ background: '#e8f5e9', color: '#2e7d32', padding: '8px 15px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}>
-                        ✅ {schoolStats.approved} Officially Enrolled
+                        📱 {schoolStats.approved} Registered on App
                     </div>
-                    {schoolStats.pending > 0 && (
+                    {schoolStats.unlinked > 0 && (
                         <div className="stat-pill" style={{ background: '#fff3e0', color: '#ef6c00', padding: '8px 15px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}>
-                            ⏳ {schoolStats.pending} Awaiting Approval
+                            ✉️ {schoolStats.unlinked} Invitation Sent
                         </div>
                     )}
                 </div>
@@ -220,20 +236,19 @@ export default function InstitutionFee() {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '30px' }}>
 
-                {/* FORM COLUMN */}
                 <div className="card" style={{ padding: '40px', borderRadius: '30px', boxShadow: '0 15px 35px rgba(0,0,0,0.05)', background: 'white' }}>
                     <h3 style={{ marginBottom: '25px', color: '#2d3436' }}>New Assignment</h3>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                         <div>
                             <label style={{ display: 'block', fontWeight: '700', fontSize: '0.85rem', marginBottom: '8px' }}>Fee Title</label>
-                            <input className="input-field" placeholder="e.g. Monthly Tuition" value={title} onChange={e => setTitle(e.target.value)} style={{ padding: '15px', borderRadius: '15px' }} />
+                            <input className="input-field" placeholder="Tuition Fee Term 1" value={title} onChange={e => setTitle(e.target.value)} style={{ padding: '15px', borderRadius: '15px' }} />
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                             <div>
                                 <label style={{ display: 'block', fontWeight: '700', fontSize: '0.85rem', marginBottom: '8px' }}>Amount (₹)</label>
-                                <input type="number" className="input-field" placeholder="1500" value={amount} onChange={e => setAmount(e.target.value)} style={{ padding: '15px', borderRadius: '15px' }} />
+                                <input type="number" className="input-field" placeholder="1000" value={amount} onChange={e => setAmount(e.target.value)} style={{ padding: '15px', borderRadius: '15px' }} />
                             </div>
                             <div>
                                 <label style={{ display: 'block', fontWeight: '700', fontSize: '0.85rem', marginBottom: '8px' }}>Due Date</label>
@@ -259,12 +274,12 @@ export default function InstitutionFee() {
 
                         {targetClass && (
                             <div style={{ background: '#f8f9fa', padding: '20px', borderRadius: '20px', border: '1px solid #e9ecef' }}>
-                                <div style={{ fontWeight: 'bold', color: '#2ecc71', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    🎯 Targeting {schoolStats.matchingNow} Approved Students
+                                <div style={{ fontWeight: 'bold', color: '#0fb9b1', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    🎯 Targeting {schoolStats.matchingNow} Total Students
                                 </div>
                                 {previewList.length > 0 && (
                                     <div style={{ marginTop: '10px', fontSize: '0.8rem', color: '#636e72' }}>
-                                        Preview: {previewList.map(s => s.name || s.firstName).join(', ')} {schoolStats.matchingNow > 10 ? '...' : ''}
+                                        Roster Preview: {previewList.map(s => s.name || s.studentName).join(', ')} {schoolStats.matchingNow > 10 ? '...' : ''}
                                     </div>
                                 )}
                             </div>
@@ -280,21 +295,21 @@ export default function InstitutionFee() {
                                 padding: '20px',
                                 borderRadius: '20px',
                                 fontWeight: '800',
-                                fontSize: '1rem',
+                                fontSize: '1.1rem',
                                 marginTop: '10px',
-                                boxShadow: '0 10px 20px rgba(0,0,0,0.1)'
+                                textTransform: 'uppercase',
+                                letterSpacing: '1px'
                             }}
                         >
-                            {loading ? 'WAITING FOR CLOUD...' : 'CONFIRM ASSIGNMENT'}
+                            {loading ? 'Batch Saving...' : 'Confirm Assignment'}
                         </button>
                     </div>
                 </div>
 
-                {/* SIDE COLUMN: HISTORY & TIPS */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <div className="card" style={{ padding: '25px', borderRadius: '24px', background: '#f8f9fa', border: 'none' }}>
                         <h4 style={{ marginBottom: '15px', color: '#636e72' }}>🕒 Recent Activity</h4>
-                        {recentFees.length === 0 ? <p className="text-muted" style={{ fontSize: '0.9rem' }}>No records yet.</p> : (
+                        {recentFees.length === 0 ? <p className="text-muted" style={{ fontSize: '0.9rem' }}>No recent records.</p> : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                 {recentFees.map(f => (
                                     <div key={f.id} style={{ background: 'white', padding: '15px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', boxShadow: '0 2px 5px rgba(0,0,0,0.02)' }}>
@@ -305,19 +320,12 @@ export default function InstitutionFee() {
                             </div>
                         )}
                     </div>
-
-                    <div className="card" style={{ padding: '25px', borderRadius: '24px', background: '#fff9db', border: 'none', fontSize: '0.85rem', color: '#856404' }}>
-                        <strong>🛡️ Safety Audit</strong><br />
-                        Fees are ONLY assigned to students whose profiles you have <b>Approved</b>. If a student is missing from the count, please check your "Pending Approvals" list.
-                    </div>
                 </div>
             </div>
 
             <style>{`
                 .btn:active { transform: scale(0.98); }
-                .input-field:focus { outline: none; border-color: #2d3436; }
-                .stat-pill { transition: all 0.3s; }
-                .stat-pill:hover { transform: translateY(-2px); }
+                .input-field:focus { outline: none; border-color: #2d3436; box-shadow: 0 0 0 4px rgba(0,0,0,0.05); }
             `}</style>
         </div>
     );
