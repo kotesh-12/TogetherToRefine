@@ -390,7 +390,27 @@ export default function Details() {
         }
     };
 
-    if (loading) return <div className="container">Loading...</div>;
+    if (loading) {
+        return (
+            <div className="container" style={{ textAlign: 'center', paddingTop: '50px' }}>
+                <div className="spinner" style={{ width: '40px', height: '40px', margin: '0 auto 20px', borderRadius: '50%', border: '4px solid #f3f3f3', borderTop: '4px solid #3498db', animation: 'spin 1s linear infinite' }}></div>
+                <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+                <p>Loading Profile...</p>
+                <button
+                    onClick={() => {
+                        import('../firebase').then(({ auth }) => {
+                            auth.signOut();
+                            sessionStorage.clear();
+                            window.location.href = '/';
+                        });
+                    }}
+                    style={{ padding: '8px 16px', background: '#e74c3c', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', marginTop: '20px' }}
+                >
+                    Stuck? Click to Reset
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="container">

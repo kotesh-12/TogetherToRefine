@@ -46,6 +46,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 const MainLayout = lazy(() => import('./components/MainLayout'));
 
 import UpdateManager from './components/UpdateManager';
+import GlobalLoader from './components/GlobalLoader';
 
 function App() {
   return (
@@ -53,7 +54,7 @@ function App() {
       <ThemeProvider>
         <Router>
           <UpdateManager />
-          <Suspense fallback={<div className="container">Loading App...</div>}>
+          <Suspense fallback={<GlobalLoader />}>
             <Routes>
               <Route path="/" element={<Login />} />
               <Route path="/details" element={<Details />} />
