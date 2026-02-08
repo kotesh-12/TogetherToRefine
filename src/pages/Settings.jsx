@@ -1,16 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useUser } from '../context/UserContext';
-import { getAuth, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
+import { useTheme } from '../context/ThemeContext'; // Import context
 
 export default function Settings() {
     const navigate = useNavigate();
     const { userData } = useUser();
+    const { theme, toggleTheme } = useTheme(); // Use global theme state
     const auth = getAuth();
 
     // States
     const [isDesktop, setIsDesktop] = useState(false);
-    const [theme, setTheme] = useState(localStorage.getItem('app_theme') || 'Light');
+    // Removed local theme state
 
     // Password Change State
     const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -29,11 +27,7 @@ export default function Settings() {
         }
     }, []);
 
-    // Apply Theme Effect
-    useEffect(() => {
-        document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('app_theme', theme);
-    }, [theme]);
+    // Removed local Theme Effect (handled in Context)
 
     const handleForceUpdate = () => {
         if (window.confirm("This will clear the cache and reload the latest version. Continue?")) {
@@ -62,10 +56,7 @@ export default function Settings() {
         }
     };
 
-    const toggleTheme = () => {
-        const newTheme = theme === 'Light' ? 'Dark' : 'Light';
-        setTheme(newTheme);
-    };
+    // Removed local toggleTheme (using context)
 
     const handleChangePassword = async () => {
         setError('');
