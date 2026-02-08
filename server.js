@@ -397,6 +397,79 @@ app.post('/api/chat', chatLimiter, verifyAuth, async (req, res) => {
 
 // Only listen for connections if running as a standalone script
 // Vercel will import the app and handle the serverless function logic
+// --- BATCH REGISTRATION (For Institutions) ---
+app.post('/api/batch-register', verifyAuth, async (req, res) => {
+    // 1. Verify Requestor is an Institution
+    const requesterRole = req.user.role || (await admin.firestore().collection('institutions').doc(req.user.uid).get()).data()?.role;
+
+    if (requesterRole !== 'institution' && requesterRole !== 'admin') {
+        return res.status(403).json({ error: "Only Institutions can batch register students." });
+    }
+
+    const { students, institutionId } = req.body; // Array of { name, email, password, class, section }
+
+    if (!students || !Array.isArray(students) || students.length === 0) {
+        return res.status(400).json({ error: "No students provided." });
+    }
+
+    if (students.length > 50) {
+        return res.status(400).json({ error: "Batch size limit exceeded. Max 50 per request." });
+    }
+
+    const results = { success: [], failed: [] };
+
+    // 2. Process Batch
+    for (const student of students) {
+        try {
+            // A. Create Auth User
+            const userRecord = await admin.auth().createUser({
+                email: student.email,
+                password: student.password || 'Student@123', // Default password if missing
+                displayName: student.name
+            });
+
+            // B. Create Firestore Profile
+            const pid = `ST-${Math.floor(100000 + Math.random() * 900000)}`;
+
+            await admin.firestore().collection('users').doc(userRecord.uid).set({
+                name: student.name,
+                email: student.email,
+                role: 'student',
+                class: student.class,
+                section: student.section || 'A',
+                institutionId: institutionId || req.user.uid, // Link to this institution
+                pid: pid,
+                approved: true, // Auto-approve since Institution is adding them
+                profileCompleted: true,
+                createdAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            // C. Create Admission Record (for visibility)
+            await admin.firestore().collection('admissions').add({
+                name: student.name,
+                role: 'student',
+                userId: userRecord.uid,
+                institutionId: institutionId || req.user.uid,
+                status: 'approved',
+                class: student.class,
+                joinedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            results.success.push({ email: student.email, pid });
+        } catch (error) {
+            console.error(`Failed to register ${student.email}:`, error);
+            results.failed.push({ email: student.email, error: error.message });
+        }
+    }
+
+    res.json({
+        message: `Processed ${students.length} students.`,
+        results
+    });
+});
+
+// Only listen for connections if running as a standalone script
+// Vercel will import the app and handle the serverless function logic
 if (process.env.NODE_ENV !== 'production') {
     app.listen(PORT, () => console.log(`Backend Server running on http://localhost:${PORT}`));
 }

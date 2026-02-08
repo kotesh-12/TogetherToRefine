@@ -54,6 +54,48 @@ export default function Institution() {
         }
     };
 
+    const handleBulkImport = async (csvText) => {
+        try {
+            const rows = csvText.trim().split('\n');
+            const students = rows.map(row => {
+                const [name, email, password, className] = row.split(',').map(s => s.trim());
+                return { name, email, password, class: className };
+            });
+
+            if (students.length === 0) return alert("Invalid CSV format.");
+
+            const confirm = window.confirm(`Ready to import ${students.length} students?`);
+            if (!confirm) return;
+
+            setLoading(true);
+            const token = await auth.currentUser.getIdToken();
+
+            const res = await fetch('/api/batch-register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ students })
+            });
+
+            const data = await res.json();
+            setLoading(false);
+
+            if (data.results) {
+                alert(`Import Complete!\nSuccess: ${data.results.success.length}\nFailed: ${data.results.failed.length}\nCheck console for details.`);
+                console.log("Import Results:", data.results);
+            } else {
+                alert("Import failed: " + (data.error || "Unknown error"));
+            }
+
+        } catch (e) {
+            console.error(e);
+            alert("Error parsing CSV or sending request.");
+            setLoading(false);
+        }
+    };
+
 
 
     useEffect(() => {
@@ -109,8 +151,8 @@ export default function Institution() {
 
             <div style={{ padding: '20px', width: '100%', boxSizing: 'border-box' }}>
 
-                {/* Announcement Button */}
-                <div style={{ marginBottom: '15px' }}>
+                {/* Bulk Import Button */}
+                <div style={{ marginBottom: '15px', display: 'flex', gap: '10px' }}>
                     <button
                         onClick={() => setShowModal(true)}
                         style={{
@@ -122,6 +164,19 @@ export default function Institution() {
                         title="Make Announcement"
                     >
                         📢
+                    </button>
+                    <button
+                        onClick={() => {
+                            const csv = prompt("Paste CSV Data (Name, Email, Password, Class)\nExample:\nJohn Doe,john@test.com,Pass123,10th");
+                            if (csv) handleBulkImport(csv);
+                        }}
+                        style={{
+                            padding: '0 20px', borderRadius: '25px',
+                            background: '#00b894', border: 'none', color: 'white',
+                            fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+                        }}
+                    >
+                        📤 Bulk Import Students
                     </button>
                 </div>
 
