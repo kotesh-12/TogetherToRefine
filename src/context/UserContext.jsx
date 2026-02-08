@@ -70,22 +70,34 @@ export function UserProvider({ children }) {
                         const userSnap = results[2].status === 'fulfilled' ? results[2].value : { exists: () => false };
 
                         if (instSnap.exists()) {
+                            // 1. Set Data IMMEDIATELY
+                            setUserData({ ...instSnap.data(), uid: currentUser.uid, role: (instSnap.data().role || 'institution').toLowerCase() });
+                            setLoading(false);
+
+                            // 2. Subscribe for updates
                             unsubscribeSnapshot = onSnapshot(instRef, (d) => {
                                 if (!d.exists()) { detectFull(); return; }
                                 setUserData({ ...d.data(), uid: currentUser.uid, role: (d.data().role || 'institution').toLowerCase() });
-                                setLoading(false);
                             });
                         } else if (teachSnap.exists()) {
+                            // 1. Set Data IMMEDIATELY
+                            setUserData({ ...teachSnap.data(), uid: currentUser.uid, role: (teachSnap.data().role || 'teacher').toLowerCase() });
+                            setLoading(false);
+
+                            // 2. Subscribe
                             unsubscribeSnapshot = onSnapshot(teachRef, (d) => {
                                 if (!d.exists()) { detectFull(); return; }
                                 setUserData({ ...d.data(), uid: currentUser.uid, role: (d.data().role || 'teacher').toLowerCase() });
-                                setLoading(false);
                             });
                         } else if (userSnap.exists()) {
+                            // 1. Set Data IMMEDIATELY
+                            setUserData({ ...userSnap.data(), uid: currentUser.uid, role: (userSnap.data().role || 'student').toLowerCase() });
+                            setLoading(false);
+
+                            // 2. Subscribe
                             unsubscribeSnapshot = onSnapshot(userRef, (d) => {
                                 if (!d.exists()) { detectFull(); return; }
                                 setUserData({ ...d.data(), uid: currentUser.uid, role: (d.data().role || 'student').toLowerCase() });
-                                setLoading(false);
                             });
                         } else {
                             console.log("No profile found.");
