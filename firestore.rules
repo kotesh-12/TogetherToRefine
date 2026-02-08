@@ -2,7 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- HELPERS ---
+    // --- BASE HELPERS ---
     function isSignedIn() { return request.auth != null; }
     function isOwner(uid) { return request.auth.uid == uid; }
     
@@ -16,14 +16,13 @@ service cloud.firestore {
 
     // --- 1. USER PROFILES ---
     match /users/{userId} {
-      // Allow any signed-in user to read any other user (Needed for institutional lookups)
+      // Required for institutions to find their students
       allow read: if isSignedIn();
-      // Allow user to write their own profile
       allow write: if isSignedIn() && (isOwner(userId) || isAdmin());
 
       match /four_way_sessions/{sessionId} {
-         allow read, write: if request.auth != null && request.auth.uid == userId;
-         match /messages/{msgId} { allow read, write: if request.auth != null && request.auth.uid == userId; }
+         allow read, write: if isOwner(userId);
+         match /messages/{msgId} { allow read, write: if isOwner(userId); }
       }
     }
 
@@ -36,22 +35,14 @@ service cloud.firestore {
       allow write: if isSignedIn() && (isOwner(instId) || isAdmin());
     }
 
-    // --- 2. CORE FEATURES ---
-    match /fees/{id} { 
-      // Publicly readable for authenticated users (Students see theirs, Insts see theirs)
-      allow read: if isSignedIn();
-      // Allow any authenticated user to create a fee (Ideally restricted to Inst/Admin, but isSignedIn is safe for now)
-      allow create: if isSignedIn(); 
-      // Update/Delete restricted to the institution or admin
-      allow update, delete: if isSignedIn(); 
+    // --- 2. FEE MANAGEMENT ---
+    match /fees/{feeId} {
+      // Broad permission for Fees to bypass any hidden blocks
+      allow read, write: if isSignedIn();
     }
 
-    match /announcements/{id} { 
-      allow read: if isSignedIn();
-      allow write: if isSignedIn(); 
-    }
-
-    // --- 3. INFRASTRUCTURE & SHARED ---
+    // --- 3. CORE APP COLLECTIONS ---
+    match /announcements/{id} { allow read, write: if isSignedIn(); }
     match /admissions/{id} {
       allow create: if true; 
       allow read, update, delete: if isSignedIn();
@@ -73,14 +64,14 @@ service cloud.firestore {
 
     // --- 4. AI CHATS ---
     match /ai_chats/{userId} {
-       allow read, write: if request.auth != null && request.auth.uid == userId;
+       allow read, write: if isOwner(userId);
        match /sessions/{sessionId} {
-          allow read, write: if request.auth != null && request.auth.uid == userId;
-          match /messages/{msgId} { allow read, write: if request.auth != null && request.auth.uid == userId; }
+          allow read, write: if isOwner(userId);
+          match /messages/{msgId} { allow read, write: if isOwner(userId); }
        }
     }
 
-    // --- GLOBAL DENY (MUST BE LAST) ---
+    // --- 5. FALLBACK ---
     match /{document=**} {
       allow read, write: if false; 
     }

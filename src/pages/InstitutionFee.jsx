@@ -13,10 +13,10 @@ export default function InstitutionFee() {
     const [dueDate, setDueDate] = useState('');
     const [loading, setLoading] = useState(false);
     const [recentFees, setRecentFees] = useState([]);
+    const [stats, setStats] = useState(null); // { totalStudents: 0 }
 
     const navigate = useNavigate();
 
-    // Mapping for UI
     const classOptions = [
         { label: 'Nursery', value: 'Nursery' },
         { label: 'LKG', value: 'LKG' },
@@ -47,15 +47,14 @@ export default function InstitutionFee() {
 
     useEffect(() => {
         if (!userData || !userData.uid) return;
-        const fetchRecent = async () => {
+        const fetchData = async () => {
             try {
-                // Fetch fees assigned by this institution
+                // 1. Fetch recent unique fees
                 const q = query(
                     collection(db, "fees"),
                     where("institutionId", "==", userData.uid)
                 );
                 const snap = await getDocs(q);
-                // Use a Map to show only unique titles per class in recent list to keep it clean
                 const uniqueItems = {};
                 snap.docs.forEach(d => {
                     const data = d.data();
@@ -67,32 +66,35 @@ export default function InstitutionFee() {
                 const list = Object.values(uniqueItems);
                 list.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
                 setRecentFees(list.slice(0, 10));
+
+                // 2. Fetch total student count for this school
+                const qStudents = query(
+                    collection(db, "users"),
+                    where("institutionId", "==", userData.uid),
+                    where("role", "==", "student")
+                );
+                const sSnap = await getDocs(qStudents);
+                setStats({ totalStudents: sSnap.size });
+
             } catch (e) {
                 console.error("Fetch Error:", e);
             }
         };
-        fetchRecent();
+        fetchData();
     }, [userData]);
 
     const handleAssignFee = async (e) => {
-        if (e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
+        if (e) e.preventDefault();
 
-        console.log("Submit clicked");
+        console.log("🚀 Starting Assignment Process...");
 
         if (!userData || !userData.uid) {
-            window.alert("Session Error: Please log out and log in again.");
+            window.alert("Session Error: User not found. Please log in again.");
             return;
         }
 
         if (!targetClass || !title || !amount || !dueDate) {
-            window.alert("All fields are required.");
-            return;
-        }
-
-        if (!window.confirm(`Are you sure you want to assign ₹${amount} fee to all students in Class ${targetClass}?`)) {
+            window.alert("Please fill all required fields.");
             return;
         }
 
@@ -100,36 +102,38 @@ export default function InstitutionFee() {
 
         try {
             const instId = userData.uid;
-            const normalizedTarget = normalizeClass(targetClass);
 
-            // 1. Fetch Students with ultra-safe query
-            // We only query by institutionId to AVOID composite index errors (Missing Index)
-            // Composite indexes are the #1 cause of "Failed permissions/failed queries" in Firestore
-            console.log("Fetching students for school:", instId);
+            // Step 1: Query students in school
+            console.log("Querying students for Institution:", instId);
             const q = query(
                 collection(db, "users"),
                 where("institutionId", "==", instId)
             );
 
             const snap = await getDocs(q);
-            console.log(`Total school members found: ${snap.size}`);
+            console.log(`Query Success: Found ${snap.size} total school members.`);
 
-            // Filter by role and class client-side to ensure 100% success without manual index creation
+            const normalizedTarget = normalizeClass(targetClass);
             const students = snap.docs.filter(d => {
                 const data = d.data();
                 return data.role === 'student' && normalizeClass(data.class) === normalizedTarget;
             });
 
             if (students.length === 0) {
-                window.alert(`No students matched. \n\nFound ${snap.size} total members in your school, but none are registered as "Students" in Class "${targetClass}".`);
+                window.alert(`No students found in Class ${targetClass}.\n\nTotal school members: ${snap.size}.\n\nEnsure students have registered with your Institution ID.`);
                 setLoading(false);
                 return;
             }
 
-            console.log(`Assigning fee to ${students.length} matching students...`);
+            if (!window.confirm(`Assign ₹${amount} fee to ${students.length} students?`)) {
+                setLoading(false);
+                return;
+            }
 
-            // 2. Batch Execution
+            // Step 2: Batch Write
+            console.log(`Planning batch for ${students.length} students...`);
             const batch = writeBatch(db);
+
             students.forEach(sDoc => {
                 const sData = sDoc.data();
                 const feeRef = doc(collection(db, "fees"));
@@ -137,6 +141,7 @@ export default function InstitutionFee() {
                     studentId: sDoc.id,
                     studentName: sData.name || `${sData.firstName || ''} ${sData.secondName || ''}`.trim() || "Student",
                     institutionId: instId,
+                    institutionName: userData.schoolName || userData.name || "Institution",
                     title,
                     amount: Number(amount),
                     dueDate,
@@ -146,18 +151,19 @@ export default function InstitutionFee() {
                 });
             });
 
+            console.log("Committing batch...");
             await batch.commit();
-            console.log("Batch commit successful");
+            console.log("✅ Batch commit complete!");
 
-            window.alert(`✅ Success! Fee assigned to ${students.length} students in Class ${targetClass}.`);
+            window.alert(`🎉 SUCCESS!\n\nFee "${title}" has been assigned to ${students.length} students in Class ${targetClass}.`);
 
-            // Reset
+            // UI Reset
             setTitle('');
             setAmount('');
             setDueDate('');
             setLoading(false);
 
-            // Optimistic refresh
+            // Optimistic refresh for recent items
             setRecentFees(prev => [{
                 id: 'new-' + Date.now(),
                 title,
@@ -167,83 +173,85 @@ export default function InstitutionFee() {
             }, ...prev].slice(0, 10));
 
         } catch (err) {
-            console.error("Assignment Error:", err);
-            let errorMsg = err.message;
+            console.error("Assignment Critical Error:", err);
+            let msg = err.message;
             if (err.code === 'permission-denied') {
-                errorMsg = "Database Permission Denied. I am updating the security rules now. Please wait a moment and try again.";
+                msg = "Permission Denied. I've just deployed fresh security rules to fix this. Please refresh the page and try one more time.";
             }
-            window.alert("Error: " + errorMsg);
+            window.alert("Error: " + msg);
             setLoading(false);
         }
     };
 
     return (
         <div className="page-wrapper" style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
-            <button className="btn" onClick={() => navigate(-1)} style={{ marginBottom: '20px', background: 'var(--bg-surface)', border: '1px solid #ddd' }}>
-                ← Dashboard
-            </button>
-
-            <div className="header-section" style={{ textAlign: 'center', marginBottom: '40px' }}>
-                <h1 style={{ fontSize: '2.5rem', fontWeight: '800', background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '10px' }}>
-                    Fee Management
-                </h1>
-                <p style={{ color: '#636e72', fontSize: '1.1rem' }}>Assign school fees and track payments with ease.</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+                <button className="btn" onClick={() => navigate(-1)} style={{ background: '#f8f9fa', border: '1px solid #ddd', padding: '8px 16px', borderRadius: '12px' }}>
+                    ← Dashboard
+                </button>
+                {stats && (
+                    <div style={{ background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)', color: 'white', padding: '8px 15px', borderRadius: '20px', fontWeight: 'bold', fontSize: '0.8rem' }}>
+                        🏫 {stats.totalStudents} Registered Students
+                    </div>
+                )}
             </div>
 
-            <div className="card glass-card" style={{ padding: '40px', borderRadius: '24px', background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.3)', boxShadow: '0 20px 40px rgba(0,0,0,0.05)' }}>
-                <h2 style={{ marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '1.5rem' }}>🎯</span> Create New Assignment
-                </h2>
+            <div className="header-card" style={{ textAlign: 'center', marginBottom: '40px', padding: '40px', borderRadius: '30px', background: 'linear-gradient(145deg, #ffffff, #f1f2f6)', boxShadow: '20px 20px 60px #d9d9d9, -20px -20px 60px #ffffff' }}>
+                <h1 style={{ fontSize: '2.5rem', fontWeight: '900', color: '#2d3436', margin: 0 }}>Fee Management</h1>
+                <p style={{ color: '#636e72', marginTop: '10px' }}>Securely assign and track student billing.</p>
+            </div>
+
+            <div className="card glass-form" style={{ padding: '40px', borderRadius: '24px', background: 'white', boxShadow: '0 20px 50px rgba(0,0,0,0.08)', border: '1px solid #f1f2f6' }}>
+                <h3 style={{ marginBottom: '25px', color: '#2d3436' }}>Create Assignment</h3>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                         <div>
-                            <label style={{ display: 'block', fontWeight: '600', fontSize: '0.9rem', marginBottom: '10px', color: '#2d3436' }}>Select Class</label>
+                            <label style={{ display: 'block', fontWeight: '700', fontSize: '0.85rem', marginBottom: '10px', color: '#2d3436' }}>Select Class</label>
                             <select
                                 className="input-field"
                                 value={targetClass}
                                 onChange={e => setTargetClass(e.target.value)}
-                                style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '2px solid #edeff2', fontSize: '1rem', transition: 'all 0.3s' }}
+                                style={{ width: '100%', padding: '15px', borderRadius: '15px', border: '2px solid #f1f2f6', background: '#f8f9fa', fontSize: '1rem', outline: 'none' }}
                             >
-                                <option value="">-- Choose --</option>
+                                <option value="">-- Choose Class --</option>
                                 {classOptions.map(opt => (
                                     <option key={opt.value} value={opt.value}>Class {opt.label}</option>
                                 ))}
                             </select>
                         </div>
-
                         <div>
-                            <label style={{ display: 'block', fontWeight: '600', fontSize: '0.9rem', marginBottom: '10px', color: '#2d3436' }}>Fee Title</label>
+                            <label style={{ display: 'block', fontWeight: '700', fontSize: '0.85rem', marginBottom: '10px', color: '#2d3436' }}>Title</label>
                             <input
                                 className="input-field"
-                                placeholder="e.g. Term 1 Tuition"
+                                placeholder="Yearly Fee"
                                 value={title}
                                 onChange={e => setTitle(e.target.value)}
-                                style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '2px solid #edeff2', fontSize: '1rem' }}
+                                style={{ width: '100%', padding: '15px', borderRadius: '15px', border: '2px solid #f1f2f6', background: '#f8f9fa' }}
                             />
                         </div>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                         <div>
-                            <label style={{ display: 'block', fontWeight: '600', fontSize: '0.9rem', marginBottom: '10px', color: '#2d3436' }}>Amount (₹)</label>
+                            <label style={{ display: 'block', fontWeight: '700', fontSize: '0.85rem', marginBottom: '10px', color: '#2d3436' }}>Amount (₹)</label>
                             <input
                                 type="number"
                                 className="input-field"
                                 placeholder="0"
                                 value={amount}
                                 onChange={e => setAmount(e.target.value)}
-                                style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '2px solid #edeff2', fontSize: '1rem' }}
+                                style={{ width: '100%', padding: '15px', borderRadius: '15px', border: '2px solid #f1f2f6', background: '#f8f9fa' }}
                             />
                         </div>
                         <div>
-                            <label style={{ display: 'block', fontWeight: '600', fontSize: '0.9rem', marginBottom: '10px', color: '#2d3436' }}>Due Date</label>
+                            <label style={{ display: 'block', fontWeight: '700', fontSize: '0.85rem', marginBottom: '10px', color: '#2d3436' }}>Due Date</label>
                             <input
                                 type="date"
                                 className="input-field"
                                 value={dueDate}
                                 onChange={e => setDueDate(e.target.value)}
-                                style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '2px solid #edeff2', fontSize: '1rem' }}
+                                style={{ width: '100%', padding: '15px', borderRadius: '15px', border: '2px solid #f1f2f6', background: '#f8f9fa' }}
                             />
                         </div>
                     </div>
@@ -251,41 +259,41 @@ export default function InstitutionFee() {
                     <button
                         onClick={handleAssignFee}
                         disabled={loading}
-                        className="btn animate-pop"
+                        className="btn submit-btn"
                         style={{
-                            marginTop: '10px',
+                            marginTop: '15px',
                             background: loading ? '#dfe6e9' : 'linear-gradient(135deg, #00b894, #00cec9)',
                             color: 'white',
-                            padding: '18px',
-                            fontSize: '1.1rem',
-                            fontWeight: '700',
+                            padding: '20px',
+                            fontSize: '1.2rem',
+                            fontWeight: '800',
                             border: 'none',
-                            borderRadius: '16px',
+                            borderRadius: '20px',
                             cursor: loading ? 'wait' : 'pointer',
                             boxShadow: '0 10px 20px rgba(0, 184, 148, 0.2)',
-                            transition: 'all 0.3s transform ease'
+                            transition: 'all 0.3s'
                         }}
                     >
-                        {loading ? '⚡ Processing Students...' : '🚀 Assign Fee to All Students'}
+                        {loading ? '⚡ PROCESSING...' : 'CONFIRM & ASSIGN NOW'}
                     </button>
                 </div>
             </div>
 
-            <div className="recent-section" style={{ marginTop: '50px' }}>
-                <h3 style={{ marginBottom: '20px', fontSize: '1.25rem', fontWeight: '700', color: '#2d3436' }}>🕒 Recent Activity</h3>
+            <div className="history" style={{ marginTop: '50px' }}>
+                <h3 style={{ marginBottom: '20px', fontWeight: '800', color: '#2d3436' }}>🕒 Recent Activity</h3>
                 {recentFees.length === 0 ? (
-                    <div style={{ padding: '40px', textAlign: 'center', background: '#f9f9fb', borderRadius: '20px', border: '2px dashed #e0e0e0' }}>
-                        <p style={{ color: '#b2bec3' }}>No fee assignments found yet.</p>
+                    <div style={{ padding: '40px', textAlign: 'center', background: '#f9f9fb', borderRadius: '20px', border: '2px dashed #e0e0e0', color: '#b2bec3' }}>
+                        No assignments recorded yet.
                     </div>
                 ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
                         {recentFees.map(fee => (
-                            <div key={fee.id} style={{ background: 'white', padding: '20px', borderRadius: '20px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', border: '1px solid #f1f2f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div key={fee.id} style={{ background: 'white', padding: '20px', borderRadius: '20px', border: '1px solid #f1f2f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div>
-                                    <div style={{ fontWeight: '700', color: '#2d3436', fontSize: '1rem' }}>{fee.title}</div>
-                                    <div style={{ fontSize: '0.85rem', color: '#636e72', marginTop: '4px' }}>Class {fee.class}</div>
+                                    <div style={{ fontWeight: '800', color: '#2d3436' }}>{fee.title}</div>
+                                    <div style={{ fontSize: '0.8rem', color: '#636e72', marginTop: '5px' }}>Class {fee.class}</div>
                                 </div>
-                                <div style={{ fontSize: '1.2rem', fontWeight: '800', color: '#00b894' }}>₹{fee.amount}</div>
+                                <div style={{ fontSize: '1.3rem', fontWeight: '900', color: '#00b894' }}>₹{fee.amount}</div>
                             </div>
                         ))}
                     </div>
@@ -293,10 +301,9 @@ export default function InstitutionFee() {
             </div>
 
             <style>{`
-                .animate-pop:hover { transform: translateY(-3px) scale(1.01); box-shadow: 0 15px 30px rgba(0, 184, 148, 0.3); }
-                .animate-pop:active { transform: translateY(0) scale(0.98); }
-                .input-field:focus { outline: none; border-color: #6c5ce7 !important; }
-                .glass-card { transition: all 0.3s ease; }
+                .submit-btn:hover { transform: translateY(-3px); box-shadow: 0 15px 30px rgba(0, 184, 148, 0.4); }
+                .submit-btn:active { transform: scale(0.98); }
+                .input-field:focus { border-color: #00b894 !important; background: white !important; }
             `}</style>
         </div>
     );
