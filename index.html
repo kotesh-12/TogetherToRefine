@@ -141,6 +141,24 @@
     })();
   </script>
   <script type="module" src="/src/main.jsx"></script>
+  <script>
+    // FINAL FAILSAFE: If React doesn't clear the loading screen in 10s, show error.
+    setTimeout(function () {
+      var el = document.getElementById('root-loading');
+      if (el && document.body.contains(el)) {
+        console.error("App failed to mount in 10s.");
+        el.innerHTML = '<div style="margin-top:20px; color: #d63031; text-align:center;"><h2>⚠️ App Unresponsive</h2><p>Something prevented the app from starting.</p><button onclick="localStorage.clear();sessionStorage.clear();window.location.reload()" style="padding:10px 20px; background:#d63031; color:white; border:none; border-radius:5px; cursor:pointer;">Factory Reset & Reload</button><p style="font-size:12px; margin-top:10px; color:#666;">If this persists, check console for errors.</p></div>';
+      }
+    }, 10000);
+
+    // Capture global errors
+    window.onerror = function (msg, url, line) {
+      var el = document.getElementById('root-loading');
+      if (el) {
+        el.innerHTML += '<div style="color:red; margin-top:10px; font-size:12px;">Error: ' + msg + '</div>';
+      }
+    };
+  </script>
 </body>
 
 </html>

@@ -12,6 +12,16 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
+// CRITICAL DEBUG CHECK
+if (!firebaseConfig.apiKey) {
+  console.error("Firebase Config Missing!");
+  // Wait for DOM to be ready just in case
+  setTimeout(() => {
+    document.body.innerHTML = '<div style="color:red; padding:20px; text-align:center;"><h1>Configuration Error</h1><p>Missing Firebase API Key. Please check your .env file.</p><p>VITE_FIREBASE_API_KEY is undefined.</p></div>';
+  }, 100);
+  throw new Error("Firebase API Key Missing");
+}
+
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
