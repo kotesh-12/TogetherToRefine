@@ -15,6 +15,8 @@ export function UserProvider({ children }) {
     useEffect(() => {
         let unsubscribeSnapshot = null;
         let unsubscribeSession = null;
+        let retryCount = 0; // Prevent infinite recursion
+        const MAX_RETRIES = 3;
 
         const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
             console.log("Auth State Changed:", currentUser ? "User Logged In" : "User Logged Out");
@@ -53,6 +55,15 @@ export function UserProvider({ children }) {
                 // --- SESSION MANAGEMENT END ---
 
                 const detectFull = async () => {
+                    if (retryCount >= MAX_RETRIES) {
+                        console.error("Max role detection retries exceeded. Force logout.");
+                        setUserData(null);
+                        setLoading(false);
+                        auth.signOut();
+                        return;
+                    }
+                    retryCount++;
+
                     console.time("RoleDetection");
                     // Parallelize checks!
                     const instRef = doc(db, "institutions", currentUser.uid);
@@ -74,28 +85,18 @@ export function UserProvider({ children }) {
                             unsubscribeSnapshot = onSnapshot(instRef, (d) => {
                                 if (!d.exists()) { detectFull(); return; }
                                 const data = d.data();
-                                if (!data.pid) {
-                                    const pid = `IN-${Math.floor(100000 + Math.random() * 900000)}`;
-                                    setDoc(instRef, { pid }, { merge: true });
-                                    data.pid = pid;
-                                }
                                 const role = (data.role || 'institution').trim().toLowerCase();
                                 setUserData({ ...data, uid: currentUser.uid, collection: 'institutions', role });
-                                localStorage.setItem('user_collection_cache', 'institutions');
+                                sessionStorage.setItem('user_collection_cache', 'institutions');
                                 setLoading(false);
                             });
                         } else if (teachSnap.exists()) {
                             unsubscribeSnapshot = onSnapshot(teachRef, (d) => {
                                 if (!d.exists()) { detectFull(); return; }
                                 const data = d.data();
-                                if (!data.pid) {
-                                    const pid = `TE-${Math.floor(100000 + Math.random() * 900000)}`;
-                                    setDoc(teachRef, { pid }, { merge: true });
-                                    data.pid = pid;
-                                }
                                 const role = (data.role || 'teacher').trim().toLowerCase();
                                 setUserData({ ...data, uid: currentUser.uid, collection: 'teachers', role });
-                                localStorage.setItem('user_collection_cache', 'teachers');
+                                sessionStorage.setItem('user_collection_cache', 'teachers');
                                 setLoading(false);
                             });
                         } else if (userSnap.exists()) {
@@ -103,14 +104,8 @@ export function UserProvider({ children }) {
                                 if (!d.exists()) { detectFull(); return; }
                                 const data = d.data();
                                 const normalizedRole = (data.role || 'student').trim().toLowerCase();
-                                if (!data.pid) {
-                                    const prefix = normalizedRole === 'teacher' ? 'TE' : (normalizedRole === 'institution' ? 'IN' : 'ST');
-                                    const pid = `${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;
-                                    setDoc(userRef, { pid }, { merge: true });
-                                    data.pid = pid;
-                                }
                                 setUserData({ ...data, uid: currentUser.uid, collection: 'users', role: normalizedRole });
-                                localStorage.setItem('user_collection_cache', 'users');
+                                sessionStorage.setItem('user_collection_cache', 'users');
                                 setLoading(false);
                             });
                         } else {
@@ -128,7 +123,7 @@ export function UserProvider({ children }) {
                 // Strategy: Check cached collection first, then priority sequence
                 const detectAndSubscribe = async () => {
                     try {
-                        const cachedCollection = localStorage.getItem('user_collection_cache');
+                        const cachedCollection = sessionStorage.getItem('user_collection_cache'); // SECURITY: Use Session
 
                         // Helper to subscribe
                         const subscribe = (col, roleName) => {
@@ -136,22 +131,14 @@ export function UserProvider({ children }) {
                                 if (d.exists()) {
                                     const data = d.data();
                                     const role = (data.role || roleName).trim().toLowerCase();
-
-                                    if (!data.pid) {
-                                        const prefix = role === 'teacher' ? 'TE' : (role === 'institution' ? 'IN' : 'ST');
-                                        const pid = `${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;
-                                        setDoc(doc(db, col, currentUser.uid), { pid }, { merge: true });
-                                        data.pid = pid;
-                                    }
                                     setUserData({ ...data, uid: currentUser.uid, collection: col, role });
-                                    localStorage.setItem('user_collection_cache', col); // Cache it!
+                                    sessionStorage.setItem('user_collection_cache', col);
                                     setLoading(false);
                                 } else {
                                     // If cached lookup failed (doc deleted?), retry full detection
                                     if (col === cachedCollection) {
-                                        localStorage.removeItem('user_collection_cache');
-                                        // Try institutions -> teachers -> users in sequence to avoid infinite recursion
-                                        // or just fallback to full detect
+                                        sessionStorage.removeItem('user_collection_cache');
+                                        // Retry with full detection
                                         detectFull();
                                     } else {
                                         setUserData(null);
@@ -161,13 +148,10 @@ export function UserProvider({ children }) {
                             });
                         };
 
-                        // Fast Path: Check Local Cache first for immediate feedback
-                        // Fast Path: Check Local Cache first for immediate feedback
+                        // Fast Path: Check Session Cache first
                         if (cachedCollection) {
                             console.log("Using cached collection for speed:", cachedCollection);
-                            // Optimistically try to subscribe to cached collection
-                            // If it fails (doc doesn't exist), the subscribe function handles fallback to detectFull
-                            unsubscribeSnapshot = subscribe(cachedCollection, 'student'); // Default role 'student' if field missing
+                            unsubscribeSnapshot = subscribe(cachedCollection, 'student');
                         } else {
                             // No cache? Full scan.
                             await detectFull();
@@ -184,7 +168,7 @@ export function UserProvider({ children }) {
                 console.log("User Logged Out. Clearing Data.");
                 setUserData(null);
                 setLoading(false);
-                localStorage.removeItem('user_collection_cache'); // Clear cache on logout
+                sessionStorage.removeItem('user_collection_cache'); // Clear cache on logout
             }
         });
 
