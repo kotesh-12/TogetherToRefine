@@ -395,7 +395,14 @@ app.post('/api/chat', chatLimiter, verifyAuth, async (req, res) => {
     }
 });
 
-app.listen(PORT, () => console.log(`Backend Server running on http://localhost:${PORT}`));
+// Only listen for connections if running as a standalone script
+// Vercel will import the app and handle the serverless function logic
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => console.log(`Backend Server running on http://localhost:${PORT}`));
+}
+
+// Export the Express API for Vercel
+export default app;
 
 // Force Event Loop to stay alive (Fix for premature exit)
 setInterval(() => { }, 60000);
