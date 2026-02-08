@@ -14,23 +14,24 @@ export default function InstitutionFee() {
     const [dueDate, setDueDate] = useState('');
     const [loading, setLoading] = useState(false);
     const [recentFees, setRecentFees] = useState([]);
-    const [stats, setStats] = useState(null);
+
+    // Detailed stats
+    const [schoolStats, setSchoolStats] = useState({
+        total: 0,
+        approved: 0,
+        pending: 0,
+        matchingNow: 0
+    });
+    const [allStudents, setAllStudents] = useState([]);
+    const [previewList, setPreviewList] = useState([]);
 
     const navigate = useNavigate();
 
     const classOptions = [
-        { label: 'Nursery', value: 'Nursery' },
-        { label: 'LKG', value: 'LKG' },
-        { label: 'UKG', value: 'UKG' },
-        { label: '1', value: '1st' },
-        { label: '2', value: '2nd' },
-        { label: '3', value: '3rd' },
-        { label: '4', value: '4th' },
-        { label: '5', value: '5th' },
-        { label: '6', value: '6th' },
-        { label: '7', value: '7th' },
-        { label: '8', value: '8th' },
-        { label: '9', value: '9th' },
+        { label: 'Nursery', value: 'Nursery' }, { label: 'LKG', value: 'LKG' }, { label: 'UKG', value: 'UKG' },
+        { label: '1', value: '1st' }, { label: '2', value: '2nd' }, { label: '3', value: '3rd' },
+        { label: '4', value: '4th' }, { label: '5', value: '5th' }, { label: '6', value: '6th' },
+        { label: '7', value: '7th' }, { label: '8', value: '8th' }, { label: '9', value: '9th' },
         { label: '10', value: '10th' }
     ];
 
@@ -48,112 +49,135 @@ export default function InstitutionFee() {
         return s.charAt(0).toUpperCase() + s.slice(1);
     };
 
+    // Calculate Institution ID correctly (Owner vs Staff)
+    const instId = userData?.role === 'institution' ? userData?.uid : userData?.institutionId;
+
+    // 1. Initial Data Fetch (School Stats & Recent Activity)
     useEffect(() => {
-        if (!userData || !userData.uid) return;
+        if (!instId) return;
+
         const fetchData = async () => {
             try {
-                const q = query(
-                    collection(db, "fees"),
-                    where("institutionId", "==", userData.uid)
-                );
-                const snap = await getDocs(q);
-                const uniqueItems = {};
-                snap.docs.forEach(d => {
+                // A. Fetch Recent Fees
+                const qFees = query(collection(db, "fees"), where("institutionId", "==", instId));
+                const feeSnap = await getDocs(qFees);
+                const uniqueTitles = {};
+                feeSnap.docs.forEach(d => {
                     const data = d.data();
                     const key = `${data.title}-${data.class}-${data.section || 'All'}`;
-                    if (!uniqueItems[key] || (data.createdAt?.seconds > uniqueItems[key].createdAt?.seconds)) {
-                        uniqueItems[key] = { id: d.id, ...data };
+                    if (!uniqueTitles[key] || (data.createdAt?.seconds > uniqueTitles[key].createdAt?.seconds)) {
+                        uniqueTitles[key] = { id: d.id, ...data };
                     }
                 });
-                const list = Object.values(uniqueItems);
-                list.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-                setRecentFees(list.slice(0, 10));
+                const feeList = Object.values(uniqueTitles).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+                setRecentFees(feeList.slice(0, 5));
 
+                // B. Batch Fetch ALL Students once to keep it fast
                 const qStudents = query(
                     collection(db, "users"),
-                    where("institutionId", "==", userData.uid),
+                    where("institutionId", "==", instId),
                     where("role", "==", "student")
                 );
-                const sSnap = await getDocs(qStudents);
-                setStats({ totalStudents: sSnap.size });
+                const studentSnap = await getDocs(qStudents);
+                const students = studentSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                setAllStudents(students);
+
+                // Categorize for stats
+                setSchoolStats(prev => ({
+                    ...prev,
+                    total: students.length,
+                    approved: students.filter(s => s.approved === true).length,
+                    pending: students.filter(s => s.approved === false).length
+                }));
 
             } catch (e) {
                 console.error("Fetch Error:", e);
             }
         };
         fetchData();
-    }, [userData]);
+    }, [instId]);
+
+    // 2. Live Preview Filter
+    useEffect(() => {
+        if (!targetClass) {
+            setPreviewList([]);
+            setSchoolStats(prev => ({ ...prev, matchingNow: 0 }));
+            return;
+        }
+
+        const normalizedTarget = normalizeClass(targetClass);
+        const filtered = allStudents.filter(s => {
+            const matchesClass = normalizeClass(s.class) === normalizedTarget;
+            const matchesSection = targetSection === 'All' || s.section === targetSection;
+            // ONLY assign fees to APPROVED students to prevent complaints
+            return matchesClass && matchesSection && s.approved === true;
+        });
+
+        setPreviewList(filtered.slice(0, 10)); // Show top 10 names
+        setSchoolStats(prev => ({ ...prev, matchingNow: filtered.length }));
+    }, [targetClass, targetSection, allStudents]);
 
     const handleAssignFee = async (e) => {
         if (e) e.preventDefault();
 
-        if (!userData || !userData.uid) {
-            window.alert("Session Error: User not found. Please log in again.");
+        if (!instId) {
+            window.alert("Institution ID not detected. Please try logging in again.");
             return;
         }
 
         if (!targetClass || !title || !amount || !dueDate) {
-            window.alert("Please fill all required fields.");
+            window.alert("Please complete the form first.");
+            return;
+        }
+
+        const normalizedTarget = normalizeClass(targetClass);
+        const finalStudents = allStudents.filter(s => {
+            const matchesClass = normalizeClass(s.class) === normalizedTarget;
+            const matchesSection = targetSection === 'All' || s.section === targetSection;
+            return matchesClass && matchesSection && s.approved === true;
+        });
+
+        if (finalStudents.length === 0) {
+            window.alert(`No approved students found for Class ${targetClass} ${targetSection}.`);
+            return;
+        }
+
+        const totalValue = finalStudents.length * Number(amount);
+        if (!window.confirm(`Found ${finalStudents.length} officially enrolled (Approved) students.\n\nTotal Billing: ₹${totalValue.toLocaleString()}\n\nProceed with assignment?`)) {
             return;
         }
 
         setLoading(true);
 
         try {
-            const instId = userData.uid;
-            const q = query(collection(db, "users"), where("institutionId", "==", instId));
-            const snap = await getDocs(q);
-
-            const normalizedTarget = normalizeClass(targetClass);
-            const students = snap.docs.filter(d => {
-                const data = d.data();
-                if (data.role !== 'student') return false;
-
-                const matchesClass = normalizeClass(data.class) === normalizedTarget;
-                const matchesSection = targetSection === 'All' || data.section === targetSection;
-
-                return matchesClass && matchesSection;
-            });
-
-            if (students.length === 0) {
-                window.alert(`No students found in Class ${targetClass}${targetSection !== 'All' ? ` Section ${targetSection}` : ''}.`);
-                setLoading(false);
-                return;
-            }
-
-            if (!window.confirm(`Assign ₹${amount} fee to ${students.length} students?`)) {
-                setLoading(false);
-                return;
-            }
-
             const batch = writeBatch(db);
-            students.forEach(sDoc => {
-                const sData = sDoc.data();
+            finalStudents.forEach(sDoc => {
                 const feeRef = doc(collection(db, "fees"));
                 batch.set(feeRef, {
                     studentId: sDoc.id,
-                    studentName: sData.name || `${sData.firstName || ''} ${sData.secondName || ''}`.trim() || "Student",
+                    studentName: sDoc.name || `${sDoc.firstName || ''} ${sDoc.secondName || ''}`.trim() || "Student",
                     institutionId: instId,
-                    institutionName: userData.schoolName || userData.name || "Institution",
+                    institutionName: userData.schoolName || userData.name || "Institution Name",
                     title,
                     amount: Number(amount),
                     dueDate,
                     class: normalizedTarget,
-                    section: sData.section || 'N/A',
+                    section: sDoc.section || 'All',
                     status: 'pending',
                     createdAt: serverTimestamp()
                 });
             });
 
             await batch.commit();
-
-            window.alert(`🎉 SUCCESS! Fee assigned to ${students.length} students.`);
+            window.alert(`✅ Success!\n\nAssigned fee to ${finalStudents.length} students.\n\nPlease note: Pending/Unapproved students were skipped automatically.`);
 
             setTitle('');
             setAmount('');
             setDueDate('');
             setLoading(false);
 
+            // Update local recent list
             setRecentFees(prev => [{
                 id: 'new-' + Date.now(),
                 title,
@@ -161,7 +185,7 @@ export default function InstitutionFee() {
                 class: normalizedTarget,
                 section: targetSection,
                 createdAt: { seconds: Date.now() / 1000 }
-            }, ...prev].slice(0, 10));
+            }, ...prev].slice(0, 5));
 
         } catch (err) {
             console.error("Assignment Error:", err);
@@ -171,143 +195,129 @@ export default function InstitutionFee() {
     };
 
     return (
-        <div className="page-wrapper" style={{ padding: '20px', maxWidth: '900px', margin: '0 auto' }}>
+        <div className="page-wrapper" style={{ padding: '20px', maxWidth: '1000px', margin: '0 auto' }}>
+            {/* TOP STATS BAR */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-                <button className="btn" onClick={() => navigate(-1)} style={{ background: '#f8f9fa', border: '1px solid #ddd', padding: '8px 16px', borderRadius: '12px' }}>
+                <button className="btn" onClick={() => navigate(-1)} style={{ background: '#f1f2f6', color: '#2f3542', border: 'none', borderRadius: '12px', padding: '10px 20px' }}>
                     ← Dashboard
                 </button>
-                {stats && (
-                    <div style={{ background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)', color: 'white', padding: '8px 15px', borderRadius: '20px', fontWeight: 'bold', fontSize: '0.8rem' }}>
-                        🏫 {stats.totalStudents} Registered Students
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    <div className="stat-pill" style={{ background: '#e1f5fe', color: '#01579b', padding: '8px 15px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                        👤 {schoolStats.total} Total Registered
                     </div>
-                )}
-            </div>
-
-            <div className="header-card" style={{ textAlign: 'center', marginBottom: '40px', padding: '40px', borderRadius: '30px', background: 'white', border: '1px solid #f1f2f6', boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}>
-                <h1 style={{ fontSize: '2.5rem', fontWeight: '900', color: '#2d3436', margin: 0 }}>Fee Management</h1>
-                <p style={{ color: '#636e72', marginTop: '10px' }}>Assign fees by Class and Section with precision.</p>
-            </div>
-
-            <div className="card glass-form" style={{ padding: '40px', borderRadius: '24px', background: 'white', boxShadow: '0 20px 50px rgba(0,0,0,0.08)', border: '1px solid #f1f2f6' }}>
-                <h3 style={{ marginBottom: '25px', color: '#2d3436' }}>Create New Assignment</h3>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '20px' }}>
-                        <div>
-                            <label style={{ display: 'block', fontWeight: '700', fontSize: '0.85rem', marginBottom: '10px', color: '#2d3436' }}>Fee Title</label>
-                            <input
-                                className="input-field"
-                                placeholder="e.g. Monthly Tuition Fee"
-                                value={title}
-                                onChange={e => setTitle(e.target.value)}
-                                style={{ width: '100%', padding: '15px', borderRadius: '15px', border: '2px solid #f1f2f6', background: '#f8f9fa' }}
-                            />
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', fontWeight: '700', fontSize: '0.85rem', marginBottom: '10px', color: '#2d3436' }}>Amount (₹)</label>
-                            <input
-                                type="number"
-                                className="input-field"
-                                placeholder="0"
-                                value={amount}
-                                onChange={e => setAmount(e.target.value)}
-                                style={{ width: '100%', padding: '15px', borderRadius: '15px', border: '2px solid #f1f2f6', background: '#f8f9fa' }}
-                            />
-                        </div>
+                    <div className="stat-pill" style={{ background: '#e8f5e9', color: '#2e7d32', padding: '8px 15px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                        ✅ {schoolStats.approved} Officially Enrolled
                     </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr', gap: '20px', alignItems: 'end' }}>
-                        <div>
-                            <label style={{ display: 'block', fontWeight: '700', fontSize: '0.85rem', marginBottom: '10px', color: '#2d3436' }}>Class</label>
-                            <select
-                                className="input-field"
-                                value={targetClass}
-                                onChange={e => setTargetClass(e.target.value)}
-                                style={{ width: '100%', padding: '15px', borderRadius: '15px', border: '2px solid #f1f2f6', background: '#f8f9fa' }}
-                            >
-                                <option value="">-- Class --</option>
-                                {classOptions.map(opt => (
-                                    <option key={opt.value} value={opt.value}>Class {opt.label}</option>
-                                ))}
-                            </select>
+                    {schoolStats.pending > 0 && (
+                        <div className="stat-pill" style={{ background: '#fff3e0', color: '#ef6c00', padding: '8px 15px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                            ⏳ {schoolStats.pending} Awaiting Approval
                         </div>
-                        <div>
-                            <label style={{ display: 'block', fontWeight: '700', fontSize: '0.85rem', marginBottom: '10px', color: '#2d3436' }}>Section</label>
-                            <select
-                                className="input-field"
-                                value={targetSection}
-                                onChange={e => setTargetSection(e.target.value)}
-                                style={{ width: '100%', padding: '15px', borderRadius: '15px', border: '2px solid #f1f2f6', background: '#f8f9fa' }}
-                            >
-                                {sectionOptions.map(sec => (
-                                    <option key={sec} value={sec}>{sec === 'All' ? 'All Sections' : `Section ${sec}`}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', fontWeight: '700', fontSize: '0.85rem', marginBottom: '10px', color: '#2d3436' }}>Due Date</label>
-                            <input
-                                type="date"
-                                className="input-field"
-                                value={dueDate}
-                                onChange={e => setDueDate(e.target.value)}
-                                style={{ width: '100%', padding: '15px', borderRadius: '15px', border: '2px solid #f1f2f6', background: '#f8f9fa' }}
-                            />
-                        </div>
-                    </div>
-
-                    <button
-                        onClick={handleAssignFee}
-                        disabled={loading}
-                        className="btn submit-btn"
-                        style={{
-                            marginTop: '15px',
-                            background: loading ? '#dfe6e9' : 'linear-gradient(135deg, #00b894, #00cec9)',
-                            color: 'white',
-                            padding: '20px',
-                            fontSize: '1.2rem',
-                            fontWeight: '800',
-                            border: 'none',
-                            borderRadius: '20px',
-                            cursor: loading ? 'wait' : 'pointer',
-                            boxShadow: '0 10px 20px rgba(0, 184, 148, 0.2)',
-                            transition: 'all 0.3s'
-                        }}
-                    >
-                        {loading ? '⚡ PROCESSING...' : 'CONFIRM & ASSIGN FEE'}
-                    </button>
+                    )}
                 </div>
             </div>
 
-            <div className="history" style={{ marginTop: '50px' }}>
-                <h3 style={{ marginBottom: '20px', fontWeight: '800', color: '#2d3436' }}>🕒 Recent Assignments</h3>
-                {recentFees.length === 0 ? (
-                    <div style={{ padding: '40px', textAlign: 'center', background: '#f9f9fb', borderRadius: '20px', border: '2px dashed #e0e0e0', color: '#b2bec3' }}>
-                        No assignments recorded yet.
-                    </div>
-                ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
-                        {recentFees.map(fee => (
-                            <div key={fee.id} style={{ background: 'white', padding: '20px', borderRadius: '20px', border: '1px solid #f1f2f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all 0.3s' }} className="history-item">
-                                <div>
-                                    <div style={{ fontWeight: '800', color: '#2d3436' }}>{fee.title}</div>
-                                    <div style={{ fontSize: '0.8rem', color: '#636e72', marginTop: '5px' }}>
-                                        {fee.class} | {fee.section === 'All' ? 'All Sections' : `Sec ${fee.section}`}
-                                    </div>
-                                </div>
-                                <div style={{ fontSize: '1.3rem', fontWeight: '900', color: '#00b894' }}>₹{fee.amount}</div>
+            <h1 style={{ textAlign: 'center', fontWeight: '900', color: '#2d3436', marginBottom: '40px' }}>Fee Administration</h1>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '30px' }}>
+
+                {/* FORM COLUMN */}
+                <div className="card" style={{ padding: '40px', borderRadius: '30px', boxShadow: '0 15px 35px rgba(0,0,0,0.05)', background: 'white' }}>
+                    <h3 style={{ marginBottom: '25px', color: '#2d3436' }}>New Assignment</h3>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        <div>
+                            <label style={{ display: 'block', fontWeight: '700', fontSize: '0.85rem', marginBottom: '8px' }}>Fee Title</label>
+                            <input className="input-field" placeholder="e.g. Monthly Tuition" value={title} onChange={e => setTitle(e.target.value)} style={{ padding: '15px', borderRadius: '15px' }} />
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                            <div>
+                                <label style={{ display: 'block', fontWeight: '700', fontSize: '0.85rem', marginBottom: '8px' }}>Amount (₹)</label>
+                                <input type="number" className="input-field" placeholder="1500" value={amount} onChange={e => setAmount(e.target.value)} style={{ padding: '15px', borderRadius: '15px' }} />
                             </div>
-                        ))}
+                            <div>
+                                <label style={{ display: 'block', fontWeight: '700', fontSize: '0.85rem', marginBottom: '8px' }}>Due Date</label>
+                                <input type="date" className="input-field" value={dueDate} onChange={e => setDueDate(e.target.value)} style={{ padding: '15px', borderRadius: '15px' }} />
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                            <div>
+                                <label style={{ display: 'block', fontWeight: '700', fontSize: '0.85rem', marginBottom: '8px' }}>Class</label>
+                                <select className="input-field" value={targetClass} onChange={e => setTargetClass(e.target.value)} style={{ padding: '15px', borderRadius: '15px' }}>
+                                    <option value="">-- Select --</option>
+                                    {classOptions.map(opt => <option key={opt.value} value={opt.value}>Class {opt.label}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontWeight: '700', fontSize: '0.85rem', marginBottom: '8px' }}>Section</label>
+                                <select className="input-field" value={targetSection} onChange={e => setTargetSection(e.target.value)} style={{ padding: '15px', borderRadius: '15px' }}>
+                                    {sectionOptions.map(s => <option key={s} value={s}>{s === 'All' ? 'All Sections' : `Section ${s}`}</option>)}
+                                </select>
+                            </div>
+                        </div>
+
+                        {targetClass && (
+                            <div style={{ background: '#f8f9fa', padding: '20px', borderRadius: '20px', border: '1px solid #e9ecef' }}>
+                                <div style={{ fontWeight: 'bold', color: '#2ecc71', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    🎯 Targeting {schoolStats.matchingNow} Approved Students
+                                </div>
+                                {previewList.length > 0 && (
+                                    <div style={{ marginTop: '10px', fontSize: '0.8rem', color: '#636e72' }}>
+                                        Preview: {previewList.map(s => s.name || s.firstName).join(', ')} {schoolStats.matchingNow > 10 ? '...' : ''}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        <button
+                            onClick={handleAssignFee}
+                            disabled={loading}
+                            className="btn"
+                            style={{
+                                background: loading ? '#ccc' : '#2d3436',
+                                color: 'white',
+                                padding: '20px',
+                                borderRadius: '20px',
+                                fontWeight: '800',
+                                fontSize: '1rem',
+                                marginTop: '10px',
+                                boxShadow: '0 10px 20px rgba(0,0,0,0.1)'
+                            }}
+                        >
+                            {loading ? 'WAITING FOR CLOUD...' : 'CONFIRM ASSIGNMENT'}
+                        </button>
                     </div>
-                )}
+                </div>
+
+                {/* SIDE COLUMN: HISTORY & TIPS */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div className="card" style={{ padding: '25px', borderRadius: '24px', background: '#f8f9fa', border: 'none' }}>
+                        <h4 style={{ marginBottom: '15px', color: '#636e72' }}>🕒 Recent Activity</h4>
+                        {recentFees.length === 0 ? <p className="text-muted" style={{ fontSize: '0.9rem' }}>No records yet.</p> : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                {recentFees.map(f => (
+                                    <div key={f.id} style={{ background: 'white', padding: '15px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', boxShadow: '0 2px 5px rgba(0,0,0,0.02)' }}>
+                                        <span><strong>{f.title}</strong><br /><small>{f.class} - {f.section}</small></span>
+                                        <span style={{ fontWeight: 'bold', color: '#2ecc71' }}>₹{f.amount}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="card" style={{ padding: '25px', borderRadius: '24px', background: '#fff9db', border: 'none', fontSize: '0.85rem', color: '#856404' }}>
+                        <strong>🛡️ Safety Audit</strong><br />
+                        Fees are ONLY assigned to students whose profiles you have <b>Approved</b>. If a student is missing from the count, please check your "Pending Approvals" list.
+                    </div>
+                </div>
             </div>
 
             <style>{`
-                .submit-btn:hover { transform: translateY(-3px); box-shadow: 0 15px 30px rgba(0, 184, 148, 0.4); }
-                .submit-btn:active { transform: scale(0.98); }
-                .input-field:focus { border-color: #00b894 !important; background: white !important; }
-                .history-item:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(0,0,0,0.05); }
+                .btn:active { transform: scale(0.98); }
+                .input-field:focus { outline: none; border-color: #2d3436; }
+                .stat-pill { transition: all 0.3s; }
+                .stat-pill:hover { transform: translateY(-2px); }
             `}</style>
         </div>
     );
