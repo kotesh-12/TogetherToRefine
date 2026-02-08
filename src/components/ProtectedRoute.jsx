@@ -7,7 +7,26 @@ const ProtectedRoute = ({ allowedRoles }) => {
     const location = useLocation();
     const [isOk, setIsOk] = useState(false);
 
-    if (loading) return <div style={{ padding: '20px', textAlign: 'center' }}>Verifying Access...</div>;
+    if (loading) {
+        return (
+            <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px' }}>
+                <p>Verifying Access...</p>
+                <button
+                    onClick={() => {
+                        // Force logout via auth and clear session
+                        import('../firebase').then(({ auth }) => {
+                            auth.signOut();
+                            sessionStorage.clear();
+                            window.location.href = '/';
+                        });
+                    }}
+                    style={{ padding: '8px 16px', background: '#e74c3c', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                >
+                    Stuck? Click to Reset
+                </button>
+            </div>
+        );
+    }
 
     if (!user) {
         return <Navigate to="/" replace />;
