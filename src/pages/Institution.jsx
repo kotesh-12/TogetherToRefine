@@ -83,8 +83,38 @@ export default function Institution() {
             setLoading(false);
 
             if (data.results) {
-                alert(`Import Complete!\nSuccess: ${data.results.success.length}\nFailed: ${data.results.failed.length}\nCheck console for details.`);
-                console.log("Import Results:", data.results);
+                const successCount = data.results.success.length;
+                const failedCount = data.results.failed.length;
+
+                alert(`Import Complete!\nSuccess: ${successCount}\nFailed: ${failedCount}\n\nA credentials file will now download.`);
+
+                if (successCount > 0) {
+                    // Generate Credentials Report
+                    let reportContent = "STUDENT CREDENTIALS REPORT\n" +
+                        "==================================\n" +
+                        `Date: ${new Date().toLocaleString()}\n` +
+                        "Note: Distribute these credentials securely to students.\n\n";
+
+                    data.results.success.forEach(s => {
+                        reportContent += `----------------------------------\n`;
+                        reportContent += `Name:     ${s.name}\n`;
+                        reportContent += `Class:    ${s.class}\n`;
+                        reportContent += `PID:      ${s.pid}\n`;
+                        reportContent += `Login ID: ${s.email}\n`;
+                        reportContent += `Password: ${s.password}\n`;
+                    });
+
+                    // Trigger Download
+                    const blob = new Blob([reportContent], { type: 'text/plain' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `Student_Credentials_${new Date().toISOString().slice(0, 10)}.txt`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                }
             } else {
                 alert("Import failed: " + (data.error || "Unknown error"));
             }

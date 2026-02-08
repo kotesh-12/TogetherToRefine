@@ -455,7 +455,13 @@ app.post('/api/batch-register', verifyAuth, async (req, res) => {
                 joinedAt: admin.firestore.FieldValue.serverTimestamp()
             });
 
-            results.success.push({ email: student.email, pid });
+            results.success.push({
+                name: student.name,
+                email: student.email,
+                password: student.password || 'Student@123',
+                class: student.class,
+                pid
+            });
         } catch (error) {
             console.error(`Failed to register ${student.email}:`, error);
             results.failed.push({ email: student.email, error: error.message });
