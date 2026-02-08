@@ -47,36 +47,11 @@ const MainLayout = lazy(() => import('./components/MainLayout'));
 
 import UpdateManager from './components/UpdateManager';
 
-const OfflineIndicator = () => {
-  const [isOnline, setIsOnline] = React.useState(navigator.onLine);
-
-  React.useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-
-  if (isOnline) return null;
-
-  return (
-    <div className="offline-banner">
-      ⚠️ No Internet Connection. Working Offline.
-    </div>
-  );
-};
-
 function App() {
   return (
     <UserProvider>
       <ThemeProvider>
         <Router>
-          <OfflineIndicator />
           <UpdateManager />
           <Suspense fallback={<div className="container">Loading App...</div>}>
             <Routes>

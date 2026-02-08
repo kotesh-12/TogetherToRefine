@@ -15,15 +15,3 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-import { enableIndexedDbPersistence } from "firebase/firestore";
-
-// FEATURE: Offline Persistence (Like WhatsApp/ChatGPT)
-enableIndexedDbPersistence(db).catch((err) => {
-  if (err.code == 'failed-precondition') {
-    // Multiple tabs open, persistence can only be enabled in one tab at a time.
-    console.log("Offline storage failed: Multiple tabs open");
-  } else if (err.code == 'unimplemented') {
-    // The current browser does not support all of the features required to enable persistence
-    console.log("Offline storage not supported");
-  }
-});
