@@ -40,6 +40,18 @@ export default function DownloadApp() {
             zIndex: 9999, backdropFilter: 'blur(8px)',
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
         }}>
+            {/* BACK BUTTON (Top Left) */}
+            <button
+                onClick={() => navigate(-1)}
+                style={{
+                    position: 'absolute', top: '20px', left: '20px',
+                    background: 'none', border: 'none', color: 'white', fontSize: '18px', cursor: 'pointer',
+                    zIndex: 10001, display: 'flex', alignItems: 'center', gap: '5px', fontWeight: '500'
+                }}
+            >
+                ← Back
+            </button>
+
             {/* CLOSE BUTTON (Top Right) */}
             <button
                 onClick={() => navigate('/')}
