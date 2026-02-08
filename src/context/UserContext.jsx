@@ -10,7 +10,26 @@ export function UserProvider({ children }) {
     const [user, setUser] = useState(null);
     const [userData, setUserData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isOnline, setIsOnline] = useState(navigator.onLine);
 
+    // Track Network Status
+    useEffect(() => {
+        const handleStatus = () => setIsOnline(navigator.onLine);
+        window.addEventListener('online', handleStatus);
+        window.addEventListener('offline', handleStatus);
+        return () => {
+            window.removeEventListener('online', handleStatus);
+            window.removeEventListener('offline', handleStatus);
+        };
+    }, []);
+
+    // OFFLINE UNBLOCKER: If we go offline, stop loading immediately so cached content shows
+    useEffect(() => {
+        if (!isOnline && loading) {
+            console.log("Network Offline: Force dismissing loading spinner.");
+            setLoading(false);
+        }
+    }, [isOnline, loading]);
 
     useEffect(() => {
         let unsubscribeSnapshot = null;
@@ -18,6 +37,7 @@ export function UserProvider({ children }) {
         let retryCount = 0; // Prevent infinite recursion
         const MAX_RETRIES = 3;
 
+        // AUTH LISTENER
         const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
             console.log("Auth State Changed:", currentUser ? "User Logged In" : "User Logged Out");
             setUser(currentUser);
@@ -36,12 +56,10 @@ export function UserProvider({ children }) {
                 setLoading(true);
 
                 // --- SESSION MANAGEMENT START ---
-                // We fire this asynchronously so we don't block the Role Check
                 registerSession(currentUser.uid).then((sessionId) => {
                     if (sessionId) {
                         const sessionRef = doc(db, 'users', currentUser.uid, 'sessions', sessionId);
                         unsubscribeSession = onSnapshot(sessionRef, (docSnap) => {
-                            // If document is deleted, it means this session was revoked
                             if (!docSnap.exists()) {
                                 console.log("Current session revoked. Signing out.");
                                 auth.signOut().then(() => {
@@ -65,12 +83,15 @@ export function UserProvider({ children }) {
                     retryCount++;
 
                     console.time("RoleDetection");
-                    // Parallelize checks!
                     const instRef = doc(db, "institutions", currentUser.uid);
                     const teachRef = doc(db, "teachers", currentUser.uid);
                     const userRef = doc(db, "users", currentUser.uid);
 
                     try {
+                        // OFFLINE HANDLING: If offline, getDoc might hang, so we rely on cache via onSnapshot if possible
+                        // But for detection, we need to know WHICH one exists.
+                        // Promise.allSettled is fine, as getDoc will use cache if available.
+
                         const results = await Promise.allSettled([
                             getDoc(instRef),
                             getDoc(teachRef),
@@ -81,38 +102,39 @@ export function UserProvider({ children }) {
                         const teachSnap = results[1].status === 'fulfilled' ? results[1].value : { exists: () => false };
                         const userSnap = results[2].status === 'fulfilled' ? results[2].value : { exists: () => false };
 
-                        if (instSnap.exists()) {
-                            unsubscribeSnapshot = onSnapshot(instRef, (d) => {
-                                if (!d.exists()) { detectFull(); return; }
-                                const data = d.data();
-                                const role = (data.role || 'institution').trim().toLowerCase();
-                                setUserData({ ...data, uid: currentUser.uid, collection: 'institutions', role });
-                                sessionStorage.setItem('user_collection_cache', 'institutions');
+                        try {
+                            if (instSnap.exists()) {
+                                unsubscribeSnapshot = onSnapshot(instRef, (d) => {
+                                    const data = d.data();
+                                    setUserData({ ...data, uid: currentUser.uid, collection: 'institutions', role: (data?.role || 'institution').toLowerCase() });
+                                    sessionStorage.setItem('user_collection_cache', 'institutions');
+                                    setLoading(false);
+                                });
+                            } else if (teachSnap.exists()) {
+                                unsubscribeSnapshot = onSnapshot(teachRef, (d) => {
+                                    const data = d.data();
+                                    setUserData({ ...data, uid: currentUser.uid, collection: 'teachers', role: (data?.role || 'teacher').toLowerCase() });
+                                    sessionStorage.setItem('user_collection_cache', 'teachers');
+                                    setLoading(false);
+                                });
+                            } else if (userSnap.exists()) {
+                                unsubscribeSnapshot = onSnapshot(userRef, (d) => {
+                                    const data = d.data();
+                                    setUserData({ ...data, uid: currentUser.uid, collection: 'users', role: (data?.role || 'student').toLowerCase() });
+                                    sessionStorage.setItem('user_collection_cache', 'users');
+                                    setLoading(false);
+                                });
+                            } else {
+                                console.log("User document not found.");
+                                setUserData(null);
                                 setLoading(false);
-                            });
-                        } else if (teachSnap.exists()) {
-                            unsubscribeSnapshot = onSnapshot(teachRef, (d) => {
-                                if (!d.exists()) { detectFull(); return; }
-                                const data = d.data();
-                                const role = (data.role || 'teacher').trim().toLowerCase();
-                                setUserData({ ...data, uid: currentUser.uid, collection: 'teachers', role });
-                                sessionStorage.setItem('user_collection_cache', 'teachers');
-                                setLoading(false);
-                            });
-                        } else if (userSnap.exists()) {
-                            unsubscribeSnapshot = onSnapshot(userRef, (d) => {
-                                if (!d.exists()) { detectFull(); return; }
-                                const data = d.data();
-                                const normalizedRole = (data.role || 'student').trim().toLowerCase();
-                                setUserData({ ...data, uid: currentUser.uid, collection: 'users', role: normalizedRole });
-                                sessionStorage.setItem('user_collection_cache', 'users');
-                                setLoading(false);
-                            });
-                        } else {
-                            console.log("User document not found in any collection.");
-                            setUserData(null);
+                            }
+                        } catch (snapErr) {
+                            console.error("Snapshot Error", snapErr);
+                            // If snapshot fails (e.g. permission offline), force safe state
                             setLoading(false);
                         }
+
                     } catch (err) {
                         console.error("Parallel detection failed", err);
                         setLoading(false);
@@ -120,63 +142,44 @@ export function UserProvider({ children }) {
                     console.timeEnd("RoleDetection");
                 };
 
-                // Strategy: Check cached collection first, then priority sequence
-                const detectAndSubscribe = async () => {
-                    try {
-                        const cachedCollection = sessionStorage.getItem('user_collection_cache'); // SECURITY: Use Session
-
-                        // Helper to subscribe
-                        const subscribe = (col, roleName) => {
-                            return onSnapshot(doc(db, col, currentUser.uid), (d) => {
-                                if (d.exists()) {
-                                    const data = d.data();
-                                    const role = (data.role || roleName).trim().toLowerCase();
-                                    setUserData({ ...data, uid: currentUser.uid, collection: col, role });
-                                    sessionStorage.setItem('user_collection_cache', col);
-                                    setLoading(false);
-                                } else {
-                                    // If cached lookup failed (doc deleted?), retry full detection
-                                    if (col === cachedCollection) {
-                                        sessionStorage.removeItem('user_collection_cache');
-                                        // Retry with full detection
-                                        detectFull();
-                                    } else {
-                                        setUserData(null);
-                                        setLoading(false);
-                                    }
-                                }
-                            });
-                        };
-
-                        // Fast Path: Check Session Cache first
-                        if (cachedCollection) {
-                            console.log("Using cached collection for speed:", cachedCollection);
-                            unsubscribeSnapshot = subscribe(cachedCollection, 'student');
+                const subscribe = (col) => {
+                    return onSnapshot(doc(db, col, currentUser.uid), (d) => {
+                        if (d.exists()) {
+                            const data = d.data();
+                            setUserData({ ...data, uid: currentUser.uid, collection: col, role: (data?.role || 'student').toLowerCase() });
+                            setLoading(false);
                         } else {
-                            // No cache? Full scan.
-                            await detectFull();
+                            detectFull();
                         }
-                    } catch (err) {
-                        console.error("Error detecting user role:", err);
-                        setLoading(false);
-                    }
+                    }, (err) => {
+                        console.warn("Snapshot failed (offline?):", err);
+                        setLoading(false); // Unblock UI if offline check fails
+                    });
                 };
 
-                detectAndSubscribe();
+                // Fast Path
+                const cachedCollection = sessionStorage.getItem('user_collection_cache');
+                if (cachedCollection) {
+                    unsubscribeSnapshot = subscribe(cachedCollection);
+                } else {
+                    detectFull();
+                }
 
             } else {
-                console.log("User Logged Out. Clearing Data.");
+                // LOGGED OUT
                 setUserData(null);
                 setLoading(false);
-                sessionStorage.removeItem('user_collection_cache'); // Clear cache on logout
+                sessionStorage.removeItem('user_collection_cache');
             }
         });
 
-        // Failsafe: If Auth doesn't fire in 4 seconds, verify connectivity or force logout state
+        // Failsafe Timer
         const failsafeTimer = setTimeout(() => {
-            console.warn("Auth Listener Timeout: Force clearing loading state.");
             setLoading((prev) => {
-                if (prev) return false;
+                if (prev) {
+                    console.warn("Auth Timeout: Force clearing loading state.");
+                    return false;
+                }
                 return prev;
             });
         }, 4000);
@@ -199,8 +202,8 @@ export function UserProvider({ children }) {
 
     return (
         <UserContext.Provider value={values}>
-            {/* If loading and ONLINE, show spinner. If OFFLINE, show content (cached) or login */}
-            {loading && navigator.onLine ? (
+            {/* If loading and ONLINE, show spinner. If OFFLINE, dismiss it. */}
+            {loading && isOnline ? (
                 <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
                     <div className="spinner" style={{ width: '40px', height: '40px', borderRadius: '50%', border: '4px solid #f3f3f3', borderTop: '4px solid #3498db', animation: 'spin 1s linear infinite' }}></div>
                     <p style={{ marginTop: '15px', color: '#666' }}>Connecting to TTR...</p>
