@@ -104,26 +104,53 @@ export function UserProvider({ children }) {
 
                         try {
                             if (instSnap.exists()) {
+                                const data = instSnap.data();
+                                const role = (data.role || 'institution').trim().toLowerCase();
+
+                                // 1. Set Data IMMEDIATELY (Don't wait for listener)
+                                setUserData({ ...data, uid: currentUser.uid, collection: 'institutions', role });
+                                sessionStorage.setItem('user_collection_cache', 'institutions');
+                                setLoading(false);
+
+                                // 2. Then Subscribe for updates
                                 unsubscribeSnapshot = onSnapshot(instRef, (d) => {
-                                    const data = d.data();
-                                    setUserData({ ...data, uid: currentUser.uid, collection: 'institutions', role: (data?.role || 'institution').toLowerCase() });
-                                    sessionStorage.setItem('user_collection_cache', 'institutions');
-                                    setLoading(false);
+                                    if (!d.exists()) { detectFull(); return; }
+                                    const upData = d.data();
+                                    setUserData({ ...upData, uid: currentUser.uid, collection: 'institutions', role });
                                 });
+
                             } else if (teachSnap.exists()) {
+                                const data = teachSnap.data();
+                                const role = (data.role || 'teacher').trim().toLowerCase();
+
+                                // 1. Set Data IMMEDIATELY
+                                setUserData({ ...data, uid: currentUser.uid, collection: 'teachers', role });
+                                sessionStorage.setItem('user_collection_cache', 'teachers');
+                                setLoading(false);
+
+                                // 2. Subscribe
                                 unsubscribeSnapshot = onSnapshot(teachRef, (d) => {
-                                    const data = d.data();
-                                    setUserData({ ...data, uid: currentUser.uid, collection: 'teachers', role: (data?.role || 'teacher').toLowerCase() });
-                                    sessionStorage.setItem('user_collection_cache', 'teachers');
-                                    setLoading(false);
+                                    if (!d.exists()) { detectFull(); return; }
+                                    const upData = d.data();
+                                    setUserData({ ...upData, uid: currentUser.uid, collection: 'teachers', role });
                                 });
+
                             } else if (userSnap.exists()) {
+                                const data = userSnap.data();
+                                const role = (data.role || 'student').trim().toLowerCase();
+
+                                // 1. Set Data IMMEDIATELY
+                                setUserData({ ...data, uid: currentUser.uid, collection: 'users', role });
+                                sessionStorage.setItem('user_collection_cache', 'users');
+                                setLoading(false);
+
+                                // 2. Subscribe
                                 unsubscribeSnapshot = onSnapshot(userRef, (d) => {
-                                    const data = d.data();
-                                    setUserData({ ...data, uid: currentUser.uid, collection: 'users', role: (data?.role || 'student').toLowerCase() });
-                                    sessionStorage.setItem('user_collection_cache', 'users');
-                                    setLoading(false);
+                                    if (!d.exists()) { detectFull(); return; }
+                                    const upData = d.data();
+                                    setUserData({ ...upData, uid: currentUser.uid, collection: 'users', role });
                                 });
+
                             } else {
                                 console.log("User document not found.");
                                 setUserData(null);
