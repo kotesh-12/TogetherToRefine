@@ -41,140 +41,86 @@ export default function DownloadApp() {
         <div className="page-wrapper">
             <AnnouncementBar title="Get the App" leftIcon={false} />
 
-            <div className="container" style={{ textAlign: 'center', marginTop: '30px' }}>
-                <div className="card">
-                    <h2 style={{ color: '#2d3436', marginBottom: '10px' }}>Download TogetherToRefine</h2>
+            <div className="container" style={{ textAlign: 'center', marginTop: '30px', maxWidth: '600px', margin: '30px auto' }}>
+                <div className="card" style={{ padding: '30px', borderRadius: '16px', boxShadow: '0 8px 16px rgba(0,0,0,0.1)' }}>
+                    <div style={{ marginBottom: '20px' }}>
+                        <img src="/logo2.png" alt="App Logo" style={{ width: '80px', height: '80px', borderRadius: '20px' }} />
+                    </div>
+                    <h2 style={{ color: '#2d3436', marginBottom: '5px', fontSize: '24px' }}>Install Together To Refine</h2>
+                    <p style={{ color: '#636e72', marginBottom: '30px' }}>Get the best experience on your device.</p>
 
-                    {/* PRIMARY INSTALL BUTTON (Browsers that support PWA Prompt) */}
-                    {installPrompt && (
-                        <div style={{ marginBottom: '30px', padding: '20px', background: '#e17055', borderRadius: '10px', color: 'white' }}>
-                            <h3 style={{ marginTop: 0 }}>🚀 Best Way to Install</h3>
-                            <p style={{ fontSize: '14px' }}>Install the native app for the best experience.</p>
+                    {/* PRIMARY INSTALL BUTTON */}
+                    {installPrompt ? (
+                        <div style={{ marginBottom: '30px' }}>
                             <button
                                 onClick={handleInstallClick}
                                 style={{
-                                    marginTop: '10px',
-                                    background: 'white', color: '#e17055',
-                                    border: 'none', padding: '12px 24px',
-                                    borderRadius: '30px', fontSize: '16px',
+                                    background: 'linear-gradient(135deg, #0984e3, #6c5ce7)',
+                                    color: 'white',
+                                    border: 'none', padding: '15px 40px',
+                                    borderRadius: '50px', fontSize: '18px',
                                     fontWeight: 'bold', cursor: 'pointer',
-                                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                                    boxShadow: '0 4px 15px rgba(108, 92, 231, 0.4)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                                    width: '100%'
                                 }}
                             >
-                                Install App Now
+                                <span>📥</span> Install App Now
                             </button>
+                            <p style={{ fontSize: '12px', color: '#b2bec3', marginTop: '10px' }}>Tap to add to your Home Screen</p>
+                        </div>
+                    ) : (
+                        <div style={{ marginBottom: '30px', padding: '15px', background: '#f1f2f6', borderRadius: '10px' }}>
+                            {isIOS ? (
+                                <div>
+                                    <strong>For iOS (iPhone/iPad):</strong>
+                                    <ol style={{ textAlign: 'left', paddingLeft: '20px', margin: '10px 0' }}>
+                                        <li>Tap <b>Share</b> <span style={{ fontSize: '18px' }}>⎋</span> (square with arrow).</li>
+                                        <li>Scroll down and tap <b>"Add to Home Screen"</b>.</li>
+                                    </ol>
+                                </div>
+                            ) : (
+                                <div>
+                                    <strong>App Installed or Not Supported</strong>
+                                    <p style={{ fontSize: '13px', margin: '5px 0' }}>
+                                        If the app isn't installed, tap the browser menu (⋮) and select <b>"Install App"</b> or <b>"Add to Home Screen"</b>.
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     )}
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {/* SHARE LINK SECTION (The "API Key" / Magic Link Feature) */}
+                    <div style={{ borderTop: '1px solid #dfe6e9', paddingTop: '20px' }}>
+                        <h4 style={{ margin: '0 0 10px 0', color: '#2d3436' }}>🔗 Share Install Link</h4>
+                        <p style={{ fontSize: '13px', color: '#636e72', marginBottom: '15px' }}>
+                            Send this link to students/users to directly open this install page.
+                        </p>
 
-                        {/* Android Section */}
-                        {/* Android Section */}
-                        {(isAndroid) && (
-                            <div style={{
-                                padding: '15px',
-                                border: isAndroid ? '2px solid #0984e3' : '1px solid #dfe6e9',
-                                borderRadius: '10px',
-                                background: isAndroid ? '#f1f2f6' : 'white'
-                            }}>
-                                <h3>📱 For Android</h3>
-                                <p style={{ fontSize: '13px', color: '#666' }}>
-                                    Install the app directly to your home screen for the best experience.
-                                </p>
-
-                                {/* If we have the prompt, show the button. If not, show instructions. */}
-                                {installPrompt ? (
-                                    <button
-                                        onClick={handleInstallClick}
-                                        className="btn"
-                                        style={{
-                                            background: '#0984e3',
-                                            marginTop: '10px',
-                                            display: 'inline-block',
-                                            color: 'white',
-                                            border: 'none',
-                                            padding: '12px 24px',
-                                            borderRadius: '30px',
-                                            cursor: 'pointer',
-                                            fontWeight: 'bold',
-                                            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-                                        }}
-                                    >
-                                        ⬇️ Install App (Add to Home)
-                                    </button>
-                                ) : (
-                                    <div style={{ marginTop: '10px', textAlign: 'left', background: '#fff', padding: '10px', borderRadius: '5px', border: '1px solid #ffeaa7' }}>
-                                        <strong>⚠️ Install Button Not available</strong>
-                                        <p style={{ fontSize: '13px', margin: '5px 0' }}>
-                                            To install properly, please follow these steps manually:
-                                        </p>
-                                        <ol style={{ paddingLeft: '20px', margin: '5px 0', fontSize: '13px' }}>
-                                            <li>Tap the <b>three dots</b> (⋮) in the top right of Chrome.</li>
-                                            <li>Select <b>"Install App"</b> or <b>"Add to Home Screen"</b>.</li>
-                                        </ol>
-                                    </div>
-                                )}
-
-                                {/* Fallback text for APK */}
-                                <div style={{ marginTop: '15px', fontSize: '12px' }}>
-                                    Or <a href="#" onClick={(e) => {
-                                        e.preventDefault();
-                                        const link = "https://your-drive-link.com/app.apk";
-                                        if (link.includes("your-drive-link")) alert("APK link not configured yet.");
-                                        else window.open(link, '_blank');
-                                    }} style={{ color: '#666', textDecoration: 'underline' }}>download APK file</a> if installation fails.
-                                </div>
-                            </div>
-                        )}
-
-                        {/* IOS Section */}
-                        {(isIOS) && (
-                            <div style={{
-                                padding: '15px',
-                                border: isIOS ? '2px solid #0984e3' : '1px solid #dfe6e9',
-                                borderRadius: '10px',
-                                background: isIOS ? '#f1f2f6' : 'white',
-                                display: (isIOS) ? 'block' : 'none'
-                            }}>
-                                <h3>🍎 For iOS (iPhone/iPad)</h3>
-                                <div style={{ marginTop: '10px', textAlign: 'left', background: '#fff', padding: '10px', borderRadius: '5px' }}>
-                                    <strong>How to Install:</strong>
-                                    <ol style={{ paddingLeft: '20px', margin: '5px 0' }}>
-                                        <li>Open in <b>Safari</b>.</li>
-                                        <li>Tap <b>Share</b> (squares with arrow up).</li>
-                                        <li>Tap <b>"Add to Home Screen"</b>.</li>
-                                    </ol>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* PC Section (Windows/Mac) - Only shown if prompt is NOT available (already installed or unsupported) */}
-                        {(isWindows || (!isAndroid && !isIOS)) && !installPrompt && (
-                            <div style={{
-                                padding: '15px',
-                                border: '1px solid #dfe6e9',
-                                borderRadius: '10px',
-                                background: '#white'
-                            }}>
-                                <h3>💻 For Windows / Mac</h3>
-                                <p style={{ fontSize: '13px', color: '#666' }}>
-                                    If the "Install App" button didn't appear above:
-                                </p>
-                                <div style={{ marginTop: '10px', textAlign: 'left', background: '#fff', padding: '10px', borderRadius: '5px' }}>
-                                    <ul style={{ paddingLeft: '20px', margin: '5px 0' }}>
-                                        <li>Click the <b>Install Icon</b> (⬇️) in the browser address bar.</li>
-                                        <li>Select <b>"Install TogetherToRefine"</b>.</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        )}
-
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', background: '#f8f9fa', padding: '10px', borderRadius: '8px', border: '1px solid #dfe6e9' }}>
+                            <input
+                                type="text"
+                                readOnly
+                                value={`${window.location.origin}/download`}
+                                style={{ flex: 1, border: 'none', background: 'transparent', color: '#2d3436', outline: 'none', fontSize: '14px' }}
+                            />
+                            <button
+                                onClick={() => {
+                                    navigator.clipboard.writeText(`${window.location.origin}/download`);
+                                    alert("Link copied! Share it with your users.");
+                                }}
+                                style={{
+                                    background: '#00b894', color: 'white', border: 'none',
+                                    borderRadius: '5px', padding: '5px 12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px'
+                                }}
+                            >
+                                Copy
+                            </button>
+                        </div>
                     </div>
 
-                    <div style={{ marginTop: '30px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
-                        <p style={{ fontStyle: 'italic', color: '#aaa', fontSize: '12px' }}>
-                            Share this link: <strong style={{ color: '#0984e3' }}>{window.location.origin}/download</strong>
-                        </p>
+                    <div style={{ marginTop: '20px', fontSize: '12px', color: '#b2bec3' }}>
+                        Platform: {isIOS ? 'iOS' : isAndroid ? 'Android' : 'Desktop/Other'}
                     </div>
                 </div>
             </div>

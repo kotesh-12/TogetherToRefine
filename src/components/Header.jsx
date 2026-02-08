@@ -317,6 +317,12 @@ export default function Header({ onToggleSidebar }) {
                                     {desktopMode ? '📱 Mobile Site' : '🖥️ Desktop Site'}
                                 </button>
                                 <button
+                                    onClick={() => { navigate('/download'); setMenuOpen(false); }}
+                                    style={menuItemStyle}
+                                >
+                                    📥 Install App
+                                </button>
+                                <button
                                     onClick={() => { window.location.href = 'mailto:support@ttr.com'; setMenuOpen(false); }}
                                     style={menuItemStyle}
                                 >
