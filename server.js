@@ -59,17 +59,6 @@ initAI();
 // --- ROUTES ---
 
 // --- 1. PROXY ENDPOINT (Fixes CORS for local development) ---
-app.post('/api/fetch-url', async (req, res) => {
-    try {
-        const { url } = req.body;
-        if (!url) return res.status(400).json({ error: "No URL" });
-        const r = await axios.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-        const $ = cheerio.load(r.data);
-        $('script, style, nav, header, footer').remove();
-        res.json({ content: $('body').text().trim().substring(0, 10000) });
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
 // --- TTR-X1 HYPER-ALGORITHM (Server-Side Secure) ---
 function generateTTRSystemPrompt(context) {
     const now = new Date();

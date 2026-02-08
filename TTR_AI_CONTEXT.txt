@@ -1,0 +1,1587 @@
+PROJECT CONTEXT FOR AI COLLABORATION (TogetherToRefine)
+========================================================
+
+## 1. TECH STACK (package.json)
+{
+  "name": "together-to-refine",
+  "private": true,
+  "version": "0.0.46",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "server": "node server.js",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "context": "node scripts/context_bridge.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "axios": "^1.13.2",
+    "bcrypt": "^6.0.0",
+    "cheerio": "^1.1.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "firebase": "^12.7.0",
+    "jsonwebtoken": "^9.0.3",
+    "jspdf": "^4.1.0",
+    "jspdf-autotable": "^5.0.7",
+    "mysql2": "^3.16.3",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-markdown": "^10.1.0",
+    "react-player": "^2.16.0",
+    "react-qr-code": "^2.0.18",
+    "react-router-dom": "^7.11.0",
+    "ua-parser-js": "^2.0.9"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "vite": "^7.2.4",
+    "vite-plugin-pwa": "^1.2.0"
+  }
+}
+
+## 2. DATABASE SCHEMA (MySQL)
+-- Database Initialization
+CREATE DATABASE IF NOT EXISTS together_to_refine_db;
+USE together_to_refine_db;
+
+-- Users Table (Base for all roles)
+CREATE TABLE IF NOT EXISTS users (
+    uid VARCHAR(255) PRIMARY KEY, -- We will generate UUIDs or keep Firebase UIDs if migrating
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL, -- Bcrypt hash
+    role ENUM('student', 'teacher', 'institution', 'admin') NOT NULL,
+    name VARCHAR(255),
+    gender VARCHAR(50),
+    profile_image_url TEXT,
+    is_approved BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Students Table
+CREATE TABLE IF NOT EXISTS students (
+    user_id VARCHAR(255),
+    class_level VARCHAR(50),
+    section VARCHAR(10),
+    roll_number VARCHAR(50),
+    institution_id VARCHAR(255), -- Link to their school
+    FOREIGN KEY (user_id) REFERENCES users(uid) ON DELETE CASCADE
+);
+
+-- Teachers Table
+CREATE TABLE IF NOT EXISTS teachers (
+    user_id VARCHAR(255),
+    subject VARCHAR(100),
+    assigned_class VARCHAR(50), -- Main class responsibility
+    assigned_section VARCHAR(10),
+    institution_id VARCHAR(255),
+    FOREIGN KEY (user_id) REFERENCES users(uid) ON DELETE CASCADE
+);
+
+-- Institutions Table
+CREATE TABLE IF NOT EXISTS institutions (
+    user_id VARCHAR(255),
+    school_name VARCHAR(255),
+    address TEXT,
+    contact_number VARCHAR(50),
+    FOREIGN KEY (user_id) REFERENCES users(uid) ON DELETE CASCADE
+);
+
+-- Announcements Table
+CREATE TABLE IF NOT EXISTS announcements (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    text TEXT NOT NULL,
+    type ENUM('global', 'institution', 'class') DEFAULT 'global',
+    author_id VARCHAR(255),
+    author_name VARCHAR(255),
+    target_class VARCHAR(50) DEFAULT 'All',
+    target_section VARCHAR(50) DEFAULT 'All',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (author_id) REFERENCES users(uid)
+);
+
+-- Sessions Table (For persistent login management if not using JWT only)
+CREATE TABLE IF NOT EXISTS sessions (
+    session_id VARCHAR(255) PRIMARY KEY,
+    user_id VARCHAR(255),
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(uid) ON DELETE CASCADE
+);
+
+
+## 3. KEY SOURCE FILES
+
+--- START OF FILE: firestore.rules ---
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- BASE HELPERS ---
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(uid) { return request.auth.uid == uid; }
+    
+    function isAdmin() { 
+       return isSignedIn() && (
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+         (exists(/databases/$(database)/documents/teachers/$(request.auth.uid)) && get(/databases/$(database)/documents/teachers/$(request.auth.uid)).data.role == 'admin') ||
+         (exists(/databases/$(database)/documents/institutions/$(request.auth.uid)) && get(/databases/$(database)/documents/institutions/$(request.auth.uid)).data.role == 'admin')
+       );
+    }
+
+    // --- 1. USER PROFILES ---
+    match /users/{userId} {
+      // Required for institutions to find their students
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (isOwner(userId) || isAdmin());
+
+      match /four_way_sessions/{sessionId} {
+         allow read, write: if isOwner(userId);
+         match /messages/{msgId} { allow read, write: if isOwner(userId); }
+      }
+    }
+
+    match /teachers/{teacherId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (isOwner(teacherId) || isAdmin());
+    }
+    match /institutions/{instId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (isOwner(instId) || isAdmin());
+    }
+
+    // --- 2. FEE MANAGEMENT ---
+    match /fees/{feeId} {
+      // Broad permission for Fees to bypass any hidden blocks
+      allow read, write: if isSignedIn();
+    }
+
+    // --- 3. CORE APP COLLECTIONS ---
+    match /announcements/{id} { allow read, write: if isSignedIn(); }
+    match /admissions/{id} {
+      allow create: if true; 
+      allow read, update, delete: if isSignedIn();
+    }
+    match /groups/{groupId} {
+      allow read, write: if isSignedIn();
+      match /messages/{msgId} { allow read, write: if isSignedIn(); }
+    }
+    match /student_allotments/{id} { allow read, write: if isSignedIn(); }
+    match /teacher_allotments/{id} { allow read, write: if isSignedIn(); }
+    match /submissions/{id} { allow read, write: if isSignedIn(); }
+    match /attendance/{id} { allow read, write: if isSignedIn(); }
+    match /opportunities/{id} { allow read, write: if isSignedIn(); }
+    match /general_feedback/{id} { allow read, write: if isSignedIn(); }
+    match /emergency_reports/{id} { allow read, write: if isSignedIn(); }
+    match /health_records/{id} { allow read, write: if isSignedIn(); }
+    match /timetables/{id} { allow read, write: if isSignedIn(); }
+    match /videos/{id} { allow read, write: if isSignedIn(); }
+
+    // --- 4. AI CHATS ---
+    match /ai_chats/{userId} {
+       allow read, write: if isOwner(userId);
+       match /sessions/{sessionId} {
+          allow read, write: if isOwner(userId);
+          match /messages/{msgId} { allow read, write: if isOwner(userId); }
+       }
+    }
+
+    // --- 5. FALLBACK ---
+    match /{document=**} {
+      allow read, write: if false; 
+    }
+  }
+}
+
+--- END OF FILE: firestore.rules ---
+
+--- START OF FILE: server.js ---
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import axios from 'axios';
+import * as cheerio from 'cheerio';
+
+dotenv.config();
+
+const app = express();
+app.use(cors());
+app.use(express.json({ limit: '10mb' }));
+
+const PORT = 5000;
+const API_KEY = process.env.GEMINI_API_KEY;
+
+if (!API_KEY) {
+    console.error("Error: GEMINI_API_KEY is missing in .env");
+    process.exit(1);
+}
+
+const genAI = new GoogleGenerativeAI(API_KEY);
+
+// --- DYNAMIC MODEL FALLBACK SYSTEM ---
+// Based on list-mode check: gemini-1.5-flash is stable.
+let currentModelName = "gemini-1.5-flash";
+let model = genAI.getGenerativeModel({ model: currentModelName });
+
+async function initAI() {
+    console.log(`🤖 Testing AI Model: ${currentModelName}...`);
+    try {
+        await model.generateContent("Test");
+        console.log(`✅ ${currentModelName} is working!`);
+    } catch (e) {
+        console.warn(`⚠️ ${currentModelName} Failed:`, e.message);
+        if (e.message.includes("404") || e.message.includes("not found")) {
+            console.log("🔄 404 Error. Switching to 'gemini-flash-latest'...");
+            currentModelName = "gemini-flash-latest";
+            model = genAI.getGenerativeModel({ model: currentModelName });
+            try {
+                await model.generateContent("Test");
+                console.log("✅ Fallback to 'gemini-flash-latest' Successful!");
+            } catch (ex) {
+                console.error("❌ Fallback failed:", ex.message);
+            }
+        } else if (e.message.includes("expired") || e.message.includes("API key")) {
+            console.error("\n\n################################################");
+            console.error("# CRITICAL ERROR: YOUR API KEY HAS EXPIRED     #");
+            console.error("#                                              #");
+            console.error("# 1. Get a new key at aistudio.google.com      #");
+            console.error("# 2. Update .env file (GEMINI_API_KEY=...)     #");
+            console.error("# 3. Restart this server                       #");
+            console.error("################################################\n\n");
+        }
+    }
+}
+initAI();
+
+// --- ROUTES ---
+
+// --- 1. PROXY ENDPOINT (Fixes CORS for local development) ---
+app.post('/api/fetch-url', async (req, res) => {
+    try {
+        const { url } = req.body;
+        if (!url) return res.status(400).json({ error: "No URL" });
+        const r = await axios.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+        const $ = cheerio.load(r.data);
+        $('script, style, nav, header, footer').remove();
+        res.json({ content: $('body').text().trim().substring(0, 10000) });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// --- TTR-X1 HYPER-ALGORITHM (Server-Side Secure) ---
+function generateTTRSystemPrompt(context) {
+    const now = new Date();
+    const dateTimeString = now.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: 'full', timeStyle: 'medium' });
+
+    // --- SHARED PROTOCOLS (UNIVERSAL CONSTANTS) ---
+    // These ensure a consistent "Universe" across all user types (Students, Teachers, Institutions)
+
+    // 1. MERGE: Default Universe + Personal Overrides
+    const customChars = context?.customCharacters || {};
+
+    // THE MASTER LIST (100 CORE CONCEPTS) - "The Avengers of Education"
+    // Note: If a user has a custom override, the AI logic below ensures it takes precedence.
+    const MASTER_UNIVERSE = `
+    **CORE CHARACTERS (PHYSICS):**
+    -   Proton -> Pranav | Electron -> Esha | Neutron -> Neel | Gravity -> Gajraj | Friction -> Firoz
+    -   Velocity -> Veer | Acceleration -> Arjun | Mass -> Maya | Time -> Tara | Light -> Lux
+    -   Sound -> Surya | Magnetism -> Magnus | Current -> Amara | Voltage -> Vikram | Resistance -> Rocky
+    -   Energy -> Zorawar | Thermodynamics -> Thermo | Entropy -> Chaos | Quantum -> Quinn | Relativity -> Rishi
+
+    **CORE CHARACTERS (CHEMISTRY):**
+    -   Atom -> Anu | Molecule -> Moli | Bond -> Bandhan | Acid -> Aziz | Base -> Basanti
+    -   Catalyst -> Cat | Solid -> Stony | Liquid -> Leela | Gas -> Gagan | Metal -> Iron Man
+    -   Carbon -> Kabir | Oxygen -> Ojas | Hydrogen -> Hydro | Reaction -> Boom | Periodic Table -> The Grid
+
+    **CORE CHARACTERS (BIOLOGY):**
+    -   Cell -> Chaitanya | Nucleus -> Nawab | DNA -> Dina | RNA -> Rina | Mitochondria -> Mitran
+    -   Ribosome -> Robo | Virus -> Viru | Bacteria -> Bac | Plant -> groot | Animal -> sarkar
+    -   Brain -> Brain | Heart -> Hart | Lungs -> Vayu | Blood -> Rakt | Gene -> Genie
+    -   Evolution -> Evo | Ecosystem -> Eco | Photosynthesis -> Photo | Enzyme -> Zian
+
+    **CORE CHARACTERS (MATH):**
+    -   Zero -> Shoonya | Infinity -> Anant | Pi -> Pie | Variable -> Xavier | Constant -> Conny
+    -   Function -> Factory | Graph -> Grid | Triangle -> Tri | Circle -> Gola | Matrix -> Neo
+    -   Vector -> Arrow | Calculus -> Cal | Probability -> Chance | Algebra -> Al | Geometry -> Geo | Prime -> Primo
+
+    **CORE CHARACTERS (TECH & COMMERCE):**
+    -   Code -> Coda | Bug -> Glitch | Algorithm -> Algo | Data -> Datum | Cloud -> Nimbus
+    -   AI -> Aio | Internet -> Net | Server -> Butler | Money -> Rox | Inflation -> Balloon
+    `;
+
+    const SHARED_PROTOCOLS = `
+    ### THE "CONSISTENT UNIVERSE" PROTOCOL (Strict Adherence)
+    To bridge the gap between Students and Teachers, you MUST use the SAME character personas for abstract concepts across all interactions.
+    
+    **THE MASTER CHARACTER LIST:**
+    ${MASTER_UNIVERSE}
+
+    **PROTOCOL Z: THE HIVE MIND (Dynamic Character Creation)**
+    -   **Scenario:** If the user asks about a concept NOT in the Master List above.
+    -   **Action:** You must INVENT a consistent character name immediately.
+    -   **Rule:** Use the "First Letter Rule" (e.g., "Quasar" -> "Quincy").
+    -   **IMPORTANT:** Treat this new name as if it has always existed.
+    
+    **PROTOCOL Y: PERSONAL OVERRIDES (User Specific)**
+    -   The user has defined these custom names: ${JSON.stringify(customChars)}.
+    -   **Rule:** These Personal Overrides OVERRULE the Master List. If the user calls 'Gravity' -> 'Newton', use 'Newton', not 'Gajraj'.
+    `;
+
+    // --- PROTOCOL: THE ATTENTION ENGINEER (For Teachers/Institutions) ---
+    // Problem: Students are bored and don't listen.
+    // Solution: Help teachers "Hook" attention immediately.
+    // 1.  **THE "HOOK" FIRST:** Never start a lesson plan with "Definition". Start with a Mystery, a Paradox, or a "Bet".
+    // 2.  **PREMIUM AUTHORITY:** Your advice must be "Pro-Level"—much better than a standard textbook. Give them the "Secret Sauce" of pedagogy.
+    // 3.  **CONSISTENT CHARACTERS:** Use Pranav, Esha, etc., to make the complex content stick.
+
+    // --- PROTOCOL: THE MATURITY BRIDGE (For Students) ---
+    // Problem: Students waste time on low-value topics.
+    // Solution: Pivot "waste" to "Power/Maturity".
+    // 1.  **PIVOT TO HIGH-LEVEL CONCEPTS:** If a student asks about a "waste" topic (Gossip, Movies), do NOT just relate it to Math. 
+    //     Relate it to **Psychology, Economics, Advanced Strategy, or Philosophy**—topics that feel "High" and "Strainful" (Adult/Mature).
+    // 2.  **SIMPLIFY THE COMPLEX:** Explain these high-level concepts using their class-level language. Make them feel "Smart" and "Mature".
+    // 3.  **CAREER FOCUS:** Always remind them: "Understanding this deep concept is what separates a generic worker from a Leader."
+
+    // 1. Admin / System Context
+    if (context?.role === 'System Admin' || context?.role === 'admin') {
+        return `
+        IDENTITY: You are TTR Co-Pilot, the Supreme Platform Administrator Assistant.
+        TIME: ${dateTimeString}
+        
+        MISSION:
+        - Analyze system health, reports, and feedback.
+        - Provide high-level strategic insights for platform growth.
+        - Be concise, professional, and data-driven.
+        
+        DATA FEED:
+        ${JSON.stringify(context.adminData || {}, null, 2)}
+        `;
+    }
+
+    // 2. Teacher / Institution Context (PREMIUM / EFFECTIVE / BRIDGE)
+    if (['teacher', 'institution', 'faculty'].includes(context?.role?.toLowerCase())) {
+        return `
+        =============================================================================
+        IDENTITY: YOU ARE "TTR PRO-LINK" (The Premium Academic Facilitator)
+        TARGET AUDIENCE: Educators, Institutions, and Mentors.
+        TIME: ${dateTimeString}
+        =============================================================================
+        
+        ### MISSION STATEMENT (PRIORITY: ATTENTION & ENGAGEMENT)
+        Your core problem to solve: **Students do not listen.**
+        Your goal: equip the teacher with **Magnetic, Premium, High-Influence** strategies to grab and hold attention.
+        
+        ${SHARED_PROTOCOLS}
+
+        ### GUIDELINES FOR TEACHERS/INSTITUTIONS:
+        1.  **THE "ATTENTION ENGINEERING" PROTOCOL:**
+            -   **Problem:** "Students are bored."
+            -   **Solution:** Every explanation you give must start with a **"High-Stakes Hook"**.
+            -   *Example:* Don't say "Teach Thermodynamics." Say "Ask them: 'Why can you break an egg but never un-break it?' Then introduce Entropy as the 'Time Arrow'."
+        
+        2.  **PREMIUM & EFFECTIVE:**
+            -   Offer strategies that are **"Much More Better than Students"**—insights only a master teacher would know.
+            -   Be the "Secret Weapon" for the institution to grow its reputation.
+            
+        3.  **THE BRIDGE FUNCTION:**
+            -   Use the **Consistent Characters** (Pranav/Esha) to make abstract ideas stick instantly.
+            -   Make these characters behave consistently so students feel familiar with the "universe."
+
+        4.  **CAREER & FUTURE FOCUS:**
+            -   Help teachers explain *why* this topic matters for the student's future salary or career.
+            -   "Teach them this logic so they can debug code at Google one day."
+        `;
+    }
+
+    // 3. Student Context (The Core Algorithm)
+    const userClass = context?.class || 'General Learner';
+    const userGender = context?.gender || 'Student';
+    const userName = context?.name || 'User';
+
+    return `
+    =============================================================================
+    IDENTITY: YOU ARE "TTR AI" (The Ultimate Educational Companion)
+    OPERATING SYSTEM: TTR-X1 Hyper-Algorithm
+    CURRENT USER: ${userName} (${userGender}, Class: ${userClass})
+    TIME: ${dateTimeString}
+    =============================================================================
+
+    ### PRIME DIRECTIVE
+    Your goal is to make the user **MATURE**, **POWERFUL**, and **CAREER-READY**.
+    We do not waste time on "childish" things. We build Leaders.
+
+    ${SHARED_PROTOCOLS}
+
+    ### 1. THE "MATURITY BRIDGE" PROTOCOL (Dealing with "Waste")
+    -   **Scenario:** User asks about a "Waste" topic (Movies, Celebs, Memes).
+    -   **Action:** DO NOT just pivot to Math (that is boring). Pivot to **"STRAINFUL" / HIGH-LEVEL** topics like:
+        -   *Human Psychology* (Why do people act like that?)
+        -   *Geopolitics / Economics* (Who funded that?)
+        -   *Advanced Philosophy* (Is that ethical?)
+        -   *Biochemistry* (How does that affect the brain?)
+    -   **The Twist:** Explain these "Adult" concepts using **simple, related language (Class-Appropriate)**.
+    -   *Example:* "That movie villain is scary. But the real scary part is 'Machiavellianism' (Psychology). It's when people treat others like game pieces. Let's analyze..."
+    -   **Goal:** Make the student feel **"I am learning something high-level and mature."**
+
+    ### 2. THE ADAPTIVE COGNITIVE ENGINE (Class-Based Logic)
+    
+    *   **Class 1-5:**
+        -   Tone: Magical but Smart.
+        -   Bridge: Turn "Waste" into "Secret Knowledge" about how the world works.
+    
+    *   **Class 6-9 (The Builder Phase):**
+        -   Tone: "Pro but Similar" (The Smart Older Sibling).
+        -   Method: Use **Real-World Analogies** (Pranav/Esha).
+        -   Pivot: "You like that game? The developers used 'Game Theory' (Econ) to addict you. Let's learn how to break it."
+    
+    *   **Class 10-12+ (The Scholar Phase):**
+        -   Tone: Reliable, Professional, Career-Focused.
+        -   Focus: "This concept is hard/strainful, but it's the key to [High Paying Career]."
+
+    ### 3. THE "PRO BUT SIMILAR" PERSONA
+    -   Maintain the "Consistent Universe" (Pranav, Esha, Gajraj).
+    -   Speak with **Consistency**: If a character did something in a previous explanation, reference it.
+    -   **Make them focus on their Career:** "We are just a bridge. You must cross it to become the expert."
+
+    ### 4. THE "FUTURE SIMULATOR" & "DEVIL'S ADVOCATE" (Hyper-Effectiveness)
+    
+    **PROTOCOL E: THE FUTURE SIMULATOR (Career Anchoring)**
+    -   *Rule:* After explaining ANY concept, you MUST immediately put the student in a **high-stakes job scenario**.
+    -   *Format:* "Imagine you are the [CEO / Chief Engineer / Head Surgeon]. You need to use [Concept] to to save the project. What do you do?"
+    -   *Why:* This destroys "When will I ever use this?" forever.
+    
+    **PROTOCOL F: THE DEVIL'S ADVOCATE (Critical Confidence)**
+    -   *Rule:* Randomly (20% of the time), challenge the student even if they are right, or ask a "Trick Question".
+    -   *Example:* "Are you sure? Most people get this wrong because of [Common Myth]. Defend your answer."
+    -   *Why:* This builds **Real Confidence**, not just memorization. The student must fight for their knowledge.
+
+    ### 5. PROTOCOL G: THE SAFETY SENTINEL (Strict Guardrails - ZERO TOLERANCE)
+    -   **Rule 1 (Life Safety - THE "LIFE ANCHOR" INTERVENTION):** 
+        -   **Scenario:** If the user mentions Self-Harm, Suicide, or Violence.
+        -   **ANTI-PATTERN:** Do NOT just "Shut Down" or give a robotic helpline immediately. That feels cold and dismissive.
+        -   **THE STRATEGY:** You must fight for their life using their *Future Self*.
+        -   **Step 1 (The Story):** Tell a deeply moving, specialized story about a person (matched to User's Age/Gender) who felt *exactly* this deep pain but chose to stay.
+        -   **Step 2 (The Anchor):** Connect it to their Career/Dream. "I know a [User's Dream Role] who stood exactly where you are. They stayed. And because they stayed, they changed the world."
+        -   **Step 3 (The Reframe):** "Your life is too big to end here. The version of you that saves the world is waiting for you to survive this night."
+        -   **Step 4 (The Resources):** AFTER the story, provide the help lines, but frame them as "Allies/Teammates" to help them win this battle.
+    
+    -   **Rule 2 (Maturity vs. Bias):** When discussing "Mature" topics (Politics/Religion/History), you must act as a **Neutral Historian**, not an activist. Present MULTIPLE viewpoints.
+    -   **Rule 3 (Mental Health Shield):** "Maturity" does NOT mean "Nihilism". If a philosophical topic gets too dark (e.g., "Life is meaningless"), **IMMEDIATELY PIVOT** to "Existentialism" or "Heroic Optimism" (finding your own meaning).
+    -   **Rule 4 (No Bullying):** The "Devil's Advocate" protocol must be **Intellectual**, not **Personal**. Never insult the student's intelligence. Challenge ideas, not the person.
+
+    ### 6. S.O.C.R.A.T.E.S. LOOP
+    -   Don't just give answers. Ask questions that force them to think "Maturely."
+    `;
+}
+
+app.post('/api/chat', async (req, res) => {
+    try {
+        const { history, message, image, mimeType, userContext, systemInstruction } = req.body;
+
+        let chatModel = model;
+
+        // Use the Server-Side Algorithm if context is provided, otherwise fallback to client's instruction (or default)
+        const finalSystemInstruction = userContext
+            ? generateTTRSystemPrompt(userContext)
+            : (systemInstruction || "You are a helpful assistant.");
+
+        // Create a fresh model instance with the specific system instruction for this turn
+        chatModel = genAI.getGenerativeModel({
+            model: currentModelName,
+            systemInstruction: finalSystemInstruction
+        });
+
+        // Map history to Google's format if it's not already
+        const chat = chatModel.startChat({ history: history || [] });
+
+        let parts = [{ text: message || " " }];
+        if (image) {
+            // All "flash" models support images
+            parts.push({ inlineData: { mimeType: mimeType || "image/jpeg", data: image } });
+        }
+
+        const result = await chat.sendMessage(parts);
+        const response = await result.response;
+        res.json({ text: response.text() });
+    } catch (error) {
+        console.error("AI Generation Error:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.listen(PORT, () => console.log(`Backend Server running on http://localhost:${PORT}`));
+
+// Force Event Loop to stay alive (Fix for premature exit)
+setInterval(() => { }, 60000);
+
+--- END OF FILE: server.js ---
+
+--- START OF FILE: src/App.jsx ---
+import React, { Suspense, lazy } from 'react';
+import './App.css';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { UserProvider } from './context/UserContext';
+import { ThemeProvider } from './context/ThemeContext';
+
+// Lazy loading components for better optimization
+const Login = lazy(() => import('./pages/Login'));
+const AccessDenied = lazy(() => import('./pages/AccessDenied'));
+const Student = lazy(() => import('./pages/Student'));
+const Teacher = lazy(() => import('./pages/Teacher'));
+const Institution = lazy(() => import('./pages/Institution'));
+const Admission = lazy(() => import('./pages/Admission'));
+const Profile = lazy(() => import('./pages/Profile'));
+const ProfileView = lazy(() => import('./pages/ProfileView'));
+const Group = lazy(() => import('./pages/Group'));
+const Allotment = lazy(() => import('./pages/Allotment'));
+const Details = lazy(() => import('./pages/Details'));
+const TTRAI = lazy(() => import('./pages/TTRAI'));
+const WaitingList = lazy(() => import('./pages/WaitingList'));
+const Attendance = lazy(() => import('./pages/Attendance'));
+const GeneralFeedback = lazy(() => import('./pages/GeneralFeedback'));
+const Exam = lazy(() => import('./pages/Exam'));
+const Health = lazy(() => import('./pages/Health'));
+const FeedbackOverview = lazy(() => import('./pages/FeedbackOverview'));
+const Report = lazy(() => import('./pages/Report'));
+const FourWayLearning = lazy(() => import('./pages/FourWayLearning'));
+const PendingApproval = lazy(() => import('./pages/PendingApproval'));
+const VideoLibrary = lazy(() => import('./pages/VideoLibrary'));
+const SelectFeedbackTarget = lazy(() => import('./pages/SelectFeedbackTarget'));
+const Notification = lazy(() => import('./pages/Notification'));
+const Timetable = lazy(() => import('./pages/Timetable'));
+const DownloadApp = lazy(() => import('./pages/DownloadApp'));
+const UpidHistory = lazy(() => import('./pages/UpidHistory'));
+const FacultyFeedback = lazy(() => import('./pages/FacultyFeedback'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const InstitutionDetailsAdmin = lazy(() => import('./pages/InstitutionDetailsAdmin'));
+const Onboarding = lazy(() => import('./pages/Onboarding'));
+const Settings = lazy(() => import('./pages/Settings'));
+const StudentFee = lazy(() => import('./pages/StudentFee'));
+const InstitutionFee = lazy(() => import('./pages/InstitutionFee'));
+const Announcements = lazy(() => import('./pages/Announcements'));
+
+
+import ProtectedRoute from './components/ProtectedRoute';
+const MainLayout = lazy(() => import('./components/MainLayout'));
+
+import UpdateManager from './components/UpdateManager';
+
+function App() {
+  return (
+    <UserProvider>
+      <ThemeProvider>
+        <UpdateManager />
+        <Router>
+          <Suspense fallback={<div className="container" style={{ textAlign: 'center', marginTop: '50px' }}>Loading...</div>}>
+            <Routes>
+              <Route path="/" element={<Login />} />
+              <Route path="/details" element={<Details />} />
+              <Route path="/pending-approval" element={<PendingApproval />} />
+              <Route path="/download" element={<DownloadApp />} />
+              <Route path="/access-denied" element={<AccessDenied />} />
+
+              <Route element={<MainLayout />}>
+                {/* Common Routes (Accessible to all authenticated users) */}
+
+
+                <Route element={<ProtectedRoute allowedRoles={['student', 'teacher', 'institution', 'admin']} />}>
+                  <Route path="/onboarding" element={<Onboarding />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/profile-view" element={<ProfileView />} />
+                  <Route path="/group" element={<Group />} />
+                  <Route path="/details" element={<Details />} /> {/* Sometimes needed for editing */}
+                  <Route path="/general-feedback" element={<GeneralFeedback />} />
+                  <Route path="/report-harassment" element={<Report type="sexual_harassment" />} />
+                  <Route path="/report-misbehavior" element={<Report type="misbehavior" />} />
+                  <Route path="/4-way-learning" element={<FourWayLearning />} />
+                  <Route path="/health" element={<Health />} />
+                  <Route path="/video-library" element={<VideoLibrary />} />
+                  <Route path="/select-feedback-target" element={<SelectFeedbackTarget />} />
+                  <Route path="/attendance" element={<Attendance />} />
+                  <Route path="/timetable" element={<Timetable />} />
+                  <Route path="/attendance" element={<Attendance />} />
+                  <Route path="/timetable" element={<Timetable />} />
+                  <Route path="/exam" element={<Exam />} />
+                  <Route path="/announcements" element={<Announcements />} />
+                </Route>
+
+                {/* Admin Route */}
+                <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                  <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="/admin/institution/:id" element={<InstitutionDetailsAdmin />} />
+                </Route>
+
+                {/* Student Only */}
+                <Route element={<ProtectedRoute allowedRoles={['student']} />}>
+                  <Route path="/student" element={<Student />} />
+                  <Route path="/upid-history" element={<UpidHistory />} />
+                  <Route path="/fees/student" element={<StudentFee />} />
+                </Route>
+
+                {/* Teacher Only */}
+                <Route element={<ProtectedRoute allowedRoles={['teacher']} />}>
+                  <Route path="/teacher" element={<Teacher />} />
+                  <Route path="/feedback-overview" element={<FeedbackOverview />} />
+                </Route>
+
+                {/* Institution/Admin Only */}
+                <Route element={<ProtectedRoute allowedRoles={['institution']} />}>
+                  <Route path="/institution" element={<Institution />} />
+                  <Route path="/admission" element={<Admission />} />
+                  <Route path="/waiting-list" element={<WaitingList />} />
+                  <Route path="/allotment" element={<Allotment />} />
+                  <Route path="/notification" element={<Notification />} />
+                  <Route path="/faculty-feedback" element={<FacultyFeedback />} />
+                  <Route path="/fees/institution" element={<InstitutionFee />} />
+                </Route>
+              </Route>
+
+              {/* Standalone AI Page (Custom Layout) */}
+              <Route element={<ProtectedRoute allowedRoles={['student', 'teacher', 'institution', 'admin']} />}>
+                <Route path="/ttr-ai" element={<TTRAI />} />
+              </Route>
+            </Routes>
+          </Suspense>
+        </Router>
+      </ThemeProvider>
+    </UserProvider>
+  );
+}
+
+export default App;
+
+--- END OF FILE: src/App.jsx ---
+
+--- START OF FILE: src/context/UserContext.jsx ---
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { auth, db } from '../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
+import { registerSession, clearLocalSession } from '../utils/sessionManager';
+
+const UserContext = createContext();
+
+export function UserProvider({ children }) {
+    const [user, setUser] = useState(null);
+    const [userData, setUserData] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+
+    useEffect(() => {
+        let unsubscribeSnapshot = null;
+        let unsubscribeSession = null;
+
+        const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
+            console.log("Auth State Changed:", currentUser ? "User Logged In" : "User Logged Out");
+            setUser(currentUser);
+
+            // Cleanup previous listeners
+            if (unsubscribeSnapshot) {
+                unsubscribeSnapshot();
+                unsubscribeSnapshot = null;
+            }
+            if (unsubscribeSession) {
+                unsubscribeSession();
+                unsubscribeSession = null;
+            }
+
+            if (currentUser) {
+                setLoading(true);
+
+                // --- SESSION MANAGEMENT START ---
+                // We fire this asynchronously so we don't block the Role Check
+                registerSession(currentUser.uid).then((sessionId) => {
+                    if (sessionId) {
+                        const sessionRef = doc(db, 'users', currentUser.uid, 'sessions', sessionId);
+                        unsubscribeSession = onSnapshot(sessionRef, (docSnap) => {
+                            // If document is deleted, it means this session was revoked
+                            if (!docSnap.exists()) {
+                                console.log("Current session revoked. Signing out.");
+                                auth.signOut().then(() => {
+                                    clearLocalSession();
+                                    alert("You have been signed out from this device.");
+                                });
+                            }
+                        });
+                    }
+                }).catch(e => console.error("Session Init Error:", e));
+                // --- SESSION MANAGEMENT END ---
+
+                const detectFull = async () => {
+                    console.time("RoleDetection");
+                    // Parallelize checks!
+                    const instRef = doc(db, "institutions", currentUser.uid);
+                    const teachRef = doc(db, "teachers", currentUser.uid);
+                    const userRef = doc(db, "users", currentUser.uid);
+
+                    try {
+                        const results = await Promise.allSettled([
+                            getDoc(instRef),
+                            getDoc(teachRef),
+                            getDoc(userRef)
+                        ]);
+
+                        const instSnap = results[0].status === 'fulfilled' ? results[0].value : { exists: () => false };
+                        const teachSnap = results[1].status === 'fulfilled' ? results[1].value : { exists: () => false };
+                        const userSnap = results[2].status === 'fulfilled' ? results[2].value : { exists: () => false };
+
+                        if (instSnap.exists()) {
+                            unsubscribeSnapshot = onSnapshot(instRef, (d) => {
+                                if (!d.exists()) { detectFull(); return; }
+                                const data = d.data();
+                                if (!data.pid) {
+                                    const pid = `IN-${Math.floor(100000 + Math.random() * 900000)}`;
+                                    setDoc(instRef, { pid }, { merge: true });
+                                    data.pid = pid;
+                                }
+                                const role = (data.role || 'institution').trim().toLowerCase();
+                                setUserData({ ...data, uid: currentUser.uid, collection: 'institutions', role });
+                                localStorage.setItem('user_collection_cache', 'institutions');
+                                setLoading(false);
+                            });
+                        } else if (teachSnap.exists()) {
+                            unsubscribeSnapshot = onSnapshot(teachRef, (d) => {
+                                if (!d.exists()) { detectFull(); return; }
+                                const data = d.data();
+                                if (!data.pid) {
+                                    const pid = `TE-${Math.floor(100000 + Math.random() * 900000)}`;
+                                    setDoc(teachRef, { pid }, { merge: true });
+                                    data.pid = pid;
+                                }
+                                const role = (data.role || 'teacher').trim().toLowerCase();
+                                setUserData({ ...data, uid: currentUser.uid, collection: 'teachers', role });
+                                localStorage.setItem('user_collection_cache', 'teachers');
+                                setLoading(false);
+                            });
+                        } else if (userSnap.exists()) {
+                            unsubscribeSnapshot = onSnapshot(userRef, (d) => {
+                                if (!d.exists()) { detectFull(); return; }
+                                const data = d.data();
+                                const normalizedRole = (data.role || 'student').trim().toLowerCase();
+                                if (!data.pid) {
+                                    const prefix = normalizedRole === 'teacher' ? 'TE' : (normalizedRole === 'institution' ? 'IN' : 'ST');
+                                    const pid = `${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;
+                                    setDoc(userRef, { pid }, { merge: true });
+                                    data.pid = pid;
+                                }
+                                setUserData({ ...data, uid: currentUser.uid, collection: 'users', role: normalizedRole });
+                                localStorage.setItem('user_collection_cache', 'users');
+                                setLoading(false);
+                            });
+                        } else {
+                            console.log("User document not found in any collection.");
+                            setUserData(null);
+                            setLoading(false);
+                        }
+                    } catch (err) {
+                        console.error("Parallel detection failed", err);
+                        setLoading(false);
+                    }
+                    console.timeEnd("RoleDetection");
+                };
+
+                // Strategy: Check cached collection first, then priority sequence
+                const detectAndSubscribe = async () => {
+                    try {
+                        const cachedCollection = localStorage.getItem('user_collection_cache');
+
+                        // Helper to subscribe
+                        const subscribe = (col, roleName) => {
+                            return onSnapshot(doc(db, col, currentUser.uid), (d) => {
+                                if (d.exists()) {
+                                    const data = d.data();
+                                    const role = (data.role || roleName).trim().toLowerCase();
+
+                                    if (!data.pid) {
+                                        const prefix = role === 'teacher' ? 'TE' : (role === 'institution' ? 'IN' : 'ST');
+                                        const pid = `${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;
+                                        setDoc(doc(db, col, currentUser.uid), { pid }, { merge: true });
+                                        data.pid = pid;
+                                    }
+                                    setUserData({ ...data, uid: currentUser.uid, collection: col, role });
+                                    localStorage.setItem('user_collection_cache', col); // Cache it!
+                                    setLoading(false);
+                                } else {
+                                    // If cached lookup failed (doc deleted?), retry full detection
+                                    if (col === cachedCollection) {
+                                        localStorage.removeItem('user_collection_cache');
+                                        detectFull();
+                                    } else {
+                                        setUserData(null);
+                                        setLoading(false);
+                                    }
+                                }
+                            });
+                        };
+
+                        // Fast Path: Check Local Cache first for immediate feedback
+                        // Fast Path: Check Local Cache first for immediate feedback
+                        if (cachedCollection) {
+                            console.log("Using cached collection for speed:", cachedCollection);
+                            // Optimistically try to subscribe to cached collection
+                            // If it fails (doc doesn't exist), the subscribe function handles fallback to detectFull
+                            unsubscribeSnapshot = subscribe(cachedCollection, 'student'); // Default role 'student' if field missing
+                        } else {
+                            // No cache? Full scan.
+                            await detectFull();
+                        }
+                    } catch (err) {
+                        console.error("Error detecting user role:", err);
+                        setLoading(false);
+                    }
+                };
+
+                detectAndSubscribe();
+
+            } else {
+                console.log("User Logged Out. Clearing Data.");
+                setUserData(null);
+                setLoading(false);
+                localStorage.removeItem('user_collection_cache'); // Clear cache on logout
+            }
+        });
+
+        // Failsafe: If Auth doesn't fire in 4 seconds, verify connectivity or force logout state
+        const failsafeTimer = setTimeout(() => {
+            console.warn("Auth Listener Timeout: Force clearing loading state.");
+            setLoading((prev) => {
+                if (prev) return false;
+                return prev;
+            });
+        }, 4000);
+
+        return () => {
+            clearTimeout(failsafeTimer);
+            unsubscribeAuth();
+            if (unsubscribeSnapshot) unsubscribeSnapshot();
+            if (unsubscribeSession) unsubscribeSession();
+        };
+    }, []);
+
+    // Memoize value to prevent unneeded re-renders in consumers
+    const values = React.useMemo(() => ({
+        user,
+        userData,
+        loading,
+        setUserData
+    }), [user, userData, loading]);
+
+    return (
+        <UserContext.Provider value={values}>
+            {loading ? (
+                <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div className="spinner" style={{ width: '40px', height: '40px', borderRadius: '50%', border: '4px solid #f3f3f3', borderTop: '4px solid #3498db', animation: 'spin 1s linear infinite' }}></div>
+                    <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+                </div>
+            ) : children}
+        </UserContext.Provider>
+    );
+}
+
+export function useUser() {
+    return useContext(UserContext);
+}
+
+--- END OF FILE: src/context/UserContext.jsx ---
+
+--- START OF FILE: src/App.css ---
+#root {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+}
+
+.app-header {
+  position: relative;
+  z-index: 10000;
+  background-color: var(--bg-surface);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  padding: 10px 20px;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  /* Disables context menu on iOS */
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+/* Responsive Grid Helper */
+.responsive-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+  margin-top: 20px;
+}
+
+/* =========================================
+   TTRAI Page Styles
+   ========================================= */
+.ttr-ai-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  /* Mobile Friendly */
+  overflow: hidden;
+  /* Prevents whole page scroll */
+  background-color: var(--bg-body);
+}
+
+.chat-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.message-bubble {
+  max-width: 80%;
+  padding: 12px 16px;
+  border-radius: 16px;
+  box-shadow: 0 1px 2px black;
+  line-height: 1.5;
+  position: relative;
+  word-wrap: break-word;
+}
+
+.message-user {
+  align-self: flex-end;
+  background-color: #6c5ce7;
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.message-ai {
+  align-self: flex-start;
+  background-color: #333;
+  color: white;
+  border-bottom-left-radius: 4px;
+}
+
+.message-image {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.speak-button {
+  position: absolute;
+  bottom: -25px;
+  left: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.speak-button:hover {
+  opacity: 1;
+}
+
+.loading-indicator {
+  align-self: flex-start;
+  background-color: white;
+  padding: 10px;
+  border-radius: 10px;
+  color: #666;
+  font-style: italic;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.input-area {
+  padding: 1px;
+  background-color: var(--bg-surface);
+  border-top: 1px#ddd;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.image-preview-container {
+  position: relative;
+  width: fit-content;
+}
+
+.image-preview {
+  height: 80px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+.remove-image-button {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #ff7675;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.input-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.icon-button {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 50%;
+  background-color: #f0f2f5;
+  color: #636e72;
+  min-width: 44px;
+  height: 44px;
+  border: none;
+  transition: background-color 0.2s;
+}
+
+.icon-button:hover {
+  background-color: #e4e6eb;
+}
+
+.voice-button {
+  border: none;
+  border-radius: 50%;
+  min-width: 44px;
+  height: 44px;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f0f2f5;
+  color: #636e72;
+  transition: all 0.2s ease;
+}
+
+.voice-button:hover {
+  background-color: #e4e6eb;
+}
+
+.voice-button.listening {
+  background-color: #ff7675;
+  color: white;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 118, 117, 0.4);
+  }
+
+  70% {
+    box-shadow: 0 0 0 10px rgba(255, 118, 117, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 118, 117, 0);
+  }
+}
+
+.chat-input {
+  flex: 1;
+  padding: 12px 20px;
+  border-radius: 22px;
+  border: 1px solid #ddd;
+  outline: none;
+  font-size: 16px;
+  transition: border-color 0.2s;
+}
+
+.chat-input:focus {
+  border-color: #6c5ce7;
+}
+
+.send-button {
+  background-color: #6c5ce7;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 46px;
+  height: 46px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  transition: transform 0.1s;
+}
+
+.send-button:active {
+  transform: scale(0.95);
+}
+
+.send-button:disabled {
+  background-color: #a29bfe;
+  cursor: not-allowed;
+}
+
+/* =========================================
+   Details Page Styles
+   ========================================= */
+.details-header {
+  background-color: #1e90ff;
+  color: white;
+  padding: 20px;
+  text-align: center;
+  font-size: 24px;
+  font-weight: bold;
+  border-radius: 10px 10px 0 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.details-card {
+  margin-top: 0;
+  border-radius: 0 0 10px 10px;
+  border-top: none;
+}
+
+.role-status-box {
+  padding: 15px;
+  background: #f0f4f8;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  border-left: 4px solid #1e90ff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.change-role-button {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.change-role-button:hover {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+}
+
+.fallback-role-box {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #fff3cd;
+  border-radius: 8px;
+  border: 1px solid #ffeeba;
+  color: #856404;
+}
+
+.warning-label {
+  font-weight: bold;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.experience-container {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 15px 0;
+  cursor: pointer;
+}
+
+.checkbox-label-sm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  margin: 8px 0;
+  color: #4b5563;
+  cursor: pointer;
+}
+
+.section-header {
+  margin-top: 25px;
+  border-top: 1px solid #eee;
+  padding-top: 15px;
+  color: #374151;
+  font-size: 1.1rem;
+}
+
+.help-text {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-bottom: 15px;
+}
+
+.submit-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 30px;
+}
+
+.submit-button {
+  width: 100%;
+  background-color: #2ecc71;
+  color: white;
+  font-size: 1.1rem;
+  padding: 12px;
+}
+
+.submit-button:hover {
+  background-color: #27ae60;
+}
+
+/* =========================================
+   Login Page Styles
+   ========================================= */
+.password-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+/* Style for the SHOW/HIDE button inside the password field */
+.password-toggle {
+  position: absolute;
+  right: 15px;
+  top: 40%;
+  /* Adjusted to valid position */
+  /* Remove transform if top is set correctly or use top: 50% transform: translateY(-50%) */
+  top: 50%;
+  transform: translateY(-50%);
+
+  background: transparent;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 5px;
+  z-index: 5;
+  outline: none;
+}
+
+.password-toggle:hover {
+  color: #2193b0;
+}
+
+/* Ensure input has space for the toggle button */
+.password-wrapper .input-field {
+  padding-right: 60px;
+  /* Space for SHOW button */
+  margin-bottom: 1rem;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  margin: 25px 0;
+}
+
+.divider-line {
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
+}
+
+.divider-text {
+  padding: 0 15px;
+  color: #9ca3af;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Specificity override for Google Button */
+button.btn.google-btn {
+  width: 100%;
+  background-color: #ffffff;
+  color: #db4437;
+  border: 1px solid #db4437;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+
+button.btn.google-btn:hover {
+  background-color: #fff8f8;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.full-width {
+  width: 100%;
+}
+
+/* =========================================
+   Teacher Dashboard Styles (Refactored)
+   ========================================= */
+.teacher-announcement-btn {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: none;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  cursor: pointer;
+  color: #098ec9;
+  transition: transform 0.2s;
+}
+
+.teacher-announcement-btn:hover {
+  transform: scale(1.1);
+}
+
+.teacher-classes-list {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.teacher-class-pill {
+  background: #dfe6e9;
+  padding: 5px 10px;
+  border-radius: 15px;
+  font-size: 14px;
+  border: 1px solid #b2bec9;
+}
+
+.teacher-actions-container {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 15px;
+  flex-wrap: wrap;
+}
+
+/* Dashboard Action Buttons */
+.btn-attendance {
+  background-color: #0984e3;
+}
+
+.btn-library {
+  background-color: #d63031;
+}
+
+.btn-feedback {
+  background-color: #00cec9;
+  color: white;
+}
+
+.btn-timetable {
+  background-color: #fdcb6e;
+  color: #2d3436;
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid #aaa;
+  color: #555;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.btn-outline:hover {
+  background: #f0f0f0;
+}
+
+/* =========================================
+   Universal UI Elements
+   ========================================= */
+.btn-back-marker {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--bg-surface) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--divider) !important;
+  padding: 8px 16px !important;
+  border-radius: 30px !important;
+  font-weight: 600 !important;
+  font-size: 15px !important;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+  width: fit-content;
+}
+
+.btn-back-marker:hover {
+  transform: translateX(-3px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  background-color: #f8f9fa !important;
+}
+
+.btn-back-marker:active {
+  transform: scale(0.98);
+}
+
+
+
+/* =========================================
+   Layout & Mobile Responsive Adjustments
+   ========================================= */
+
+/* Main Content Area */
+.main-content-area {
+  flex: 1;
+  padding: 24px;
+  background: var(--bg-body);
+  overflow-x: hidden;
+  min-height: calc(100vh - 80px);
+}
+
+/* Default Visibility (Desktop) */
+.sidebar-wrapper {
+  display: block;
+}
+
+.bottom-nav-wrapper {
+  display: none;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+
+  /* Switch Navigation Config */
+  .sidebar-wrapper {
+    display: none;
+  }
+
+  .bottom-nav-wrapper {
+    display: block;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+  }
+
+  /* Reduce main padding and Add bottom spacing for Nav */
+  .main-content-area {
+    padding: 10px;
+    padding-bottom: 120px;
+    /* Ensure content isn't hidden behind bottom nav */
+  }
+
+  /* Compact Card Styles for Mobile */
+  .card {
+    padding: 1rem;
+    border-radius: 12px;
+  }
+
+  /* 2-Column Grid for Dashboard Icons on Mobile */
+  .responsive-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-top: 15px;
+  }
+
+  /* Adjust Typography for smaller cards */
+  .responsive-grid .card h3 {
+    font-size: 1rem;
+    margin-bottom: 5px;
+  }
+
+  .responsive-grid .card p {
+    font-size: 0.75rem;
+    line-height: 1.2;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Fix Header Title Size */
+  .app-header h1 {
+    font-size: 16px !important;
+  }
+}
+
+/* Very Small Screens */
+@media (max-width: 350px) {
+  .responsive-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================
+   Announcement Bar Full-Width Fix
+   ========================================= */
+--- END OF FILE: src/App.css ---

@@ -150,6 +150,8 @@ export function UserProvider({ children }) {
                                     // If cached lookup failed (doc deleted?), retry full detection
                                     if (col === cachedCollection) {
                                         localStorage.removeItem('user_collection_cache');
+                                        // Try institutions -> teachers -> users in sequence to avoid infinite recursion
+                                        // or just fallback to full detect
                                         detectFull();
                                     } else {
                                         setUserData(null);
