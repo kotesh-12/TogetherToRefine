@@ -48,86 +48,90 @@ const MainLayout = lazy(() => import('./components/MainLayout'));
 import UpdateManager from './components/UpdateManager';
 import GlobalLoader from './components/GlobalLoader';
 
+import ErrorBoundary from './components/ErrorBoundary';
+
 function App() {
   return (
-    <UserProvider>
-      <ThemeProvider>
-        <Router>
-          <UpdateManager />
-          <Suspense fallback={<GlobalLoader />}>
-            <Routes>
-              <Route path="/" element={<Login />} />
-              <Route path="/details" element={<Details />} />
-              <Route path="/pending-approval" element={<PendingApproval />} />
-              <Route path="/download" element={<DownloadApp />} />
-              <Route path="/access-denied" element={<AccessDenied />} />
+    <ErrorBoundary>
+      <UserProvider>
+        <ThemeProvider>
+          <Router>
+            <UpdateManager />
+            <Suspense fallback={<GlobalLoader />}>
+              <Routes>
+                <Route path="/" element={<Login />} />
+                <Route path="/details" element={<Details />} />
+                <Route path="/pending-approval" element={<PendingApproval />} />
+                <Route path="/download" element={<DownloadApp />} />
+                <Route path="/access-denied" element={<AccessDenied />} />
 
-              <Route element={<MainLayout />}>
-                {/* Common Routes (Accessible to all authenticated users) */}
+                <Route element={<MainLayout />}>
+                  {/* Common Routes (Accessible to all authenticated users) */}
 
 
+                  <Route element={<ProtectedRoute allowedRoles={['student', 'teacher', 'institution', 'admin']} />}>
+                    <Route path="/onboarding" element={<Onboarding />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/profile-view" element={<ProfileView />} />
+                    <Route path="/group" element={<Group />} />
+                    <Route path="/details" element={<Details />} /> {/* Sometimes needed for editing */}
+                    <Route path="/general-feedback" element={<GeneralFeedback />} />
+                    <Route path="/report-harassment" element={<Report type="sexual_harassment" />} />
+                    <Route path="/report-misbehavior" element={<Report type="misbehavior" />} />
+                    <Route path="/4-way-learning" element={<FourWayLearning />} />
+                    <Route path="/health" element={<Health />} />
+                    <Route path="/video-library" element={<VideoLibrary />} />
+                    <Route path="/select-feedback-target" element={<SelectFeedbackTarget />} />
+                    <Route path="/attendance" element={<Attendance />} />
+                    <Route path="/timetable" element={<Timetable />} />
+                    <Route path="/attendance" element={<Attendance />} />
+                    <Route path="/timetable" element={<Timetable />} />
+                    <Route path="/exam" element={<Exam />} />
+                    <Route path="/announcements" element={<Announcements />} />
+                  </Route>
+
+                  {/* Admin Route */}
+                  <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                    <Route path="/admin" element={<AdminDashboard />} />
+                    <Route path="/admin/institution/:id" element={<InstitutionDetailsAdmin />} />
+                  </Route>
+
+                  {/* Student Only */}
+                  <Route element={<ProtectedRoute allowedRoles={['student']} />}>
+                    <Route path="/student" element={<Student />} />
+                    <Route path="/upid-history" element={<UpidHistory />} />
+                    <Route path="/fees/student" element={<StudentFee />} />
+                  </Route>
+
+                  {/* Teacher Only */}
+                  <Route element={<ProtectedRoute allowedRoles={['teacher']} />}>
+                    <Route path="/teacher" element={<Teacher />} />
+                    <Route path="/feedback-overview" element={<FeedbackOverview />} />
+                  </Route>
+
+                  {/* Institution/Admin Only */}
+                  <Route element={<ProtectedRoute allowedRoles={['institution']} />}>
+                    <Route path="/institution" element={<Institution />} />
+                    <Route path="/admission" element={<Admission />} />
+                    <Route path="/waiting-list" element={<WaitingList />} />
+                    <Route path="/allotment" element={<Allotment />} />
+                    <Route path="/notification" element={<Notification />} />
+                    <Route path="/faculty-feedback" element={<FacultyFeedback />} />
+                    <Route path="/fees/institution" element={<InstitutionFee />} />
+                  </Route>
+                </Route>
+
+                {/* Standalone AI Page (Custom Layout) */}
                 <Route element={<ProtectedRoute allowedRoles={['student', 'teacher', 'institution', 'admin']} />}>
-                  <Route path="/onboarding" element={<Onboarding />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/profile-view" element={<ProfileView />} />
-                  <Route path="/group" element={<Group />} />
-                  <Route path="/details" element={<Details />} /> {/* Sometimes needed for editing */}
-                  <Route path="/general-feedback" element={<GeneralFeedback />} />
-                  <Route path="/report-harassment" element={<Report type="sexual_harassment" />} />
-                  <Route path="/report-misbehavior" element={<Report type="misbehavior" />} />
-                  <Route path="/4-way-learning" element={<FourWayLearning />} />
-                  <Route path="/health" element={<Health />} />
-                  <Route path="/video-library" element={<VideoLibrary />} />
-                  <Route path="/select-feedback-target" element={<SelectFeedbackTarget />} />
-                  <Route path="/attendance" element={<Attendance />} />
-                  <Route path="/timetable" element={<Timetable />} />
-                  <Route path="/attendance" element={<Attendance />} />
-                  <Route path="/timetable" element={<Timetable />} />
-                  <Route path="/exam" element={<Exam />} />
-                  <Route path="/announcements" element={<Announcements />} />
+                  <Route path="/ttr-ai" element={<TTRAI />} />
                 </Route>
-
-                {/* Admin Route */}
-                <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-                  <Route path="/admin" element={<AdminDashboard />} />
-                  <Route path="/admin/institution/:id" element={<InstitutionDetailsAdmin />} />
-                </Route>
-
-                {/* Student Only */}
-                <Route element={<ProtectedRoute allowedRoles={['student']} />}>
-                  <Route path="/student" element={<Student />} />
-                  <Route path="/upid-history" element={<UpidHistory />} />
-                  <Route path="/fees/student" element={<StudentFee />} />
-                </Route>
-
-                {/* Teacher Only */}
-                <Route element={<ProtectedRoute allowedRoles={['teacher']} />}>
-                  <Route path="/teacher" element={<Teacher />} />
-                  <Route path="/feedback-overview" element={<FeedbackOverview />} />
-                </Route>
-
-                {/* Institution/Admin Only */}
-                <Route element={<ProtectedRoute allowedRoles={['institution']} />}>
-                  <Route path="/institution" element={<Institution />} />
-                  <Route path="/admission" element={<Admission />} />
-                  <Route path="/waiting-list" element={<WaitingList />} />
-                  <Route path="/allotment" element={<Allotment />} />
-                  <Route path="/notification" element={<Notification />} />
-                  <Route path="/faculty-feedback" element={<FacultyFeedback />} />
-                  <Route path="/fees/institution" element={<InstitutionFee />} />
-                </Route>
-              </Route>
-
-              {/* Standalone AI Page (Custom Layout) */}
-              <Route element={<ProtectedRoute allowedRoles={['student', 'teacher', 'institution', 'admin']} />}>
-                <Route path="/ttr-ai" element={<TTRAI />} />
-              </Route>
-            </Routes>
-          </Suspense>
-        </Router>
-      </ThemeProvider>
-    </UserProvider>
+              </Routes>
+            </Suspense>
+          </Router>
+        </ThemeProvider>
+      </UserProvider>
+    </ErrorBoundary>
   );
 }
 
