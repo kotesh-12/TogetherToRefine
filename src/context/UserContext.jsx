@@ -17,6 +17,17 @@ export function UserProvider({ children }) {
         let retryCount = 0;
         const MAX_RETRIES = 3;
 
+        // Failsafe: Force stop loading after 6 seconds
+        const failsafe = setTimeout(() => {
+            setLoading((prev) => {
+                if (prev) {
+                    console.log("Force clearing loading state due to timeout.");
+                    return false;
+                }
+                return prev;
+            });
+        }, 6000);
+
         const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
             console.log("Auth State Changed:", currentUser ? "User Logged In" : "User Logged Out");
             setUser(currentUser);
@@ -119,6 +130,7 @@ export function UserProvider({ children }) {
         });
 
         return () => {
+            clearTimeout(failsafe);
             unsubscribeAuth();
             if (unsubscribeSnapshot) unsubscribeSnapshot();
             if (unsubscribeSession) unsubscribeSession();
