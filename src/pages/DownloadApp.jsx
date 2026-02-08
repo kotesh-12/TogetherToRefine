@@ -137,15 +137,34 @@ export default function DownloadApp() {
                         </div>
                     </div>
                 ) : (
-                    // 3. PC / ALREADY INSTALLED / UNSUPPORTED
-                    <div>
-                        <div style={{ background: '#e3f2fd', color: '#0d47a1', padding: '15px', borderRadius: '12px', fontSize: '14px', marginBottom: '20px', textAlign: 'left', lineHeight: '1.5' }}>
-                            ✅ App allows direct install only on supported mobile browsers. <br /><br />
-                            If the prompt doesn't appear, you may already have it installed!
-                        </div>
+                    // 3. NO PROMPT DETECTED (Manual Instructions or Desktop)
+                    <div style={{ textAlign: 'left', width: '100%' }}>
+                        {isAndroid ? (
+                            <div style={{ background: '#e3f2fd', padding: '20px', borderRadius: '16px', border: '1px solid #bbdefb' }}>
+                                <p style={{ margin: '0 0 10px 0', fontSize: '15px', fontWeight: 'bold', color: '#0d47a1' }}>
+                                    Automatic install not ready.
+                                </p>
+                                <p style={{ fontSize: '14px', color: '#1565c0', marginBottom: '10px' }}>
+                                    Please install manually:
+                                </p>
+                                <ol style={{ paddingLeft: '20px', margin: '0', fontSize: '14px', color: '#0d47a1', lineHeight: '1.6' }}>
+                                    <li>Tap the <b>three dots</b> (⋮) in the browser menu.</li>
+                                    <li>Select <b>"Install App"</b> or <b>"Add to Home Screen"</b>.</li>
+                                </ol>
+                            </div>
+                        ) : (
+                            <div style={{ background: '#f5f6fa', color: '#2d3436', padding: '15px', borderRadius: '12px', fontSize: '14px', marginBottom: '20px', lineHeight: '1.5' }}>
+                                ✅ <b>To Install:</b><br />
+                                Check your browser's menu for an <b>"Install App"</b> option.
+                                <br /><br />
+                                <span style={{ fontSize: '12px', color: '#636e72' }}>If exploring on PC, you can continue to the website.</span>
+                            </div>
+                        )}
+
                         <button
                             onClick={() => navigate('/')}
                             style={{
+                                marginTop: '20px',
                                 background: '#1a1a1a', color: 'white',
                                 border: 'none', padding: '16px', borderRadius: '14px',
                                 fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', width: '100%'
