@@ -16,7 +16,7 @@ const updateSW = registerSW({
   },
 });
 
-const APP_VERSION = '0.0.53'; // APK PREP
+const APP_VERSION = '0.0.54'; // UI & ICON FIX
 console.log("TTR App Version:", APP_VERSION);
 
 // Version Check for Debugging

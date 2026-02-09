@@ -311,12 +311,12 @@ export default function Login() {
         );
     }
 
-    if (userLoading) {
+    if (userLoading || user) {
         return (
             <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px' }}>
                 <div className="spinner" style={{ width: '40px', height: '40px', borderRadius: '50%', border: '4px solid #f3f3f3', borderTop: '4px solid #3498db', animation: 'spin 1s linear infinite' }}></div>
                 <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-                <p>Verifying Session...</p>
+                <p>{user ? "Redirecting..." : "Verifying Session..."}</p>
             </div>
         );
     }
