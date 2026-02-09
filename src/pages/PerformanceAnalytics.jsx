@@ -139,7 +139,6 @@ export default function PerformanceAnalytics() {
         doc.text(`Name: ${studentName}`, 20, 45);
         doc.text(`Class: ${studentClass} - ${studentSection}`, 20, 52);
         doc.text(`Academic Year: 2025-26`, 20, 59);
-        doc.text(`Rank: ${classRank || 'N/A'} / ${totalStudents}`, 150, 52);
 
         // Marks Table
         const tableData = [];
@@ -170,7 +169,7 @@ export default function PerformanceAnalytics() {
         doc.setFont('helvetica', 'normal');
         const overallAvg = (Object.values(subjectStats).reduce((sum, s) => sum + parseFloat(s.average), 0) / Object.keys(subjectStats).length).toFixed(1);
         doc.text(`Overall Average: ${overallAvg}%`, 20, finalY + 7);
-        doc.text(`Class Rank: ${classRank || 'N/A'} out of ${totalStudents}`, 20, finalY + 14);
+        doc.text(`Learning Progress: ${overallAvg >= 75 ? 'Excellent' : overallAvg >= 60 ? 'Good' : 'Needs Focus'}`, 20, finalY + 14);
 
         // Footer
         doc.setFontSize(9);
@@ -323,26 +322,70 @@ export default function PerformanceAnalytics() {
                         {/* Stats Overview */}
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '20px' }}>
                             <StatCard
-                                title="Overall Average"
+                                title="Overall Progress"
                                 value={`${overallAvg}%`}
-                                subtitle={overallAvg >= 75 ? "Excellent!" : overallAvg >= 60 ? "Good" : "Needs Improvement"}
+                                subtitle={overallAvg >= 75 ? "Excellent Growth!" : overallAvg >= 60 ? "Good Progress" : "Keep Learning"}
                                 color={overallAvg >= 75 ? '#27ae60' : overallAvg >= 60 ? '#f39c12' : '#e74c3c'}
                                 icon="📈"
                             />
                             <StatCard
-                                title="Class Rank"
-                                value={classRank || 'N/A'}
-                                subtitle={`Out of ${totalStudents} students`}
+                                title="Learning Velocity"
+                                value={`${Math.min(Math.round((studentMarks.length / 30) * 100), 100)}%`}
+                                subtitle={`${studentMarks.length} concepts tested`}
                                 color="#3498db"
-                                icon="🏆"
+                                icon="🚀"
                             />
                             <StatCard
-                                title="Subjects"
-                                value={Object.keys(subjectStats).length}
-                                subtitle={`${studentMarks.length} tests taken`}
+                                title="Subjects Mastered"
+                                value={Object.values(subjectStats).filter(s => parseFloat(s.average) >= 70).length}
+                                subtitle={`Out of ${Object.keys(subjectStats).length} subjects`}
                                 color="#9b59b6"
-                                icon="📚"
+                                icon="🎯"
                             />
+                        </div>
+
+                        {/* AI Knowledge Insights */}
+                        <div className="card" style={{ marginBottom: '20px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
+                            <h3 style={{ margin: '0 0 15px 0', color: 'white' }}>🤖 AI Learning Insights</h3>
+                            <div style={{ display: 'grid', gap: '10px' }}>
+                                {(() => {
+                                    const strengths = Object.entries(subjectStats)
+                                        .filter(([_, stats]) => parseFloat(stats.average) >= 75)
+                                        .map(([subject]) => subject);
+
+                                    const weaknesses = Object.entries(subjectStats)
+                                        .filter(([_, stats]) => parseFloat(stats.average) < 60)
+                                        .map(([subject]) => subject);
+
+                                    return (
+                                        <>
+                                            {strengths.length > 0 && (
+                                                <div style={{ background: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '8px' }}>
+                                                    <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '5px' }}>✅ Strengths:</div>
+                                                    <div style={{ fontSize: '15px', fontWeight: 'bold' }}>
+                                                        Strong grasp of {strengths.join(', ')} - Excellent foundation!
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {weaknesses.length > 0 && (
+                                                <div style={{ background: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '8px' }}>
+                                                    <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '5px' }}>💡 Focus Areas:</div>
+                                                    <div style={{ fontSize: '15px', fontWeight: 'bold' }}>
+                                                        {weaknesses.join(', ')} need more practice - Recommended: 30 mins daily
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <div style={{ background: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '8px' }}>
+                                                <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '5px' }}>🎯 Prediction:</div>
+                                                <div style={{ fontSize: '15px', fontWeight: 'bold' }}>
+                                                    At current pace, projected exam score: {Math.round(overallAvg * 1.1)}%
+                                                    {overallAvg >= 70 ? " - On track for excellent results!" : " - Increase practice to improve"}
+                                                </div>
+                                            </div>
+                                        </>
+                                    );
+                                })()}
+                            </div>
                         </div>
 
                         {/* Subject-wise Performance */}
@@ -410,6 +453,6 @@ export default function PerformanceAnalytics() {
                     </>
                 )}
             </div>
-        </div>
+        </div >
     );
 }
