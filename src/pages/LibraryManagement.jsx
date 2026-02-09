@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { db } from '../firebase';
-import { collection, addDoc, query, where, getDocs, updateDoc, doc, serverTimestamp, orderBy } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, updateDoc, deleteDoc, doc, serverTimestamp, orderBy } from 'firebase/firestore';
 
 export default function LibraryManagement() {
     const navigate = useNavigate();
@@ -43,6 +43,7 @@ export default function LibraryManagement() {
             fetchReservations();
         } else {
             fetchIssuedBooks();
+            fetchReservations();
         }
     }, [userData]);
 
@@ -193,9 +194,21 @@ export default function LibraryManagement() {
 
     const fetchReservations = async () => {
         try {
-            const q = query(collection(db, "library_reservations"), where("studentId", "==", userData.uid));
+            let q;
+            if (isStudent) {
+                q = query(collection(db, "library_reservations"), where("studentId", "==", userData.uid));
+            } else {
+                q = query(collection(db, "library_reservations"), orderBy("reservedAt", "desc"));
+            }
             const snap = await getDocs(q);
             setReservations(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        } catch (e) { console.error(e); }
+    };
+
+    const deleteReservation = async (id) => {
+        try {
+            await deleteDoc(doc(db, "library_reservations", id));
+            fetchReservations();
         } catch (e) { console.error(e); }
     };
 
@@ -295,6 +308,17 @@ export default function LibraryManagement() {
                                 }}
                             >
                                 ↩️ Return Book
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('reservations')}
+                                style={{
+                                    padding: '10px 20px', background: 'none', border: 'none',
+                                    borderBottom: activeTab === 'reservations' ? '3px solid #0984e3' : 'none',
+                                    fontWeight: activeTab === 'reservations' ? 'bold' : 'normal',
+                                    cursor: 'pointer', color: activeTab === 'reservations' ? '#0984e3' : '#636e72'
+                                }}
+                            >
+                                📋 Reservations
                             </button>
                         </>
                     )}
@@ -634,7 +658,52 @@ export default function LibraryManagement() {
                         )}
                     </div>
                 )}
+
+                {/* RESERVATIONS TAB (Admin) */}
+                {activeTab === 'reservations' && !isStudent && (
+                    <div className="card">
+                        <h3>Reservations Queue ({reservations.length})</h3>
+                        {reservations.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>No active reservations</div>
+                        ) : (
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                                <thead style={{ background: '#f8f9fa' }}>
+                                    <tr>
+                                        <th style={{ padding: '10px', textAlign: 'left' }}>Book</th>
+                                        <th style={{ padding: '10px', textAlign: 'left' }}>Student</th>
+                                        <th style={{ padding: '10px', textAlign: 'center' }}>Reserved At</th>
+                                        <th style={{ padding: '10px', textAlign: 'center' }}>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {reservations.map(res => (
+                                        <tr key={res.id} style={{ borderBottom: '1px solid #eee' }}>
+                                            <td style={{ padding: '10px' }}>{res.bookTitle}</td>
+                                            <td style={{ padding: '10px' }}>{res.studentName}</td>
+                                            <td style={{ padding: '10px', textAlign: 'center' }}>
+                                                {res.reservedAt?.toDate?.()?.toLocaleDateString() || 'Recently'}
+                                            </td>
+                                            <td style={{ padding: '10px', textAlign: 'center' }}>
+                                                <button
+                                                    onClick={() => deleteReservation(res.id)}
+                                                    style={{
+                                                        background: '#e74c3c', color: 'white',
+                                                        border: 'none', padding: '5px 12px',
+                                                        borderRadius: '4px', cursor: 'pointer',
+                                                        fontSize: '12px'
+                                                    }}
+                                                >
+                                                    ❌ Remove
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                )}
             </div>
-        </div>
+        </div >
     );
 }

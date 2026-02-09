@@ -29,6 +29,10 @@ export default function HomeworkSystem() {
     const [submissionFile, setSubmissionFile] = useState(null);
     const [submissionText, setSubmissionText] = useState('');
 
+    // VIEW SUBMISSIONS (Teacher)
+    const [viewSubmissionId, setViewSubmissionId] = useState(null);
+    const [submissionsData, setSubmissionsData] = useState([]);
+
     useEffect(() => {
         if (activeTab === 'view') {
             fetchHomework();
@@ -77,6 +81,21 @@ export default function HomeworkSystem() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const fetchSubmissions = async (hwId) => {
+        if (viewSubmissionId === hwId) {
+            setViewSubmissionId(null);
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const q = query(collection(db, "homework_submissions"), where("homeworkId", "==", hwId), orderBy("submittedAt", "desc"));
+            const snap = await getDocs(q);
+            setSubmissionsData(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+            setViewSubmissionId(hwId);
+        } catch (e) { console.error(e); } finally { setLoading(false); }
     };
 
     const handleCreateHomework = async () => {
@@ -329,6 +348,16 @@ export default function HomeworkSystem() {
                                                     Posted by {hw.teacherName} • {hw.createdAt?.toDate?.()?.toLocaleDateString() || 'Recently'}
                                                 </div>
 
+                                                {userData?.role === 'teacher' && (
+                                                    <button
+                                                        onClick={() => fetchSubmissions(hw.id)}
+                                                        className="btn-outline"
+                                                        style={{ fontSize: '13px', padding: '5px 10px' }}
+                                                    >
+                                                        {viewSubmissionId === hw.id ? 'Hide Submissions' : 'View Submissions'}
+                                                    </button>
+                                                )}
+
                                                 {userData?.role === 'student' && !submission && (
                                                     <button
                                                         onClick={() => setSelectedHomework(hw)}
@@ -339,6 +368,38 @@ export default function HomeworkSystem() {
                                                     </button>
                                                 )}
                                             </div>
+
+                                            {/* Teacher Submission View */}
+                                            {viewSubmissionId === hw.id && (
+                                                <div style={{ marginTop: '15px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
+                                                    <h4>Student Submissions ({submissionsData.length})</h4>
+                                                    {submissionsData.length === 0 ? (
+                                                        <div style={{ color: '#999', padding: '10px' }}>No submissions yet.</div>
+                                                    ) : (
+                                                        <div style={{ display: 'grid', gap: '10px' }}>
+                                                            {submissionsData.map(sub => (
+                                                                <div key={sub.id} style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', border: '1px solid #eee' }}>
+                                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                                                                        <strong>{sub.studentName} <span style={{ color: '#636e72', fontWeight: 'normal' }}>({sub.class})</span></strong>
+                                                                        <span style={{ fontSize: '12px', color: '#636e72' }}>
+                                                                            {sub.submittedAt?.toDate().toLocaleString()}
+                                                                        </span>
+                                                                    </div>
+                                                                    {sub.submissionText && (
+                                                                        <div style={{ fontSize: '14px', marginBottom: '5px', color: '#2d3436' }}>{sub.submissionText}</div>
+                                                                    )}
+                                                                    {sub.fileUrl && (
+                                                                        <a href={sub.fileUrl} target="_blank" rel="noopener noreferrer"
+                                                                            style={{ fontSize: '13px', color: '#0984e3', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                                            📎 View Attachment ({sub.fileName || 'File'})
+                                                                        </a>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })}
