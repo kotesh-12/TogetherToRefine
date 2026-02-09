@@ -16,7 +16,7 @@ const updateSW = registerSW({
   },
 });
 
-const APP_VERSION = '0.0.52'; // PWA RESTORED
+const APP_VERSION = '0.0.53'; // APK PREP
 console.log("TTR App Version:", APP_VERSION);
 
 // Version Check for Debugging

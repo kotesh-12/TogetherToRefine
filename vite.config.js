@@ -18,11 +18,17 @@ export default defineConfig(({ mode }) => {
           name: 'Together To Refine',
           short_name: 'TTR',
           description: 'Together To Refine - Educational Platform',
-          theme_color: '#ffffff',
+          theme_color: '#1a73e8', // Changed to Primary Brand Color for better native feel
           background_color: '#ffffff',
           display: 'standalone',
+          orientation: 'portrait', // Forces native app feel
           scope: '/',
           start_url: '/',
+          id: 'com.togethertorefine.app', // Unique App ID
+          categories: ['education', 'productivity'],
+          launch_handler: {
+            client_mode: 'navigate-existing'
+          },
           icons: [
             {
               src: 'pwa-192x192.png',
@@ -47,10 +53,10 @@ export default defineConfig(({ mode }) => {
           clientsClaim: true,
           skipWaiting: true,
           globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
-          maximumFileSizeToCacheInBytes: 5000000, // Important for the monolithic bundle
+          maximumFileSizeToCacheInBytes: 5000000,
         },
         devOptions: {
-          enabled: false // Disable SW in dev to avoid headache
+          enabled: false
         }
       })
     ],
