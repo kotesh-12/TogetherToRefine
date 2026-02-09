@@ -1,52 +1,50 @@
-import React, { lazy } from 'react';
+import React from 'react';
 import './App.css';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { UserProvider } from './context/UserContext';
 import { ThemeProvider } from './context/ThemeContext';
 
-// Lazy loading components for better optimization
-const Login = lazy(() => import('./pages/Login'));
-const AccessDenied = lazy(() => import('./pages/AccessDenied'));
-const Student = lazy(() => import('./pages/Student'));
-const Teacher = lazy(() => import('./pages/Teacher'));
-const Institution = lazy(() => import('./pages/Institution'));
-const Admission = lazy(() => import('./pages/Admission'));
-const Profile = lazy(() => import('./pages/Profile'));
-const ProfileView = lazy(() => import('./pages/ProfileView'));
-const Group = lazy(() => import('./pages/Group'));
-const Allotment = lazy(() => import('./pages/Allotment'));
-const Details = lazy(() => import('./pages/Details'));
-const TTRAI = lazy(() => import('./pages/TTRAI'));
-const WaitingList = lazy(() => import('./pages/WaitingList'));
-const Attendance = lazy(() => import('./pages/Attendance'));
-const GeneralFeedback = lazy(() => import('./pages/GeneralFeedback'));
-const Exam = lazy(() => import('./pages/Exam'));
-const Health = lazy(() => import('./pages/Health'));
-const FeedbackOverview = lazy(() => import('./pages/FeedbackOverview'));
-const Report = lazy(() => import('./pages/Report'));
-const FourWayLearning = lazy(() => import('./pages/FourWayLearning'));
-const PendingApproval = lazy(() => import('./pages/PendingApproval'));
-const VideoLibrary = lazy(() => import('./pages/VideoLibrary'));
-const SelectFeedbackTarget = lazy(() => import('./pages/SelectFeedbackTarget'));
-const Notification = lazy(() => import('./pages/Notification'));
-const Timetable = lazy(() => import('./pages/Timetable'));
-const DownloadApp = lazy(() => import('./pages/DownloadApp'));
-const UpidHistory = lazy(() => import('./pages/UpidHistory'));
-const FacultyFeedback = lazy(() => import('./pages/FacultyFeedback'));
-const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
-const InstitutionDetailsAdmin = lazy(() => import('./pages/InstitutionDetailsAdmin'));
-const Onboarding = lazy(() => import('./pages/Onboarding'));
-const Settings = lazy(() => import('./pages/Settings'));
-const StudentFee = lazy(() => import('./pages/StudentFee'));
-const InstitutionFee = lazy(() => import('./pages/InstitutionFee'));
-const Announcements = lazy(() => import('./pages/Announcements'));
-
+// Regular imports instead of lazy loading
+import Login from './pages/Login';
+import AccessDenied from './pages/AccessDenied';
+import Student from './pages/Student';
+import Teacher from './pages/Teacher';
+import Institution from './pages/Institution';
+import Admission from './pages/Admission';
+import Profile from './pages/Profile';
+import ProfileView from './pages/ProfileView';
+import Group from './pages/Group';
+import Allotment from './pages/Allotment';
+import Details from './pages/Details';
+import TTRAI from './pages/TTRAI';
+import WaitingList from './pages/WaitingList';
+import Attendance from './pages/Attendance';
+import GeneralFeedback from './pages/GeneralFeedback';
+import Exam from './pages/Exam';
+import Health from './pages/Health';
+import FeedbackOverview from './pages/FeedbackOverview';
+import Report from './pages/Report';
+import FourWayLearning from './pages/FourWayLearning';
+import PendingApproval from './pages/PendingApproval';
+import VideoLibrary from './pages/VideoLibrary';
+import SelectFeedbackTarget from './pages/SelectFeedbackTarget';
+import Notification from './pages/Notification';
+import Timetable from './pages/Timetable';
+import DownloadApp from './pages/DownloadApp';
+import UpidHistory from './pages/UpidHistory';
+import FacultyFeedback from './pages/FacultyFeedback';
+import AdminDashboard from './pages/AdminDashboard';
+import InstitutionDetailsAdmin from './pages/InstitutionDetailsAdmin';
+import Onboarding from './pages/Onboarding';
+import Settings from './pages/Settings';
+import StudentFee from './pages/StudentFee';
+import InstitutionFee from './pages/InstitutionFee';
+import Announcements from './pages/Announcements';
 
 import ProtectedRoute from './components/ProtectedRoute';
-const MainLayout = lazy(() => import('./components/MainLayout'));
+import MainLayout from './components/MainLayout';
 
 import UpdateManager from './components/UpdateManager';
-import GlobalLoader from './components/GlobalLoader';
 
 import ErrorBoundary from './components/ErrorBoundary';
 
