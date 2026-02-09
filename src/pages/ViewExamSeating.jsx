@@ -49,7 +49,7 @@ export default function ViewExamSeating() {
 
         // Search through all rooms for this student's roll number
         for (const room of plan.seatingPlan) {
-            const seat = room.seats.find(s => s.rollNo.toString() === studentRoll.toString());
+            const seat = (room.seats || []).find(s => s.rollNo.toString() === studentRoll.toString());
             if (seat) {
                 setMySeat({
                     roomName: room.roomName,
@@ -172,7 +172,7 @@ export default function ViewExamSeating() {
                                                     gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
                                                     gap: '10px'
                                                 }}>
-                                                    {room.seats.map(seat => {
+                                                    {(room.seats || []).map(seat => {
                                                         // Highlight student's own seat
                                                         const isMySeats = userData?.role === 'student' &&
                                                             mySeat &&
