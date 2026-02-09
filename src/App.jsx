@@ -55,6 +55,7 @@ import ExamSeatingPlanner from './pages/ExamSeatingPlanner';
 import ViewExamSeating from './pages/ViewExamSeating';
 import LibraryManagement from './pages/LibraryManagement';
 import MessagingSystem from './pages/MessagingSystem';
+import InspectionReadiness from './pages/InspectionReadiness';
 
 import ProtectedRoute from './components/ProtectedRoute';
 import MainLayout from './components/MainLayout';
@@ -143,6 +144,7 @@ function App() {
                     <Route path="/timetable-generator" element={<TimetableGenerator />} />
                     <Route path="/exam-seating" element={<ExamSeatingPlanner />} />
                     <Route path="/library" element={<LibraryManagement />} />
+                    <Route path="/inspection-readiness" element={<InspectionReadiness />} />
                     <Route path="/institution" element={<Institution />} />
                     <Route path="/admission" element={<Admission />} />
                     <Route path="/waiting-list" element={<WaitingList />} />
