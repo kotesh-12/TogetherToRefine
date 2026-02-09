@@ -63,7 +63,7 @@ export default function DownloadApp() {
                 position: 'relative'
             }}>
                 <img
-                    src={logo}
+                    src={`${logo}?v=58`}
                     alt="App Icon"
                     style={{
                         width: '90px', height: '90px', borderRadius: '22px',
