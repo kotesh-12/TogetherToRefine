@@ -11,6 +11,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import logo from '../assets/logo.png';
 
 
 
@@ -348,7 +349,7 @@ export default function Login() {
     return (
         <div className="login-container">
             <div className="card login-card" style={{ textAlign: 'center' }}>
-                <img src="/logo.png" alt="TTR Logo" style={{ width: '80px', height: 'auto', marginBottom: '10px' }} />
+                <img src={logo} alt="TTR Logo" style={{ width: '80px', height: 'auto', marginBottom: '10px' }} />
                 <h2 className="login-title">{isLogin ? 'Login' : 'Sign Up'}</h2>
                 {error && <div className="error-text">{error}</div>}
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePWA } from '../context/PWAContext';
+import logo from '../assets/logo.png';
 
 export default function DownloadApp() {
     const { userData } = useUser();
@@ -62,7 +63,7 @@ export default function DownloadApp() {
                 position: 'relative'
             }}>
                 <img
-                    src="/logo.png"
+                    src={logo}
                     alt="App Icon"
                     style={{
                         width: '90px', height: '90px', borderRadius: '22px',
