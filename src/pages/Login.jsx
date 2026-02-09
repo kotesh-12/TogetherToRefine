@@ -177,7 +177,7 @@ export default function Login() {
         setError('');
 
         if (isLogin) {
-            if (!email || !password || !role) {
+            if (!email || !password) {
                 setError('All fields are required!');
                 return;
             }
@@ -192,6 +192,7 @@ export default function Login() {
             }
         }
 
+        // Password Strength Validation (VULN-011)
         if (!isLogin) {
             if (password.length < 8) {
                 setError('Password must be at least 8 characters long.');
@@ -224,6 +225,8 @@ export default function Login() {
                         else redirectToRolePage(dbRole);
                     }
                 } else {
+                    // Fallback if role not found automatically - maybe direct to details to picking one?
+                    // Or just default to details
                     navigate('/details');
                 }
             } else {
@@ -328,17 +331,19 @@ export default function Login() {
                 {error && <div className="error-text">{error}</div>}
 
                 <form onSubmit={handleAuth}>
-                    <select
-                        className="input-field"
-                        value={role}
-                        onChange={(e) => setRole(e.target.value)}
-                        required
-                    >
-                        <option value="" disabled>Select Role</option>
-                        <option value="student">Student</option>
-                        <option value="teacher">Teacher</option>
-                        <option value="institution">Institution</option>
-                    </select>
+                    {!isLogin && (
+                        <select
+                            className="input-field"
+                            value={role}
+                            onChange={(e) => setRole(e.target.value)}
+                            required
+                        >
+                            <option value="" disabled>Select Role</option>
+                            <option value="student">Student</option>
+                            <option value="teacher">Teacher</option>
+                            <option value="institution">Institution</option>
+                        </select>
+                    )}
 
                     {!isLogin && (
                         <>
