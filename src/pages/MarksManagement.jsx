@@ -119,8 +119,15 @@ export default function MarksManagement() {
 
             // Prepare batch operations
             entries.forEach(([studentId, marks]) => {
-                const student = students.find(s => (s.studentId || s.id) === studentId);
-                const docRef = doc(collection(db, "marks")); // Create a new doc ref with auto-ID
+                // Find student by matching ID (handling potential type mismatch)
+                const student = students.find(s => String(s.studentId || s.id) === String(studentId));
+
+                // Construct Deterministic ID for Upsert (prevents duplicates)
+                const safeSubject = (userData.subject || "General").replace(/[^a-zA-Z0-9]/g, "_");
+                const safeExam = examType.replace(/[^a-zA-Z0-9]/g, "_");
+                const docId = `MARK_${studentId}_${safeSubject}_${safeExam}`;
+
+                const docRef = doc(db, "marks", docId);
 
                 batch.set(docRef, {
                     studentId: studentId,
@@ -130,14 +137,15 @@ export default function MarksManagement() {
                     subject: userData.subject || "General",
                     examType: examType,
                     marks: parseFloat(marks),
-                    maxMarks: 100, // Can be made dynamic
+                    maxMarks: 100,
                     teacherId: userData.uid,
                     teacherName: userData.name || "Teacher",
-                    createdAt: serverTimestamp(),
+                    createdAt: serverTimestamp(), // Acts as 'Last Updated'
                     institutionId: userData.institutionId || userData.createdBy || userData.uid || "unknown"
-                });
+                }, { merge: true });
             });
 
+            console.log(`Submitting batch of ${entries.length} marks...`);
             await batch.commit();
 
             alert(`✅ Marks submitted successfully for ${entries.length} students!`);
