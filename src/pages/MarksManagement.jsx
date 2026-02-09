@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { db } from '../firebase';
-import { collection, addDoc, query, where, getDocs, serverTimestamp, orderBy } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, serverTimestamp, orderBy, writeBatch, doc } from 'firebase/firestore';
 
 export default function MarksManagement() {
     const navigate = useNavigate();
@@ -91,6 +91,11 @@ export default function MarksManagement() {
             return;
         }
 
+        if (!userData || !userData.uid) {
+            alert("User session not found. Please login again.");
+            return;
+        }
+
         const entries = Object.entries(marksData).filter(([_, marks]) => marks !== '');
 
         if (entries.length === 0) {
@@ -98,33 +103,49 @@ export default function MarksManagement() {
             return;
         }
 
-        try {
-            // Save each student's marks
-            for (const [studentId, marks] of entries) {
-                const student = students.find(s => (s.studentId || s.id) === studentId);
+        // Validate marks
+        const invalidEntries = entries.filter(([_, marks]) => {
+            const m = parseFloat(marks);
+            return isNaN(m) || m < 0 || m > 100;
+        });
 
-                await addDoc(collection(db, "marks"), {
+        if (invalidEntries.length > 0) {
+            alert("Some marks are invalid. Please ensure all marks are numbers between 0 and 100.");
+            return;
+        }
+
+        try {
+            const batch = writeBatch(db);
+
+            // Prepare batch operations
+            entries.forEach(([studentId, marks]) => {
+                const student = students.find(s => (s.studentId || s.id) === studentId);
+                const docRef = doc(collection(db, "marks")); // Create a new doc ref with auto-ID
+
+                batch.set(docRef, {
                     studentId: studentId,
                     studentName: student?.studentName || student?.name || "Unknown",
                     class: selectedClass,
                     section: selectedSection,
                     subject: userData.subject || "General",
                     examType: examType,
-                    marks: parseInt(marks),
+                    marks: parseFloat(marks),
                     maxMarks: 100, // Can be made dynamic
                     teacherId: userData.uid,
-                    teacherName: userData.name,
+                    teacherName: userData.name || "Teacher",
                     createdAt: serverTimestamp(),
-                    institutionId: userData.institutionId || userData.createdBy || userData.uid
+                    institutionId: userData.institutionId || userData.createdBy || userData.uid || "unknown"
                 });
-            }
+            });
 
-            alert(`✅ Marks submitted for ${entries.length} students!`);
+            await batch.commit();
+
+            alert(`✅ Marks submitted successfully for ${entries.length} students!`);
             setMarksData({});
             setExamType('');
         } catch (e) {
-            console.error(e);
-            alert("Error submitting marks.");
+            console.error("Error submitting marks:", e);
+            alert("Error submitting marks: " + e.message);
         }
     };
 
