@@ -41,12 +41,19 @@ const ProtectedRoute = ({ allowedRoles }) => {
     }
 
     // Role Check (Case Insensitive)
-    const userRole = (userData.role || '').toLowerCase();
-    const isAuthorized = allowedRoles.some(r => r.toLowerCase() === userRole);
+    // Role Check (Case Insensitive & Trimmed)
+    const userRole = (userData.role || '').toLowerCase().trim();
+    if (!userRole) {
+        console.warn("ProtectedRoute: No role found in userData", userData);
+        return <Navigate to="/details" replace />;
+    }
+
+    const isAuthorized = allowedRoles.some(r => r.toLowerCase().trim() === userRole);
 
     if (allowedRoles && !isAuthorized) {
         // Unauthorized. 
-        console.warn(`Access Denied: Role '${userRole}' is not in [${allowedRoles}]`);
+        console.warn(`Access Denied: User role '${userRole}' is not authorized. Allowed: [${allowedRoles.join(', ')}]`);
+        console.log("Debug UserData:", userData);
         return <Navigate to="/access-denied" replace />;
     }
 
