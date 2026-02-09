@@ -100,6 +100,10 @@ function App() {
                     <Route path="/timetable" element={<Timetable />} />
                     <Route path="/exam" element={<Exam />} />
                     <Route path="/announcements" element={<Announcements />} />
+                    <Route path="/homework" element={<HomeworkSystem />} />
+                    <Route path="/attendance-analytics" element={<AttendanceAnalytics />} />
+                    <Route path="/view-exam-seating" element={<ViewExamSeating />} />
+                    <Route path="/library" element={<LibraryManagement />} />
                   </Route>
 
                   {/* Admin Route */}
@@ -113,11 +117,7 @@ function App() {
                     <Route path="/student" element={<Student />} />
                     <Route path="/upid-history" element={<UpidHistory />} />
                     <Route path="/fees/student" element={<StudentFee />} />
-                    <Route path="/analytics" element={<PerformanceAnalytics />} />
-                    <Route path="/homework" element={<HomeworkSystem />} />
-                    <Route path="/attendance-analytics" element={<AttendanceAnalytics />} />
-                    <Route path="/view-exam-seating" element={<ViewExamSeating />} />
-                    <Route path="/library" element={<LibraryManagement />} />
+
                   </Route>
 
                   {/* Teacher Only */}
@@ -126,10 +126,7 @@ function App() {
                     <Route path="/inspector-mode" element={<InspectorMode />} />
                     <Route path="/dropout-predictor" element={<EarlyWarningSystem />} />
                     <Route path="/marks" element={<MarksManagement />} />
-                    <Route path="/analytics" element={<PerformanceAnalytics />} />
-                    <Route path="/homework" element={<HomeworkSystem />} />
-                    <Route path="/attendance-analytics" element={<AttendanceAnalytics />} />
-                    <Route path="/view-exam-seating" element={<ViewExamSeating />} />
+
                     <Route path="/teacher" element={<Teacher />} />
                     <Route path="/feedback-overview" element={<FeedbackOverview />} />
                   </Route>
@@ -137,14 +134,14 @@ function App() {
                   {/* Parent Only */}
                   <Route element={<ProtectedRoute allowedRoles={['parent']} />}>
                     <Route path="/parent" element={<ParentDashboard />} />
-                    <Route path="/analytics" element={<PerformanceAnalytics />} />
+
                   </Route>
 
                   {/* Institution/Admin Only */}
                   <Route element={<ProtectedRoute allowedRoles={['institution']} />}>
                     <Route path="/timetable-generator" element={<TimetableGenerator />} />
                     <Route path="/exam-seating" element={<ExamSeatingPlanner />} />
-                    <Route path="/library" element={<LibraryManagement />} />
+
                     <Route path="/inspection-readiness" element={<InspectionReadiness />} />
                     <Route path="/institution" element={<Institution />} />
                     <Route path="/admission" element={<Admission />} />
@@ -160,6 +157,7 @@ function App() {
                 <Route element={<ProtectedRoute allowedRoles={['student', 'teacher', 'institution', 'admin', 'parent']} />}>
                   <Route path="/ttr-ai" element={<TTRAI />} />
                   <Route path="/messages" element={<MessagingSystem />} />
+                  <Route path="/analytics" element={<PerformanceAnalytics />} />
                 </Route>
               </Routes>
             </Router>
