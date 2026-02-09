@@ -11,11 +11,9 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
-      // TEMPORARILY DISABLED: VitePWA causing cache persistence issues
-      /*
       VitePWA({
         registerType: 'autoUpdate',
-        filename: 'sw-v48.js', // BREAKING CHANGE: Rename SW to kill potential zombie workers
+        filename: 'sw-v49.js', // VERSION BUMP: Force new worker
         includeAssets: ['logo.png', 'logo2.png'],
         manifest: {
           name: 'Together To Refine',
@@ -50,13 +48,13 @@ export default defineConfig(({ mode }) => {
           ]
         },
         workbox: {
-          navigateFallbackDenylist: [/^\/api/], // Do NOT cache API calls
+          globPatterns: ['**/*.{js,css,html,ico,png,svg}'], // Explicitly cache standard assets
+          navigateFallbackDenylist: [/^\/api/],
           cleanupOutdatedCaches: true,
           skipWaiting: true,
           clientsClaim: true
         }
       }),
-      */
     ],
     server: {
       host: true, // Allow external access (e.g. mobile testing)
@@ -82,8 +80,11 @@ export default defineConfig(({ mode }) => {
       chunkSizeWarningLimit: 2000, // Increased since we're bundling everything together
       rollupOptions: {
         output: {
-          // Removed manualChunks to prevent code splitting
-          // All code will be in a single bundle to avoid dynamic import errors
+          manualChunks: {
+            vendor: ['react', 'react-dom', 'react-router-dom'],
+            firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+            ui: ['react-player']
+          }
         }
       }
     }
