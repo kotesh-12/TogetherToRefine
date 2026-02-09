@@ -145,7 +145,7 @@ export default function Student() {
 
     return (
         <div className="page-wrapper">
-            <FeatureTour tourId="student_dashboard_v1" steps={tourSteps} />
+            <FeatureTour tourId="student_dashboard_v1" steps={tourSteps} userId={userData?.uid} />
             <AIBadge />
 
             {userData?.pid && (

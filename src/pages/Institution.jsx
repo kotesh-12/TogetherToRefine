@@ -6,9 +6,11 @@ import AIBadge from '../components/AIBadge';
 import AnnouncementBar from '../components/AnnouncementBar';
 import FeatureTour from '../components/FeatureTour';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from '../context/UserContext';
 
 export default function Institution() {
     const navigate = useNavigate();
+    const { userData } = useUser();
     const [submissions, setSubmissions] = useState([]);
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -204,7 +206,7 @@ export default function Institution() {
 
     return (
         <div className="page-wrapper">
-            <FeatureTour tourId="institution_dashboard_v1" steps={tourSteps} />
+            <FeatureTour tourId="institution_dashboard_v1" steps={tourSteps} userId={userData?.uid} />
             <AIBadge />
 
             <div style={{ padding: '20px', width: '100%', boxSizing: 'border-box' }}>

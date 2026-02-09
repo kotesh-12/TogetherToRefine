@@ -18,20 +18,22 @@ import { createPortal } from 'react-dom';
  *    ]}
  * />
  */
-export default function FeatureTour({ tourId, steps }) {
+export default function FeatureTour({ tourId, steps, userId }) {
     const [stepIndex, setStepIndex] = useState(0);
     const [isVisible, setIsVisible] = useState(false);
     const [rect, setRect] = useState(null);
 
     // Check if tour is already completed
     useEffect(() => {
-        const completed = localStorage.getItem(`tour_completed_${tourId}`);
+        if (!userId) return; // Wait for user to be loaded
+        const key = `tour_completed_${tourId}_${userId}`;
+        const completed = localStorage.getItem(key);
         if (!completed) {
             // Delay slightly to ensure page load
             const timer = setTimeout(() => setIsVisible(true), 1500);
             return () => clearTimeout(timer);
         }
-    }, [tourId]);
+    }, [tourId, userId]);
 
     // Track Target Element Position
     useEffect(() => {
@@ -89,7 +91,9 @@ export default function FeatureTour({ tourId, steps }) {
 
     const handleClose = () => {
         setIsVisible(false);
-        localStorage.setItem(`tour_completed_${tourId}`, 'true');
+        if (userId) {
+            localStorage.setItem(`tour_completed_${tourId}_${userId}`, 'true');
+        }
     };
 
     if (!isVisible || !rect) return null;

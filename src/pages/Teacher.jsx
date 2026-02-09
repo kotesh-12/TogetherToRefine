@@ -123,7 +123,7 @@ export default function Teacher() {
 
     return (
         <div className="page-wrapper">
-            <FeatureTour tourId="teacher_dashboard_v1" steps={tourSteps} />
+            <FeatureTour tourId="teacher_dashboard_v1" steps={tourSteps} userId={userData?.uid} />
             <AIBadge />
 
             {/* Announcement Button (Relative) */}
