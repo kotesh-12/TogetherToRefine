@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
-import { db } from '../firebase';
+import { db, storage } from '../firebase';
 import { collection, addDoc, query, where, getDocs, orderBy, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 export default function HomeworkSystem() {
     const navigate = useNavigate();
@@ -117,13 +118,23 @@ export default function HomeworkSystem() {
             return;
         }
 
+        setLoading(true);
         try {
+            let fileUrl = null;
+            if (submissionFile) {
+                const fileRef = ref(storage, `homework_submissions/${userData.uid}/${Date.now()}_${submissionFile.name}`);
+                await uploadBytes(fileRef, submissionFile);
+                fileUrl = await getDownloadURL(fileRef);
+            }
+
             await addDoc(collection(db, "homework_submissions"), {
                 homeworkId: selectedHomework.id,
                 studentId: userData.uid,
                 studentName: userData.name,
                 class: userData.class || userData.assignedClass,
                 submissionText: submissionText,
+                fileUrl: fileUrl,
+                fileName: submissionFile ? submissionFile.name : null,
                 submittedAt: serverTimestamp(),
                 status: 'submitted'
             });
@@ -135,7 +146,9 @@ export default function HomeworkSystem() {
             fetchHomework();
         } catch (e) {
             console.error(e);
-            alert("Error submitting homework");
+            alert("Error submitting homework: " + e.message);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -360,6 +373,18 @@ export default function HomeworkSystem() {
                                     value={submissionText}
                                     onChange={(e) => setSubmissionText(e.target.value)}
                                     placeholder="Type your answer here or describe what you've attached..."
+                                />
+                            </div>
+
+                            <div style={{ marginBottom: '15px' }}>
+                                <label style={{ fontSize: '13px', color: '#636e72', display: 'block', marginBottom: '5px' }}>
+                                    Attach File (Image/PDF)
+                                </label>
+                                <input
+                                    type="file"
+                                    className="input-field"
+                                    onChange={(e) => setSubmissionFile(e.target.files[0])}
+                                    accept="image/*,application/pdf"
                                 />
                             </div>
 

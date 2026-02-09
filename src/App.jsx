@@ -117,6 +117,7 @@ function App() {
                     <Route path="/homework" element={<HomeworkSystem />} />
                     <Route path="/attendance-analytics" element={<AttendanceAnalytics />} />
                     <Route path="/view-exam-seating" element={<ViewExamSeating />} />
+                    <Route path="/library" element={<LibraryManagement />} />
                   </Route>
 
                   {/* Teacher Only */}

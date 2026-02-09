@@ -382,6 +382,24 @@ export default function PerformanceAnalytics() {
                                                     {overallAvg >= 70 ? " - On track for excellent results!" : " - Increase practice to improve"}
                                                 </div>
                                             </div>
+
+                                            {Object.entries(subjectStats).filter(([, s]) => Number(s.average) >= 90).length > 0 && (
+                                                <div style={{ marginTop: '15px' }}>
+                                                    <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '8px' }}>🏅 Achievements:</div>
+                                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                                        {Object.entries(subjectStats)
+                                                            .filter(([, s]) => Number(s.average) >= 90)
+                                                            .map(([subj]) => (
+                                                                <div key={subj} style={{
+                                                                    background: 'rgba(255,255,255,0.2)', padding: '5px 12px',
+                                                                    borderRadius: '20px', fontSize: '13px', fontWeight: 'bold'
+                                                                }}>
+                                                                    🏆 {subj} Master
+                                                                </div>
+                                                            ))}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </>
                                     );
                                 })()}

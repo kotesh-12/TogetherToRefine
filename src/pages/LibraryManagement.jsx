@@ -8,7 +8,8 @@ export default function LibraryManagement() {
     const navigate = useNavigate();
     const { userData } = useUser();
 
-    const [activeTab, setActiveTab] = useState('books'); // 'books', 'issue', 'return', 'reports'
+    const isStudent = userData?.role === 'student';
+    const [activeTab, setActiveTab] = useState(isStudent ? 'dashboard' : 'books'); // 'books', 'issue', 'return', 'dashboard'
 
     // Books State
     const [books, setBooks] = useState([]);
@@ -26,6 +27,10 @@ export default function LibraryManagement() {
     const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T')[0]);
     const [returnDate, setReturnDate] = useState('');
 
+    // Student Stats State
+    const [myStats, setMyStats] = useState({ read: 0, current: [] });
+    const [reservations, setReservations] = useState([]);
+
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -33,8 +38,13 @@ export default function LibraryManagement() {
 
     useEffect(() => {
         fetchBooks();
-        fetchIssuedBooks();
-    }, []);
+        if (isStudent) {
+            fetchMyStats();
+            fetchReservations();
+        } else {
+            fetchIssuedBooks();
+        }
+    }, [userData]);
 
     const fetchBooks = async () => {
         setLoading(true);
@@ -164,6 +174,54 @@ export default function LibraryManagement() {
         }
     };
 
+    const fetchMyStats = async () => {
+        if (!userData?.name) return;
+        try {
+            // Match mostly by name since issue process is manual
+            const q = query(collection(db, "library_issued"), where("studentName", "==", userData.name));
+            const snap = await getDocs(q);
+            const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+            const read = docs.filter(d => d.status === 'returned').length;
+            const current = docs.filter(d => d.status === 'issued');
+
+            setMyStats({ read, current });
+        } catch (e) {
+            console.error("Error fetching stats:", e);
+        }
+    };
+
+    const fetchReservations = async () => {
+        try {
+            const q = query(collection(db, "library_reservations"), where("studentId", "==", userData.uid));
+            const snap = await getDocs(q);
+            setReservations(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        } catch (e) { console.error(e); }
+    };
+
+    const handleReserve = async (book) => {
+        if (reservations.some(r => r.bookId === book.id && r.status === 'pending')) {
+            alert("You have already reserved this book.");
+            return;
+        }
+
+        try {
+            await addDoc(collection(db, "library_reservations"), {
+                bookId: book.id,
+                bookTitle: book.title,
+                studentId: userData.uid,
+                studentName: userData.name,
+                reservedAt: serverTimestamp(),
+                status: 'pending'
+            });
+            alert("✅ Book reserved successfully! We will notify you when it's available.");
+            fetchReservations();
+        } catch (e) {
+            console.error(e);
+            alert("Error reserving book");
+        }
+    };
+
     const calculateFine = (expectedReturnDate) => {
         const expected = new Date(expectedReturnDate.toDate ? expectedReturnDate.toDate() : expectedReturnDate);
         const today = new Date();
@@ -189,7 +247,20 @@ export default function LibraryManagement() {
                 </div>
 
                 {/* Tabs */}
-                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '2px solid #eee' }}>
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '2px solid #eee', overflowX: 'auto' }}>
+                    {isStudent && (
+                        <button
+                            onClick={() => setActiveTab('dashboard')}
+                            style={{
+                                padding: '10px 20px', background: 'none', border: 'none',
+                                borderBottom: activeTab === 'dashboard' ? '3px solid #0984e3' : 'none',
+                                fontWeight: activeTab === 'dashboard' ? 'bold' : 'normal',
+                                cursor: 'pointer', color: activeTab === 'dashboard' ? '#0984e3' : '#636e72'
+                            }}
+                        >
+                            📊 My Dashboard
+                        </button>
+                    )}
                     <button
                         onClick={() => setActiveTab('books')}
                         style={{
@@ -199,76 +270,136 @@ export default function LibraryManagement() {
                             cursor: 'pointer', color: activeTab === 'books' ? '#0984e3' : '#636e72'
                         }}
                     >
-                        📖 Books Catalog
+                        📖 {isStudent ? 'Browse Books' : 'Books Catalog'}
                     </button>
-                    <button
-                        onClick={() => setActiveTab('issue')}
-                        style={{
-                            padding: '10px 20px', background: 'none', border: 'none',
-                            borderBottom: activeTab === 'issue' ? '3px solid #0984e3' : 'none',
-                            fontWeight: activeTab === 'issue' ? 'bold' : 'normal',
-                            cursor: 'pointer', color: activeTab === 'issue' ? '#0984e3' : '#636e72'
-                        }}
-                    >
-                        ➕ Issue Book
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('return')}
-                        style={{
-                            padding: '10px 20px', background: 'none', border: 'none',
-                            borderBottom: activeTab === 'return' ? '3px solid #0984e3' : 'none',
-                            fontWeight: activeTab === 'return' ? 'bold' : 'normal',
-                            cursor: 'pointer', color: activeTab === 'return' ? '#0984e3' : '#636e72'
-                        }}
-                    >
-                        ↩️ Return Book
-                    </button>
+                    {!isStudent && (
+                        <>
+                            <button
+                                onClick={() => setActiveTab('issue')}
+                                style={{
+                                    padding: '10px 20px', background: 'none', border: 'none',
+                                    borderBottom: activeTab === 'issue' ? '3px solid #0984e3' : 'none',
+                                    fontWeight: activeTab === 'issue' ? 'bold' : 'normal',
+                                    cursor: 'pointer', color: activeTab === 'issue' ? '#0984e3' : '#636e72'
+                                }}
+                            >
+                                ➕ Issue Book
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('return')}
+                                style={{
+                                    padding: '10px 20px', background: 'none', border: 'none',
+                                    borderBottom: activeTab === 'return' ? '3px solid #0984e3' : 'none',
+                                    fontWeight: activeTab === 'return' ? 'bold' : 'normal',
+                                    cursor: 'pointer', color: activeTab === 'return' ? '#0984e3' : '#636e72'
+                                }}
+                            >
+                                ↩️ Return Book
+                            </button>
+                        </>
+                    )}
                 </div>
+
+                {/* STUDENT DASHBOARD TAB */}
+                {activeTab === 'dashboard' && isStudent && (
+                    <div style={{ display: 'grid', gap: '20px' }}>
+                        {/* Reading Stats Card */}
+                        <div className="card" style={{
+                            background: 'linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%)',
+                            color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                        }}>
+                            <div>
+                                <h3 style={{ margin: '0 0 10px 0', color: 'white' }}>Reading Milestones</h3>
+                                <div style={{ fontSize: '32px', fontWeight: 'bold' }}>You've read {myStats.read} books!</div>
+                                <div style={{ opacity: 0.9, marginTop: '5px' }}>
+                                    {myStats.read >= 20 ? "🏆 Book Worm Status Achieved!" :
+                                        myStats.read >= 10 ? "🥈 Amazing Reader!" :
+                                            "🥉 Keep reading to unlock badges!"}
+                                </div>
+                            </div>
+                            <div style={{ fontSize: '64px' }}>📚</div>
+                        </div>
+
+                        {/* Currently Borrowed */}
+                        <div className="card">
+                            <h3>Currently Borrowed</h3>
+                            {myStats.current.length === 0 ? (
+                                <p style={{ color: '#999' }}>You have no books currently issued.</p>
+                            ) : (
+                                <ul style={{ paddingLeft: '20px' }}>
+                                    {myStats.current.map(b => (
+                                        <li key={b.id} style={{ marginBottom: '10px' }}>
+                                            <strong>{b.bookTitle}</strong> - Due: {b.expectedReturnDate?.toDate?.()?.toLocaleDateString()}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+
+                        {/* My Reservations */}
+                        <div className="card">
+                            <h3>My Reservations</h3>
+                            {reservations.length === 0 ? (
+                                <p style={{ color: '#999' }}>No active reservations.</p>
+                            ) : (
+                                <ul style={{ paddingLeft: '20px' }}>
+                                    {reservations.map(r => (
+                                        <li key={r.id} style={{ marginBottom: '10px' }}>
+                                            <strong>{r.bookTitle}</strong> - Status: <span style={{ color: '#f39c12' }}>{r.status}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* BOOKS CATALOG TAB */}
                 {activeTab === 'books' && (
                     <>
-                        {/* Add Book Form */}
-                        <div className="card" style={{ marginBottom: '20px' }}>
-                            <h3>Add New Book</h3>
-                            <div style={{ display: 'grid', gap: '10px' }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
-                                    <input
-                                        type="text"
-                                        className="input-field"
-                                        placeholder="Book Title *"
-                                        value={bookTitle}
-                                        onChange={(e) => setBookTitle(e.target.value)}
-                                    />
-                                    <input
-                                        type="text"
-                                        className="input-field"
-                                        placeholder="Author *"
-                                        value={bookAuthor}
-                                        onChange={(e) => setBookAuthor(e.target.value)}
-                                    />
-                                    <input
-                                        type="text"
-                                        className="input-field"
-                                        placeholder="ISBN (Optional)"
-                                        value={bookISBN}
-                                        onChange={(e) => setBookISBN(e.target.value)}
-                                    />
-                                    <select className="input-field" value={bookCategory} onChange={(e) => setBookCategory(e.target.value)}>
-                                        <option value="">Select Category</option>
-                                        {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                                    </select>
-                                    <input
-                                        type="number"
-                                        className="input-field"
-                                        placeholder="Number of Copies *"
-                                        value={bookCopies}
-                                        onChange={(e) => setBookCopies(e.target.value)}
-                                    />
+                        {/* Add Book Form (Admin Only) */}
+                        {!isStudent && (
+                            <div className="card" style={{ marginBottom: '20px' }}>
+                                <h3>Add New Book</h3>
+                                <div style={{ display: 'grid', gap: '10px' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+                                        <input
+                                            type="text"
+                                            className="input-field"
+                                            placeholder="Book Title *"
+                                            value={bookTitle}
+                                            onChange={(e) => setBookTitle(e.target.value)}
+                                        />
+                                        <input
+                                            type="text"
+                                            className="input-field"
+                                            placeholder="Author *"
+                                            value={bookAuthor}
+                                            onChange={(e) => setBookAuthor(e.target.value)}
+                                        />
+                                        <input
+                                            type="text"
+                                            className="input-field"
+                                            placeholder="ISBN (Optional)"
+                                            value={bookISBN}
+                                            onChange={(e) => setBookISBN(e.target.value)}
+                                        />
+                                        <select className="input-field" value={bookCategory} onChange={(e) => setBookCategory(e.target.value)}>
+                                            <option value="">Select Category</option>
+                                            {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                                        </select>
+                                        <input
+                                            type="number"
+                                            className="input-field"
+                                            placeholder="Number of Copies *"
+                                            value={bookCopies}
+                                            onChange={(e) => setBookCopies(e.target.value)}
+                                        />
+                                    </div>
+                                    <button onClick={addBook} className="btn">➕ Add Book</button>
                                 </div>
-                                <button onClick={addBook} className="btn">➕ Add Book</button>
                             </div>
-                        </div>
+                        )}
 
                         {/* Books List */}
                         <div className="card">
@@ -299,7 +430,7 @@ export default function LibraryManagement() {
                                                 <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Author</th>
                                                 <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Category</th>
                                                 <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #dee2e6' }}>Available</th>
-                                                <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #dee2e6' }}>Total</th>
+                                                <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #dee2e6' }}>{isStudent ? 'Action' : 'Total'}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -326,7 +457,23 @@ export default function LibraryManagement() {
                                                     }}>
                                                         {book.availableCopies}
                                                     </td>
-                                                    <td style={{ padding: '10px', textAlign: 'center' }}>{book.totalCopies}</td>
+                                                    <td style={{ padding: '10px', textAlign: 'center' }}>
+                                                        {isStudent ? (
+                                                            book.availableCopies === 0 ? (
+                                                                <button
+                                                                    onClick={() => handleReserve(book)}
+                                                                    className="btn"
+                                                                    style={{ padding: '5px 10px', fontSize: '12px', background: '#f39c12' }}
+                                                                >
+                                                                    🕒 Reserve
+                                                                </button>
+                                                            ) : (
+                                                                <span style={{ color: '#27ae60', fontSize: '12px' }}>Available</span>
+                                                            )
+                                                        ) : (
+                                                            book.totalCopies
+                                                        )}
+                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>

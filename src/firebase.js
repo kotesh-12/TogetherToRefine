@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 import { firebaseConfig as hardcodedConfig } from "./config";
 
@@ -15,19 +16,21 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || hardcodedConfig.measurementId
 };
 
-let app, auth, db;
+let app, auth, db, storage;
 
 // Simplified Initialization (Guaranteed via Hardcoded Config)
 try {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
+  storage = getStorage(app);
 } catch (e) {
   console.error("Firebase Init Error:", e);
   window.FIREBASE_CONFIG_ERROR = { error: e.message };
   // Emergency Mock in case of catastrophic SDK failure
   auth = { onAuthStateChanged: (cb) => cb(null) };
   db = { type: 'mock' };
+  storage = { type: 'mock' };
 }
 
-export { auth, db };
+export { auth, db, storage };
