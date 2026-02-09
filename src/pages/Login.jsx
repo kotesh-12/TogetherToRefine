@@ -12,19 +12,7 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 
-import React, { useState, useEffect } from 'react';
-import { useUser } from '../context/UserContext';
-import { useNavigate } from 'react-router-dom';
-import {
-    createUserWithEmailAndPassword,
-    signInWithEmailAndPassword,
-    GoogleAuthProvider,
-    signInWithPopup,
-    signInWithRedirect,
-    getRedirectResult
-} from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+
 
 export default function Login() {
     // -------------------------------------------------------------------------
