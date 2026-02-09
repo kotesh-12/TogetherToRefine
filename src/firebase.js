@@ -15,6 +15,8 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || hardcodedConfig.measurementId
 };
 
+let app, auth, db;
+
 // Simplified Initialization (Guaranteed via Hardcoded Config)
 try {
   app = initializeApp(firebaseConfig);
