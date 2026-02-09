@@ -34,14 +34,14 @@ export default defineConfig(({ mode }) => {
       'process.env.VITE_FIREBASE_MEASUREMENT_ID': JSON.stringify(env.VITE_FIREBASE_MEASUREMENT_ID),
     },
     build: {
-      chunkSizeWarningLimit: 2000,
+      chunkSizeWarningLimit: 5000,
       rollupOptions: {
         output: {
           // Force new filenames to bypass browser cache
           entryFileNames: 'assets/v50-[name]-[hash].js',
           chunkFileNames: 'assets/v50-[name]-[hash].js',
           assetFileNames: 'assets/v50-[name]-[hash].[ext]',
-          // No manualChunks - let Vite optimize automatically
+          // No manualChunks - let Vite optimize automatically (Single Bundle Preference)
         }
       }
     }
