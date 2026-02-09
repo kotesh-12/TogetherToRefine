@@ -11,9 +11,11 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
+      // TEMPORARILY DISABLED: VitePWA causing cache persistence issues
+      /*
       VitePWA({
         registerType: 'autoUpdate',
-        filename: 'sw-v46.js', // BREAKING CHANGE: Rename SW to kill potential zombie workers
+        filename: 'sw-v48.js', // BREAKING CHANGE: Rename SW to kill potential zombie workers
         includeAssets: ['logo.png', 'logo2.png'],
         manifest: {
           name: 'Together To Refine',
@@ -54,6 +56,7 @@ export default defineConfig(({ mode }) => {
           clientsClaim: true
         }
       }),
+      */
     ],
     server: {
       host: true, // Allow external access (e.g. mobile testing)
