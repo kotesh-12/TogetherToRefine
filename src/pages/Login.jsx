@@ -13,6 +13,9 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 
 export default function Login() {
+    // 1. Check Config Error FIRST (State Declaration)
+    const [configError, setConfigError] = useState(window.FIREBASE_CONFIG_ERROR || null);
+
     const [isLogin, setIsLogin] = useState(true);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -27,6 +30,24 @@ export default function Login() {
 
     const navigate = useNavigate();
     const { user, userData, loading: userLoading } = useUser(); // Access global user state
+
+    // 2. Immediate Error Screen (Before Effect Hooks)
+    if (configError) {
+        return (
+            <div className="login-container">
+                <div className="card login-card" style={{ textAlign: 'center', borderTop: '5px solid red' }}>
+                    <h2 style={{ color: '#d63031' }}>⚠️ Configuration Error</h2>
+                    <p>The application could not start because some environment variables are missing.</p>
+                    <div style={{ background: '#ffeaa7', padding: '10px', borderRadius: '5px', margin: '20px 0', textAlign: 'left', fontSize: '12px', overflow: 'auto' }}>
+                        <strong>Missing Keys / Error:</strong>
+                        <pre>{JSON.stringify(configError, null, 2)}</pre>
+                    </div>
+                    <p style={{ fontSize: '14px' }}>Please go to Vercel Settings &rarr; Environment Variables and add the missing keys starting with <code>VITE_FIREBASE_...</code></p>
+                    <button onClick={() => window.location.reload()} className="btn btn-outline" style={{ marginTop: '10px' }}>Retry / Reload</button>
+                </div>
+            </div>
+        );
+    }
 
     // Redirect if already logged in
     useEffect(() => {
@@ -352,27 +373,7 @@ export default function Login() {
         }
     };
 
-    // CHECK FOR FIREBASE CONFIG ERROR (From firebase.js failsafe)
-    const [configError, setConfigError] = useState(window.FIREBASE_CONFIG_ERROR || null);
 
-    if (configError) {
-        return (
-            <div className="login-container">
-                <div className="card login-card" style={{ textAlign: 'center', borderTop: '5px solid red' }}>
-                    <h2 style={{ color: '#d63031' }}>⚠️ Configuration Error</h2>
-                    <p>The application could not start because some environment variables are missing.</p>
-
-                    <div style={{ background: '#ffeaa7', padding: '10px', borderRadius: '5px', margin: '20px 0', textAlign: 'left', fontSize: '12px', overflow: 'auto' }}>
-                        <strong>Missing Keys / Error:</strong>
-                        <pre>{JSON.stringify(configError, null, 2)}</pre>
-                    </div>
-
-                    <p style={{ fontSize: '14px' }}>Please go to Vercel Settings &rarr; Environment Variables and add the missing keys starting with <code>VITE_FIREBASE_...</code></p>
-                    <button onClick={() => window.location.reload()} className="btn btn-outline" style={{ marginTop: '10px' }}>Retry / Reload</button>
-                </div>
-            </div>
-        );
-    }
 
     if (!auth) return <div className="login-container"><div className="card">Error: Firebase Auth not initialized.</div></div>;
 
