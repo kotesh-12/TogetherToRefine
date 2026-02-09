@@ -11,7 +11,48 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
-      // PWA REMOVED PERMANENTLY to stop caching issues
+      VitePWA({
+        registerType: 'autoUpdate',
+        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg', 'logo2.png'],
+        manifest: {
+          name: 'Together To Refine',
+          short_name: 'TTR',
+          description: 'Together To Refine - Educational Platform',
+          theme_color: '#ffffff',
+          background_color: '#ffffff',
+          display: 'standalone',
+          scope: '/',
+          start_url: '/',
+          icons: [
+            {
+              src: 'pwa-192x192.png',
+              sizes: '192x192',
+              type: 'image/png'
+            },
+            {
+              src: 'pwa-512x512.png',
+              sizes: '512x512',
+              type: 'image/png'
+            },
+            {
+              src: 'pwa-512x512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'any maskable'
+            }
+          ]
+        },
+        workbox: {
+          cleanupOutdatedCaches: true,
+          clientsClaim: true,
+          skipWaiting: true,
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
+          maximumFileSizeToCacheInBytes: 5000000, // Important for the monolithic bundle
+        },
+        devOptions: {
+          enabled: false // Disable SW in dev to avoid headache
+        }
+      })
     ],
     server: {
       host: true, // Allow external access (e.g. mobile testing)
@@ -38,9 +79,9 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           // Force new filenames to bypass browser cache
-          entryFileNames: 'assets/v50-[name]-[hash].js',
-          chunkFileNames: 'assets/v50-[name]-[hash].js',
-          assetFileNames: 'assets/v50-[name]-[hash].[ext]',
+          entryFileNames: 'assets/v52-[name]-[hash].js',
+          chunkFileNames: 'assets/v52-[name]-[hash].js',
+          assetFileNames: 'assets/v52-[name]-[hash].[ext]',
           // No manualChunks - let Vite optimize automatically (Single Bundle Preference)
         }
       }
