@@ -28,7 +28,7 @@ const GlobalLoader = () => {
                 animation: 'spin 1s linear infinite',
                 marginBottom: '20px'
             }}></div>
-            <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+
 
             <h3>Loading Application...</h3>
 
