@@ -21,6 +21,7 @@ export default function MarksManagement() {
     // VIEW MARKS STATE
     const [allMarks, setAllMarks] = useState([]);
     const [filterClass, setFilterClass] = useState('');
+    const [filterSection, setFilterSection] = useState('');
     const [loading, setLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -36,7 +37,7 @@ export default function MarksManagement() {
         if (activeTab === 'view') {
             fetchAllMarks();
         }
-    }, [activeTab, filterClass]);
+    }, [activeTab, filterClass, filterSection]);
 
     const fetchStudents = async () => {
         try {
@@ -61,22 +62,32 @@ export default function MarksManagement() {
     const fetchAllMarks = async () => {
         setLoading(true);
         try {
-            let q;
+            let constraints = [];
+
             if (filterClass) {
-                q = query(
-                    collection(db, "marks"),
-                    where("class", "==", filterClass),
-                    orderBy("createdAt", "desc")
-                );
-            } else {
-                q = query(collection(db, "marks"), orderBy("createdAt", "desc"));
+                constraints.push(where("class", "==", filterClass));
             }
+            if (filterSection) {
+                constraints.push(where("section", "==", filterSection));
+            }
+
+            // Note: We remove orderBy("createdAt") from query to avoid satisfying composite index requirements.
+            // We will sort in client-side instead.
+            const q = query(collection(db, "marks"), ...constraints);
 
             const snap = await getDocs(q);
             const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+            // Client-side Sort (Newest First)
+            list.sort((a, b) => {
+                const tA = a.createdAt?.seconds || 0;
+                const tB = b.createdAt?.seconds || 0;
+                return tB - tA;
+            });
+
             setAllMarks(list);
         } catch (e) {
-            console.error(e);
+            console.error("Error fetching marks:", e);
         } finally {
             setLoading(false);
         }
@@ -291,11 +302,17 @@ export default function MarksManagement() {
                 {/* VIEW MARKS TAB */}
                 {activeTab === 'view' && (
                     <div className="card">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                            <h3>All Marks (All Teachers)</h3>
-                            <select className="input-field" value={filterClass} onChange={(e) => setFilterClass(e.target.value)} style={{ width: '150px' }}>
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '15px' }}>
+                            <h3 style={{ margin: 0, flex: 1 }}>All Marks</h3>
+
+                            <select className="input-field" value={filterClass} onChange={(e) => setFilterClass(e.target.value)} style={{ width: '140px' }}>
                                 <option value="">All Classes</option>
                                 {[...Array(12)].map((_, i) => <option key={i} value={i + 1}>Class {i + 1}</option>)}
+                            </select>
+
+                            <select className="input-field" value={filterSection} onChange={(e) => setFilterSection(e.target.value)} style={{ width: '120px' }}>
+                                <option value="">All Sections</option>
+                                {['A', 'B', 'C', 'D'].map(s => <option key={s} value={s}>Section {s}</option>)}
                             </select>
                         </div>
 
