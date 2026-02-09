@@ -62,21 +62,20 @@ export default function MarksManagement() {
     const fetchAllMarks = async () => {
         setLoading(true);
         try {
-            let constraints = [];
-
-            if (filterClass) {
-                constraints.push(where("class", "==", filterClass));
-            }
-            if (filterSection) {
-                constraints.push(where("section", "==", filterSection));
-            }
-
-            // Note: We remove orderBy("createdAt") from query to avoid satisfying composite index requirements.
-            // We will sort in client-side instead.
-            const q = query(collection(db, "marks"), ...constraints);
+            // Fetch ALL marks and filter client-side for maximum robustness
+            // This bypasses Firestore index requirements and type mismatches (string vs number)
+            const q = query(collection(db, "marks"));
 
             const snap = await getDocs(q);
-            const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+            // Filter logic
+            if (filterClass) {
+                list = list.filter(m => String(m.class) === String(filterClass));
+            }
+            if (filterSection) {
+                list = list.filter(m => String(m.section) === String(filterSection));
+            }
 
             // Client-side Sort (Newest First)
             list.sort((a, b) => {
