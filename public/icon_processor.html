@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Icon Processor</title>
+</head>
+
+<body>
+    <h1>Icon Processor</h1>
+    <p>Status: <span id="status">Waiting...</span></p>
+    <canvas id="canvas512" width="512" height="512" style="border:1px solid #ccc; width: 200px;"></canvas>
+    <canvas id="canvas192" width="192" height="192" style="border:1px solid #ccc; width: 100px;"></canvas>
+
+    <div style="margin-top: 20px;">
+        <h3>512x512 Data URL:</h3>
+        <textarea id="output512" rows="5" cols="50"></textarea>
+    </div>
+    <div style="margin-top: 20px;">
+        <h3>192x192 Data URL:</h3>
+        <textarea id="output192" rows="5" cols="50"></textarea>
+    </div>
+
+    <script>
+        const status = document.getElementById('status');
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        // We expect the user to save the file as 'raw_logo.png' in the public folder
+        img.src = 'raw_logo.png';
+
+        img.onload = () => {
+            status.textContent = "Image Loaded. Processing...";
+            processImage(img);
+        };
+
+        img.onerror = () => {
+            status.textContent = "Error: Could not load 'raw_logo.png'. Make sure it exists in the same folder.";
+            status.style.color = 'red';
+        };
+
+        function processImage(image) {
+            // Function to draw centered image on square canvas
+            const drawCentered = (canvasId, size) => {
+                const canvas = document.getElementById(canvasId);
+                const ctx = canvas.getContext('2d');
+
+                // Clear and Fill White Background (or transparent if preferred, but user wanted square icon so white is safer for "TTR" text contrast if text is dark, but logo has green/yellow. White is standard for icons)
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, size, size);
+
+                // Calculate Aspect Ratio
+                const scale = Math.min((size - 40) / image.width, (size - 40) / image.height); // 20px padding
+                const w = image.width * scale;
+                const h = image.height * scale;
+                const x = (size - w) / 2;
+                const y = (size - h) / 2;
+
+                ctx.drawImage(image, x, y, w, h);
+                return canvas.toDataURL('image/png');
+            };
+
+            const data512 = drawCentered('canvas512', 512);
+            document.getElementById('output512').value = data512;
+
+            const data192 = drawCentered('canvas192', 192);
+            document.getElementById('output192').value = data192;
+
+            status.textContent = "Done! Copy the data URLs below.";
+            status.style.color = 'green';
+        }
+    </script>
+</body>
+
+</html>

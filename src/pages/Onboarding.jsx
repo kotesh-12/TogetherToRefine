@@ -65,7 +65,9 @@ export default function Onboarding() {
     };
 
     const handleContinue = () => {
-        localStorage.setItem('ttr_setup_done', 'true');
+        // Use user-specific key so multiple users on same device see onboarding
+        const setupKey = userData?.uid ? `ttr_setup_done_${userData.uid}` : 'ttr_setup_done';
+        localStorage.setItem(setupKey, 'true');
         // Redirect based on role
         const r = userData?.role?.toLowerCase();
         if (r === 'admin') navigate('/admin');

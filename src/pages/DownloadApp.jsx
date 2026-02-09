@@ -1,36 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '../context/UserContext';
-import AnnouncementBar from '../components/AnnouncementBar';
+import { usePWA } from '../context/PWAContext';
 
 export default function DownloadApp() {
     const { userData } = useUser();
     const navigate = useNavigate();
-    const [installPrompt, setInstallPrompt] = useState(null);
-
-    useEffect(() => {
-        const handler = (e) => {
-            e.preventDefault();
-            setInstallPrompt(e);
-        };
-        window.addEventListener('beforeinstallprompt', handler);
-        return () => window.removeEventListener('beforeinstallprompt', handler);
-    }, []);
-
-    const handleInstallClick = () => {
-        if (!installPrompt) return;
-        installPrompt.prompt();
-        installPrompt.userChoice.then((choiceResult) => {
-            if (choiceResult.outcome === 'accepted') {
-                setInstallPrompt(null);
-            }
-        });
-    };
+    const { installPrompt, promptInstall } = usePWA();
 
     // Check Platform
     const isAndroid = /Android/i.test(navigator.userAgent);
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
     const isWindows = /Windows/i.test(navigator.userAgent);
+
+    const handleInstallClick = () => {
+        promptInstall();
+    };
+
+
 
     return (
         <div style={{

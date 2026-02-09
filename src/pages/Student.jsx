@@ -228,6 +228,18 @@ export default function Student() {
                         <h3>💸 Pay Fees</h3>
                         <p style={{ fontSize: '13px', margin: '5px 0 0' }}>View dues & payment history.</p>
                     </div>
+                    <div className="card" onClick={() => handleCardClick('/analytics')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #9b59b6, #8e44ad)', color: 'white' }}>
+                        <h3>📊 My Performance</h3>
+                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>View detailed analytics & report card.</p>
+                    </div>
+                    <div className="card" onClick={() => handleCardClick('/homework')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #f39c12, #e67e22)', color: 'white' }}>
+                        <h3>📚 Homework</h3>
+                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>View & submit assignments.</p>
+                    </div>
+                    <div className="card" onClick={() => handleCardClick('/view-exam-seating')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #e74c3c, #c0392b)', color: 'white' }}>
+                        <h3>🪑 Exam Seating</h3>
+                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>View your exam seat allotment.</p>
+                    </div>
                 </div>
 
                 {/* Exam Results Section (New) */}

@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AnnouncementBar from '../components/AnnouncementBar';
+import { useUser } from '../context/UserContext';
 import { db } from '../firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
 export default function ProfileView() {
     const navigate = useNavigate();
     const location = useLocation();
+    const { userData } = useUser();
     const [profileData, setProfileData] = useState(null);
 
     useEffect(() => {
@@ -27,14 +29,14 @@ export default function ProfileView() {
                     if (docSnap.exists()) {
                         const freshData = docSnap.data();
                         // Merge fresh data with existing target data (target might have specific allotment info like Class)
-                        setProfileData({ ...target, ...freshData, id: uid });
+                        setProfileData({ ...target, ...freshData, id: uid, uid: uid });
                     } else {
                         // Fallback to what we have
-                        setProfileData(target);
+                        setProfileData({ ...target, uid: uid });
                     }
                 } catch (e) {
                     console.error("Error fetching fresh profile:", e);
-                    setProfileData(target);
+                    setProfileData({ ...target, uid: uid });
                 }
             } else {
                 setProfileData(target);
@@ -127,6 +129,45 @@ export default function ProfileView() {
 
         fetchStats();
     }, [profileData]);
+
+    // Check if messaging is allowed
+    const canMessage = () => {
+        if (!userData || !profileData) return false;
+
+        const myRole = userData.role;
+        const theirRole = profileData.role || profileData.type?.toLowerCase();
+
+        // Teacher ↔ Parent
+        if ((myRole === 'teacher' && theirRole === 'parent') ||
+            (myRole === 'parent' && theirRole === 'teacher')) return true;
+
+        // Institution ↔ Parent
+        if ((myRole === 'institution' && theirRole === 'parent') ||
+            (myRole === 'parent' && theirRole === 'institution')) return true;
+
+        // Institution ↔ Teacher
+        if ((myRole === 'institution' && theirRole === 'teacher') ||
+            (myRole === 'teacher' && theirRole === 'institution')) return true;
+
+        return false;
+    };
+
+    const handleMessage = () => {
+        if (!canMessage()) {
+            alert("Messaging is only available between:\n• Teachers ↔ Parents\n• Institution ↔ Parents\n• Institution ↔ Teachers");
+            return;
+        }
+
+        navigate('/messages', {
+            state: {
+                recipient: {
+                    uid: profileData.uid || profileData.id,
+                    name: profileData.name || profileData.studentName || profileData.teacherName || profileData.institutionName,
+                    role: profileData.role || profileData.type?.toLowerCase()
+                }
+            }
+        });
+    };
 
     if (!profileData) return <div className="container" style={{ textAlign: 'center', marginTop: '50px' }}>Loading...</div>;
 
@@ -244,7 +285,7 @@ export default function ProfileView() {
                         <button
                             className="btn"
                             style={{ width: '100%', background: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid var(--divider)' }}
-                            onClick={() => alert("Message feature coming soon!")}
+                            onClick={handleMessage}
                         >
                             Message
                         </button>

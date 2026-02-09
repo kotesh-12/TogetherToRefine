@@ -14,7 +14,11 @@ const INCLUDED_FILES = [
     'src/components/ProtectedRoute.jsx',
     'src/pages/Login.jsx',
     'src/pages/Signup.jsx',
-    'src/pages/Details.jsx'
+    'src/pages/Details.jsx',
+    'src/context/UserContext.jsx',
+    'src/context/ThemeContext.jsx',
+    'src/components/MainLayout.jsx',
+    'src/components/Loading.jsx'
 ];
 
 function generateContext() {

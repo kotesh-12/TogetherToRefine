@@ -313,6 +313,18 @@ export default function Institution() {
                         <span style={{ fontSize: '28px', marginBottom: '8px' }}>💰</span>
                         <span>Fee Mgmt</span>
                     </button>
+                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#2980b9', color: 'white' }} onClick={() => handleCardClick('/timetable-generator')}>
+                        <span style={{ fontSize: '28px', marginBottom: '8px' }}>🗓️</span>
+                        <span>TT Generator</span>
+                    </button>
+                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#8e44ad', color: 'white' }} onClick={() => handleCardClick('/exam-seating')}>
+                        <span style={{ fontSize: '28px', marginBottom: '8px' }}>🪑</span>
+                        <span>Exam Seating</span>
+                    </button>
+                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#c0392b', color: 'white' }} onClick={() => handleCardClick('/library')}>
+                        <span style={{ fontSize: '28px', marginBottom: '8px' }}>📚</span>
+                        <span>Library</span>
+                    </button>
                 </div>
 
                 <div className="card" style={{ padding: '20px', borderRadius: '15px' }}>

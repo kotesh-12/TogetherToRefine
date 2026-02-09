@@ -145,16 +145,22 @@ service cloud.firestore {
     }
 
     // --- 1. USER PROFILES ---
-    // Users are now consolidated into 'users' collection generally, but legacy 'teachers'/'institutions' 
-    // might still exist. We secure them all.
+    // Granular permissions to prevent Privilege Escalation (VULN-003)
     match /users/{userId} {
       allow read: if isSignedIn();
-      // Only owner can update their own profile, or Admin
-      allow write: if isSignedIn() && (isOwner(userId) || isAdmin());
       
-      // Prevent users from changing their own role to 'admin'
-      allow update: if isOwner(userId) && 
-         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'approved']));
+      // CREATE: Prevent creating 'admin' role
+      allow create: if isSignedIn() && isOwner(userId) && 
+         request.resource.data.role in ['student', 'teacher', 'institution'];
+      
+      // UPDATE: Prevent changing 'role' or 'approved' status
+      allow update: if isSignedIn() && (
+         isAdmin() || 
+         (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'approved']))
+      );
+      
+      // DELETE: Owner or Admin
+      allow delete: if isSignedIn() && (isOwner(userId) || isAdmin());
 
       match /four_way_sessions/{sessionId} {
          allow read, write: if isOwner(userId);
@@ -164,11 +170,24 @@ service cloud.firestore {
 
     match /teachers/{teacherId} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn() && (isOwner(teacherId) || isAdmin());
+      allow create: if isSignedIn() && isOwner(teacherId) && 
+         request.resource.data.role == 'teacher';
+      allow update: if isSignedIn() && (
+         isAdmin() || 
+         (isOwner(teacherId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'approved']))
+      );
+      allow delete: if isSignedIn() && (isOwner(teacherId) || isAdmin());
     }
+
     match /institutions/{instId} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn() && (isOwner(instId) || isAdmin());
+      allow create: if isSignedIn() && isOwner(instId) && 
+         request.resource.data.role == 'institution';
+      allow update: if isSignedIn() && (
+         isAdmin() || 
+         (isOwner(instId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'approved']))
+      );
+      allow delete: if isSignedIn() && (isOwner(instId) || isAdmin());
     }
 
     // --- 2. FEE MANAGEMENT (SECURED) ---
@@ -269,7 +288,20 @@ import rateLimit from 'express-rate-limit'; // Import Rate Limit
 import admin from 'firebase-admin';
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
-const serviceAccount = require("./serviceAccountKey.json");
+
+// DEPLOYMENT CONFIG: Use ENV VAR for Service Account if file is missing
+// In production (Render/Vercel), paste the JSON content into 'FIREBASE_SERVICE_ACCOUNT' env var
+let serviceAccount;
+try {
+    serviceAccount = require("./serviceAccountKey.json");
+} catch (e) {
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+        serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    } else {
+        console.error("CRITICAL ERROR: Service Account Key not found in file or ENV.");
+        process.exit(1);
+    }
+}
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
@@ -599,8 +631,12 @@ const verifyAuth = async (req, res, next) => {
 const generalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
 const chatLimiter = rateLimit({
     windowMs: 1 * 60 * 1000,
-    max: 10, // 10 AI requests per minute per IP
-    message: { error: 'AI Limit Exceeded. Wait 1 min.' }
+    max: 10, // 10 AI requests per minute per USER
+    message: { error: 'AI Limit Exceeded. Wait 1 min.' },
+    keyGenerator: (req) => {
+        // VULN-007 FIXED: Rate limit by User ID if authenticated, fallback to IP
+        return req.user ? req.user.uid : req.ip;
+    }
 });
 
 app.post('/api/chat', chatLimiter, verifyAuth, async (req, res) => {
@@ -639,7 +675,93 @@ app.post('/api/chat', chatLimiter, verifyAuth, async (req, res) => {
     }
 });
 
-app.listen(PORT, () => console.log(`Backend Server running on http://localhost:${PORT}`));
+// Only listen for connections if running as a standalone script
+// Vercel will import the app and handle the serverless function logic
+// --- BATCH REGISTRATION (For Institutions) ---
+app.post('/api/batch-register', verifyAuth, async (req, res) => {
+    // 1. Verify Requestor is an Institution
+    const requesterRole = req.user.role || (await admin.firestore().collection('institutions').doc(req.user.uid).get()).data()?.role;
+
+    if (requesterRole !== 'institution' && requesterRole !== 'admin') {
+        return res.status(403).json({ error: "Only Institutions can batch register students." });
+    }
+
+    const { students, institutionId } = req.body; // Array of { name, email, password, class, section }
+
+    if (!students || !Array.isArray(students) || students.length === 0) {
+        return res.status(400).json({ error: "No students provided." });
+    }
+
+    if (students.length > 50) {
+        return res.status(400).json({ error: "Batch size limit exceeded. Max 50 per request." });
+    }
+
+    const results = { success: [], failed: [] };
+
+    // 2. Process Batch
+    for (const student of students) {
+        try {
+            // A. Create Auth User
+            const userRecord = await admin.auth().createUser({
+                email: student.email,
+                password: student.password || 'Student@123', // Default password if missing
+                displayName: student.name
+            });
+
+            // B. Create Firestore Profile
+            const pid = `ST-${Math.floor(100000 + Math.random() * 900000)}`;
+
+            await admin.firestore().collection('users').doc(userRecord.uid).set({
+                name: student.name,
+                email: student.email,
+                role: 'student',
+                class: student.class,
+                section: student.section || 'A',
+                institutionId: institutionId || req.user.uid, // Link to this institution
+                pid: pid,
+                approved: true, // Auto-approve since Institution is adding them
+                profileCompleted: true,
+                createdAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            // C. Create Admission Record (for visibility)
+            await admin.firestore().collection('admissions').add({
+                name: student.name,
+                role: 'student',
+                userId: userRecord.uid,
+                institutionId: institutionId || req.user.uid,
+                status: 'approved',
+                class: student.class,
+                joinedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            results.success.push({
+                name: student.name,
+                email: student.email,
+                password: student.password || 'Student@123',
+                class: student.class,
+                pid
+            });
+        } catch (error) {
+            console.error(`Failed to register ${student.email}:`, error);
+            results.failed.push({ email: student.email, error: error.message });
+        }
+    }
+
+    res.json({
+        message: `Processed ${students.length} students.`,
+        results
+    });
+});
+
+// Only listen for connections if running as a standalone script
+// Vercel will import the app and handle the serverless function logic
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => console.log(`Backend Server running on http://localhost:${PORT}`));
+}
+
+// Export the Express API for Vercel
+export default app;
 
 // Force Event Loop to stay alive (Fix for premature exit)
 setInterval(() => { }, 60000);
@@ -700,9 +822,9 @@ function App() {
   return (
     <UserProvider>
       <ThemeProvider>
-        <UpdateManager />
         <Router>
-          <Suspense fallback={<div className="container" style={{ textAlign: 'center', marginTop: '50px' }}>Loading...</div>}>
+          <UpdateManager />
+          <Suspense fallback={<div className="container">Loading App...</div>}>
             <Routes>
               <Route path="/" element={<Login />} />
               <Route path="/details" element={<Details />} />
@@ -1028,7 +1150,33 @@ export default App;
 }
 
 .send-button:active {
-  transform: scale(0.95);
+  transform: rotate(360deg);
+}
+
+/* --- OFFLINE BANNER --- */
+.offline-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background-color: #d63031;
+  color: white;
+  text-align: center;
+  padding: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 9999;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
 }
 
 .send-button:disabled {
@@ -1444,13 +1592,13 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDWHnST2fHu2xgtL3tu7WQ0bJZ6AMzfPbY",
-  authDomain: "together-to-refine.firebaseapp.com", 
-  projectId: "together-to-refine",
-  storageBucket: "together-to-refine.appspot.com",   
-  messagingSenderId: "360106072129",
-  appId: "1:360106072129:web:eb706cf7d7a299ebabcec0",
-  measurementId: "G-2HKGEJSKHR"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 const app = initializeApp(firebaseConfig);
@@ -1718,6 +1866,22 @@ export default function Login() {
             }
             if (role !== 'institution' && role !== 'admin' && !gender) {
                 setError('Gender is required.');
+                return;
+            }
+        }
+
+        // Password Strength Validation (VULN-011)
+        if (!isLogin) {
+            if (password.length < 8) {
+                setError('Password must be at least 8 characters long.');
+                return;
+            }
+            if (!/[A-Z]/.test(password)) {
+                setError('Password must contain at least one uppercase letter.');
+                return;
+            }
+            if (!/[0-9]/.test(password)) {
+                setError('Password must contain at least one number.');
                 return;
             }
         }
@@ -2580,16 +2744,343 @@ export default function Details() {
                     )}
                 </form>
 
-                {/* Debug Info */}
-                <div style={{ marginTop: '30px', borderTop: '1px solid #ddd', paddingTop: '10px', fontSize: '11px', color: '#999' }}>
-                    <strong>Debug Info:</strong><br />
-                    UID: {userId || '...'}<br />
-                    Current Role State: {role || 'None'}<br />
-                    Collection Found: {role === 'teacher' ? 'Teachers' : (role === 'institution' ? 'Institutions' : 'Users/None')}
-                </div>
+                {/* Debug Info Removed for Security */}
             </div>
         </div>
     );
 }
 
 --- END OF FILE: src/pages/Details.jsx ---
+
+--- START OF FILE: src/context/UserContext.jsx ---
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { auth, db } from '../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { registerSession, clearLocalSession } from '../utils/sessionManager';
+
+const UserContext = createContext();
+
+export function UserProvider({ children }) {
+    const [user, setUser] = useState(null);
+    const [userData, setUserData] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        let unsubscribeSnapshot = null;
+        let unsubscribeSession = null;
+        let retryCount = 0;
+        const MAX_RETRIES = 3;
+
+        // Failsafe: Force stop loading after 6 seconds
+        const failsafe = setTimeout(() => {
+            setLoading((prev) => {
+                if (prev) {
+                    console.log("Force clearing loading state due to timeout.");
+                    return false;
+                }
+                return prev;
+            });
+        }, 6000);
+
+        const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
+            console.log("Auth State Changed:", currentUser ? "User Logged In" : "User Logged Out");
+            setUser(currentUser);
+
+            // Cleanup
+            if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+            if (unsubscribeSession) { unsubscribeSession(); unsubscribeSession = null; }
+
+            if (currentUser) {
+                setLoading(true);
+
+                // Session Management
+                registerSession(currentUser.uid).then((sessionId) => {
+                    if (sessionId) {
+                        const sessionRef = doc(db, 'users', currentUser.uid, 'sessions', sessionId);
+                        unsubscribeSession = onSnapshot(sessionRef, (docSnap) => {
+                            if (!docSnap.exists()) {
+                                console.log("Session revoked.");
+                                auth.signOut().then(() => {
+                                    clearLocalSession();
+                                    alert("Session expired/revoked.");
+                                });
+                            }
+                        });
+                    }
+                }).catch(e => console.error("Session Error:", e));
+
+                // 2. Detection Logic (Original Stable Logic)
+                const detectFull = async () => {
+                    if (retryCount >= MAX_RETRIES) {
+                        setUserData(null);
+                        setLoading(false);
+                        return;
+                    }
+                    retryCount++;
+
+                    // Parallel Check
+                    const instRef = doc(db, "institutions", currentUser.uid);
+                    const teachRef = doc(db, "teachers", currentUser.uid);
+                    const userRef = doc(db, "users", currentUser.uid);
+
+                    try {
+                        const results = await Promise.allSettled([
+                            getDoc(instRef),
+                            getDoc(teachRef),
+                            getDoc(userRef)
+                        ]);
+
+                        const instSnap = results[0].status === 'fulfilled' ? results[0].value : { exists: () => false };
+                        const teachSnap = results[1].status === 'fulfilled' ? results[1].value : { exists: () => false };
+                        const userSnap = results[2].status === 'fulfilled' ? results[2].value : { exists: () => false };
+
+                        if (instSnap.exists()) {
+                            // 1. Set Data IMMEDIATELY
+                            setUserData({ ...instSnap.data(), uid: currentUser.uid, role: (instSnap.data().role || 'institution').toLowerCase() });
+                            setLoading(false);
+                            sessionStorage.setItem('user_collection_cache', 'institutions');
+
+                            // 2. Subscribe for updates
+                            unsubscribeSnapshot = onSnapshot(instRef, (d) => {
+                                if (!d.exists()) { detectFull(); return; }
+                                setUserData({ ...d.data(), uid: currentUser.uid, role: (d.data().role || 'institution').toLowerCase() });
+                            });
+                        } else if (teachSnap.exists()) {
+                            // 1. Set Data IMMEDIATELY
+                            setUserData({ ...teachSnap.data(), uid: currentUser.uid, role: (teachSnap.data().role || 'teacher').toLowerCase() });
+                            setLoading(false);
+                            sessionStorage.setItem('user_collection_cache', 'teachers');
+
+                            // 2. Subscribe
+                            unsubscribeSnapshot = onSnapshot(teachRef, (d) => {
+                                if (!d.exists()) { detectFull(); return; }
+                                setUserData({ ...d.data(), uid: currentUser.uid, role: (d.data().role || 'teacher').toLowerCase() });
+                            });
+                        } else if (userSnap.exists()) {
+                            // 1. Set Data IMMEDIATELY
+                            setUserData({ ...userSnap.data(), uid: currentUser.uid, role: (userSnap.data().role || 'student').toLowerCase() });
+                            setLoading(false);
+                            sessionStorage.setItem('user_collection_cache', 'users');
+
+                            // 2. Subscribe
+                            unsubscribeSnapshot = onSnapshot(userRef, (d) => {
+                                if (!d.exists()) { detectFull(); return; }
+                                setUserData({ ...d.data(), uid: currentUser.uid, role: (d.data().role || 'student').toLowerCase() });
+                            });
+                        } else {
+                            console.log("No profile found.");
+                            setUserData(null);
+                            setLoading(false);
+                        }
+                    } catch (e) {
+                        console.error("Detection Error", e);
+                        setLoading(false);
+                    }
+                };
+
+                // --- OPTIMIZATION: Instant Load from Profile Cache ---
+                const cachedProfileJSON = sessionStorage.getItem('user_profile_cache');
+                if (cachedProfileJSON) {
+                    try {
+                        const cachedProfile = JSON.parse(cachedProfileJSON);
+                        if (cachedProfile && cachedProfile.uid === currentUser.uid) {
+                            console.log("Instant Load: Using cached profile.");
+                            setUserData(cachedProfile);
+                            setLoading(false);
+                        }
+                    } catch (e) {
+                        console.error("Cache parsing error", e);
+                    }
+                }
+
+                // Internal helper to update state and cache
+                const updateUserData = (data) => {
+                    setUserData(data);
+                    try {
+                        sessionStorage.setItem('user_profile_cache', JSON.stringify(data));
+                    } catch (e) {
+                        console.warn("Storage full?", e);
+                    }
+                };
+
+                // OPTIMIZATION: Check Collection Cache First (Background Validation)
+                const cachedCollection = sessionStorage.getItem('user_collection_cache');
+
+                if (cachedCollection) {
+                    console.log("Verifying with cached collection:", cachedCollection);
+                    unsubscribeSnapshot = onSnapshot(doc(db, cachedCollection, currentUser.uid), (d) => {
+                        if (d.exists()) {
+                            const data = d.data();
+                            let role = data.role;
+                            if (!role) {
+                                if (cachedCollection === 'institutions') role = 'institution';
+                                else if (cachedCollection === 'teachers') role = 'teacher';
+                                else role = 'student';
+                            }
+                            const completeProfile = { ...data, uid: currentUser.uid, role: role.toLowerCase() };
+
+                            // Update State & Cache
+                            updateUserData(completeProfile);
+                            setLoading(false); // Ensure loading is off
+                        } else {
+                            // Validation failed - clear bad cache
+                            sessionStorage.removeItem('user_collection_cache');
+                            sessionStorage.removeItem('user_profile_cache');
+                            if (!cachedProfileJSON) { // Only fallback if we don't have a cache shown
+                                detectFull();
+                            } else {
+                                // We are showing cached data that is now invalid! Re-run detect.
+                                detectFull();
+                            }
+                        }
+                    }, (err) => {
+                        console.error("Cache subscribe error", err);
+                        // If we didn't have a cache, fallback.
+                        if (!cachedProfileJSON) detectFull();
+                    });
+                } else {
+                    // No collection cache? Run full detect
+                    detectFull();
+                }
+
+            } else {
+                setUserData(null);
+                setLoading(false);
+                sessionStorage.removeItem('user_collection_cache');
+                sessionStorage.removeItem('user_profile_cache');
+            }
+        });
+
+        return () => {
+            clearTimeout(failsafe);
+            unsubscribeAuth();
+            if (unsubscribeSnapshot) unsubscribeSnapshot();
+            if (unsubscribeSession) unsubscribeSession();
+        };
+    }, []);
+
+    const values = React.useMemo(() => ({
+        user, userData, loading, setUserData
+    }), [user, userData, loading]);
+
+    const handleLogout = () => {
+        auth.signOut();
+        sessionStorage.clear();
+        window.location.reload();
+    };
+
+    return (
+        <UserContext.Provider value={values}>
+            {children}
+        </UserContext.Provider>
+    );
+}
+
+export function useUser() {
+    return useContext(UserContext);
+}
+
+--- END OF FILE: src/context/UserContext.jsx ---
+
+--- START OF FILE: src/context/ThemeContext.jsx ---
+import React, { createContext, useContext, useState, useEffect } from 'react';
+
+const ThemeContext = createContext();
+
+export const useTheme = () => useContext(ThemeContext);
+
+export const ThemeProvider = ({ children }) => {
+    // Default to light, or read from local storage
+    const [theme, setTheme] = useState(() => {
+        const savedTheme = localStorage.getItem('app-theme');
+        return savedTheme || 'Light';
+    });
+
+    useEffect(() => {
+        // Update the data-theme attribute on the root element
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('app-theme', theme);
+    }, [theme]);
+
+    const toggleTheme = () => {
+        setTheme(prevTheme => prevTheme === 'Light' ? 'Dark' : 'Light');
+    };
+
+    return (
+        <ThemeContext.Provider value={{ theme, toggleTheme }}>
+            {children}
+        </ThemeContext.Provider>
+    );
+};
+
+--- END OF FILE: src/context/ThemeContext.jsx ---
+
+--- START OF FILE: src/components/MainLayout.jsx ---
+import React, { useState, useEffect } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
+import Header from './Header';
+import Sidebar from './Sidebar';
+import { useUser } from '../context/UserContext';
+import BottomNav from './BottomNav';
+import AnnouncementBar from './AnnouncementBar';
+
+export default function MainLayout() {
+    const { userData } = useUser();
+    const location = useLocation();
+
+    // Sidebar State
+    const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 900);
+
+    // Responsive Sidebar
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth < 900) setIsSidebarOpen(false);
+            else setIsSidebarOpen(true);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+
+
+
+
+    return (
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+            {/* 1. Sticky Header */}
+            <Header onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+
+            {/* 2. Flex Body */}
+            <div style={{ display: 'flex', flex: 1 }}>
+
+                {/* 3. Sidebar (Left) - Desktop Only via CSS */}
+                <div className="sidebar-wrapper">
+                    <Sidebar isOpen={isSidebarOpen} />
+                </div>
+
+                {/* 4. Main Content (Right) */}
+                <main className="main-content-area">
+
+
+                    {/* Announcement Bar (Global) */}
+                    <AnnouncementBar leftIcon={false} />
+
+
+                    <Outlet />
+                </main>
+            </div>
+
+            {/* 5. Bottom Nav - Mobile Only via CSS */}
+            <div className="bottom-nav-wrapper">
+                <BottomNav />
+            </div>
+        </div>
+    );
+}
+
+--- END OF FILE: src/components/MainLayout.jsx ---
+
+--- START OF FILE: src/components/Loading.jsx ---
+(File not found)
+--- END OF FILE: src/components/Loading.jsx ---

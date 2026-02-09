@@ -60,7 +60,9 @@ const ProtectedRoute = ({ allowedRoles }) => {
     // ONBOARDING CHECK
     // If user is logged in but hasn't done setup, send to Onboarding
     // Exception: If already there, allow it.
-    if (!localStorage.getItem('ttr_setup_done') && location.pathname !== '/onboarding') {
+    // FIX: Make this user-specific so new users on same device see it
+    const setupKey = user?.uid ? `ttr_setup_done_${user.uid}` : 'ttr_setup_done';
+    if (!localStorage.getItem(setupKey) && location.pathname !== '/onboarding') {
         return <Navigate to="/onboarding" replace />;
     }
 

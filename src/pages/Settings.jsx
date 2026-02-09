@@ -1,4 +1,8 @@
-import { useTheme } from '../context/ThemeContext'; // Import context
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useUser } from '../context/UserContext';
+import { useTheme } from '../context/ThemeContext';
+import { getAuth, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 
 export default function Settings() {
     const navigate = useNavigate();

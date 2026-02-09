@@ -300,7 +300,10 @@ export default function TTRAI() {
                 </div>
 
                 <div style={{ marginTop: '10px', borderTop: '1px solid #333', paddingTop: '10px' }}>
-                    <button onClick={() => navigate('/student')} style={{ width: '100%', padding: '10px', background: '#333', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <button onClick={() => {
+                        const r = userData?.role || 'student';
+                        navigate(r === 'admin' ? '/admin' : r === 'institution' ? '/institution' : r === 'teacher' ? '/teacher' : '/student');
+                    }} style={{ width: '100%', padding: '10px', background: '#333', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <span>🏠</span> Back to Dashboard
                     </button>
                 </div>

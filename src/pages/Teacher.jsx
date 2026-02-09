@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import AIBadge from '../components/AIBadge';
 import AnnouncementBar from '../components/AnnouncementBar';
 import FeatureTour from '../components/FeatureTour';
+import VoiceCommandAssistant from '../components/VoiceCommandAssistant';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { db } from '../firebase';
@@ -125,6 +126,10 @@ export default function Teacher() {
         <div className="page-wrapper">
             <FeatureTour tourId="teacher_dashboard_v1" steps={tourSteps} userId={userData?.uid} />
             <AIBadge />
+            <VoiceCommandAssistant onAnnouncement={(text) => {
+                setAnnouncementText(text);
+                setShowModal(true);
+            }} />
 
             {/* Announcement Button (Relative) */}
             <div style={{ display: 'flex', padding: '10px 15px', justifyContent: 'flex-start' }}>
@@ -135,6 +140,19 @@ export default function Teacher() {
                     title="Make Announcement"
                 >
                     📢
+                </button>
+                <div style={{ flex: 1 }}></div>
+                <button
+                    onClick={() => navigate('/inspector-mode')}
+                    style={{
+                        background: '#e74c3c', color: 'white', border: 'none',
+                        padding: '10px 15px', borderRadius: '30px', fontWeight: 'bold',
+                        boxShadow: '0 4px 10px rgba(231, 76, 60, 0.4)',
+                        display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer',
+                        fontSize: '12px'
+                    }}
+                >
+                    🔴 INSPECTOR MODE
                 </button>
             </div>
 
@@ -179,8 +197,15 @@ export default function Teacher() {
                         <button id="tour-teacher-attendance" className="btn btn-attendance" onClick={() => handleCardClick('/attendance')}>Mark Attendance</button>
                         <button id="tour-teacher-4way" className="btn" style={{ background: '#e84393', color: 'white' }} onClick={() => handleCardClick('/4-way-learning')}>4-Way Learning</button>
                         <button id="tour-teacher-library" className="btn btn-library" onClick={() => handleCardClick('/video-library')}>Video Library</button>
+                        <button className="btn" style={{ background: '#9b59b6', color: 'white' }} onClick={() => handleCardClick('/marks')}>📊 Marks</button>
+                        <button className="btn" style={{ background: '#8e44ad', color: 'white' }} onClick={() => handleCardClick('/analytics')}>📈 Analytics</button>
+                        <button className="btn" style={{ background: '#e67e22', color: 'white' }} onClick={() => handleCardClick('/homework')}>📚 Homework</button>
                         <button className="btn btn-feedback" onClick={() => handleCardClick('/general-feedback')}>Feedback</button>
                         <button className="btn btn-timetable" onClick={() => handleCardClick('/timetable')}>Timetable</button>
+                        <button className="btn" style={{ background: '#16a085', color: 'white' }} onClick={() => handleCardClick('/attendance-analytics')}>📊 Att. Analytics</button>
+                        <button className="btn" style={{ background: '#c0392b', color: 'white' }} onClick={() => handleCardClick('/view-exam-seating')}>🪑 View Exam Seats</button>
+                        <button className="btn" style={{ background: '#27ae60', color: 'white' }} onClick={() => handleCardClick('/gov-reports')}>Govt Reports</button>
+                        <button className="btn" style={{ background: '#d35400', color: 'white' }} onClick={() => handleCardClick('/dropout-predictor')}>⚠️ Dropout Risk</button>
                     </div>
                 </div>
             </div>
