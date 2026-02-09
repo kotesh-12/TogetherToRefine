@@ -4,6 +4,7 @@ import { db, auth } from '../firebase';
 import { onAuthStateChanged, getAuth } from 'firebase/auth';
 import AIBadge from '../components/AIBadge';
 import AnnouncementBar from '../components/AnnouncementBar';
+import FeatureTour from '../components/FeatureTour';
 import { useNavigate } from 'react-router-dom';
 
 export default function Institution() {
@@ -18,6 +19,35 @@ export default function Institution() {
     const [selectedSection, setSelectedSection] = useState('All');
 
     const isNavigating = useRef(false);
+
+    // Feature Tour Steps
+    const tourSteps = [
+        {
+            target: 'tour-inst-import',
+            title: '📤 Bulk Import',
+            content: 'Register hundreds of students at once using a CSV file. Credentials will be generated automatically.'
+        },
+        {
+            target: 'tour-inst-announcement',
+            title: '📢 Announcements',
+            content: 'Broadcast messages to the entire institution or specific classes.'
+        },
+        {
+            target: 'tour-inst-allotment',
+            title: '📘 Teacher Allotments',
+            content: 'Assign teachers to classes and subjects here.'
+        },
+        {
+            target: 'tour-inst-admission',
+            title: '📝 New Admissions',
+            content: 'Manually register individual students.'
+        },
+        {
+            target: 'tour-inst-fees',
+            title: '💰 Fee Management',
+            content: 'Track fee payments and manage dues.'
+        }
+    ];
 
     const handleCardClick = (path) => {
         if (isNavigating.current) return;
@@ -126,8 +156,6 @@ export default function Institution() {
         }
     };
 
-
-
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (user) {
@@ -176,14 +204,15 @@ export default function Institution() {
 
     return (
         <div className="page-wrapper">
+            <FeatureTour tourId="institution_dashboard_v1" steps={tourSteps} />
             <AIBadge />
-
 
             <div style={{ padding: '20px', width: '100%', boxSizing: 'border-box' }}>
 
                 {/* Bulk Import Button */}
                 <div style={{ marginBottom: '15px', display: 'flex', gap: '10px' }}>
                     <button
+                        id="tour-inst-announcement"
                         onClick={() => setShowModal(true)}
                         style={{
                             width: '45px', height: '45px', borderRadius: '50%',
@@ -196,6 +225,7 @@ export default function Institution() {
                         📢
                     </button>
                     <button
+                        id="tour-inst-import"
                         onClick={() => {
                             const csv = prompt("Paste CSV Data (Name, Email, Password, Class)\nExample:\nJohn Doe,john@test.com,Pass123,10th");
                             if (csv) handleBulkImport(csv);
@@ -233,11 +263,11 @@ export default function Institution() {
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '15px', marginBottom: '30px' }}>
-                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#6c5ce7' }} onClick={() => handleCardClick('/allotment')}>
+                    <button id="tour-inst-allotment" className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#6c5ce7' }} onClick={() => handleCardClick('/allotment')}>
                         <span style={{ fontSize: '28px', marginBottom: '8px' }}>📘</span>
                         <span>Allotments</span>
                     </button>
-                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#2d3436' }} onClick={() => handleCardClick('/admission')}>
+                    <button id="tour-inst-admission" className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#2d3436' }} onClick={() => handleCardClick('/admission')}>
                         <span style={{ fontSize: '28px', marginBottom: '8px' }}>📝</span>
                         <span>Admission</span>
                     </button>
@@ -277,7 +307,7 @@ export default function Institution() {
                         <span style={{ fontSize: '28px', marginBottom: '8px' }}>👨‍🏫</span>
                         <span>Teachers</span>
                     </button>
-                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#2c3e50', color: 'white' }} onClick={() => handleCardClick('/fees/institution')}>
+                    <button id="tour-inst-fees" className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#2c3e50', color: 'white' }} onClick={() => handleCardClick('/fees/institution')}>
                         <span style={{ fontSize: '28px', marginBottom: '8px' }}>💰</span>
                         <span>Fee Mgmt</span>
                     </button>
@@ -330,7 +360,6 @@ export default function Institution() {
                     )}
                 </div>
             </div>
-
 
             {/* Announcement Modal */}
             {

@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import AIBadge from '../components/AIBadge';
 import AnnouncementBar from '../components/AnnouncementBar';
+import FeatureTour from '../components/FeatureTour';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { db } from '../firebase';
@@ -21,6 +22,30 @@ export default function Teacher() {
 
     const isNavigating = useRef(false);
 
+    // Feature Tour Steps
+    const tourSteps = [
+        {
+            target: 'tour-teacher-announcement',
+            title: '📢 Announcements',
+            content: 'Click here to post announcements to your classes. You can target specific sections or all students.'
+        },
+        {
+            target: 'tour-teacher-groups',
+            title: '👥 Class Groups',
+            content: 'Access your student groups here. View profiles, manage learning, and interact with your class.'
+        },
+        {
+            target: 'tour-teacher-attendance',
+            title: '✅ Mark Attendance',
+            content: 'Take attendance for your assigned classes quickly and easily.'
+        },
+        {
+            target: 'tour-teacher-library',
+            title: '📚 Video Library',
+            content: 'Upload and manage educational videos and class recordings.'
+        }
+    ];
+
     const handleCardClick = (path) => {
         if (isNavigating.current) return;
         isNavigating.current = true;
@@ -30,7 +55,7 @@ export default function Teacher() {
     };
 
     // Fetch Allotments when Modal opens
-    React.useEffect(() => {
+    useEffect(() => {
         if (userData?.uid) {
             const fetchAllotments = async () => {
                 try {
@@ -98,15 +123,13 @@ export default function Teacher() {
 
     return (
         <div className="page-wrapper">
+            <FeatureTour tourId="teacher_dashboard_v1" steps={tourSteps} />
             <AIBadge />
-
-
-
-
 
             {/* Announcement Button (Relative) */}
             <div style={{ display: 'flex', padding: '10px 15px', justifyContent: 'flex-start' }}>
                 <button
+                    id="tour-teacher-announcement"
                     onClick={() => setShowModal(true)}
                     className="teacher-announcement-btn"
                     title="Make Announcement"
@@ -152,10 +175,10 @@ export default function Teacher() {
                     )}
 
                     <div className="teacher-actions-container">
-                        <button className="btn" onClick={handleGoToGroups}>Go to Groups</button>
-                        <button className="btn btn-attendance" onClick={() => handleCardClick('/attendance')}>Mark Attendance</button>
-                        <button className="btn" style={{ background: '#e84393', color: 'white' }} onClick={() => handleCardClick('/4-way-learning')}>4-Way Learning</button>
-                        <button className="btn btn-library" onClick={() => handleCardClick('/video-library')}>Video Library</button>
+                        <button id="tour-teacher-groups" className="btn" onClick={handleGoToGroups}>Go to Groups</button>
+                        <button id="tour-teacher-attendance" className="btn btn-attendance" onClick={() => handleCardClick('/attendance')}>Mark Attendance</button>
+                        <button id="tour-teacher-4way" className="btn" style={{ background: '#e84393', color: 'white' }} onClick={() => handleCardClick('/4-way-learning')}>4-Way Learning</button>
+                        <button id="tour-teacher-library" className="btn btn-library" onClick={() => handleCardClick('/video-library')}>Video Library</button>
                         <button className="btn btn-feedback" onClick={() => handleCardClick('/general-feedback')}>Feedback</button>
                         <button className="btn btn-timetable" onClick={() => handleCardClick('/timetable')}>Timetable</button>
                     </div>
@@ -174,18 +197,6 @@ export default function Teacher() {
                         <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
                             <div style={{ flex: 1 }}>
                                 <label style={{ fontSize: '12px', color: '#666', display: 'block' }}>Class:</label>
-                                {uniqueClasses.length > 0 ? (
-                                    <select
-                                        className="input-field"
-                                        value={selectedClass}
-                                        onChange={(e) => { setSelectedClass(e.target.value); setSelectedSection('All'); }}
-                                        style={{ margin: 0 }}
-                                    >
-                                        {uniqueClasses.map(c => <option key={c} value={c}>{c}</option>)}
-                                    </select>
-                                ) : (
-                                    <p>{userData?.assignedClass || 'N/A'}</p>
-                                )}
                             </div>
                             <div style={{ flex: 1 }}>
                                 <label style={{ fontSize: '12px', color: '#666', display: 'block' }}>Section:</label>
@@ -200,6 +211,22 @@ export default function Teacher() {
                                 </select>
                             </div>
                         </div>
+
+                        {/* Class Dropdown inside Modal if needed, simplified here based on state check logic in original code */}
+                        {uniqueClasses.length > 0 && (
+                            <div style={{ marginBottom: '10px', textAlign: 'left' }}>
+                                <label style={{ fontSize: '12px', color: '#666' }}>Target Class:</label>
+                                <select
+                                    className="input-field"
+                                    value={selectedClass}
+                                    onChange={(e) => { setSelectedClass(e.target.value); setSelectedSection('All'); }}
+                                    style={{ margin: 0 }}
+                                >
+                                    {uniqueClasses.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            </div>
+                        )}
+
                         <textarea
                             className="input-field"
                             rows="4"

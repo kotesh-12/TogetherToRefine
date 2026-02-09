@@ -16,7 +16,7 @@ const updateSW = registerSW({
   },
 });
 
-const APP_VERSION = '0.0.55'; // INSTALL PROMPT
+const APP_VERSION = '0.0.56'; // FEATURE TOUR
 console.log("TTR App Version:", APP_VERSION);
 
 // Version Check for Debugging

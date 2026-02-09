@@ -3,9 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import AIBadge from '../components/AIBadge';
-
-
-
+import FeatureTour from '../components/FeatureTour';
 import { useUser } from '../context/UserContext';
 
 // Cache object outside component to persist across unmounts/remounts (Back button navigation)
@@ -26,6 +24,35 @@ export default function Student() {
     const [examResults, setExamResults] = useState([]);
 
     const isNavigating = useRef(false);
+
+    // Feature Tour Steps
+    const tourSteps = [
+        {
+            target: 'tour-card-ai',
+            title: '🤖 Your AI Teacher',
+            content: 'Meet your personal AI tutor! Ask doubts, get explanations, and practice concepts anytime, 24/7.'
+        },
+        {
+            target: 'tour-card-attendance',
+            title: '📅 Track Attendance',
+            content: 'Check your daily attendance records here. Stay consistent to maintain your streak!'
+        },
+        {
+            target: 'tour-card-4way',
+            title: '🧠 4-Way Learning',
+            content: 'Explore topics through 4 lenses: Conceptual, Mythological, Story-based, and Dialogue-based learning.'
+        },
+        {
+            target: 'tour-card-video',
+            title: '🎬 Video Library',
+            content: 'Missed a class? Watch recorded sessions and curated educational videos here.'
+        },
+        {
+            target: 'tour-exam-results',
+            title: '📝 Exam Results',
+            content: 'View your performance in recent exams and track your academic progress.'
+        }
+    ];
 
     const handleCardClick = (path) => {
         if (isNavigating.current) return;
@@ -118,9 +145,8 @@ export default function Student() {
 
     return (
         <div className="page-wrapper">
+            <FeatureTour tourId="student_dashboard_v1" steps={tourSteps} />
             <AIBadge />
-
-
 
             {userData?.pid && (
                 <div style={{ textAlign: 'center', marginTop: '10px' }}>
@@ -170,19 +196,19 @@ export default function Student() {
 
                 {/* AI Learning Tools */}
                 <div className="responsive-grid">
-                    <div className="card" onClick={() => handleCardClick('/attendance')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #0984e3, #74b9ff)', color: 'white' }}>
+                    <div id="tour-card-attendance" className="card" onClick={() => handleCardClick('/attendance')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #0984e3, #74b9ff)', color: 'white' }}>
                         <h3>📅 Attendance</h3>
                         <p style={{ fontSize: '13px', margin: '5px 0 0' }}>View your attendance record.</p>
                     </div>
-                    <div className="card" onClick={() => handleCardClick('/ttr-ai')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)', color: 'white' }}>
+                    <div id="tour-card-ai" className="card" onClick={() => handleCardClick('/ttr-ai')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)', color: 'white' }}>
                         <h3>🤖 TTR AI Chat</h3>
                         <p style={{ fontSize: '13px', margin: '5px 0 0' }}>Chat with your personal AI assistant.</p>
                     </div>
-                    <div className="card" onClick={() => handleCardClick('/4-way-learning')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #fd79a8, #e84393)', color: 'white' }}>
+                    <div id="tour-card-4way" className="card" onClick={() => handleCardClick('/4-way-learning')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #fd79a8, #e84393)', color: 'white' }}>
                         <h3>🧠 4-Way Learning</h3>
                         <p style={{ fontSize: '13px', margin: '5px 0 0' }}>Concept, Indian Mythos, Story, & Dialouge.</p>
                     </div>
-                    <div className="card" onClick={() => handleCardClick('/video-library')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #00b894, #55efc4)', color: 'white' }}>
+                    <div id="tour-card-video" className="card" onClick={() => handleCardClick('/video-library')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #00b894, #55efc4)', color: 'white' }}>
                         <h3>🎬 Video Library</h3>
                         <p style={{ fontSize: '13px', margin: '5px 0 0' }}>Watch class recordings & tutorials.</p>
                     </div>
@@ -205,7 +231,7 @@ export default function Student() {
                 </div>
 
                 {/* Exam Results Section (New) */}
-                <div className="card" style={{ marginTop: '20px' }}>
+                <div id="tour-exam-results" className="card" style={{ marginTop: '20px' }}>
                     <h3>📝 Recent Exam Results</h3>
                     <div style={{ overflowX: 'auto', marginTop: '10px' }}>
                         <table style={{ width: '100%', fontSize: '14px', borderCollapse: 'collapse' }}>
