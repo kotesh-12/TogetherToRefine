@@ -15,48 +15,17 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || hardcodedConfig.measurementId
 };
 
-let app, auth, db;
-const missingKeys = Object.keys(firebaseConfig).filter(k => !firebaseConfig[k]);
-
-if (missingKeys.length > 0) {
-  console.error("Firebase Config Missing Keys:", missingKeys);
-  // CRITICAL: Prevent Crash. Setup Mock Objects.
-  window.FIREBASE_CONFIG_ERROR = { missing: missingKeys };
-
-  // Mock App
-  app = {};
-
-  // Mock Auth
-  auth = {
-    currentUser: null,
-    signOut: async () => console.warn("Mock signOut called (Config Error)"),
-    onAuthStateChanged: (cb) => { cb(null); return () => { }; }, // Immediately return null user
-    signInWithPopup: async () => { throw new Error("Firebase Config Missing: " + missingKeys.join(", ")); }
-  };
-
-  // Mock DB
-  db = {
-    type: 'mock',
-    app: app
-  };
-
-  // Attempting to use Firestore methods like getDoc/doc/collection on this mock will crash elsewhere?
-  // UserContext uses doc(db, ...). If db is mock, 'doc' function from firebase/firestore might fail if it strictly checks instance.
-  // However, since we import 'db' and pass it to functions, if those functions are from the SDK, they might error out.
-  // But importantly, the FILE IMPORT won't crash.
-
-} else {
-  // Correct Initialization
-  try {
-    app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    db = getFirestore(app);
-  } catch (e) {
-    console.error("Firebase Init Error:", e);
-    window.FIREBASE_CONFIG_ERROR = { error: e.message };
-    auth = { onAuthStateChanged: (cb) => cb(null) };
-    db = {};
-  }
+// Simplified Initialization (Guaranteed via Hardcoded Config)
+try {
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+} catch (e) {
+  console.error("Firebase Init Error:", e);
+  window.FIREBASE_CONFIG_ERROR = { error: e.message };
+  // Emergency Mock in case of catastrophic SDK failure
+  auth = { onAuthStateChanged: (cb) => cb(null) };
+  db = { type: 'mock' };
 }
 
 export { auth, db };
