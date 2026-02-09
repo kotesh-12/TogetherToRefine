@@ -4,7 +4,7 @@ import './index.css'
 import App from './App.jsx'
 
 // Service Worker is now managed by UpdateManager.jsx
-const APP_VERSION = '0.0.48'; // UPDATED
+const APP_VERSION = '0.0.50'; // UPDATED
 console.log("TTR App Version:", APP_VERSION);
 
 // NUCLEAR FIX: Force unregister ALL Service Workers to clear cache

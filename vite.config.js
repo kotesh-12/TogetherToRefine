@@ -11,50 +11,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
-      VitePWA({
-        registerType: 'autoUpdate',
-        filename: 'sw-v49.js', // VERSION BUMP: Force new worker
-        includeAssets: ['logo.png', 'logo2.png'],
-        manifest: {
-          name: 'Together To Refine',
-          short_name: 'TTR',
-          description: 'Together To Refine - Your educational companion.',
-          theme_color: '#ffffff',
-          background_color: '#ffffff',
-          display: 'standalone',
-          orientation: 'portrait',
-          scope: '/',
-          start_url: '/',
-          prefer_related_applications: false,
-          icons: [
-            {
-              src: 'pwa-192x192.png',
-              sizes: '192x192',
-              type: 'image/png',
-              purpose: 'any maskable'
-            },
-            {
-              src: 'pwa-512x512.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'any maskable'
-            },
-            {
-              src: 'logo2.png',
-              sizes: '64x64 32x32 24x24 16x16',
-              type: 'image/png',
-              purpose: 'any maskable'
-            }
-          ]
-        },
-        workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg}'], // Explicitly cache standard assets
-          navigateFallbackDenylist: [/^\/api/],
-          cleanupOutdatedCaches: true,
-          skipWaiting: true,
-          clientsClaim: true
-        }
-      }),
+      // PWA REMOVED PERMANENTLY to stop caching issues
     ],
     server: {
       host: true, // Allow external access (e.g. mobile testing)
@@ -77,14 +34,14 @@ export default defineConfig(({ mode }) => {
       'process.env.VITE_FIREBASE_MEASUREMENT_ID': JSON.stringify(env.VITE_FIREBASE_MEASUREMENT_ID),
     },
     build: {
-      chunkSizeWarningLimit: 2000, // Increased since we're bundling everything together
+      chunkSizeWarningLimit: 2000,
       rollupOptions: {
         output: {
-          manualChunks: {
-            vendor: ['react', 'react-dom', 'react-router-dom'],
-            firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore'],
-            ui: ['react-player']
-          }
+          // Force new filenames to bypass browser cache
+          entryFileNames: 'assets/v50-[name]-[hash].js',
+          chunkFileNames: 'assets/v50-[name]-[hash].js',
+          assetFileNames: 'assets/v50-[name]-[hash].[ext]',
+          // No manualChunks - let Vite optimize automatically
         }
       }
     }
