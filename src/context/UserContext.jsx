@@ -39,6 +39,14 @@ export function UserProvider({ children }) {
             if (currentUser) {
                 setLoading(true);
 
+                // CRITICAL: Check if running in Mock Mode (Config Error)
+                if (db.type === 'mock') {
+                    console.warn("Running in Mock Mode. UserContext defaulting to null.");
+                    setUserData(null);
+                    setLoading(false);
+                    return;
+                }
+
                 // Session Management
                 registerSession(currentUser.uid).then((sessionId) => {
                     if (sessionId) {
