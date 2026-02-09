@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { db } from '../firebase';
-import { collection, addDoc, query, where, getDocs, serverTimestamp, orderBy, writeBatch, doc } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, serverTimestamp, orderBy, writeBatch, doc, setDoc } from 'firebase/firestore';
 
 export default function MarksManagement() {
     const navigate = useNavigate();
@@ -22,6 +22,7 @@ export default function MarksManagement() {
     const [allMarks, setAllMarks] = useState([]);
     const [filterClass, setFilterClass] = useState('');
     const [loading, setLoading] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Fetch students when class/section selected
     useEffect(() => {
@@ -114,11 +115,12 @@ export default function MarksManagement() {
             return;
         }
 
+        setIsSubmitting(true);
         try {
-            const batch = writeBatch(db);
+            console.log(`Starting submission for ${entries.length} students...`);
 
-            // Prepare batch operations
-            entries.forEach(([studentId, marks]) => {
+            // Use Parallel Requests (Robustness against single failures)
+            const promises = entries.map(async ([studentId, marks]) => {
                 // Find student by matching ID (handling potential type mismatch)
                 const student = students.find(s => String(s.studentId || s.id) === String(studentId));
 
@@ -129,7 +131,7 @@ export default function MarksManagement() {
 
                 const docRef = doc(db, "marks", docId);
 
-                batch.set(docRef, {
+                await setDoc(docRef, {
                     studentId: studentId,
                     studentName: student?.studentName || student?.name || "Unknown",
                     class: selectedClass,
@@ -145,15 +147,24 @@ export default function MarksManagement() {
                 }, { merge: true });
             });
 
-            console.log(`Submitting batch of ${entries.length} marks...`);
-            await batch.commit();
+            const results = await Promise.allSettled(promises);
+            const successCount = results.filter(r => r.status === 'fulfilled').length;
+            const failCount = results.length - successCount;
 
-            alert(`✅ Marks submitted successfully for ${entries.length} students!`);
-            setMarksData({});
-            setExamType('');
+            if (failCount > 0) {
+                console.error("Some submissions failed:", results.filter(r => r.status === 'rejected'));
+                alert(`⚠️ Submitted ${successCount} marks, but ${failCount} failed. Check console for details.`);
+            } else {
+                console.log("All marks submitted successfully!");
+                alert(`✅ Successfully submitted all ${successCount} marks!`);
+                setMarksData({});
+                setExamType('');
+            }
         } catch (e) {
             console.error("Error submitting marks:", e);
             alert("Error submitting marks: " + e.message);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -265,8 +276,8 @@ export default function MarksManagement() {
                                         </tbody>
                                     </table>
                                 </div>
-                                <button onClick={handleSubmitMarks} className="btn" style={{ marginTop: '15px', width: '100%' }}>
-                                    ✅ Submit All Marks
+                                <button onClick={handleSubmitMarks} className="btn" style={{ marginTop: '15px', width: '100%' }} disabled={isSubmitting}>
+                                    {isSubmitting ? '⏳ Submitting...' : '✅ Submit All Marks'}
                                 </button>
                             </>
                         ) : (
