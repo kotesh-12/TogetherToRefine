@@ -16,7 +16,7 @@ const updateSW = registerSW({
   },
 });
 
-const APP_VERSION = '0.0.54'; // UI & ICON FIX
+const APP_VERSION = '0.0.55'; // INSTALL PROMPT
 console.log("TTR App Version:", APP_VERSION);
 
 // Version Check for Debugging

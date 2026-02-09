@@ -28,6 +28,28 @@ export default function Login() {
     const [loading, setLoading] = useState(false);
     const [name, setName] = useState('');
     const [gender, setGender] = useState('');
+    const [installPrompt, setInstallPrompt] = useState(null);
+
+    // PWA Install Logic
+    useEffect(() => {
+        const handler = (e) => {
+            e.preventDefault();
+            setInstallPrompt(e);
+        };
+        window.addEventListener('beforeinstallprompt', handler);
+        return () => window.removeEventListener('beforeinstallprompt', handler);
+    }, []);
+
+    const handleInstallClick = () => {
+        if (!installPrompt) return;
+        installPrompt.prompt();
+        installPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === 'accepted') {
+                console.log('User accepted the A2HS prompt');
+            }
+            setInstallPrompt(null);
+        });
+    };
 
     const navigate = useNavigate();
     const { user, userData, loading: userLoading } = useUser();
@@ -422,8 +444,33 @@ export default function Login() {
                 <div className="toggle-link" onClick={toggleMode}>
                     {isLogin ? "Don't have an account? Sign up" : "Already have an account? Login"}
                 </div>
+
+                {installPrompt && (
+                    <div style={{ marginTop: '20px' }}>
+                        <button
+                            onClick={handleInstallClick}
+                            style={{
+                                background: '#1a73e8',
+                                color: 'white',
+                                padding: '10px 20px',
+                                borderRadius: '25px',
+                                border: 'none',
+                                fontWeight: 'bold',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                margin: '0 auto',
+                                boxShadow: '0 4px 6px rgba(26, 115, 232, 0.3)'
+                            }}
+                        >
+                            📲 Install App for Better Experience
+                        </button>
+                    </div>
+                )}
+
                 {/* DEBUG VERSION */}
-                <div style={{ marginTop: '20px', fontSize: '10px', color: '#b2bec3' }}>v0.0.51 (Stable)</div>
+                <div style={{ marginTop: '20px', fontSize: '10px', color: '#b2bec3' }}>v0.0.55 (Latest)</div>
             </div >
         </div >
     );
