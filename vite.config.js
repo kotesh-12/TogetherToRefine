@@ -76,14 +76,11 @@ export default defineConfig(({ mode }) => {
       'process.env.VITE_FIREBASE_MEASUREMENT_ID': JSON.stringify(env.VITE_FIREBASE_MEASUREMENT_ID),
     },
     build: {
-      chunkSizeWarningLimit: 1000,
+      chunkSizeWarningLimit: 2000, // Increased since we're bundling everything together
       rollupOptions: {
         output: {
-          manualChunks: {
-            vendor: ['react', 'react-dom', 'react-router-dom'],
-            firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore'],
-            ui: ['react-player']
-          }
+          // Removed manualChunks to prevent code splitting
+          // All code will be in a single bundle to avoid dynamic import errors
         }
       }
     }
