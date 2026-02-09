@@ -1,15 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 
 const GlobalLoader = () => {
-    const [showReset, setShowReset] = useState(false);
-
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setShowReset(true);
-        }, 5000); // 5 seconds timeout before showing reset
-        return () => clearTimeout(timer);
-    }, []);
-
     return (
         <div style={{
             height: '100vh',
@@ -17,9 +8,10 @@ const GlobalLoader = () => {
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            fontFamily: 'system-ui, sans-serif'
+            fontFamily: 'system-ui, sans-serif',
+            backgroundColor: '#ffffff'
         }}>
-            <div className="spinner" style={{
+            <div style={{
                 width: '40px',
                 height: '40px',
                 borderRadius: '50%',
@@ -29,48 +21,7 @@ const GlobalLoader = () => {
                 marginBottom: '20px'
             }}></div>
 
-
-            <h3>Loading Application...</h3>
-
-            {showReset && (
-                <div className="fade-in" style={{ marginTop: '20px', textAlign: 'center' }}>
-                    <p style={{ color: '#666', marginBottom: '10px' }}>Taking longer than expected?</p>
-                    <button
-                        onClick={() => window.location.reload()}
-                        style={{
-                            padding: '10px 20px',
-                            background: '#0984e3',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '5px',
-                            cursor: 'pointer',
-                            fontWeight: 'bold'
-                        }}
-                    >
-                        Reload Page
-                    </button>
-
-                    <div style={{ marginTop: '15px' }}>
-                        <button
-                            onClick={() => {
-                                sessionStorage.clear();
-                                localStorage.clear();
-                                window.location.reload();
-                            }}
-                            style={{
-                                background: 'none',
-                                border: 'none',
-                                color: '#d63031',
-                                textDecoration: 'underline',
-                                cursor: 'pointer',
-                                fontSize: '12px'
-                            }}
-                        >
-                            Clear Cache & Reset
-                        </button>
-                    </div>
-                </div>
-            )}
+            <h3 style={{ margin: 0, color: '#333' }}>Loading...</h3>
         </div>
     );
 };
