@@ -12,104 +12,39 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 
-export default function Login() {
-    // 1. Check Config Error FIRST (State Declaration)
-    const [configError, setConfigError] = useState(window.FIREBASE_CONFIG_ERROR || null);
+import React, { useState, useEffect } from 'react';
+import { useUser } from '../context/UserContext';
+import { useNavigate } from 'react-router-dom';
+import {
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    GoogleAuthProvider,
+    signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult
+} from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../firebase';
 
+export default function Login() {
+    // -------------------------------------------------------------------------
+    // 1. ALL HOOK DECLARATIONS (Must be at top, unconditional)
+    // -------------------------------------------------------------------------
+    const [configError, setConfigError] = useState(window.FIREBASE_CONFIG_ERROR || null);
     const [isLogin, setIsLogin] = useState(true);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
-    const [role, setRole] = useState('student'); // Default to student to avoid empty state issues
+    const [role, setRole] = useState('student');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-
-    // New Fields (Legacy for Email/Pass signup)
     const [name, setName] = useState('');
     const [gender, setGender] = useState('');
 
     const navigate = useNavigate();
-    const { user, userData, loading: userLoading } = useUser(); // Access global user state
+    const { user, userData, loading: userLoading } = useUser();
 
-    // 2. Immediate Error Screen (Before Effect Hooks)
-    if (configError) {
-        return (
-            <div className="login-container">
-                <div className="card login-card" style={{ textAlign: 'center', borderTop: '5px solid red' }}>
-                    <h2 style={{ color: '#d63031' }}>⚠️ Configuration Error</h2>
-                    <p>The application could not start because some environment variables are missing.</p>
-                    <div style={{ background: '#ffeaa7', padding: '10px', borderRadius: '5px', margin: '20px 0', textAlign: 'left', fontSize: '12px', overflow: 'auto' }}>
-                        <strong>Missing Keys / Error:</strong>
-                        <pre>{JSON.stringify(configError, null, 2)}</pre>
-                    </div>
-                    <p style={{ fontSize: '14px' }}>Please go to Vercel Settings &rarr; Environment Variables and add the missing keys starting with <code>VITE_FIREBASE_...</code></p>
-                    <button onClick={() => window.location.reload()} className="btn btn-outline" style={{ marginTop: '10px' }}>Retry / Reload</button>
-                </div>
-            </div>
-        );
-    }
-
-    // Redirect if already logged in
-    useEffect(() => {
-        if (userLoading) return; // Wait for initial load
-
-        if (user) {
-            if (userData && userData.role) {
-
-
-                // CRITICAL FIX: Ensure profile is REALLY completed before dashboard access
-                // Check for core fields that might be missing even if flag is true
-                const isStudentIncomplete = userData.role === 'student' && (!userData.class || !userData.institutionId);
-                const isTeacherIncomplete = userData.role === 'teacher' && (!userData.subject || !userData.institutionId);
-                const isInstitutionIncomplete = userData.role === 'institution' && (!userData.schoolName); // Basic check
-
-                if (!userData.profileCompleted || isStudentIncomplete || isTeacherIncomplete || isInstitutionIncomplete) {
-
-                    navigate('/details');
-                    return;
-                }
-
-                if (userData.approved === false) {
-                    navigate('/pending-approval', { replace: true });
-                } else {
-                    switch (userData.role) {
-                        case 'student': navigate('/student', { replace: true }); break;
-                        case 'teacher': navigate('/teacher', { replace: true }); break;
-                        case 'institution': navigate('/institution', { replace: true }); break;
-                        case 'admin': navigate('/admin', { replace: true }); break;
-                        default: navigate('/admission', { replace: true });
-                    }
-                }
-            } else {
-                // User is auth'd but checking DB or no data found -> Assume new/setup needed
-                // If it's effectively 404 on profile, go to details
-                if (!userData) {
-                    navigate('/details');
-                }
-            }
-        }
-    }, [user, userData, userLoading, navigate]);
-
-    // PREVENT FLASH: Show loading if checking auth OR if user is found (waiting for redirect)
-    // PREVENT FLASH: Show loading ONLY while checking auth.
-    // Once UserContext finishes loading (userLoading=false), let useEffect handle redirects.
-    // If no redirect happens (e.g. user not fully setup), fall through to render Login form.
-    if (userLoading) {
-        return (
-            <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px' }}>
-                <div className="spinner" style={{ width: '40px', height: '40px', borderRadius: '50%', border: '4px solid #f3f3f3', borderTop: '4px solid #3498db', animation: 'spin 1s linear infinite' }}></div>
-                <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-                <p>Verifying Session...</p>
-                <button
-                    onClick={() => { auth.signOut(); window.location.reload(); }}
-                    style={{ padding: '8px 16px', background: '#e74c3c', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                >
-                    Stuck? Click to Reset
-                </button>
-            </div>
-        );
-    }
-
+    // Helper functions (safe to be here)
     const toggleMode = () => {
         setIsLogin(!isLogin);
         setError('');
@@ -117,32 +52,27 @@ export default function Login() {
 
     const checkUserExists = async (uid) => {
         try {
-            // Helper to safely check doc existence (ignoring permission limitations)
             const safeGet = async (col, id) => {
                 try {
                     const s = await getDoc(doc(db, col, id));
                     return s.exists() ? s : null;
                 } catch (e) {
-                    // Ignore permission errors, assume not found in that collection
                     return null;
                 }
             };
 
-            // 1. Check 'institutions' (Priority High)
             const instSnap = await safeGet("institutions", uid);
             if (instSnap) {
                 const data = instSnap.data();
                 return { role: (data.role || 'institution').toLowerCase(), isNew: false, approved: true };
             }
 
-            // 2. Check 'teachers'
             const teachSnap = await safeGet("teachers", uid);
             if (teachSnap) {
                 const data = teachSnap.data();
                 return { role: (data.role || 'teacher').toLowerCase(), isNew: !data.profileCompleted, approved: data.approved };
             }
 
-            // 3. Check 'users' (Student - Fallback)
             const userSnap = await safeGet("users", uid);
             if (userSnap) {
                 const data = userSnap.data();
@@ -168,20 +98,60 @@ export default function Login() {
         }
     };
 
-    // -------------------------------------------------------------
-    // REDIRECT AUTH HANDLER
-    // -------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // 2. USE EFFECTS (Unconditional)
+    // -------------------------------------------------------------------------
+
+    // Effect 1: Redirect logic for logged-in users
+    useEffect(() => {
+        if (userLoading) return; // Wait for initial load
+
+        if (user) {
+            if (userData && userData.role) {
+                const isStudentIncomplete = userData.role === 'student' && (!userData.class || !userData.institutionId);
+                const isTeacherIncomplete = userData.role === 'teacher' && (!userData.subject || !userData.institutionId);
+                const isInstitutionIncomplete = userData.role === 'institution' && (!userData.schoolName);
+
+                if (!userData.profileCompleted || isStudentIncomplete || isTeacherIncomplete || isInstitutionIncomplete) {
+                    navigate('/details');
+                    return;
+                }
+
+                if (userData.approved === false) {
+                    navigate('/pending-approval', { replace: true });
+                } else {
+                    switch (userData.role) {
+                        case 'student': navigate('/student', { replace: true }); break;
+                        case 'teacher': navigate('/teacher', { replace: true }); break;
+                        case 'institution': navigate('/institution', { replace: true }); break;
+                        case 'admin': navigate('/admin', { replace: true }); break;
+                        default: navigate('/admission', { replace: true });
+                    }
+                }
+            } else {
+                if (!userData) {
+                    navigate('/details');
+                }
+            }
+        }
+    }, [user, userData, userLoading, navigate]);
+
+    // Effect 2: Config Error Check
+    useEffect(() => {
+        if (window.FIREBASE_CONFIG_ERROR) {
+            setConfigError(window.FIREBASE_CONFIG_ERROR);
+        }
+    }, []);
+
+    // Effect 3: Redirect Result Handler
     useEffect(() => {
         let isMounted = true;
         const checkRedirect = async () => {
             if (!auth) return;
             try {
-                // Determine if we are returning from a redirect flow
                 const result = await getRedirectResult(auth);
-                if (result) {
-
+                if (result && isMounted) {
                     setLoading(true);
-
                     const user = result.user;
                     const { role, isNew, approved } = await checkUserExists(user.uid);
 
@@ -193,8 +163,6 @@ export default function Login() {
                             navigate('/details');
                         }
                     }
-                } else {
-                    // No redirect result - just normal page load
                 }
             } catch (err) {
                 console.error("Redirect Login Failed:", err);
@@ -202,7 +170,7 @@ export default function Login() {
                     let msg = err.message;
                     if (err.code === 'auth/unauthorized-domain') {
                         msg = `DOMAIN ERROR: ${window.location.hostname} is not whitelisted in Firebase Console.`;
-                        alert(msg); // Force user to see this
+                        alert(msg);
                     }
                     setError(msg);
                     setLoading(false);
@@ -213,9 +181,9 @@ export default function Login() {
         return () => { isMounted = false; };
     }, [navigate]);
 
-    // -------------------------------------------------------------
-    // EMAIL / PASSWORD AUTH
-    // -------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // 3. HANDLERS
+    // -------------------------------------------------------------------------
     const handleAuth = async (e) => {
         e.preventDefault();
         setError('');
@@ -236,7 +204,6 @@ export default function Login() {
             }
         }
 
-        // Password Strength Validation (VULN-011)
         if (!isLogin) {
             if (password.length < 8) {
                 setError('Password must be at least 8 characters long.');
@@ -256,34 +223,22 @@ export default function Login() {
 
         try {
             if (isLogin) {
-                // Login Logic
                 const userCredential = await signInWithEmailAndPassword(auth, email, password);
                 const uid = userCredential.user.uid;
-
-
                 const { role: dbRole, isNew, approved } = await checkUserExists(uid);
-
 
                 if (dbRole) {
                     if (isNew) {
-
                         navigate('/details');
                         return;
                     } else {
-                        if (approved === false) {
-                            navigate('/pending-approval');
-                        } else {
-
-                            redirectToRolePage(dbRole);
-                        }
+                        if (approved === false) navigate('/pending-approval');
+                        else redirectToRolePage(dbRole);
                     }
                 } else {
-
                     navigate('/details');
                 }
-
             } else {
-                // Signup Logic
                 let uid;
                 if (auth.currentUser) {
                     uid = auth.currentUser.uid;
@@ -292,19 +247,7 @@ export default function Login() {
                     uid = userCredential.user.uid;
                 }
 
-                // Minimal User Record to start
-                const userData = {
-                    email,
-                    role, // Role is critical for routing
-                    createdAt: new Date(),
-                    profileCompleted: false
-                };
-
-                // Store simplified record in 'users' temporarily or let Details handle it.
-                // We will JUST navigate to Details with the desired ROLE.
-                // Details.jsx will handle the actual large form submission and correct collection.
-
-
+                // Temporary logic: Navigate to Details to complete profile
                 navigate('/details', { state: { role } });
                 return;
             }
@@ -322,41 +265,26 @@ export default function Login() {
         const provider = new GoogleAuthProvider();
         provider.addScope('profile');
         provider.addScope('email');
-        // Force the 'select_account' prompt to ask Google to show the account chooser.
-        provider.setCustomParameters({
-            prompt: 'select_account'
-        });
+        provider.setCustomParameters({ prompt: 'select_account' });
 
         try {
             const result = await signInWithPopup(auth, provider);
             const user = result.user;
-
-
-            // Check existing user role
-            // Check existing user role
             const { role: dbRole, isNew, approved } = await checkUserExists(user.uid);
 
             if (dbRole && !isNew) {
-                if (approved === false) {
-                    navigate('/pending-approval');
-                } else {
-                    redirectToRolePage(dbRole);
-                }
+                if (approved === false) navigate('/pending-approval');
+                else redirectToRolePage(dbRole);
             } else {
-                // Pass the selected role from the UI dropdown (state 'role') to Details page
                 navigate('/details', { state: { role: role } });
                 return;
             }
-
         } catch (err) {
             console.error("Popup Error:", err);
-
-            if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request' || err.code === 'auth/popup-closed-by-user') {
-                // Retry with Redirect for Mobile/Strict Browsers
+            if (['auth/popup-blocked', 'auth/cancelled-popup-request', 'auth/popup-closed-by-user'].includes(err.code)) {
                 console.log("Popup blocked/closed. Trying Redirect...");
                 try {
                     await signInWithRedirect(auth, provider);
-                    // Page will unload, no further code execution here
                 } catch (redirErr) {
                     setError("Redirect Failed: " + redirErr.message);
                     setLoading(false);
@@ -364,7 +292,7 @@ export default function Login() {
             } else if (err.code === 'auth/unauthorized-domain') {
                 const msg = `SETUP ERROR: Domain '${window.location.hostname}' is not authorized in Firebase.`;
                 setError(msg);
-                alert(msg); // Force visibility
+                alert(msg);
                 setLoading(false);
             } else {
                 setError("Login Error: " + err.message);
@@ -373,7 +301,34 @@ export default function Login() {
         }
     };
 
+    // -------------------------------------------------------------------------
+    // 4. CONDITIONAL RENDERS (Must be at the very end)
+    // -------------------------------------------------------------------------
 
+    if (configError) {
+        return (
+            <div className="login-container">
+                <div className="card login-card" style={{ textAlign: 'center', borderTop: '5px solid red' }}>
+                    <h2 style={{ color: '#d63031' }}>⚠️ Configuration Error</h2>
+                    <p>The application could not start because some environment variables are missing.</p>
+                    <div style={{ background: '#ffeaa7', padding: '10px', borderRadius: '5px', margin: '20px 0', textAlign: 'left', fontSize: '12px', overflow: 'auto' }}>
+                        <strong>Missing Keys / Error:</strong>
+                        <pre>{JSON.stringify(configError, null, 2)}</pre>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (userLoading) {
+        return (
+            <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px' }}>
+                <div className="spinner" style={{ width: '40px', height: '40px', borderRadius: '50%', border: '4px solid #f3f3f3', borderTop: '4px solid #3498db', animation: 'spin 1s linear infinite' }}></div>
+                <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+                <p>Verifying Session...</p>
+            </div>
+        );
+    }
 
     if (!auth) return <div className="login-container"><div className="card">Error: Firebase Auth not initialized.</div></div>;
 
@@ -475,7 +430,7 @@ export default function Login() {
                     {isLogin ? "Don't have an account? Sign up" : "Already have an account? Login"}
                 </div>
                 {/* DEBUG VERSION */}
-                <div style={{ marginTop: '20px', fontSize: '10px', color: '#b2bec3' }}>v0.0.47</div>
+                <div style={{ marginTop: '20px', fontSize: '10px', color: '#b2bec3' }}>v0.0.51 (Stable)</div>
             </div >
         </div >
     );
