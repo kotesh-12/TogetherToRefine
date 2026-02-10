@@ -447,6 +447,74 @@ export default function Timetable() {
         });
     };
 
+    // 4. AI Timetable Generator
+    const generateAITimetable = () => {
+        setLoading(true);
+
+        try {
+            // Define subjects based on common curriculum
+            const subjects = ['Mathematics', 'Science', 'English', 'Hindi', 'Social Studies', 'Computer', 'Physical Education'];
+
+            // Create new timetable structure
+            const newTimetable = {};
+
+            days.forEach(day => {
+                newTimetable[day] = {};
+
+                // Shuffle subjects for variety each day
+                const daySubjects = [...subjects].sort(() => Math.random() - 0.5);
+
+                periodConfig.forEach((period, index) => {
+                    // Skip break periods
+                    if (period.type === 'break') {
+                        newTimetable[day][period.id] = { subject: period.name || 'Break', span: 1 };
+                        return;
+                    }
+
+                    // Select subject ensuring variety
+                    let selectedSubject = daySubjects[index % daySubjects.length];
+
+                    // Avoid same subject consecutively (check previous non-break period)
+                    const prevPeriods = periodConfig.slice(0, index).filter(p => p.type !== 'break');
+                    if (prevPeriods.length > 0) {
+                        const lastPeriod = prevPeriods[prevPeriods.length - 1];
+                        const prevSubject = newTimetable[day][lastPeriod.id]?.subject;
+
+                        if (prevSubject === selectedSubject) {
+                            // Try next subject
+                            selectedSubject = daySubjects[(index + 1) % daySubjects.length];
+                        }
+                    }
+
+                    // Find teacher for this subject from allotments
+                    const matchingTeachers = allottedTeachers.filter(t =>
+                        t.toLowerCase().includes(selectedSubject.toLowerCase())
+                    );
+
+                    let teacherName = '';
+                    if (matchingTeachers.length > 0) {
+                        // Extract teacher name from format "Subject (TeacherName)"
+                        const randomTeacher = matchingTeachers[Math.floor(Math.random() * matchingTeachers.length)];
+                        const match = randomTeacher.match(/\(([^)]+)\)/);
+                        teacherName = match ? match[1] : randomTeacher;
+                    }
+
+                    // Create cell with subject and optional teacher
+                    const cellValue = teacherName ? `${selectedSubject} (${teacherName})` : selectedSubject;
+                    newTimetable[day][period.id] = { subject: cellValue, span: 1 };
+                });
+            });
+
+            setTimetable(newTimetable);
+            setIsEditing(true); // Automatically enter edit mode
+            alert('✅ AI Timetable generated! Review and save when ready.');
+        } catch (e) {
+            console.error('Error generating timetable:', e);
+            alert('Failed to generate timetable. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
 
     const finalTimetable = viewMode === 'personal' ? mySchedule : timetable;
@@ -556,18 +624,34 @@ export default function Timetable() {
 
                     {/* Institution Controls */}
                     {isInstitution && viewMode !== 'overview' && (
-                        <div style={{ display: 'flex', gap: '10px' }}>
+                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                             {!isEditing ? (
-                                <button
-                                    onClick={() => setIsEditing(true)}
-                                    style={{
-                                        background: '#0984e3', color: 'white', border: 'none', padding: '10px 20px',
-                                        borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px',
-                                        boxShadow: '0 4px 6px rgba(9, 132, 227, 0.2)'
-                                    }}
-                                >
-                                    ✏️ Edit Schedule
-                                </button>
+                                <>
+                                    <button
+                                        onClick={() => setIsEditing(true)}
+                                        style={{
+                                            background: '#0984e3', color: 'white', border: 'none', padding: '10px 20px',
+                                            borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px',
+                                            boxShadow: '0 4px 6px rgba(9, 132, 227, 0.2)'
+                                        }}
+                                    >
+                                        ✏️ Edit Schedule
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            if (!window.confirm('Generate AI timetable? This will replace the current schedule.')) return;
+                                            generateAITimetable();
+                                        }}
+                                        style={{
+                                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                            color: 'white', border: 'none', padding: '10px 20px',
+                                            borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px',
+                                            boxShadow: '0 4px 6px rgba(102, 126, 234, 0.4)'
+                                        }}
+                                    >
+                                        🤖 AI Generate
+                                    </button>
+                                </>
                             ) : (
                                 <>
                                     <button
