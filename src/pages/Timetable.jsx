@@ -539,51 +539,64 @@ export default function Timetable() {
                 newTimetable[day] = {};
 
                 // Shuffle subjects for variety each day
-                const daySubjects = [...subjects].sort(() => Math.random() - 0.5);
+                const daySubjects = [...aiConfig.subjects].sort(() => Math.random() - 0.5);
+                let subjectIndex = 0;
 
-                periodConfig.forEach((period, index) => {
+                newPeriodConfig.forEach((period, periodIdx) => {
                     // Skip break periods
                     if (period.type === 'break') {
-                        newTimetable[day][period.id] = { subject: period.name || 'Break', span: 1 };
+                        newTimetable[day][period.id] = { subject: period.name, span: 1 };
                         return;
                     }
 
                     // Select subject ensuring variety
-                    let selectedSubject = daySubjects[index % daySubjects.length];
+                    let selectedSubject = daySubjects[subjectIndex % daySubjects.length];
 
-                    // Avoid same subject consecutively (check previous non-break period)
-                    const prevPeriods = periodConfig.slice(0, index).filter(p => p.type !== 'break');
+                    // Avoid same subject consecutively
+                    const prevPeriods = newPeriodConfig.slice(0, periodIdx).filter(p => p.type !== 'break');
                     if (prevPeriods.length > 0) {
                         const lastPeriod = prevPeriods[prevPeriods.length - 1];
                         const prevSubject = newTimetable[day][lastPeriod.id]?.subject;
 
-                        if (prevSubject === selectedSubject) {
+                        if (prevSubject && prevSubject.includes(selectedSubject)) {
                             // Try next subject
-                            selectedSubject = daySubjects[(index + 1) % daySubjects.length];
+                            subjectIndex++;
+                            selectedSubject = daySubjects[subjectIndex % daySubjects.length];
                         }
                     }
 
-                    // Find teacher for this subject from allotments
-                    const matchingTeachers = allottedTeachers.filter(t =>
-                        t.toLowerCase().includes(selectedSubject.toLowerCase())
-                    );
-
+                    // Get assigned teacher for this subject
+                    const assignedTeacherId = aiConfig.teacherAssignments[selectedSubject];
                     let teacherName = '';
-                    if (matchingTeachers.length > 0) {
-                        // Extract teacher name from format "Subject (TeacherName)"
-                        const randomTeacher = matchingTeachers[Math.floor(Math.random() * matchingTeachers.length)];
-                        const match = randomTeacher.match(/\(([^)]+)\)/);
-                        teacherName = match ? match[1] : randomTeacher;
+
+                    if (assignedTeacherId) {
+                        const teacher = availableTeachers.find(t => t.id === assignedTeacherId);
+                        if (teacher) {
+                            // Check if teacher is already assigned at this period
+                            const isTeacherBusy = teacherSchedule[assignedTeacherId][day].includes(period.id);
+
+                            if (!isTeacherBusy) {
+                                teacherName = teacher.name;
+                                // Mark teacher as busy for this period
+                                teacherSchedule[assignedTeacherId][day].push(period.id);
+                            } else {
+                                // Teacher is busy, mark as conflict
+                                teacherName = 'TBD (Conflict)';
+                            }
+                        }
                     }
 
-                    // Create cell with subject and optional teacher
+                    // Create cell with subject and teacher
                     const cellValue = teacherName ? `${selectedSubject} (${teacherName})` : selectedSubject;
                     newTimetable[day][period.id] = { subject: cellValue, span: 1 };
+
+                    subjectIndex++;
                 });
             });
 
             setTimetable(newTimetable);
-            setIsEditing(true); // Automatically enter edit mode
+            setIsEditing(true);
+            setShowAIModal(false);
             alert('✅ AI Timetable generated! Review and save when ready.');
         } catch (e) {
             console.error('Error generating timetable:', e);
