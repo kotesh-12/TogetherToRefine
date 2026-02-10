@@ -22,6 +22,7 @@ export default function MarksManagement() {
     const [allMarks, setAllMarks] = useState([]);
     const [filterClass, setFilterClass] = useState('');
     const [filterSection, setFilterSection] = useState('');
+    const [filterExamType, setFilterExamType] = useState(''); // NEW: Filter by exam type
     const [loading, setLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -37,7 +38,7 @@ export default function MarksManagement() {
         if (activeTab === 'view') {
             fetchAllMarks();
         }
-    }, [activeTab, filterClass, filterSection]);
+    }, [activeTab, filterClass, filterSection, filterExamType]);
 
     const fetchStudents = async () => {
         try {
@@ -75,6 +76,9 @@ export default function MarksManagement() {
             }
             if (filterSection) {
                 list = list.filter(m => String(m.section) === String(filterSection));
+            }
+            if (filterExamType) {
+                list = list.filter(m => m.examType === filterExamType);
             }
 
             // Client-side Sort (Newest First)
@@ -301,7 +305,7 @@ export default function MarksManagement() {
                 {/* VIEW MARKS TAB */}
                 {activeTab === 'view' && (
                     <div className="card">
-                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '15px' }}>
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap' }}>
                             <h3 style={{ margin: 0, flex: 1 }}>All Marks</h3>
 
                             <select className="input-field" value={filterClass} onChange={(e) => setFilterClass(e.target.value)} style={{ width: '140px' }}>
@@ -312,6 +316,15 @@ export default function MarksManagement() {
                             <select className="input-field" value={filterSection} onChange={(e) => setFilterSection(e.target.value)} style={{ width: '120px' }}>
                                 <option value="">All Sections</option>
                                 {['A', 'B', 'C', 'D'].map(s => <option key={s} value={s}>Section {s}</option>)}
+                            </select>
+
+                            <select className="input-field" value={filterExamType} onChange={(e) => setFilterExamType(e.target.value)} style={{ width: '150px' }}>
+                                <option value="">All Exam Types</option>
+                                <option value="Assignment 1">Assignment 1</option>
+                                <option value="Assignment 2">Assignment 2</option>
+                                <option value="Mid-Term 1">Mid-Term 1</option>
+                                <option value="Mid-Term 2">Mid-Term 2</option>
+                                <option value="Final Exam">Final Exam</option>
                             </select>
                         </div>
 
