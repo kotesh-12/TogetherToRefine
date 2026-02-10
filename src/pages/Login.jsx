@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../context/LanguageContext';
 import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
@@ -54,6 +55,7 @@ export default function Login() {
 
     const navigate = useNavigate();
     const { user, userData, loading: userLoading } = useUser();
+    const { t, language, toggleLanguage } = useLanguage();
 
     // Helper functions (safe to be here)
     const toggleMode = () => {
@@ -348,9 +350,22 @@ export default function Login() {
 
     return (
         <div className="login-container">
-            <div className="card login-card" style={{ textAlign: 'center' }}>
+            <div className="card login-card" style={{ textAlign: 'center', position: 'relative' }}>
+                {/* Language Toggle */}
+                <button
+                    onClick={toggleLanguage}
+                    style={{
+                        position: 'absolute', top: '10px', right: '10px',
+                        background: 'transparent', border: '1px solid #dfe6e9',
+                        borderRadius: '20px', padding: '4px 8px', fontSize: '10px',
+                        cursor: 'pointer', color: '#636e72'
+                    }}
+                >
+                    {language === 'en' ? '🇮🇳 अ / Hi' : '🇬🇧 A / En'}
+                </button>
+
                 <img src={`${logo}?v=58`} alt="TTR Logo" style={{ width: '80px', height: 'auto', marginBottom: '10px' }} />
-                <h2 className="login-title">{isLogin ? 'Login' : 'Sign Up'}</h2>
+                <h2 className="login-title">{isLogin ? t('login') : t('signup')}</h2>
                 {error && <div className="error-text">{error}</div>}
 
                 <form onSubmit={handleAuth}>
@@ -398,7 +413,7 @@ export default function Login() {
                     <input
                         type="email"
                         className="input-field"
-                        placeholder="Email"
+                        placeholder={t('email_placeholder')}
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
@@ -408,7 +423,7 @@ export default function Login() {
                         <input
                             type={showPassword ? "text" : "password"}
                             className="input-field"
-                            placeholder="Password"
+                            placeholder={t('password_placeholder')}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
@@ -423,7 +438,7 @@ export default function Login() {
                     </div>
 
                     <button type="submit" className="btn full-width" disabled={loading}>
-                        {loading ? 'Processing...' : (isLogin ? 'Login' : 'Sign Up')}
+                        {loading ? t('loading') : (isLogin ? t('login') : t('signup'))}
                     </button>
                 </form>
 
@@ -443,7 +458,7 @@ export default function Login() {
                 </button>
 
                 <div className="toggle-link" onClick={toggleMode}>
-                    {isLogin ? "Don't have an account? Sign up" : "Already have an account? Login"}
+                    {isLogin ? t('no_account') : t('have_account')}
                 </div>
 
                 {installPrompt && (

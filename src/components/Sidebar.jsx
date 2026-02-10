@@ -1,23 +1,25 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function Sidebar({ isOpen }) {
     const navigate = useNavigate();
     const location = useLocation();
     const { userData } = useUser();
+    const { t } = useLanguage();
 
     // Base Routes
     const routes = [
-        { path: '/', label: 'Dashboard', icon: '🏠', roles: ['all'] }, // Redirects to accurate dashboard
-        { path: '/group', label: 'My Class', icon: '🏫', roles: ['student', 'teacher'] },
-        { path: '/attendance', label: 'Attendance', icon: '📅', roles: ['student', 'teacher'] },
-        { path: '/timetable', label: 'Timetable', icon: '🕒', roles: ['student', 'teacher'] },
-        { path: '/exam', label: 'Exams', icon: '📝', roles: ['student', 'teacher'] },
-        { path: '/video-library', label: 'Library', icon: '📺', roles: ['all'] },
-        { path: '/health', label: 'Health', icon: '❤️', roles: ['all'] },
-        { path: '/general-feedback', label: 'Feedback', icon: '💬', roles: ['all'] },
-        { path: '/settings', label: 'Settings', icon: '⚙️', roles: ['all'] },
+        { path: '/', label: t('dashboard'), icon: '🏠', roles: ['all'] }, // Redirects to accurate dashboard
+        { path: '/group', label: t('my_class'), icon: '🏫', roles: ['student', 'teacher'] },
+        { path: '/attendance', label: t('attendance'), icon: '📅', roles: ['student', 'teacher'] },
+        { path: '/timetable', label: t('timetable'), icon: '🕒', roles: ['student', 'teacher'] },
+        { path: '/exam', label: t('exams'), icon: '📝', roles: ['student', 'teacher'] },
+        { path: '/video-library', label: t('video_library'), icon: '📺', roles: ['all'] },
+        { path: '/health', label: t('health'), icon: '❤️', roles: ['all'] },
+        { path: '/general-feedback', label: t('feedback'), icon: '💬', roles: ['all'] },
+        { path: '/settings', label: t('settings'), icon: '⚙️', roles: ['all'] },
     ];
 
     // Filter by Role
