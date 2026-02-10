@@ -44,13 +44,12 @@ export default function UpdateManager() {
                 flexDirection: 'column'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span>🚀 Update Available!</span>
+                    <span>🚀 {latestVersion ? 'Update v' + latestVersion : 'Update Available'}</span>
                     <button
                         id="update-btn-react"
                         onClick={async () => {
                             const btn = document.getElementById('update-btn-react');
-                            if (btn) btn.innerText = "Cleaning & Updating...";
-
+                            if (btn) btn.innerText = "Updating...";
                             try {
                                 if ('serviceWorker' in navigator) {
                                     const regs = await navigator.serviceWorker.getRegistrations();
@@ -58,12 +57,8 @@ export default function UpdateManager() {
                                 }
                                 const keys = await caches.keys();
                                 await Promise.all(keys.map(k => caches.delete(k)));
-                                // Do NOT clear localStorage to preserve Login Session
                                 localStorage.removeItem('ttr_version');
                             } catch (e) { console.error(e); }
-
-                            // Force reload with unique version param to bypass browser cache
-                            // This ensures the server gives us the new index.html
                             window.location.href = window.location.origin + "/?v=" + Date.now();
                         }}
                         style={{
@@ -73,9 +68,19 @@ export default function UpdateManager() {
                     >
                         Update Now
                     </button>
+                    <button
+                        onClick={() => setUpdateAvailable(false)}
+                        style={{
+                            background: 'transparent', border: '1px solid #aaa', color: '#ccc',
+                            width: '30px', height: '30px', borderRadius: '50%', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}
+                    >
+                        ✕
+                    </button>
                 </div>
                 <div style={{ fontSize: '10px', opacity: 0.7 }}>
-                    ver: {localStorage.getItem('ttr_version') || 'unknown'} -{'>'} new
+                    Current: {localStorage.getItem('ttr_version') || 'v?'}
                 </div>
             </div>
         );

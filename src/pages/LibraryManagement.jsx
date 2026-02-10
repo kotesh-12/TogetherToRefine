@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
+import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
 import { collection, addDoc, query, where, getDocs, updateDoc, deleteDoc, doc, serverTimestamp, orderBy } from 'firebase/firestore';
 
 export default function LibraryManagement() {
     const navigate = useNavigate();
     const { userData } = useUser();
+    const { t } = useLanguage();
 
     const isStudent = userData?.role === 'student';
     const [activeTab, setActiveTab] = useState(isStudent ? 'dashboard' : 'books'); // 'books', 'issue', 'return', 'dashboard'
@@ -255,7 +257,7 @@ export default function LibraryManagement() {
             <div className="container">
                 {/* Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <h2>📚 Library Management</h2>
+                    <h2>📚 {t('library')}</h2>
                     <button onClick={() => navigate(-1)} className="btn-outline">← Back</button>
                 </div>
 
@@ -271,7 +273,7 @@ export default function LibraryManagement() {
                                 cursor: 'pointer', color: activeTab === 'dashboard' ? '#0984e3' : '#636e72'
                             }}
                         >
-                            📊 My Dashboard
+                            📊 {t('lib_dashboard')}
                         </button>
                     )}
                     <button
@@ -283,7 +285,7 @@ export default function LibraryManagement() {
                             cursor: 'pointer', color: activeTab === 'books' ? '#0984e3' : '#636e72'
                         }}
                     >
-                        📖 {isStudent ? 'Browse Books' : 'Books Catalog'}
+                        📖 {isStudent ? t('lib_browse') : t('lib_catalog')}
                     </button>
                     {!isStudent && (
                         <>
@@ -296,7 +298,7 @@ export default function LibraryManagement() {
                                     cursor: 'pointer', color: activeTab === 'issue' ? '#0984e3' : '#636e72'
                                 }}
                             >
-                                ➕ Issue Book
+                                ➕ {t('lib_issue')}
                             </button>
                             <button
                                 onClick={() => setActiveTab('return')}
@@ -307,7 +309,7 @@ export default function LibraryManagement() {
                                     cursor: 'pointer', color: activeTab === 'return' ? '#0984e3' : '#636e72'
                                 }}
                             >
-                                ↩️ Return Book
+                                ↩️ {t('lib_return')}
                             </button>
                             <button
                                 onClick={() => setActiveTab('reservations')}
@@ -318,7 +320,7 @@ export default function LibraryManagement() {
                                     cursor: 'pointer', color: activeTab === 'reservations' ? '#0984e3' : '#636e72'
                                 }}
                             >
-                                📋 Reservations
+                                📋 {t('lib_reservations')}
                             </button>
                         </>
                     )}

@@ -154,7 +154,7 @@ export default function Teacher() {
                         fontSize: '12px'
                     }}
                 >
-                    🔴 INSPECTOR MODE
+                    🔴 {t('inspector_mode')}
                 </button>
             </div>
 

@@ -166,7 +166,7 @@ export default function Student() {
             <div className="container">
                 <div className="dropdown-container">
                     <div className="dropdown-toggle card" onClick={() => setShowDropdown(!showDropdown)}>
-                        {selectedPerson || "Select Person 🤠"}
+                        {selectedPerson || t('select_person')}
                     </div>
                     {showDropdown && (
                         <div className="dropdown-list card">
@@ -192,7 +192,7 @@ export default function Student() {
                 {selectedPerson && (
                     <div className="card text-center mt-4">
                         <h2>{selectedPerson}</h2>
-                        <button className="btn mt-2" onClick={() => handleCardClick('/profileview')}>Proceed</button>
+                        <button className="btn mt-2" onClick={() => handleCardClick('/profileview')}>{t('proceed')}</button>
                     </div>
                 )}
 
