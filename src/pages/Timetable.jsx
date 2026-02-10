@@ -498,13 +498,39 @@ export default function Timetable() {
         }
     };
 
-    // 4. AI Timetable Generator
+    // 4. AI Timetable Generator (Enhanced with Configuration)
     const generateAITimetable = () => {
+        // Validate configuration
+        if (aiConfig.subjects.length === 0) {
+            alert('Please select at least one subject!');
+            return;
+        }
+
         setLoading(true);
 
         try {
-            // Define subjects based on common curriculum
-            const subjects = ['Mathematics', 'Science', 'English', 'Hindi', 'Social Studies', 'Computer', 'Physical Education'];
+            // Create new period configuration based on user input
+            const newPeriodConfig = [];
+            for (let i = 0; i < aiConfig.periodsPerDay; i++) {
+                if (i === aiConfig.lunchBreakAfterPeriod) {
+                    newPeriodConfig.push({ id: `break_lunch`, name: 'Lunch Break', type: 'break' });
+                }
+                newPeriodConfig.push({ id: `p${i + 1}`, name: `Period ${i + 1}`, type: 'class' });
+            }
+            setPeriodConfig(newPeriodConfig);
+
+            // Track teacher assignments across all periods and days to avoid conflicts
+            const teacherSchedule = {}; // { teacherId: { day: [periodIds] } }
+
+            // Initialize teacher schedule
+            Object.values(aiConfig.teacherAssignments).forEach(teacherId => {
+                if (teacherId) {
+                    teacherSchedule[teacherId] = {};
+                    days.forEach(day => {
+                        teacherSchedule[teacherId][day] = [];
+                    });
+                }
+            });
 
             // Create new timetable structure
             const newTimetable = {};
