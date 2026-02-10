@@ -498,8 +498,9 @@ export default function Timetable() {
         }
     };
 
-    // 4. AI Timetable Generator (Enhanced with Configuration)
-    const generateAITimetable = () => {
+
+    // 4. AI Timetable Generator (Enhanced with Cross-Class Conflict Detection)
+    const generateAITimetable = async () => {
         // Validate configuration
         if (aiConfig.subjects.length === 0) {
             alert('Please select at least one subject!');
@@ -509,20 +510,26 @@ export default function Timetable() {
         setLoading(true);
 
         try {
-            // Create new period configuration based on user input
-            const newPeriodConfig = [];
-            for (let i = 0; i < aiConfig.periodsPerDay; i++) {
-                if (i === aiConfig.lunchBreakAfterPeriod) {
-                    newPeriodConfig.push({ id: `break_lunch`, name: 'Lunch Break', type: 'break' });
-                }
-                newPeriodConfig.push({ id: `p${i + 1}`, name: `Period ${i + 1}`, type: 'class' });
-            }
-            setPeriodConfig(newPeriodConfig);
+            // STEP 1: Fetch ALL existing timetables to check teacher availability
+            const allExistingTimetables = {};
 
-            // Track teacher assignments across all periods and days to avoid conflicts
+            if (instId) {
+                const timetablesRef = collection(db, 'timetables');
+                const q = query(timetablesRef, where('institutionId', '==', instId));
+                const snapshot = await getDocs(q);
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    // Store timetables by class-section key
+                    const key = `${data.class}-${data.section}`;
+                    allExistingTimetables[key] = data.schedule || {};
+                });
+            }
+
+            // STEP 2: Build teacher schedule from ALL existing timetables
             const teacherSchedule = {}; // { teacherId: { day: [periodIds] } }
 
-            // Initialize teacher schedule
+            // Initialize teacher schedule for all assigned teachers
             Object.values(aiConfig.teacherAssignments).forEach(teacherId => {
                 if (teacherId) {
                     teacherSchedule[teacherId] = {};
@@ -531,6 +538,52 @@ export default function Timetable() {
                     });
                 }
             });
+
+            // STEP 3: Populate teacher schedule from existing timetables
+            Object.entries(allExistingTimetables).forEach(([classKey, schedule]) => {
+                // Skip the current class we're generating for
+                const currentKey = `${selectedClass}-${selectedSection}`;
+                if (classKey === currentKey) return;
+
+                // Parse each day and period
+                Object.entries(schedule).forEach(([day, periods]) => {
+                    Object.entries(periods).forEach(([periodId, cell]) => {
+                        if (cell && cell.subject) {
+                            // Extract teacher ID or name from the cell
+                            // Format: "Subject (TeacherName)" or just "Subject"
+                            const match = cell.subject.match(/\(([^)]+)\)/);
+                            if (match) {
+                                const teacherNameInCell = match[1];
+
+                                // Find matching teacher ID
+                                Object.entries(aiConfig.teacherAssignments).forEach(([subject, teacherId]) => {
+                                    if (teacherId) {
+                                        const teacher = availableTeachers.find(t => t.id === teacherId);
+                                        if (teacher && teacher.name === teacherNameInCell) {
+                                            // Mark this teacher as busy at this time
+                                            if (teacherSchedule[teacherId] && teacherSchedule[teacherId][day]) {
+                                                if (!teacherSchedule[teacherId][day].includes(periodId)) {
+                                                    teacherSchedule[teacherId][day].push(periodId);
+                                                }
+                                            }
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                    });
+                });
+            });
+
+            // STEP 4: Create new period configuration based on user input
+            const newPeriodConfig = [];
+            for (let i = 0; i < aiConfig.periodsPerDay; i++) {
+                if (i === aiConfig.lunchBreakAfterPeriod) {
+                    newPeriodConfig.push({ id: `break_lunch`, name: 'Lunch Break', type: 'break' });
+                }
+                newPeriodConfig.push({ id: `p${i + 1}`, name: `Period ${i + 1}`, type: 'class' });
+            }
+            setPeriodConfig(newPeriodConfig);
 
             // Create new timetable structure
             const newTimetable = {};
@@ -565,6 +618,7 @@ export default function Timetable() {
                         }
                     }
 
+
                     // Get assigned teacher for this subject
                     const assignedTeacherId = aiConfig.teacherAssignments[selectedSubject];
                     let teacherName = '';
@@ -572,7 +626,7 @@ export default function Timetable() {
                     if (assignedTeacherId) {
                         const teacher = availableTeachers.find(t => t.id === assignedTeacherId);
                         if (teacher) {
-                            // Check if teacher is already assigned at this period
+                            // Check if teacher is already assigned at this period (including other classes)
                             const isTeacherBusy = teacherSchedule[assignedTeacherId][day].includes(period.id);
 
                             if (!isTeacherBusy) {
@@ -580,8 +634,8 @@ export default function Timetable() {
                                 // Mark teacher as busy for this period
                                 teacherSchedule[assignedTeacherId][day].push(period.id);
                             } else {
-                                // Teacher is busy, mark as conflict
-                                teacherName = 'TBD (Conflict)';
+                                // Teacher is busy in another class, mark as conflict
+                                teacherName = '⚠️ Conflict';
                             }
                         }
                     }
@@ -594,10 +648,26 @@ export default function Timetable() {
                 });
             });
 
+            // Count conflicts for user feedback
+            let conflictCount = 0;
+            Object.values(newTimetable).forEach(daySchedule => {
+                Object.values(daySchedule).forEach(cell => {
+                    if (cell.subject && cell.subject.includes('⚠️ Conflict')) {
+                        conflictCount++;
+                    }
+                });
+            });
+
             setTimetable(newTimetable);
             setIsEditing(true);
             setShowAIModal(false);
-            alert('✅ AI Timetable generated! Review and save when ready.');
+
+            // Inform user about conflicts
+            if (conflictCount > 0) {
+                alert(`✅ Timetable generated!\n\n⚠️ Warning: ${conflictCount} period(s) have teacher conflicts (teacher is busy in another class at that time).\n\nPlease review and manually assign available teachers for conflicting periods.`);
+            } else {
+                alert('✅ AI Timetable generated successfully! No conflicts detected. Review and save when ready.');
+            }
         } catch (e) {
             console.error('Error generating timetable:', e);
             alert('Failed to generate timetable. Please try again.');
