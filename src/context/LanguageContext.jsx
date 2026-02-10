@@ -15,7 +15,13 @@ export const LanguageProvider = ({ children }) => {
     }, [language]);
 
     const toggleLanguage = () => {
+        // Updated to cycle through languages or be replaced by setLanguage
         setLanguage((prev) => (prev === 'en' ? 'hi' : 'en'));
+    };
+
+    // Explicit setter for dropdowns
+    const setLanguageOverride = (langCode) => {
+        setLanguage(langCode);
     };
 
     // Helper translation function
@@ -24,7 +30,7 @@ export const LanguageProvider = ({ children }) => {
     };
 
     return (
-        <LanguageContext.Provider value={{ language, toggleLanguage, t }}>
+        <LanguageContext.Provider value={{ language, toggleLanguage, setLanguageOverride, t }}>
             {children}
         </LanguageContext.Provider>
     );

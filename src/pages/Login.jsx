@@ -13,6 +13,7 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import logo from '../assets/logo.png';
+import LanguageSelector from '../components/LanguageSelector';
 
 
 
@@ -352,17 +353,9 @@ export default function Login() {
         <div className="login-container">
             <div className="card login-card" style={{ textAlign: 'center', position: 'relative' }}>
                 {/* Language Toggle */}
-                <button
-                    onClick={toggleLanguage}
-                    style={{
-                        position: 'absolute', top: '10px', right: '10px',
-                        background: 'transparent', border: '1px solid #dfe6e9',
-                        borderRadius: '20px', padding: '4px 8px', fontSize: '10px',
-                        cursor: 'pointer', color: '#636e72'
-                    }}
-                >
-                    {language === 'en' ? '🇮🇳 अ / Hi' : '🇬🇧 A / En'}
-                </button>
+                <div style={{ position: 'absolute', top: '10px', right: '10px' }}>
+                    <LanguageSelector style={{ fontSize: '10px', padding: '4px 8px 4px 25px', minWidth: 'auto' }} />
+                </div>
 
                 <img src={`${logo}?v=58`} alt="TTR Logo" style={{ width: '80px', height: 'auto', marginBottom: '10px' }} />
                 <h2 className="login-title">{isLogin ? t('login') : t('signup')}</h2>

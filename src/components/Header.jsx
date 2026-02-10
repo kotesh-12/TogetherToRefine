@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import LanguageSelector from './LanguageSelector';
 import { auth, db } from '../firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import logo from '../assets/logo.png';
@@ -223,18 +224,8 @@ export default function Header({ onToggleSidebar }) {
             {/* Right: Actions Group */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
 
-                {/* Language Toggle */}
-                <button
-                    onClick={toggleLanguage}
-                    style={{
-                        background: 'var(--secondary)', border: 'none', cursor: 'pointer',
-                        fontSize: '14px', fontWeight: 'bold', padding: '5px 10px', borderRadius: '15px',
-                        color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '5px'
-                    }}
-                    title="Switch Language"
-                >
-                    🌐 {language === 'en' ? 'HI' : 'EN'}
-                </button>
+                {/* Language Selector */}
+                <LanguageSelector />
 
                 {/* Search Icon (Toggles Mode) */}
                 <button
