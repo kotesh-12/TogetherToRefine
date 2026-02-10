@@ -2,38 +2,62 @@ import React, { useEffect, useState } from 'react';
 
 export default function UpdateManager() {
     const [updateAvailable, setUpdateAvailable] = useState(false);
+    const [versionDetails, setVersionDetails] = useState({ latest: '', current: '' });
 
     useEffect(() => {
         const checkVersion = async () => {
             try {
-                // Fetch latest version from server with cache-busting
                 const res = await fetch('/version.json?t=' + Date.now(), { cache: "no-store" });
                 if (!res.ok) return;
                 const data = await res.json();
                 const latestVersion = (data.version || '').trim();
                 const currentVersion = (localStorage.getItem('ttr_version') || '').trim();
 
-                console.log("Update Check:", { latest: latestVersion, current: currentVersion });
+                setVersionDetails({ latest: latestVersion, current: currentVersion });
+
+                // Loop Protection
+                const attempts = parseInt(localStorage.getItem('ttr_update_attempts') || '0');
+                if (attempts > 3) {
+                    console.warn("Too many update attempts, suppressing prompt.");
+                    return;
+                }
 
                 if (currentVersion && latestVersion && currentVersion !== latestVersion) {
-                    // Update found!
                     setUpdateAvailable(true);
                 } else if (!currentVersion || currentVersion !== latestVersion) {
-                    // First load or sync
                     localStorage.setItem('ttr_version', latestVersion);
+                    localStorage.removeItem('ttr_update_attempts'); // Reset on success/sync
                 }
             } catch (e) {
                 console.error("Version check failed", e);
             }
         };
 
-        // Check on mount
         checkVersion();
-
-        // Check every 5 minutes
         const interval = setInterval(checkVersion, 5 * 60 * 1000);
         return () => clearInterval(interval);
     }, []);
+
+    const handleUpdate = async () => {
+        const btn = document.getElementById('update-btn-react');
+        if (btn) btn.innerText = "Updating...";
+
+        // Increment attempts
+        const attempts = parseInt(localStorage.getItem('ttr_update_attempts') || '0');
+        localStorage.setItem('ttr_update_attempts', (attempts + 1).toString());
+
+        try {
+            if ('serviceWorker' in navigator) {
+                const regs = await navigator.serviceWorker.getRegistrations();
+                for (let r of regs) await r.unregister();
+            }
+            const keys = await caches.keys();
+            await Promise.all(keys.map(k => caches.delete(k)));
+            localStorage.removeItem('ttr_version');
+        } catch (e) { console.error(e); }
+
+        window.location.href = window.location.origin + "/?v=" + Date.now();
+    };
 
     if (updateAvailable) {
         return (
@@ -44,23 +68,10 @@ export default function UpdateManager() {
                 flexDirection: 'column'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span>🚀 {latestVersion ? 'Update v' + latestVersion : 'Update Available'}</span>
+                    <span>🚀 Update v{versionDetails.latest} Available</span>
                     <button
                         id="update-btn-react"
-                        onClick={async () => {
-                            const btn = document.getElementById('update-btn-react');
-                            if (btn) btn.innerText = "Updating...";
-                            try {
-                                if ('serviceWorker' in navigator) {
-                                    const regs = await navigator.serviceWorker.getRegistrations();
-                                    for (let r of regs) await r.unregister();
-                                }
-                                const keys = await caches.keys();
-                                await Promise.all(keys.map(k => caches.delete(k)));
-                                localStorage.removeItem('ttr_version');
-                            } catch (e) { console.error(e); }
-                            window.location.href = window.location.origin + "/?v=" + Date.now();
-                        }}
+                        onClick={handleUpdate}
                         style={{
                             background: '#0984e3', border: 'none', color: 'white',
                             padding: '8px 15px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold'
@@ -69,7 +80,10 @@ export default function UpdateManager() {
                         Update Now
                     </button>
                     <button
-                        onClick={() => setUpdateAvailable(false)}
+                        onClick={() => {
+                            setUpdateAvailable(false);
+                            // Optional: ignore until next reload
+                        }}
                         style={{
                             background: 'transparent', border: '1px solid #aaa', color: '#ccc',
                             width: '30px', height: '30px', borderRadius: '50%', cursor: 'pointer',
@@ -80,7 +94,7 @@ export default function UpdateManager() {
                     </button>
                 </div>
                 <div style={{ fontSize: '10px', opacity: 0.7 }}>
-                    Current: {localStorage.getItem('ttr_version') || 'v?'}
+                    Current: {versionDetails.current || 'Old'}
                 </div>
             </div>
         );
