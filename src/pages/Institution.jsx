@@ -269,10 +269,7 @@ export default function Institution() {
                         <span style={{ fontSize: '28px', marginBottom: '8px' }}>📘</span>
                         <span>Allotments</span>
                     </button>
-                    <button id="tour-inst-admission" className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#2d3436' }} onClick={() => handleCardClick('/admission')}>
-                        <span style={{ fontSize: '28px', marginBottom: '8px' }}>📝</span>
-                        <span>Admission</span>
-                    </button>
+                    {/* Admission button removed - route still accessible via /admission */}
                     <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0984e3' }} onClick={() => handleCardClick('/attendance')}>
                         <span style={{ fontSize: '28px', marginBottom: '8px' }}>📅</span>
                         <span>Attendance</span>
@@ -281,10 +278,7 @@ export default function Institution() {
                         <span style={{ fontSize: '28px', marginBottom: '8px' }}>👥</span>
                         <span>Groups</span>
                     </button>
-                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#e67e22' }} onClick={() => handleCardClick('/notification')}>
-                        <span style={{ fontSize: '28px', marginBottom: '8px' }}>📢</span>
-                        <span>Notify</span>
-                    </button>
+                    {/* Notify button removed - route still accessible via /notification */}
                     <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#e84393' }} onClick={() => handleCardClick('/general-feedback')}>
                         <span style={{ fontSize: '28px', marginBottom: '8px' }}>📊</span>
                         <span>Feedback</span>
@@ -293,10 +287,7 @@ export default function Institution() {
                         <span style={{ fontSize: '28px', marginBottom: '8px' }}>🏥</span>
                         <span>Health</span>
                     </button>
-                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#636e72' }} onClick={() => handleCardClick('/waiting-list')}>
-                        <span style={{ fontSize: '28px', marginBottom: '8px' }}>🕒</span>
-                        <span>Waiting List</span>
-                    </button>
+                    {/* Waiting List button removed - route still accessible via /waiting-list */}
                     <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#d63031' }} onClick={() => handleCardClick('/video-library')}>
                         <span style={{ fontSize: '28px', marginBottom: '8px' }}>🎬</span>
                         <span>Video Lib</span>
