@@ -60,6 +60,9 @@ export default function UpdateManager() {
     };
 
     if (updateAvailable) {
+        // Temporarily suppressed UI to prevent crash
+        return null;
+        /*
         return (
             <div style={{
                 position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
@@ -79,7 +82,7 @@ export default function UpdateManager() {
                     >
                         Update Now
                     </button>
-                    <button
+                    <button 
                         onClick={() => {
                             setUpdateAvailable(false);
                             // Optional: ignore until next reload
@@ -98,6 +101,7 @@ export default function UpdateManager() {
                 </div>
             </div>
         );
+        */
     }
 
     return null;
