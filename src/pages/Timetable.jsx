@@ -77,15 +77,15 @@ export default function Timetable() {
         }
     }, [selectedClass, selectedSection, userData, viewMode]);
 
+    // Helper ID - MUST be declared before useEffect that uses it
+    const instId = userData?.role === 'institution' ? userData.uid : userData?.institutionId;
+
     // Fetch available teachers for AI modal
     useEffect(() => {
         if (userData?.role === 'institution' && instId) {
             fetchAvailableTeachers();
         }
     }, [userData, instId]);
-
-    // Helper ID
-    const instId = userData?.role === 'institution' ? userData.uid : userData?.institutionId;
 
     if (!userData) return <div className="p-4 text-center">Loading User Data...</div>;
 
