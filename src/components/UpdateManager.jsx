@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from 'react';
 
 export default function UpdateManager() {
+    // Temporarily disabled to fix deployment crash
+    return null;
+
+    /* DISABLED CODE - Will re-enable after cache clears
     const [updateAvailable, setUpdateAvailable] = useState(false);
     const [versionDetails, setVersionDetails] = useState({ latest: '', current: '' });
 
@@ -62,7 +66,7 @@ export default function UpdateManager() {
     if (updateAvailable) {
         // Temporarily suppressed UI to prevent crash
         return null;
-        /*
+        
         return (
             <div style={{
                 position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
@@ -101,8 +105,9 @@ export default function UpdateManager() {
                 </div>
             </div>
         );
-        */
+        
     }
 
     return null;
+    */
 }
