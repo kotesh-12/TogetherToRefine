@@ -1,0 +1,107 @@
+    // 4. AI Timetable Generator (Enhanced with Configuration)
+    const generateAITimetable = () => {
+        // Validate configuration
+        if (aiConfig.subjects.length === 0) {
+            alert('Please select at least one subject!');
+            return;
+        }
+
+        setLoading(true);
+        
+        try {
+            // Create new period configuration based on user input
+            const newPeriodConfig = [];
+            for (let i = 0; i < aiConfig.periodsPerDay; i++) {
+                if (i === aiConfig.lunchBreakAfterPeriod) {
+                    newPeriodConfig.push({ id: `break_lunch`, name: 'Lunch Break', type: 'break' });
+                }
+                newPeriodConfig.push({ id: `p${i + 1}`, name: `Period ${i + 1}`, type: 'class' });
+            }
+            setPeriodConfig(newPeriodConfig);
+
+            // Track teacher assignments across all periods and days to avoid conflicts
+            const teacherSchedule = {}; // { teacherId: { day: [periodIds] } }
+            
+            // Initialize teacher schedule
+            Object.values(aiConfig.teacherAssignments).forEach(teacherId => {
+                if (teacherId) {
+                    teacherSchedule[teacherId] = {};
+                    days.forEach(day => {
+                        teacherSchedule[teacherId][day] = [];
+                    });
+                }
+            });
+
+            // Create new timetable structure
+            const newTimetable = {};
+            
+            days.forEach(day => {
+                newTimetable[day] = {};
+                
+                // Shuffle subjects for variety each day
+                const daySubjects = [...aiConfig.subjects].sort(() => Math.random() - 0.5);
+                let subjectIndex = 0;
+                
+                newPeriodConfig.forEach((period, periodIdx) => {
+                    // Skip break periods
+                    if (period.type === 'break') {
+                        newTimetable[day][period.id] = { subject: period.name, span: 1 };
+                        return;
+                    }
+                    
+                    // Select subject ensuring variety
+                    let selectedSubject = daySubjects[subjectIndex % daySubjects.length];
+                    
+                    // Avoid same subject consecutively
+                    const prevPeriods = newPeriodConfig.slice(0, periodIdx).filter(p => p.type !== 'break');
+                    if (prevPeriods.length > 0) {
+                        const lastPeriod = prevPeriods[prevPeriods.length - 1];
+                        const prevSubject = newTimetable[day][lastPeriod.id]?.subject;
+                        
+                        if (prevSubject && prevSubject.includes(selectedSubject)) {
+                            // Try next subject
+                            subjectIndex++;
+                            selectedSubject = daySubjects[subjectIndex % daySubjects.length];
+                        }
+                    }
+                    
+                    // Get assigned teacher for this subject
+                    const assignedTeacherId = aiConfig.teacherAssignments[selectedSubject];
+                    let teacherName = '';
+                    
+                    if (assignedTeacherId) {
+                        const teacher = availableTeachers.find(t => t.id === assignedTeacherId);
+                        if (teacher) {
+                            // Check if teacher is already assigned at this period
+                            const isTeacherBusy = teacherSchedule[assignedTeacherId][day].includes(period.id);
+                            
+                            if (!isTeacherBusy) {
+                                teacherName = teacher.name;
+                                // Mark teacher as busy for this period
+                                teacherSchedule[assignedTeacherId][day].push(period.id);
+                            } else {
+                                // Teacher is busy, try to find alternative or leave without teacher
+                                teacherName = 'TBD (Conflict)';
+                            }
+                        }
+                    }
+                    
+                    // Create cell with subject and teacher
+                    const cellValue = teacherName ? `${selectedSubject} (${teacherName})` : selectedSubject;
+                    newTimetable[day][period.id] = { subject: cellValue, span: 1 };
+                    
+                    subjectIndex++;
+                });
+            });
+            
+            setTimetable(newTimetable);
+            setIsEditing(true);
+            setShowAIModal(false);
+            alert('✅ AI Timetable generated! Review and save when ready.');
+        } catch (e) {
+            console.error('Error generating timetable:', e);
+            alert('Failed to generate timetable. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };

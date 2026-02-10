@@ -4,6 +4,7 @@ import { doc, getDoc, setDoc, query, collection, where, getDocs } from 'firebase
 import { useUser } from '../context/UserContext';
 import AIBadge from '../components/AIBadge';
 import AnnouncementBar from '../components/AnnouncementBar';
+import TimetableAIModal from './TimetableAIModal';
 
 const defaultPeriodConfig = [
     { id: 'p1', name: '1', type: 'class' },
@@ -39,6 +40,16 @@ export default function Timetable() {
     const [allotmentCount, setAllotmentCount] = useState(0); // Restore
     const [overviewData, setOverviewData] = useState([]);
 
+    // AI Generator Configuration Modal State
+    const [showAIModal, setShowAIModal] = useState(false);
+    const [aiConfig, setAiConfig] = useState({
+        subjects: [],
+        teacherAssignments: {}, // { subject: teacherId }
+        periodsPerDay: 7,
+        lunchBreakAfterPeriod: 3
+    });
+    const [availableTeachers, setAvailableTeachers] = useState([]);
+
 
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']; // Restore
 
@@ -65,6 +76,13 @@ export default function Timetable() {
             }
         }
     }, [selectedClass, selectedSection, userData, viewMode]);
+
+    // Fetch available teachers for AI modal
+    useEffect(() => {
+        if (userData?.role === 'institution' && instId) {
+            fetchAvailableTeachers();
+        }
+    }, [userData, instId]);
 
     // Helper ID
     const instId = userData?.role === 'institution' ? userData.uid : userData?.institutionId;
@@ -447,6 +465,39 @@ export default function Timetable() {
         });
     };
 
+    // Fetch Available Teachers for AI Modal
+    const fetchAvailableTeachers = async () => {
+        if (!instId) return;
+        try {
+            const q1 = query(collection(db, "teacher_allotments"), where("institutionId", "==", instId));
+            const q2 = query(collection(db, "teacher_allotments"), where("createdBy", "==", instId));
+
+            const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+
+            const teacherMap = new Map();
+            const process = (docs) => {
+                docs.forEach(d => {
+                    const data = d.data();
+                    const teacherId = data.teacherId || data.userId;
+                    if (teacherId && !teacherMap.has(teacherId)) {
+                        teacherMap.set(teacherId, {
+                            id: teacherId,
+                            name: data.teacherName || data.name || 'Unknown',
+                            subject: data.subject || 'General'
+                        });
+                    }
+                });
+            };
+
+            process(snap1.docs);
+            process(snap2.docs);
+
+            setAvailableTeachers(Array.from(teacherMap.values()));
+        } catch (e) {
+            console.error('Error fetching teachers:', e);
+        }
+    };
+
     // 4. AI Timetable Generator
     const generateAITimetable = () => {
         setLoading(true);
@@ -638,10 +689,7 @@ export default function Timetable() {
                                         ✏️ Edit Schedule
                                     </button>
                                     <button
-                                        onClick={() => {
-                                            if (!window.confirm('Generate AI timetable? This will replace the current schedule.')) return;
-                                            generateAITimetable();
-                                        }}
+                                        onClick={() => setShowAIModal(true)}
                                         style={{
                                             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                                             color: 'white', border: 'none', padding: '10px 20px',
@@ -951,6 +999,15 @@ export default function Timetable() {
                     {allottedTeachers.map((t, i) => <option key={i} value={t} />)}
                 </datalist>
 
+                {/* AI Configuration Modal */}
+                <TimetableAIModal
+                    show={showAIModal}
+                    onClose={() => setShowAIModal(false)}
+                    aiConfig={aiConfig}
+                    setAiConfig={setAiConfig}
+                    availableTeachers={availableTeachers}
+                    onGenerate={generateAITimetable}
+                />
 
 
             </div>
