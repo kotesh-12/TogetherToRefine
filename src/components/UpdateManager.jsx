@@ -10,16 +10,16 @@ export default function UpdateManager() {
                 const res = await fetch('/version.json?t=' + Date.now(), { cache: "no-store" });
                 if (!res.ok) return;
                 const data = await res.json();
-                const latestVersion = data.version;
+                const latestVersion = (data.version || '').trim();
+                const currentVersion = (localStorage.getItem('ttr_version') || '').trim();
 
-                const currentVersion = localStorage.getItem('ttr_version');
+                console.log("Update Check:", { latest: latestVersion, current: currentVersion });
 
-                if (currentVersion && currentVersion !== latestVersion) {
+                if (currentVersion && latestVersion && currentVersion !== latestVersion) {
                     // Update found!
-                    console.log(`New version found: ${latestVersion} (Current: ${currentVersion})`);
                     setUpdateAvailable(true);
-                } else {
-                    // Only update local storage if no update is pending (meaning we are up to date)
+                } else if (!currentVersion || currentVersion !== latestVersion) {
+                    // First load or sync
                     localStorage.setItem('ttr_version', latestVersion);
                 }
             } catch (e) {

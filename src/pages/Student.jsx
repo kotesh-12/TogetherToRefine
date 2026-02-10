@@ -5,6 +5,7 @@ import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firesto
 import AIBadge from '../components/AIBadge';
 import FeatureTour from '../components/FeatureTour';
 import { useUser } from '../context/UserContext';
+import { useLanguage } from '../context/LanguageContext';
 
 // Cache object outside component to persist across unmounts/remounts (Back button navigation)
 const GROUP_CACHE = {
@@ -15,6 +16,7 @@ const GROUP_CACHE = {
 export default function Student() {
     const navigate = useNavigate();
     const { userData } = useUser(); // Global context
+    const { t } = useLanguage();
     const [showDropdown, setShowDropdown] = useState(false);
     const [selectedPerson, setSelectedPerson] = useState(null);
     const [teacherGroups, setTeacherGroups] = useState({});
@@ -197,48 +199,48 @@ export default function Student() {
                 {/* AI Learning Tools */}
                 <div className="responsive-grid">
                     <div id="tour-card-attendance" className="card" onClick={() => handleCardClick('/attendance')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #0984e3, #74b9ff)', color: 'white' }}>
-                        <h3>📅 Attendance</h3>
-                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>View your attendance record.</p>
+                        <h3>📅 {t('attendance')}</h3>
+                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>{t('attendance_desc')}</p>
                     </div>
                     <div id="tour-card-ai" className="card" onClick={() => handleCardClick('/ttr-ai')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)', color: 'white' }}>
-                        <h3>🤖 TTR AI Chat</h3>
-                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>Chat with your personal AI assistant.</p>
+                        <h3>🤖 {t('ai_chat')}</h3>
+                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>{t('ai_chat_desc')}</p>
                     </div>
                     <div id="tour-card-4way" className="card" onClick={() => handleCardClick('/4-way-learning')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #fd79a8, #e84393)', color: 'white' }}>
-                        <h3>🧠 4-Way Learning</h3>
-                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>Concept, Indian Mythos, Story, & Dialouge.</p>
+                        <h3>🧠 {t('four_way')}</h3>
+                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>{t('four_way_desc')}</p>
                     </div>
                     <div id="tour-card-video" className="card" onClick={() => handleCardClick('/video-library')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #00b894, #55efc4)', color: 'white' }}>
-                        <h3>🎬 Video Library</h3>
-                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>Watch class recordings & tutorials.</p>
+                        <h3>🎬 {t('video_library')}</h3>
+                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>{t('video_lib_desc')}</p>
                     </div>
                     <div className="card" onClick={() => handleCardClick('/select-feedback-target')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #00cec9, #81ecec)', color: 'white' }}>
-                        <h3>Give Feedback 🌟</h3>
-                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>Rate teachers & staff.</p>
+                        <h3>💬 {t('feedback')} 🌟</h3>
+                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>{t('feedback_desc')}</p>
                     </div>
                     <div className="card" onClick={() => handleCardClick('/timetable')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #e17055, #fab1a0)', color: 'white' }}>
-                        <h3>🗓️ Timetable</h3>
-                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>View weekly class schedule.</p>
+                        <h3>🗓️ {t('timetable')}</h3>
+                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>{t('timetable_desc')}</p>
                     </div>
                     <div className="card" onClick={() => handleCardClick('/upid-history')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #636e72, #2d3436)', color: 'white' }}>
-                        <h3>🕵️ UPIDs (Private)</h3>
-                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>View your anonymous ID history.</p>
+                        <h3>🕵️ {t('upid_title')}</h3>
+                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>{t('upid_desc')}</p>
                     </div>
                     <div className="card" onClick={() => handleCardClick('/fees/student')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #2ecc71, #27ae60)', color: 'white' }}>
-                        <h3>💸 Pay Fees</h3>
-                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>View dues & payment history.</p>
+                        <h3>💸 {t('pay_fees')}</h3>
+                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>{t('pay_fees_desc')}</p>
                     </div>
                     <div className="card" onClick={() => handleCardClick('/analytics')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #9b59b6, #8e44ad)', color: 'white' }}>
-                        <h3>📊 My Performance</h3>
-                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>View detailed analytics & report card.</p>
+                        <h3>📊 {t('performance')}</h3>
+                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>{t('performance_desc')}</p>
                     </div>
                     <div className="card" onClick={() => handleCardClick('/homework')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #f39c12, #e67e22)', color: 'white' }}>
-                        <h3>📚 Homework</h3>
-                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>View & submit assignments.</p>
+                        <h3>📚 {t('homework')}</h3>
+                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>{t('homework_desc')}</p>
                     </div>
                     <div className="card" onClick={() => handleCardClick('/view-exam-seating')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #e74c3c, #c0392b)', color: 'white' }}>
-                        <h3>🪑 Exam Seating</h3>
-                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>View your exam seat allotment.</p>
+                        <h3>🪑 {t('exam_seating')}</h3>
+                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>{t('exam_seating_desc')}</p>
                     </div>
                 </div>
 

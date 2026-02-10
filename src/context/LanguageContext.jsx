@@ -24,9 +24,9 @@ export const LanguageProvider = ({ children }) => {
         setLanguage(langCode);
     };
 
-    // Helper translation function
+    // Helper translation function with Fallback to English
     const t = (key) => {
-        return resources[language]?.translation[key] || key;
+        return resources[language]?.translation[key] || resources['en']?.translation[key] || key;
     };
 
     return (

@@ -5,12 +5,14 @@ import FeatureTour from '../components/FeatureTour';
 import VoiceCommandAssistant from '../components/VoiceCommandAssistant';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
+import { useLanguage } from '../context/LanguageContext';
 import { db } from '../firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 
 export default function Teacher() {
     const navigate = useNavigate();
     const { userData } = useUser();
+    const { t } = useLanguage();
 
     // Announcement State
     const [showModal, setShowModal] = useState(false);
@@ -158,7 +160,7 @@ export default function Teacher() {
 
             <div className="container">
                 <div className="card text-center" style={{ marginTop: '20px' }}>
-                    <h2>Welcome, {userData?.name || 'Teacher'}!</h2>
+                    <h2>{t('teacher_welcome')}, {userData?.name || 'Teacher'}!</h2>
                     {userData?.pid && (
                         <div style={{
                             background: '#f1f2f6', color: '#2d3436',
@@ -170,10 +172,10 @@ export default function Teacher() {
                             ID: {userData.pid}
                         </div>
                     )}
-                    <p>Access your classes, upload notes, and manage attendance.</p>
+                    <p>{t('teacher_intro')}</p>
                     {allotments.length > 0 ? (
                         <div style={{ marginBottom: '15px' }}>
-                            <h4 style={{ margin: '5px 0', color: '#636e72' }}>My Classes:</h4>
+                            <h4 style={{ margin: '5px 0', color: '#636e72' }}>{t('my_classes')}:</h4>
                             <div className="teacher-classes-list">
                                 {allotments.map(a => (
                                     <span key={a.id} className="teacher-class-pill">
@@ -193,19 +195,19 @@ export default function Teacher() {
                     )}
 
                     <div className="teacher-actions-container">
-                        <button id="tour-teacher-groups" className="btn" onClick={handleGoToGroups}>Go to Groups</button>
-                        <button id="tour-teacher-attendance" className="btn btn-attendance" onClick={() => handleCardClick('/attendance')}>Mark Attendance</button>
-                        <button id="tour-teacher-4way" className="btn" style={{ background: '#e84393', color: 'white' }} onClick={() => handleCardClick('/4-way-learning')}>4-Way Learning</button>
-                        <button id="tour-teacher-library" className="btn btn-library" onClick={() => handleCardClick('/video-library')}>Video Library</button>
-                        <button className="btn" style={{ background: '#9b59b6', color: 'white' }} onClick={() => handleCardClick('/marks')}>📊 Marks</button>
-                        <button className="btn" style={{ background: '#8e44ad', color: 'white' }} onClick={() => handleCardClick('/analytics')}>📈 Analytics</button>
-                        <button className="btn" style={{ background: '#e67e22', color: 'white' }} onClick={() => handleCardClick('/homework')}>📚 Homework</button>
-                        <button className="btn btn-feedback" onClick={() => handleCardClick('/general-feedback')}>Feedback</button>
-                        <button className="btn btn-timetable" onClick={() => handleCardClick('/timetable')}>Timetable</button>
-                        <button className="btn" style={{ background: '#16a085', color: 'white' }} onClick={() => handleCardClick('/attendance-analytics')}>📊 Att. Analytics</button>
-                        <button className="btn" style={{ background: '#c0392b', color: 'white' }} onClick={() => handleCardClick('/view-exam-seating')}>🪑 View Exam Seats</button>
-                        <button className="btn" style={{ background: '#27ae60', color: 'white' }} onClick={() => handleCardClick('/gov-reports')}>Govt Reports</button>
-                        <button className="btn" style={{ background: '#d35400', color: 'white' }} onClick={() => handleCardClick('/dropout-predictor')}>⚠️ Dropout Risk</button>
+                        <button id="tour-teacher-groups" className="btn" onClick={handleGoToGroups}>{t('go_to_groups')}</button>
+                        <button id="tour-teacher-attendance" className="btn btn-attendance" onClick={() => handleCardClick('/attendance')}>{t('mark_attendance')}</button>
+                        <button id="tour-teacher-4way" className="btn" style={{ background: '#e84393', color: 'white' }} onClick={() => handleCardClick('/4-way-learning')}>{t('four_way')}</button>
+                        <button id="tour-teacher-library" className="btn btn-library" onClick={() => handleCardClick('/video-library')}>{t('video_library')}</button>
+                        <button className="btn" style={{ background: '#9b59b6', color: 'white' }} onClick={() => handleCardClick('/marks')}>📊 {t('marks')}</button>
+                        <button className="btn" style={{ background: '#8e44ad', color: 'white' }} onClick={() => handleCardClick('/analytics')}>📈 {t('analytics')}</button>
+                        <button className="btn" style={{ background: '#e67e22', color: 'white' }} onClick={() => handleCardClick('/homework')}>📚 {t('homework')}</button>
+                        <button className="btn btn-feedback" onClick={() => handleCardClick('/general-feedback')}>{t('feedback')}</button>
+                        <button className="btn btn-timetable" onClick={() => handleCardClick('/timetable')}>{t('timetable')}</button>
+                        <button className="btn" style={{ background: '#16a085', color: 'white' }} onClick={() => handleCardClick('/attendance-analytics')}>📊 {t('attendance_analytics')}</button>
+                        <button className="btn" style={{ background: '#c0392b', color: 'white' }} onClick={() => handleCardClick('/view-exam-seating')}>🪑 {t('view_exam_seats')}</button>
+                        <button className="btn" style={{ background: '#27ae60', color: 'white' }} onClick={() => handleCardClick('/gov-reports')}>{t('gov_reports')}</button>
+                        <button className="btn" style={{ background: '#d35400', color: 'white' }} onClick={() => handleCardClick('/dropout-predictor')}>⚠️ {t('dropout_risk')}</button>
                     </div>
                 </div>
             </div>
