@@ -314,10 +314,33 @@ export default function InstitutionFee() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <div className="card" style={{ padding: '25px', borderRadius: '24px', background: '#f8f9fa', border: 'none' }}>
                         <h4 style={{ marginBottom: '15px', color: '#636e72' }}>🕒 Recent Activity</h4>
+                        <p style={{ fontSize: '0.75rem', color: '#999', marginBottom: '10px' }}>Click to view payment status</p>
                         {recentFees.length === 0 ? <p className="text-muted" style={{ fontSize: '0.9rem' }}>No recent records.</p> : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                 {recentFees.map(f => (
-                                    <div key={f.id} style={{ background: 'white', padding: '15px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', boxShadow: '0 2px 5px rgba(0,0,0,0.02)' }}>
+                                    <div
+                                        key={f.id}
+                                        onClick={() => navigate(`/fee-details/${f.id}?class=${f.class}&section=${f.section}&title=${encodeURIComponent(f.title)}`)}
+                                        style={{
+                                            background: 'white',
+                                            padding: '15px',
+                                            borderRadius: '12px',
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            fontSize: '0.85rem',
+                                            boxShadow: '0 2px 5px rgba(0,0,0,0.02)',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.transform = 'translateY(-2px)';
+                                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                            e.currentTarget.style.boxShadow = '0 2px 5px rgba(0,0,0,0.02)';
+                                        }}
+                                    >
                                         <span><strong>{f.title}</strong><br /><small>{f.class} - {f.section}</small></span>
                                         <span style={{ fontWeight: 'bold', color: '#2ecc71' }}>₹{f.amount}</span>
                                     </div>
