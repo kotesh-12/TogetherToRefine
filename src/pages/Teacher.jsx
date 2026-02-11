@@ -191,46 +191,54 @@ export default function Teacher() {
                 setShowModal(true);
             }} />
 
-            {/* Header / Mode Toggle */}
-            <div style={{ display: 'flex', padding: '10px 15px', justifyContent: 'space-between', alignItems: 'center' }}>
+            {/* Header / Mode Toggle Centered for Balance */}
+            <div className="teacher-action-cluster" style={{
+                display: 'flex',
+                padding: '16px',
+                justifyContent: 'center',
+                gap: '15px',
+                alignItems: 'center',
+                flexWrap: 'wrap'
+            }}>
                 <button
                     id="tour-teacher-announcement"
-                    onClick={() => setShowModal(true)}
+                    onClick={() => { vibrate(); setShowModal(true); }}
                     className="teacher-announcement-btn"
                     title="Make Announcement"
                 >
                     📢
                 </button>
 
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 'bold', color: simpleMode ? '#27ae60' : '#636e72' }}>
-                        {simpleMode ? "Easy Mode ON ✅" : "Advanced Mode"}
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: 'var(--bg-surface)', padding: '4px 12px', borderRadius: '24px', boxShadow: 'var(--shadow-sm)' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '800', color: simpleMode ? '#27ae60' : 'var(--text-muted)' }}>
+                        {simpleMode ? "SIMPLE" : "PRO"}
                     </span>
                     <button
                         onClick={() => {
+                            vibrate();
                             const val = !simpleMode;
                             setSimpleMode(val);
                             localStorage.setItem('teacher_simple_mode', val);
                         }}
                         style={{
-                            background: simpleMode ? '#27ae60' : '#dfe6e9',
-                            color: simpleMode ? 'white' : '#2d3436',
-                            border: 'none', padding: '5px 15px', borderRadius: '20px',
-                            fontSize: '11px', fontWeight: 'bold', cursor: 'pointer',
-                            boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+                            background: simpleMode ? '#27ae60' : 'var(--divider)',
+                            color: simpleMode ? 'white' : 'var(--text-main)',
+                            border: 'none', padding: '6px 14px', borderRadius: '20px',
+                            fontSize: '11px', fontWeight: '800', cursor: 'pointer',
                         }}
                     >
-                        {simpleMode ? "Switch to Pro" : "Go Easy"}
+                        {simpleMode ? "GO PRO" : "GO EASY"}
                     </button>
                 </div>
 
                 <button
-                    onClick={() => navigate('/inspector-mode')}
+                    onClick={() => { vibrate(); navigate('/inspector-mode'); }}
+                    className="btn btn-error"
                     style={{
                         background: '#e74c3c', color: 'white', border: 'none',
-                        padding: '10px 15px', borderRadius: '30px', fontWeight: 'bold',
-                        boxShadow: '0 4px 10px rgba(231, 76, 60, 0.4)',
-                        display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer',
+                        padding: '10px 18px', borderRadius: '30px', fontWeight: '800',
+                        boxShadow: '0 4px 15px rgba(231, 76, 60, 0.3)',
+                        display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer',
                         fontSize: '12px'
                     }}
                 >

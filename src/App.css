@@ -158,6 +158,10 @@ input:focus {
 
 /* --- Responsive Scope: Mobile (< 768px) --- */
 @media (max-width: 768px) {
+  .container {
+    padding: 0 !important;
+    /* Neutralize index.css padding for mobile fit */
+  }
 
   .sidebar-wrapper,
   .menu-toggle {
@@ -1363,7 +1367,7 @@ button.btn.google-btn:hover {
   position: relative;
   overflow: hidden;
   box-shadow: 0 15px 35px rgba(108, 92, 231, 0.3);
-  text-align: left;
+  text-align: center;
   animation: floatHero 6s ease-in-out infinite;
 }
 
@@ -1557,6 +1561,7 @@ button.btn.google-btn:hover {
   position: relative;
   overflow: hidden;
   box-shadow: 0 12px 30px rgba(108, 92, 231, 0.25);
+  text-align: center;
 }
 
 .teacher-hero-sparkle {
@@ -1591,6 +1596,7 @@ button.btn.google-btn:hover {
   grid-template-columns: repeat(2, 1fr);
   gap: 16px;
   margin-top: 24px;
+  justify-content: center;
 }
 
 .teacher-vibe-card {
@@ -1624,6 +1630,13 @@ button.btn.google-btn:hover {
   font-weight: 700;
   color: var(--text-main);
   line-height: 1.2;
+}
+
+.teacher-classes-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
 }
 
 .teacher-class-pill {
@@ -1677,6 +1690,7 @@ button.btn.google-btn:hover {
   position: relative;
   overflow: hidden;
   box-shadow: 0 12px 30px rgba(44, 62, 80, 0.25);
+  text-align: center;
 }
 
 .institution-hero-sparkle {

@@ -231,13 +231,27 @@ export default function Institution() {
                     )}
                 </div>
 
-                {/* Administrative Fast Actions */}
-                <div style={{ marginBottom: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                {/* Administrative Fast Actions - Centered for Elite Balance */}
+                <div style={{
+                    marginBottom: '32px',
+                    display: 'flex',
+                    gap: '16px',
+                    flexWrap: 'wrap',
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                }}>
                     <button
                         id="tour-inst-announcement"
                         onClick={() => setShowModal(true)}
                         className="teacher-announcement-btn"
-                        style={{ background: 'white', color: 'var(--primary)', boxShadow: 'var(--shadow-sm)' }}
+                        style={{
+                            background: 'var(--bg-surface)',
+                            color: 'var(--primary)',
+                            boxShadow: 'var(--shadow-sm)',
+                            width: '50px',
+                            height: '50px',
+                            fontSize: '24px'
+                        }}
                         title="Broadcast Message"
                     >
                         📢
@@ -245,7 +259,13 @@ export default function Institution() {
                     <button
                         id="tour-inst-import"
                         className="btn btn-success"
-                        style={{ borderRadius: '30px', padding: '10px 24px' }}
+                        style={{
+                            borderRadius: '30px',
+                            padding: '12px 28px',
+                            boxShadow: '0 6px 15px rgba(39, 174, 96, 0.25)',
+                            fontSize: '14px',
+                            fontWeight: '800'
+                        }}
                         onClick={() => {
                             const csv = prompt("Paste CSV Data (Name, Email, Password, Class)\nExample:\nJohn Doe,john@test.com,Pass123,10th");
                             if (csv) handleBulkImport(csv);

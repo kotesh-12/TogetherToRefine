@@ -1,31 +1,31 @@
 .ttr-announcement-wrapper {
     position: sticky;
     top: 0;
-    z-index: 1;
+    z-index: 1001;
+    /* Above header if needed, but sticky top 0 common */
     background-color: var(--bg-surface);
-    margin-top: -24px;
-    margin-left: -24px;
-    margin-right: -24px;
-    margin-bottom: 20px;
-    width: calc(100% + 48px);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    margin-top: -30px;
+    /* Offset desktop padding */
+    margin-left: -40px;
+    /* Precise desktop offset */
+    margin-right: -40px;
+    margin-bottom: 24px;
+    width: calc(100% + 80px);
+    /* Full width expansion */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     overflow: hidden;
 }
 
 .announcement-bar {
     background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
-    /* Professional Dark Blue -> Bright Blue */
     color: #ffffff;
-    padding: 10px 0;
-    /* Balanced padding */
+    padding: 12px 0;
     display: flex;
     align-items: center;
     cursor: pointer;
     white-space: nowrap;
     overflow: hidden;
     position: relative;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Realistic Seamless Ticker */
@@ -33,23 +33,19 @@
     display: flex;
     white-space: nowrap;
     width: fit-content;
-    animation: ticker-animation 40s linear infinite;
-    /* Slower, smoother scroll */
+    animation: ticker-animation 35s linear infinite;
     will-change: transform;
 }
 
 .ticker-item {
-    padding-right: 15vw;
-    /* Large consistent gap between repetitions */
-    font-weight: 600;
-    /* Slightly bolder for readability */
+    padding-right: 20vw;
+    font-weight: 700;
     font-size: 0.95rem;
-    /* Clean professional size */
     letter-spacing: 0.5px;
     flex-shrink: 0;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
 }
 
 .announcement-bar:hover .ticker-wrapper {
@@ -68,9 +64,16 @@
 
 @media (max-width: 768px) {
     .ttr-announcement-wrapper {
-        margin-top: -10px;
-        margin-left: -10px;
-        margin-right: -10px;
-        width: calc(100% + 20px);
+        margin-top: -16px;
+        /* Precise mobile offset */
+        margin-left: -16px;
+        margin-right: -16px;
+        width: calc(100% + 32px);
+        margin-bottom: 16px;
+    }
+
+    .ticker-item {
+        font-size: 0.85rem;
+        padding-right: 30vw;
     }
 }
