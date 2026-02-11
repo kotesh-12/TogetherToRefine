@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
+import { db } from '../firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
 export default function Onboarding() {
     const navigate = useNavigate();
-    const { userData } = useUser();
+    const { userData, updateUserData } = useUser();
+    const [isSaving, setIsSaving] = useState(false);
 
     const [perms, setPerms] = useState({
         mic: 'prompt', // prompt, granted, denied
@@ -64,17 +67,37 @@ export default function Onboarding() {
         setPerms(p => ({ ...p, notification: result }));
     };
 
-    const handleContinue = () => {
-        // Use user-specific key so multiple users on same device see onboarding
-        const setupKey = userData?.uid ? `ttr_setup_done_${userData.uid}` : 'ttr_setup_done';
-        localStorage.setItem(setupKey, 'true');
-        // Redirect based on role
-        const r = userData?.role?.toLowerCase();
-        if (r === 'admin') navigate('/admin');
-        else if (r === 'teacher') navigate('/teacher');
-        else if (r === 'institution') navigate('/institution');
-        else if (r === 'student') navigate('/student');
-        else navigate('/details');
+    const handleContinue = async () => {
+        if (!userData || isSaving) return;
+        setIsSaving(true);
+
+        try {
+            // Determine collection
+            let collectionName = 'users';
+            if (userData.role === 'teacher') collectionName = 'teachers';
+            else if (userData.role === 'institution') collectionName = 'institutions';
+
+            const userRef = doc(db, collectionName, userData.uid);
+            await updateDoc(userRef, {
+                onboardingCompleted: true
+            });
+
+            // Local state update via context (if not using live snapshot)
+            // No need if we have onSnapshot, but good as a fallback
+
+            // Redirect based on role
+            const r = userData?.role?.toLowerCase();
+            if (r === 'admin') navigate('/admin');
+            else if (r === 'teacher') navigate('/teacher');
+            else if (r === 'institution') navigate('/institution');
+            else if (r === 'student') navigate('/student');
+            else navigate('/details');
+        } catch (e) {
+            console.error("Onboarding Save Error:", e);
+            navigate('/settings');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (

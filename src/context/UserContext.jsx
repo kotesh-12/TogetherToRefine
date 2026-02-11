@@ -214,8 +214,8 @@ export function UserProvider({ children }) {
     }, []);
 
     const values = React.useMemo(() => ({
-        user, userData, loading, setUserData
-    }), [user, userData, loading]);
+        user, userData, loading, setUserData, updateUserData
+    }), [user, userData, loading, updateUserData]);
 
     const handleLogout = () => {
         auth.signOut();

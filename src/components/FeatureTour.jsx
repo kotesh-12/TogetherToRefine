@@ -1,39 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { db } from '../firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
-/**
- * FeatureTour Component
- * 
- * A lightweight, dependency-free guided tour component.
- * 
- * Props:
- * - tourId: Unique string ID for this tour (used for localStorage persistence).
- * - steps: Array of objects: { target: 'id-string', title: 'Title', content: 'Description' }
- * 
- * Usage:
- * <FeatureTour 
- *    tourId="student_dashboard_v1"
- *    steps={[
- *      { target: 'tour-ai', title: 'AI Assistant', content: 'Chat with our AI here.' }
- *    ]}
- * />
- */
-export default function FeatureTour({ tourId, steps, userId }) {
+export default function FeatureTour({ tourId, steps, userData }) {
     const [stepIndex, setStepIndex] = useState(0);
     const [isVisible, setIsVisible] = useState(false);
     const [rect, setRect] = useState(null);
 
-    // Check if tour is already completed
+    // Check if tour is already completed from Firestore
     useEffect(() => {
-        if (!userId) return; // Wait for user to be loaded
-        const key = `tour_completed_${tourId}_${userId}`;
-        const completed = localStorage.getItem(key);
+        if (!userData) return;
+
+        const toursDone = userData.toursCompleted || {};
+        const completed = toursDone[tourId];
+
         if (!completed) {
             // Delay slightly to ensure page load
             const timer = setTimeout(() => setIsVisible(true), 1500);
             return () => clearTimeout(timer);
         }
-    }, [tourId, userId]);
+    }, [tourId, userData]);
 
     // Track Target Element Position
     useEffect(() => {
@@ -68,7 +55,7 @@ export default function FeatureTour({ tourId, steps, userId }) {
         const t = setTimeout(updatePosition, 500);
 
         window.addEventListener('resize', updatePosition);
-        window.addEventListener('scroll', updatePosition); // Track scroll for relative positioning
+        window.addEventListener('scroll', updatePosition);
 
         return () => {
             clearTimeout(t);
@@ -89,10 +76,24 @@ export default function FeatureTour({ tourId, steps, userId }) {
         handleClose();
     };
 
-    const handleClose = () => {
+    const handleClose = async () => {
         setIsVisible(false);
-        if (userId) {
-            localStorage.setItem(`tour_completed_${tourId}_${userId}`, 'true');
+        if (userData?.uid) {
+            try {
+                // Determine collection
+                let collectionName = 'users';
+                if (userData.role === 'teacher') collectionName = 'teachers';
+                else if (userData.role === 'institution') collectionName = 'institutions';
+
+                const userRef = doc(db, collectionName, userData.uid);
+                await updateDoc(userRef, {
+                    [`toursCompleted.${tourId}`]: true
+                });
+            } catch (e) {
+                console.error("Tour Save Error:", e);
+                // Fallback to local if DB fails so user doesn't get stuck
+                localStorage.setItem(`tour_completed_${tourId}_${userData.uid}`, 'true');
+            }
         }
     };
 
@@ -103,9 +104,6 @@ export default function FeatureTour({ tourId, steps, userId }) {
     // Using Portal to break out of any overflow:hidden containers
     return createPortal(
         <div style={overlayStyle}>
-            {/* Dark Backdrop with "Cutout" effect via multiple divs or SVG mask */}
-            {/* Optimization: Simple semi-transparent overlay with a high z-index highlighter on top */}
-
             {/* The Backdrop */}
             <div style={backdropStyle} onClick={handleSkip}></div>
 
@@ -116,10 +114,10 @@ export default function FeatureTour({ tourId, steps, userId }) {
                 left: rect.viewportLeft,
                 width: rect.width,
                 height: rect.height,
-                boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.75), 0 0 15px rgba(255, 255, 255, 0.5)', // The cutout hack
+                boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.75), 0 0 15px rgba(255, 255, 255, 0.5)',
                 zIndex: 9999,
                 borderRadius: '8px',
-                pointerEvents: 'none', // Let clicks pass through if needed? No, we blocking interactions usually during tour
+                pointerEvents: 'none',
                 transition: 'all 0.3s ease'
             }}></div>
 
@@ -136,7 +134,7 @@ export default function FeatureTour({ tourId, steps, userId }) {
                 zIndex: 10000,
                 color: '#2d3436',
                 fontFamily: 'system-ui, sans-serif',
-                animation: 'fadeIn 0.3s ease'
+                animation: 'fadeInTour 0.3s ease'
             }}>
                 {/* Arrow pointing up */}
                 <div style={{
@@ -170,7 +168,7 @@ export default function FeatureTour({ tourId, steps, userId }) {
             </div>
 
             <style>{`
-                @keyframes fadeIn {
+                @keyframes fadeInTour {
                     from { opacity: 0; transform: translateY(10px); }
                     to { opacity: 1; transform: translateY(0); }
                 }
@@ -187,7 +185,7 @@ const overlayStyle = {
     width: '100vw',
     height: '100vh',
     zIndex: 9998,
-    pointerEvents: 'auto' // Catch clicks
+    pointerEvents: 'auto'
 };
 
 const backdropStyle = {
@@ -196,7 +194,6 @@ const backdropStyle = {
     left: 0,
     width: '100%',
     height: '100%',
-    // Background is handled by the highlighter box-shadow for the cutout effect
 };
 
 const nextBtnStyle = {

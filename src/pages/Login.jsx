@@ -133,6 +133,8 @@ export default function Login() {
 
                 if (userData.approved === false) {
                     navigate('/pending-approval', { replace: true });
+                } else if (!userData.onboardingCompleted) {
+                    navigate('/onboarding', { replace: true });
                 } else {
                     switch (userData.role) {
                         case 'student': navigate('/student', { replace: true }); break;

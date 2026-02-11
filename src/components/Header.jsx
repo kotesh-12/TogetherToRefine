@@ -215,13 +215,47 @@ export default function Header({ onToggleSidebar }) {
             <div className="header-right">
                 <LanguageSelector />
 
-                <button
-                    onClick={() => setIsSearchMode(true)}
-                    className="action-icon-btn"
-                    title="Search"
-                >
-                    🔍
-                </button>
+                {/* Desktop Search Bar */}
+                {window.innerWidth > 768 && (
+                    <div className="search-input-wrapper desktop-search" style={{ minWidth: '300px', margin: '0 10px' }}>
+                        <input
+                            type="text"
+                            placeholder={t('search_placeholder') || "Search students, teachers..."}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="input-field header-search-input"
+                        />
+                        {searchTerm && (
+                            <button onClick={() => setSearchTerm('')} className="search-clear" style={{ right: '15px' }}>×</button>
+                        )}
+                        {/* Suggestions Dropdown for Desktop */}
+                        {suggestions.length > 0 && (
+                            <div className="search-suggestions-dropdown shadow-lg">
+                                {suggestions.map((item, idx) => (
+                                    <div key={idx} onClick={() => handleSuggestionClick(item)} className="suggestion-item">
+                                        <div className="suggestion-avatar" style={{ background: item.type === 'Teacher' ? 'var(--primary)' : 'var(--warning)' }}>
+                                            {item.name ? item.name.charAt(0).toUpperCase() : '?'}
+                                        </div>
+                                        <div className="suggestion-content">
+                                            <div className="suggestion-name">{item.name}</div>
+                                            <div className="suggestion-meta">{item.type} {item.subject ? `• ${item.subject}` : ''}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {window.innerWidth <= 768 && (
+                    <button
+                        onClick={() => setIsSearchMode(true)}
+                        className="action-icon-btn"
+                        title="Search"
+                    >
+                        🔍
+                    </button>
+                )}
 
                 <div
                     onClick={() => navigate('/profile')}

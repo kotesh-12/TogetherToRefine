@@ -206,7 +206,7 @@ export default function Institution() {
 
     return (
         <div className="page-wrapper">
-            <FeatureTour tourId="institution_dashboard_v1" steps={tourSteps} userId={userData?.uid} />
+            <FeatureTour tourId="institution_dashboard_v1" steps={tourSteps} userData={userData} />
             <AIBadge />
 
             <div style={{ padding: '20px', width: '100%', boxSizing: 'border-box' }}>

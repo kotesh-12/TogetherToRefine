@@ -146,128 +146,132 @@ export default function Student() {
     };
 
     return (
-        <div className="page-wrapper">
-            <FeatureTour tourId="student_dashboard_v1" steps={tourSteps} userId={userData?.uid} />
+        <div className="page-wrapper" style={{ animation: 'fadeIn 0.5s ease-out' }}>
+            <FeatureTour tourId="student_dashboard_v1" steps={tourSteps} userData={userData} />
             <AIBadge />
 
-            {userData?.pid && (
-                <div style={{ textAlign: 'center', marginTop: '10px' }}>
-                    <div style={{
-                        background: '#f1f2f6', color: '#2d3436',
-                        display: 'inline-block', padding: '4px 10px',
-                        borderRadius: '20px', fontSize: '12px',
-                        fontWeight: 'bold', border: '1px solid #dfe6e9'
-                    }}>
-                        ID: {userData.pid}
-                    </div>
+            {/* Student Hero Section */}
+            <div className="student-hero-vibe">
+                <div className="hero-sparkle">🎓</div>
+                <h1 className="student-greeting">
+                    {t('welcome') || 'Hello'}, {userData?.name?.split(' ')[0] || 'Scholar'}! ✨
+                </h1>
+                <p className="student-subtext">
+                    Ready to master your classes today? Your AI Tutor is here to help you excel.
+                </p>
+                <div className="streak-badge-mini">
+                    🔥 7 Day Learning Streak
                 </div>
-            )}
+            </div>
 
             <div className="container">
-                <div className="dropdown-container">
-                    <div className="dropdown-toggle card" onClick={() => setShowDropdown(!showDropdown)}>
+                {/* Person Selection Dropdown Refined */}
+                <div className="dropdown-container" style={{ marginBottom: '24px' }}>
+                    <div className="dropdown-toggle card" style={{ borderRadius: '15px', border: '1px solid var(--divider)' }} onClick={() => setShowDropdown(!showDropdown)}>
                         {selectedPerson || t('select_person')}
                     </div>
                     {showDropdown && (
-                        <div className="dropdown-list card">
-                            {myGroups.length === 0 ? <div style={{ padding: '10px', color: '#777' }}>No classes found for {userData?.assignedClass || userData?.class || "your class"}.</div> :
-                                myGroups.map((g, i) => {
-                                    return (
-                                        <div key={i} className="dropdown-item" onClick={() => handleSelect(g)}>
-                                            <div className="t-info">
-                                                {/* Use a generic avatar or teacher's photo if we stored it */}
-                                                <div className="avatar-small" style={{ background: '#6c5ce7', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                    {g.subject?.[0] || "C"}
-                                                </div>
-                                                <span>{g.subject} - {g.teacherName || "No Teacher"}</span>
+                        <div className="dropdown-list card fade-in">
+                            {myGroups.length === 0 ? <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>No classes found.</div> :
+                                myGroups.map((g, i) => (
+                                    <div key={i} className="dropdown-item" onClick={() => handleSelect(g)}>
+                                        <div className="t-info">
+                                            <div className="profile-avatar-mini" style={{ background: 'var(--primary)', color: 'white' }}>
+                                                {g.subject?.[0] || "C"}
                                             </div>
-                                            <button className="group-indicator" onClick={(e) => goToGroup(e, g)} title="Open Class Group"></button>
+                                            <span>{g.subject} - {g.teacherName || "No Teacher"}</span>
                                         </div>
-                                    );
-                                })}
+                                        <button className="group-indicator" onClick={(e) => goToGroup(e, g)}></button>
+                                    </div>
+                                ))}
                         </div>
                     )}
                 </div>
 
                 {selectedPerson && (
-                    <div className="card text-center mt-4">
-                        <h2>{selectedPerson}</h2>
-                        <button className="btn mt-2" onClick={() => handleCardClick('/profileview')}>{t('proceed')}</button>
+                    <div className="card text-center mt-4 fade-in" style={{ padding: '30px', border: '1px solid var(--primary-light)' }}>
+                        <h2 style={{ marginBottom: '15px' }}>{selectedPerson}</h2>
+                        <button className="btn pulse-btn" onClick={() => handleCardClick('/profileview')}>{t('proceed')}</button>
                     </div>
                 )}
 
-                {/* AI Learning Tools */}
-                <div className="responsive-grid">
-                    <div id="tour-card-attendance" className="card" onClick={() => handleCardClick('/attendance')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #0984e3, #74b9ff)', color: 'white' }}>
-                        <h3>📅 {t('attendance')}</h3>
-                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>{t('attendance_desc')}</p>
+                {/* Main Action Grid */}
+                <div className="student-grid mt-4">
+                    <div id="tour-card-ai" className="student-action-card" onClick={() => handleCardClick('/ttr-ai')}>
+                        <span className="card-vibe-icon">🤖</span>
+                        <h3 className="card-vibe-title">{t('ai_chat')}</h3>
+                        <p className="card-vibe-desc">{t('ai_chat_desc')}</p>
                     </div>
-                    <div id="tour-card-ai" className="card" onClick={() => handleCardClick('/ttr-ai')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)', color: 'white' }}>
-                        <h3>🤖 {t('ai_chat')}</h3>
-                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>{t('ai_chat_desc')}</p>
+
+                    <div id="tour-card-4way" className="student-action-card" onClick={() => handleCardClick('/4-way-learning')}>
+                        <span className="card-vibe-icon">🧠</span>
+                        <h3 className="card-vibe-title">{t('four_way')}</h3>
+                        <p className="card-vibe-desc">{t('four_way_desc')}</p>
                     </div>
-                    <div id="tour-card-4way" className="card" onClick={() => handleCardClick('/4-way-learning')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #fd79a8, #e84393)', color: 'white' }}>
-                        <h3>🧠 {t('four_way')}</h3>
-                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>{t('four_way_desc')}</p>
+
+                    <div id="tour-card-attendance" className="student-action-card" onClick={() => handleCardClick('/attendance')}>
+                        <span className="card-vibe-icon">📅</span>
+                        <h3 className="card-vibe-title">{t('attendance')}</h3>
+                        <p className="card-vibe-desc">{t('attendance_desc')}</p>
                     </div>
-                    <div id="tour-card-video" className="card" onClick={() => handleCardClick('/video-library')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #00b894, #55efc4)', color: 'white' }}>
-                        <h3>🎬 {t('video_library')}</h3>
-                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>{t('video_lib_desc')}</p>
+
+                    <div id="tour-card-video" className="student-action-card" onClick={() => handleCardClick('/video-library')}>
+                        <span className="card-vibe-icon">🎬</span>
+                        <h3 className="card-vibe-title">{t('video_library')}</h3>
+                        <p className="card-vibe-desc">{t('video_lib_desc')}</p>
                     </div>
-                    <div className="card" onClick={() => handleCardClick('/select-feedback-target')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #00cec9, #81ecec)', color: 'white' }}>
-                        <h3>💬 {t('feedback')} 🌟</h3>
-                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>{t('feedback_desc')}</p>
+
+                    <div className="student-action-card" onClick={() => handleCardClick('/homework')}>
+                        <span className="card-vibe-icon">📚</span>
+                        <h3 className="card-vibe-title">{t('homework')}</h3>
+                        <p className="card-vibe-desc">Assignments & Homework</p>
                     </div>
-                    <div className="card" onClick={() => handleCardClick('/timetable')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #e17055, #fab1a0)', color: 'white' }}>
-                        <h3>🗓️ {t('timetable')}</h3>
-                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>{t('timetable_desc')}</p>
+
+                    <div className="student-action-card" onClick={() => handleCardClick('/analytics')}>
+                        <span className="card-vibe-icon">📊</span>
+                        <h3 className="card-vibe-title">{t('performance')}</h3>
+                        <p className="card-vibe-desc">Track progress</p>
                     </div>
-                    <div className="card" onClick={() => handleCardClick('/upid-history')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #636e72, #2d3436)', color: 'white' }}>
-                        <h3>🕵️ {t('upid_title')}</h3>
-                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>{t('upid_desc')}</p>
+
+                    <div className="student-action-card" onClick={() => handleCardClick('/timetable')}>
+                        <span className="card-vibe-icon">🗓️</span>
+                        <h3 className="card-vibe-title">{t('timetable')}</h3>
+                        <p className="card-vibe-desc">Class Schedule</p>
                     </div>
-                    <div className="card" onClick={() => handleCardClick('/fees/student')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #2ecc71, #27ae60)', color: 'white' }}>
-                        <h3>💸 {t('pay_fees')}</h3>
-                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>{t('pay_fees_desc')}</p>
-                    </div>
-                    <div className="card" onClick={() => handleCardClick('/analytics')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #9b59b6, #8e44ad)', color: 'white' }}>
-                        <h3>📊 {t('performance')}</h3>
-                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>{t('performance_desc')}</p>
-                    </div>
-                    <div className="card" onClick={() => handleCardClick('/homework')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #f39c12, #e67e22)', color: 'white' }}>
-                        <h3>📚 {t('homework')}</h3>
-                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>{t('homework_desc')}</p>
-                    </div>
-                    <div className="card" onClick={() => handleCardClick('/view-exam-seating')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #e74c3c, #c0392b)', color: 'white' }}>
-                        <h3>🪑 {t('exam_seating')}</h3>
-                        <p style={{ fontSize: '13px', margin: '5px 0 0' }}>{t('exam_seating_desc')}</p>
+
+                    <div className="student-action-card" onClick={() => handleCardClick('/select-feedback-target')}>
+                        <span className="card-vibe-icon">💬</span>
+                        <h3 className="card-vibe-title">{t('feedback')}</h3>
+                        <p className="card-vibe-desc">Share thoughts</p>
                     </div>
                 </div>
 
-                {/* Exam Results Section (New) */}
-                <div id="tour-exam-results" className="card" style={{ marginTop: '20px' }}>
-                    <h3>📝 Recent Exam Results</h3>
-                    <div style={{ overflowX: 'auto', marginTop: '10px' }}>
-                        <table style={{ width: '100%', fontSize: '14px', borderCollapse: 'collapse' }}>
+                {/* Exam Results Module */}
+                <div id="tour-exam-results" className="results-glass-wrapper">
+                    <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '800' }}>
+                        📝 {t('recent_results') || 'Recent Exam Results'}
+                    </h3>
+                    <div style={{ overflowX: 'auto' }}>
+                        <table className="results-table">
                             <thead>
-                                <tr style={{ background: '#f5f6fa', textAlign: 'left' }}>
-                                    <th style={{ padding: '8px' }}>Exam</th>
-                                    <th style={{ padding: '8px' }}>Subject</th>
-                                    <th style={{ padding: '8px' }}>Marks</th>
-                                    <th style={{ padding: '8px' }}>Status</th>
+                                <tr>
+                                    <th>Exam</th>
+                                    <th>Subject</th>
+                                    <th>Marks</th>
+                                    <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {examResults.length === 0 ? (
-                                    <tr><td colSpan="4" style={{ padding: '15px', textAlign: 'center', color: '#888' }}>No results found for you yet.</td></tr>
+                                    <tr><td colSpan="4" style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>No results found yet.</td></tr>
                                 ) : (
                                     examResults.map((res, i) => (
-                                        <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
-                                            <td style={{ padding: '8px' }}>{res.exam}</td>
-                                            <td style={{ padding: '8px' }}>{res.subject}</td>
-                                            <td style={{ padding: '8px' }}>{res.marks}/{res.total}</td>
-                                            <td style={{ padding: '8px' }}>
-                                                <span style={{ color: (res.marks / res.total) >= 0.35 ? 'green' : 'red', fontWeight: 'bold' }}>
+                                        <tr key={i} className="fade-in" style={{ animationDelay: `${i * 0.1}s` }}>
+                                            <td><strong>{res.exam}</strong></td>
+                                            <td>{res.subject}</td>
+                                            <td>{res.marks} / {res.total}</td>
+                                            <td>
+                                                <span className={`status-pill ${(res.marks / res.total) >= 0.35 ? 'status-pass' : 'status-fail'}`}>
                                                     {(res.marks / res.total) >= 0.35 ? 'Pass' : 'Fail'}
                                                 </span>
                                             </td>

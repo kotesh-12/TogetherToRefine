@@ -112,6 +112,68 @@ body {
   margin-top: 24px;
 }
 
+/* Responsive Layout Scoping */
+@media (max-width: 768px) {
+
+  /* Only mobile gets the compact, blur-heavy professional header */
+  .app-header {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: var(--glass);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--divider);
+  }
+
+  .bottom-nav-wrapper {
+    display: flex;
+    /* Show only on mobile */
+  }
+
+  /* Mobile Grid / Spacing Adjustments */
+  .page-wrapper {
+    padding: 12px;
+    padding-bottom: 100px;
+  }
+
+  .teacher-actions-container {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .responsive-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+@media (min-width: 769px) {
+
+  /* Desktop Layout Styles */
+  .app-header {
+    padding: 16px 40px;
+    background: var(--bg-surface);
+  }
+
+  .bottom-nav-wrapper {
+    display: none !important;
+    /* Force hide on desktop */
+  }
+
+  .page-wrapper {
+    padding: 30px 40px;
+  }
+
+  .sidebar-wrapper {
+    display: block;
+  }
+}
+
 /* TTRAI Page Adjustments */
 .ttr-ai-container {
   display: flex;
@@ -779,70 +841,9 @@ button.btn.google-btn:hover {
   font-weight: 600;
 }
 
-/* Compact Header for Mobile */
-.app-header {
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-  background: var(--glass);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  padding: 12px 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--divider);
-}
+/* Legacy Cleanups */
 
-.app-header h1 {
-  font-size: 1.1rem !important;
-  font-weight: 800;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin: 0;
-}
-
-/* Bottom Navigation (Mobile Only) */
-.bottom-nav-wrapper {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  background: var(--glass);
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
-  border-top: 1px solid var(--divider);
-  padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
-  z-index: 2000;
-  display: flex;
-  justify-content: space-around;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.04);
-}
-
-/* Page Wrapper */
-.page-wrapper {
-  padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-/* Teacher Dashboard Refinements */
-.teacher-actions-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
-  margin-top: 24px;
-}
-
-.teacher-actions-container button {
-  width: 100%;
-  height: 54px;
-  font-size: 13px;
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-sm);
-}
+/* Teacher Actions Grid */
 
 /* Input Fields Professional */
 .input-field {
@@ -861,54 +862,7 @@ button.btn.google-btn:hover {
   box-shadow: 0 0 0 4px rgba(108, 92, 231, 0.1);
 }
 
-/* Mobile Media Queries (Professional Overhaul) */
-@media (max-width: 768px) {
-  .page-wrapper {
-    padding: 12px;
-    padding-bottom: 100px;
-  }
 
-  .card {
-    padding: 20px 16px;
-  }
-
-  .teacher-actions-container {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-  }
-
-  .teacher-actions-container button {
-    padding: 10px;
-    height: 50px;
-  }
-
-  h1 {
-    font-size: 1.5rem;
-  }
-
-  h2 {
-    font-size: 1.3rem;
-  }
-
-  h3 {
-    font-size: 1.1rem;
-  }
-
-  /* Hide Desktop Sidebar */
-  .sidebar-wrapper {
-    display: none;
-  }
-
-  /* Show Bottom Nav */
-  .bottom-nav-wrapper {
-    display: flex;
-  }
-
-  .responsive-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-}
 
 /* Animations */
 @keyframes fadeIn {
@@ -1331,13 +1285,188 @@ button.btn.google-btn:hover {
   }
 }
 
-@keyframes slideUp {
-  from {
-    transform: translateY(100%);
+
+/* Student Dashboard Elite Styles */
+.student-hero-vibe {
+  background: linear-gradient(135deg, var(--primary) 0%, #8e44ad 100%);
+  padding: 40px 24px;
+  border-radius: var(--radius-md);
+  color: white;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 15px 35px rgba(108, 92, 231, 0.3);
+  text-align: left;
+  animation: floatHero 6s ease-in-out infinite;
+}
+
+@keyframes floatHero {
+
+  0%,
+  100% {
+    transform: translateY(0);
   }
 
-  to {
-    transform: translateY(0);
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.hero-sparkle {
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  font-size: 150px;
+  opacity: 0.1;
+  transform: rotate(15deg);
+}
+
+.student-greeting {
+  font-size: 28px;
+  font-weight: 800;
+  margin: 0 0 8px 0;
+  letter-spacing: -0.5px;
+}
+
+.student-subtext {
+  font-size: 15px;
+  opacity: 0.9;
+  margin: 0;
+  max-width: 80%;
+}
+
+.streak-badge-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(5px);
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.student-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 30px;
+}
+
+.student-action-card {
+  position: relative;
+  padding: 24px 16px;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  border: 1px solid var(--divider);
+  background: var(--bg-surface);
+  cursor: pointer;
+}
+
+.student-action-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  border-color: var(--primary-light);
+}
+
+.card-vibe-icon {
+  font-size: 36px;
+  margin-bottom: 4px;
+  transition: transform 0.3s ease;
+}
+
+.student-action-card:hover .card-vibe-icon {
+  transform: scale(1.2) rotate(5deg);
+}
+
+.card-vibe-title {
+  font-weight: 800;
+  font-size: 15px;
+  margin: 0;
+  color: var(--text-main);
+}
+
+.card-vibe-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* Glassmorphism Results Table */
+.results-glass-wrapper {
+  background: var(--glass);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  margin-top: 30px;
+  overflow: hidden;
+}
+
+.results-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.results-table th {
+  text-align: left;
+  padding: 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 1px solid var(--divider);
+}
+
+.results-table td {
+  padding: 16px 12px;
+  font-size: 14px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.status-pill {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.status-pass {
+  background: #e6f7ef;
+  color: #2ecc71;
+}
+
+.status-fail {
+  background: #feecef;
+  color: #e74c3c;
+}
+
+@media (min-width: 769px) {
+  .student-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .student-hero-vibe {
+    padding: 30px 20px;
+  }
+
+  .student-greeting {
+    font-size: 24px;
   }
 }
 
