@@ -150,11 +150,14 @@ body {
 /* Utilities */
 .container {
   max-width: 1280px;
-  /* Wider professional layout */
-  margin: 0 auto;
+  margin: 0 auto !important;
   padding: 24px;
   width: 100%;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* Ensures inner children are centered if they don't fill width */
 }
 
 /* Card - Professional YouTube Studio look */

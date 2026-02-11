@@ -31,10 +31,6 @@ body {
   background-color: var(--bg-body);
   color: var(--text-main);
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden !important;
-  /* Critical lock */
-  width: 100% !important;
-  position: relative;
 }
 
 /* Global Interaction Neutralizers - Block Browser Intrusions */
@@ -61,8 +57,6 @@ input:focus {
   margin: 0;
   padding: 0;
   min-height: 100vh;
-  overflow-x: hidden;
-  /* Lock the viewport */
   position: relative;
 }
 
@@ -1532,10 +1526,15 @@ button.btn.google-btn:hover {
   color: #e74c3c;
 }
 
-@media (min-width: 769px) {
-  .student-grid {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 24px;
+@media (max-width: 768px) {
+  .container {
+    padding: 16px;
+    display: block;
+  }
+
+  .main-content-area {
+    width: 100vw;
+    padding: 0;
   }
 }
 

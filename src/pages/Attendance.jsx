@@ -482,88 +482,39 @@ export default function Attendance() {
             // CLIENT-SIDE FILTERING (Robust)
             if (view === 'students') {
                 const targetSec = (selectedSection || '').trim().toLowerCase();
-                // Normalized Target Class: "10th" -> "10"
                 const targetClassRaw = (selectedClass || '').toLowerCase().trim();
                 const targetClassNorm = targetClassRaw.replace(/(\d+)(st|nd|rd|th)/i, '$1');
 
                 rawList = rawList.filter(item => {
-                    // Check Section (if not All)
                     if (targetSec && targetSec !== 'all') {
                         if ((item.section || '').trim().toLowerCase() !== targetSec) return false;
                     }
-
-                    // Check Class (Loose Match)
                     const itemClass = (item.classAssigned || '').toLowerCase().trim();
                     const itemClassNorm = itemClass.replace(/(\d+)(st|nd|rd|th)/i, '$1');
-
-                    // Match conditions: Exact, Normalized, or contained
-                    const match = (
+                    return (
                         itemClass === targetClassRaw ||
                         itemClassNorm === targetClassNorm ||
                         itemClass === targetClassNorm ||
                         itemClassNorm === targetClassRaw
                     );
-
-                    return match;
                 });
             }
 
-            // SELF-HEALING: If allotments are missing 'userId', try to find and link the real User UID.
-            // This fixes the bug where students can't see attendance marked by teachers because it was keyed to a random ID.
-            if (view === 'students' && rawList.some(r => !r.userId)) {
-                try {
-                    const cNum = selectedClass;
-                    const sNum = selectedSection;
-                    // Find actual users in this class
-                    const uQ = query(collection(db, "users"), where("assignedClass", "==", cNum), where("assignedSection", "==", sNum));
-                    const uSnap = await getDocs(uQ);
-
-                    const nameMap = new Map();
-                    uSnap.forEach(u => nameMap.set(u.data().name.trim().toLowerCase(), u.id));
-
-                    const updates = [];
-                    rawList = rawList.map(r => {
-                        if (!r.userId && r.name) {
-                            const key = r.name.trim().toLowerCase();
-                            if (nameMap.has(key)) {
-                                const foundUid = nameMap.get(key);
-                                console.log(`Self-healing link for ${r.name}: ${foundUid}`);
-                                // Update Firestore in background
-                                updates.push(updateDoc(doc(db, "student_allotments", r.id), { userId: foundUid }));
-                                return { ...r, userId: foundUid };
-                            }
-                        }
-                        return r;
-                    });
-
-                    // Execute updates silently
-                    if (updates.length > 0) Promise.all(updates).catch(e => console.error("Healing update failed", e));
-
-                } catch (healingErr) {
-                    console.warn("Auto-linking failed:", healingErr);
-                }
-            }
-
-            // Deduplicate Teachers if view is 'teachers'
+            // Deduplicate & Merge
             let fetched = rawList;
             if (view === 'teachers') {
                 const uniqueMap = new Map();
                 rawList.forEach(item => {
-                    // Robust ID: prefer userId (User UID), fallback to teacherId (legacy), fallback to allotment ID
                     const tId = item.userId || item.teacherId || item.id;
-
                     if (!uniqueMap.has(tId)) {
                         uniqueMap.set(tId, {
                             ...item,
-                            id: tId, // Use resolved ID
-                            name: item.teacherName || item.name || 'Unknown Teacher',
-                            classAssigned: 'Teacher'
+                            id: tId,
+                            name: item.teacherName || item.name || 'Unknown Teacher'
                         });
                     }
                 });
                 fetched = Array.from(uniqueMap.values());
-
-                // Allow filtering teachers by Subject
                 if (subject) {
                     fetched = fetched.filter(t => (t.subject || '').toLowerCase().includes(subject.toLowerCase()));
                 }
@@ -581,48 +532,45 @@ export default function Attendance() {
                 attendanceMap[d.data().userId] = d.data().status;
             });
 
-            // Calculate Stats (Subject-wise or Overall)
+            // Calculate Stats for Percentages
             const stats = await Promise.all(fetched.map(async (p) => {
-                try {
-                    // CRITICAL FIX: Match the ID used during 'markAttendance'
-                    // If the allotment is linked to a user (p.userId), we query by that UID.
-                    // Otherwise we fallback to the allotment ID (p.id).
-                    const targetId = p.userId || p.id;
+                const targetId = p.userId || p.id;
+                let qStats;
+                if (view === 'students' && subject) {
+                    qStats = query(collection(db, "attendance"), where("userId", "==", targetId), where("subject", "==", subject));
+                } else {
+                    qStats = query(collection(db, "attendance"), where("userId", "==", targetId));
+                }
 
-                    let qStats;
-                    // Dynamically filter stats by subject if one is selected in the UI
-                    if (view === 'students' && subject) {
-                        qStats = query(collection(db, "attendance"), where("userId", "==", targetId), where("subject", "==", subject));
-                    } else {
-                        qStats = query(collection(db, "attendance"), where("userId", "==", targetId));
-                    }
+                const allAtt = await getDocs(qStats);
+                let total = 0, present = 0;
+                allAtt.forEach(doc => { total++; if (doc.data().status === 'present') present++; });
 
-                    const allAtt = await getDocs(qStats);
-                    let total = 0, present = 0;
-                    allAtt.forEach(doc => { total++; if (doc.data().status === 'present') present++; });
-
-                    return {
-                        userId: p.id, // Keep this as p.id to map back to the 'list' item easily
-                        percent: total > 0 ? ((present / total) * 100).toFixed(0) : 0,
-                        present,
-                        total
-                    };
-                } catch { return { userId: p.id, percent: 0, present: 0, total: 0 }; }
+                return {
+                    id: p.id,
+                    targetId, // actual UID used for marking
+                    percent: total > 0 ? ((present / total) * 100).toFixed(0) : 0,
+                    present,
+                    total
+                };
             }));
 
             const statsMap = {};
-            stats.forEach(s => statsMap[s.userId] = s);
+            stats.forEach(s => statsMap[s.id] = s);
 
             const merged = fetched.map(p => {
-                const targetId = p.userId || p.id;
+                const s = statsMap[p.id];
                 return {
                     ...p,
-                    // Check attendance using the same ID logic
-                    status: attendanceMap[targetId] || 'pending',
-                    percentage: statsMap[p.id]?.percent || 0,
-                    statsData: statsMap[p.id] || { present: 0, total: 0 }
+                    status: attendanceMap[s.targetId] || 'pending',
+                    percentage: s.percent,
+                    statsData: s
                 };
             });
+
+            // Sort Alphabetically
+            merged.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+            setList(merged);
 
             // Sort Alphabetically by Name
             merged.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
@@ -949,24 +897,21 @@ export default function Attendance() {
                         )}
 
                         {view === 'teachers' ? (
-                            <div style={{ overflowX: 'auto', background: 'white', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
-                                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
-                                    <thead>
-                                        <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #dfe6e9', color: '#636e72', fontSize: '13px', textTransform: 'uppercase' }}>
-                                            <th style={{ padding: '15px', textAlign: 'center', width: '60px' }}>S.No</th>
-                                            <th style={{ padding: '15px', textAlign: 'left' }}>Teacher Name</th>
-                                            <th style={{ padding: '15px', textAlign: 'left' }}>Subject</th>
-                                            <th style={{ padding: '15px', textAlign: 'center' }}>Attendance</th>
-                                            <th style={{ padding: '15px', textAlign: 'center' }}>Total Days (Month)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {list.map((item, index) => {
-                                            const suspended = isSuspended(item);
-                                            const d = new Date(selectedDate);
-                                            const totalDays = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-
-                                            return (
+                            <div className="attendance-list-wrapper">
+                                {/* Desktop Table View */}
+                                <div className="hide-mobile" style={{ overflowX: 'auto', background: 'white', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
+                                        <thead>
+                                            <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #dfe6e9', color: '#636e72', fontSize: '13px', textTransform: 'uppercase' }}>
+                                                <th style={{ padding: '15px', textAlign: 'center', width: '60px' }}>S.No</th>
+                                                <th style={{ padding: '15px', textAlign: 'left' }}>Teacher Name</th>
+                                                <th style={{ padding: '15px', textAlign: 'left' }}>Subject</th>
+                                                <th style={{ padding: '15px', textAlign: 'center' }}>Attendance</th>
+                                                <th style={{ padding: '15px', textAlign: 'center' }}>Total Days</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {list.map((item, index) => (
                                                 <tr key={item.id} style={{ borderBottom: '1px solid #f1f2f6', background: item.status === 'present' ? '#e6ffec' : (item.status === 'absent' ? '#fff0f0' : 'white') }}>
                                                     <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#b2bec3' }}>{index + 1}</td>
                                                     <td style={{ padding: '12px', fontWeight: 'bold', color: '#2d3436' }}>{item.name}</td>
@@ -974,39 +919,62 @@ export default function Attendance() {
                                                     <td style={{ padding: '12px', textAlign: 'center' }}>
                                                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                                                             <button
-                                                                disabled={suspended}
                                                                 onClick={() => markAttendance(item.id, 'present')}
-                                                                title="Mark Present"
                                                                 style={{
-                                                                    width: '35px', height: '35px', borderRadius: '6px', border: 'none', fontWeight: 'bold',
-                                                                    cursor: suspended ? 'not-allowed' : 'pointer',
-                                                                    background: item.status === 'present' ? '#00b894' : '#ecf0f1',
-                                                                    color: item.status === 'present' ? 'white' : '#b2bec3',
-                                                                    transition: 'all 0.2s'
-                                                                }}>
-                                                                P
-                                                            </button>
+                                                                    width: '35px', height: '35px', borderRadius: '6px', border: 'none', fontWeight: 'bold', cursor: 'pointer',
+                                                                    background: item.status === 'present' ? '#00b894' : '#ecf0f1', color: item.status === 'present' ? 'white' : '#b2bec3'
+                                                                }}>P</button>
                                                             <button
-                                                                disabled={suspended}
                                                                 onClick={() => markAttendance(item.id, 'absent')}
-                                                                title="Mark Absent"
                                                                 style={{
-                                                                    width: '35px', height: '35px', borderRadius: '6px', border: 'none', fontWeight: 'bold',
-                                                                    cursor: suspended ? 'not-allowed' : 'pointer',
-                                                                    background: item.status === 'absent' ? '#d63031' : '#ecf0f1',
-                                                                    color: item.status === 'absent' ? 'white' : '#b2bec3',
-                                                                    transition: 'all 0.2s'
-                                                                }}>
-                                                                A
-                                                            </button>
+                                                                    width: '35px', height: '35px', borderRadius: '6px', border: 'none', fontWeight: 'bold', cursor: 'pointer',
+                                                                    background: item.status === 'absent' ? '#d63031' : '#ecf0f1', color: item.status === 'absent' ? 'white' : '#b2bec3'
+                                                                }}>A</button>
                                                         </div>
                                                     </td>
-                                                    <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#6c5ce7' }}>{totalDays}</td>
+                                                    <td style={{ padding: '12px', textAlign: 'center', color: '#6c5ce7', fontWeight: '800' }}>
+                                                        {new Date(new Date(selectedDate).getFullYear(), new Date(selectedDate).getMonth() + 1, 0).getDate()}
+                                                    </td>
                                                 </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {/* Mobile Card View - centered and fits screen */}
+                                <div className="show-mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    {list.map((item, index) => (
+                                        <div key={item.id} style={{
+                                            background: 'white', border: '1px solid #eee', borderRadius: '12px', padding: '16px',
+                                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                            boxShadow: 'var(--shadow-sm)'
+                                        }}>
+                                            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800' }}>
+                                                    {item.name?.charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <div style={{ fontWeight: '700', fontSize: '15px' }}>{item.name}</div>
+                                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{item.subject || 'All Subjects'}</div>
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                <button
+                                                    onClick={() => markAttendance(item.id, 'present')}
+                                                    style={{
+                                                        padding: '10px 18px', borderRadius: '8px', border: 'none', fontWeight: '800',
+                                                        background: item.status === 'present' ? '#00b894' : '#ecf0f1', color: item.status === 'present' ? 'white' : 'var(--text-main)'
+                                                    }}>P</button>
+                                                <button
+                                                    onClick={() => markAttendance(item.id, 'absent')}
+                                                    style={{
+                                                        padding: '10px 18px', borderRadius: '8px', border: 'none', fontWeight: '800',
+                                                        background: item.status === 'absent' ? '#d63031' : '#ecf0f1', color: item.status === 'absent' ? 'white' : 'var(--text-main)'
+                                                    }}>A</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         ) : (
                             list.map((item, index) => {
