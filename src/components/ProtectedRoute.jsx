@@ -64,12 +64,10 @@ const ProtectedRoute = ({ allowedRoles }) => {
         return <Navigate to="/pending-approval" replace />;
     }
 
-    // ONBOARDING CHECK
+    // ONBOARDING CHECK (Verified via Firestore/Context)
     // If user is logged in but hasn't done setup, send to Onboarding
     // Exception: If already there, allow it.
-    // FIX: Make this user-specific so new users on same device see it
-    const setupKey = user?.uid ? `ttr_setup_done_${user.uid}` : 'ttr_setup_done';
-    if (!localStorage.getItem(setupKey) && location.pathname !== '/onboarding') {
+    if (!userData.onboardingCompleted && location.pathname !== '/onboarding') {
         return <Navigate to="/onboarding" replace />;
     }
 
