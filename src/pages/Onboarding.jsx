@@ -68,7 +68,12 @@ export default function Onboarding() {
     };
 
     const handleContinue = async () => {
-        if (!userData || isSaving) return;
+        console.log("Onboarding: handleContinue triggered", { hasUserData: !!userData, isSaving });
+        if (!userData || isSaving) {
+            if (!userData) console.warn("Onboarding: No userData found in context.");
+            return;
+        }
+
         setIsSaving(true);
 
         try {
@@ -77,23 +82,30 @@ export default function Onboarding() {
             if (userData.role === 'teacher') collectionName = 'teachers';
             else if (userData.role === 'institution') collectionName = 'institutions';
 
+            console.log(`Onboarding: Saving to ${collectionName}/${userData.uid}`);
             const userRef = doc(db, collectionName, userData.uid);
             await updateDoc(userRef, {
                 onboardingCompleted: true
             });
 
-            // Local state update via context (if not using live snapshot)
-            // No need if we have onSnapshot, but good as a fallback
+            // Update local state for immediate reactivity
+            if (updateUserData) {
+                updateUserData({ ...userData, onboardingCompleted: true });
+            }
 
             // Redirect based on role
             const r = userData?.role?.toLowerCase();
-            if (r === 'admin') navigate('/admin');
-            else if (r === 'teacher') navigate('/teacher');
-            else if (r === 'institution') navigate('/institution');
-            else if (r === 'student') navigate('/student');
-            else navigate('/details');
+            console.log("Onboarding: Redirecting for role:", r);
+
+            if (r === 'admin') navigate('/admin', { replace: true });
+            else if (r === 'teacher') navigate('/teacher', { replace: true });
+            else if (r === 'institution') navigate('/institution', { replace: true });
+            else if (r === 'student') navigate('/student', { replace: true });
+            else navigate('/details', { replace: true });
+
         } catch (e) {
             console.error("Onboarding Save Error:", e);
+            // Fallback: Just try to navigate anyway if it's already true in DB
             navigate('/settings');
         } finally {
             setIsSaving(false);
@@ -102,14 +114,15 @@ export default function Onboarding() {
 
     return (
         <div style={{
-            height: '100vh', display: 'flex', flexDirection: 'column',
+            minHeight: '100dvh', // Modern dynamic viewport
+            display: 'flex', flexDirection: 'column',
             alignItems: 'center', justifyContent: 'center',
             background: 'linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%)',
             padding: '20px', fontFamily: "'Segoe UI', sans-serif"
         }}>
             <div style={{
-                background: 'white', padding: '40px', borderRadius: '20px',
-                boxShadow: '0 10px 40px rgba(0,0,0,0.2)', maxWidth: '500px', width: '100%',
+                background: 'white', padding: '30px 24px', borderRadius: '24px',
+                boxShadow: '0 15px 45px rgba(0,0,0,0.25)', maxWidth: '450px', width: '100%',
                 textAlign: 'center'
             }}>
                 <div style={{ fontSize: '50px', marginBottom: '20px' }}>👋</div>

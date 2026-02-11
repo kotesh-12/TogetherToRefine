@@ -12,14 +12,16 @@ export function UserProvider({ children }) {
     const [loading, setLoading] = useState(true);
 
     // Helper to update state and cache consistently
-    const updateUserData = (data) => {
+    const updateUserData = React.useCallback((data) => {
+        if (!data) return;
+        console.log("Context: Updating User Data", data.role);
         setUserData(data);
         try {
             sessionStorage.setItem('user_profile_cache', JSON.stringify(data));
         } catch (e) {
             console.warn("Storage update failed", e);
         }
-    };
+    }, []);
 
     useEffect(() => {
         let unsubscribeSnapshot = null;
@@ -27,11 +29,13 @@ export function UserProvider({ children }) {
         let retryCount = 0;
         const MAX_RETRIES = 3;
 
+        console.log("UserContext: Initializing Auth Listener...");
+
         // Failsafe: Force stop loading after 6 seconds
         const failsafe = setTimeout(() => {
             setLoading((prev) => {
                 if (prev) {
-                    console.log("Force clearing loading state due to timeout.");
+                    console.warn("UserContext: Force clearing loading state due to timeout.");
                     return false;
                 }
                 return prev;
@@ -39,7 +43,7 @@ export function UserProvider({ children }) {
         }, 6000);
 
         const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
-            console.log("Auth State Changed:", currentUser ? "User Logged In" : "User Logged Out");
+            console.log("Auth State Changed:", currentUser ? `Logged In [${currentUser.uid}]` : "Logged Out");
             setUser(currentUser);
 
             // Cleanup
@@ -49,9 +53,8 @@ export function UserProvider({ children }) {
             if (currentUser) {
                 setLoading(true);
 
-                // CRITICAL: Check if running in Mock Mode (Config Error)
+                // CRITICAL: Check if running in Mock Mode
                 if (db.type === 'mock') {
-                    console.warn("Running in Mock Mode. UserContext defaulting to null.");
                     setUserData(null);
                     setLoading(false);
                     return;
@@ -63,7 +66,6 @@ export function UserProvider({ children }) {
                         const sessionRef = doc(db, 'users', currentUser.uid, 'sessions', sessionId);
                         unsubscribeSession = onSnapshot(sessionRef, (docSnap) => {
                             if (!docSnap.exists()) {
-                                console.log("Session revoked.");
                                 auth.signOut().then(() => {
                                     clearLocalSession();
                                     alert("Session expired/revoked.");
@@ -73,7 +75,7 @@ export function UserProvider({ children }) {
                     }
                 }).catch(e => console.error("Session Error:", e));
 
-                // 2. Detection Logic (Original Stable Logic)
+                // 2. Detection Logic
                 const detectFull = async () => {
                     if (retryCount >= MAX_RETRIES) {
                         setUserData(null);
@@ -82,7 +84,7 @@ export function UserProvider({ children }) {
                     }
                     retryCount++;
 
-                    // Parallel Check
+                    console.log(`Detecting profile (Attempt ${retryCount})...`);
                     const instRef = doc(db, "institutions", currentUser.uid);
                     const teachRef = doc(db, "teachers", currentUser.uid);
                     const userRef = doc(db, "users", currentUser.uid);
@@ -99,37 +101,31 @@ export function UserProvider({ children }) {
                         const userSnap = results[2].status === 'fulfilled' ? results[2].value : { exists: () => false };
 
                         if (instSnap.exists()) {
-                            // 1. Set Data IMMEDIATELY
                             const data = { ...instSnap.data(), uid: currentUser.uid, role: (instSnap.data().role || 'institution').toLowerCase() };
                             updateUserData(data);
                             setLoading(false);
                             sessionStorage.setItem('user_collection_cache', 'institutions');
 
-                            // 2. Subscribe for updates
                             unsubscribeSnapshot = onSnapshot(instRef, (d) => {
                                 if (!d.exists()) { detectFull(); return; }
                                 updateUserData({ ...d.data(), uid: currentUser.uid, role: (d.data().role || 'institution').toLowerCase() });
                             });
                         } else if (teachSnap.exists()) {
-                            // 1. Set Data IMMEDIATELY
                             const data = { ...teachSnap.data(), uid: currentUser.uid, role: (teachSnap.data().role || 'teacher').toLowerCase() };
                             updateUserData(data);
                             setLoading(false);
                             sessionStorage.setItem('user_collection_cache', 'teachers');
 
-                            // 2. Subscribe
                             unsubscribeSnapshot = onSnapshot(teachRef, (d) => {
                                 if (!d.exists()) { detectFull(); return; }
                                 updateUserData({ ...d.data(), uid: currentUser.uid, role: (d.data().role || 'teacher').toLowerCase() });
                             });
                         } else if (userSnap.exists()) {
-                            // 1. Set Data IMMEDIATELY
                             const data = { ...userSnap.data(), uid: currentUser.uid, role: (userSnap.data().role || 'student').toLowerCase() };
                             updateUserData(data);
                             setLoading(false);
                             sessionStorage.setItem('user_collection_cache', 'users');
 
-                            // 2. Subscribe
                             unsubscribeSnapshot = onSnapshot(userRef, (d) => {
                                 if (!d.exists()) { detectFull(); return; }
                                 updateUserData({ ...d.data(), uid: currentUser.uid, role: (d.data().role || 'student').toLowerCase() });
@@ -151,52 +147,30 @@ export function UserProvider({ children }) {
                     try {
                         const cachedProfile = JSON.parse(cachedProfileJSON);
                         if (cachedProfile && cachedProfile.uid === currentUser.uid) {
-                            console.log("Instant Load: Using cached profile.");
                             setUserData(cachedProfile);
                             setLoading(false);
                         }
-                    } catch (e) {
-                        console.error("Cache parsing error", e);
-                    }
+                    } catch (e) { }
                 }
 
-                // OPTIMIZATION: Check Collection Cache First (Background Validation)
+                // Background Validation
                 const cachedCollection = sessionStorage.getItem('user_collection_cache');
-
                 if (cachedCollection) {
-                    console.log("Verifying with cached collection:", cachedCollection);
                     unsubscribeSnapshot = onSnapshot(doc(db, cachedCollection, currentUser.uid), (d) => {
                         if (d.exists()) {
                             const data = d.data();
-                            let role = data.role;
-                            if (!role) {
-                                if (cachedCollection === 'institutions') role = 'institution';
-                                else if (cachedCollection === 'teachers') role = 'teacher';
-                                else role = 'student';
-                            }
-                            const completeProfile = { ...data, uid: currentUser.uid, role: role.toLowerCase() };
-
-                            // Update State & Cache
-                            updateUserData(completeProfile);
-                            setLoading(false); // Ensure loading is off
+                            let role = data.role || (cachedCollection === 'institutions' ? 'institution' : (cachedCollection === 'teachers' ? 'teacher' : 'student'));
+                            updateUserData({ ...data, uid: currentUser.uid, role: role.toLowerCase() });
+                            setLoading(false);
                         } else {
-                            // Validation failed - clear bad cache
                             sessionStorage.removeItem('user_collection_cache');
                             sessionStorage.removeItem('user_profile_cache');
-                            if (!cachedProfileJSON) { // Only fallback if we don't have a cache shown
-                                detectFull();
-                            } else {
-                                // We are showing cached data that is now invalid! Re-run detect.
-                                detectFull();
-                            }
+                            detectFull();
                         }
                     }, (err) => {
-                        console.error("Cache subscribe error", err);
-                        // If we didn't have a cache, fallback.
                         if (!cachedProfileJSON) detectFull();
                     });
                 } else {
-                    // No collection cache? Run full detect
                     detectFull();
                 }
 
@@ -214,7 +188,7 @@ export function UserProvider({ children }) {
             if (unsubscribeSnapshot) unsubscribeSnapshot();
             if (unsubscribeSession) unsubscribeSession();
         };
-    }, []);
+    }, [updateUserData]);
 
     const values = React.useMemo(() => ({
         user, userData, loading, setUserData, updateUserData
@@ -234,5 +208,9 @@ export function UserProvider({ children }) {
 }
 
 export function useUser() {
-    return useContext(UserContext);
+    const context = useContext(UserContext);
+    if (!context) {
+        console.error("useUser must be used within a UserProvider");
+    }
+    return context;
 }

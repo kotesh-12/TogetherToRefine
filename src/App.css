@@ -127,6 +127,10 @@ body {
   border-bottom: 1px solid var(--divider);
 }
 
+.bottom-nav-wrapper {
+  display: none;
+}
+
 /* Responsive Layout Scoping */
 @media (max-width: 768px) {
 
@@ -137,7 +141,7 @@ body {
 
   .bottom-nav-wrapper {
     display: flex;
-    /* Show only on mobile */
+    /* Only shows on mobile devices now */
   }
 
   /* Mobile Grid / Spacing Adjustments */
