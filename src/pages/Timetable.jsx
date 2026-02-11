@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { doc, getDoc, setDoc, query, collection, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, query, collection, where, getDocs, addDoc } from 'firebase/firestore';
 import { useUser } from '../context/UserContext';
 import AIBadge from '../components/AIBadge';
 import AnnouncementBar from '../components/AnnouncementBar';
@@ -498,6 +498,90 @@ export default function Timetable() {
         }
     };
 
+    // Create Subject-Specific Groups
+    const createSubjectGroups = async (timetableData) => {
+        if (!instId) return;
+
+        try {
+            // Extract unique subject-teacher pairs from timetable
+            const subjectTeacherPairs = new Map(); // { subject: teacherId }
+
+            Object.values(timetableData).forEach(daySchedule => {
+                Object.values(daySchedule).forEach(cell => {
+                    if (cell.subject && !cell.subject.includes('Break') && !cell.subject.includes('Conflict')) {
+                        // Extract subject and teacher name
+                        const match = cell.subject.match(/^(.+?)\s*\(([^)]+)\)$/);
+                        if (match) {
+                            const subject = match[1].trim();
+                            const teacherName = match[2].trim();
+
+                            // Find teacher ID
+                            const teacher = availableTeachers.find(t => t.name === teacherName);
+                            if (teacher && !subjectTeacherPairs.has(subject)) {
+                                subjectTeacherPairs.set(subject, teacher.id);
+                            }
+                        }
+                    }
+                });
+            });
+
+            // Fetch all students from this class
+            const studentsRef = collection(db, 'users');
+            const studentsQuery = query(
+                studentsRef,
+                where('role', '==', 'student'),
+                where('institutionId', '==', instId),
+                where('class', '==', selectedClass),
+                where('section', '==', selectedSection)
+            );
+            const studentsSnapshot = await getDocs(studentsQuery);
+            const studentIds = studentsSnapshot.docs.map(doc => doc.id);
+
+            // Create a group for each subject
+            for (const [subject, teacherId] of subjectTeacherPairs) {
+                const groupName = `${subject} (${selectedClass}-${selectedSection})`;
+
+                // Check if group already exists
+                const groupsRef = collection(db, 'groups');
+                const existingGroupQuery = query(
+                    groupsRef,
+                    where('name', '==', groupName),
+                    where('institutionId', '==', instId)
+                );
+                const existingSnapshot = await getDocs(existingGroupQuery);
+
+                if (existingSnapshot.empty) {
+                    // Create new group
+                    const groupMembers = [
+                        instId,           // Institution
+                        teacherId,        // Subject teacher
+                        ...studentIds     // All students from this class
+                    ].filter(Boolean);  // Remove any undefined values
+
+                    const newGroup = {
+                        name: groupName,
+                        description: `${subject} class group for ${selectedClass}-${selectedSection}`,
+                        institutionId: instId,
+                        createdBy: instId,
+                        members: groupMembers,
+                        class: selectedClass,
+                        section: selectedSection,
+                        subject: subject,
+                        teacherId: teacherId,
+                        createdAt: new Date().toISOString(),
+                        type: 'subject-class' // Mark as auto-created subject group
+                    };
+
+                    await addDoc(groupsRef, newGroup);
+                    console.log(`Created group: ${groupName}`);
+                }
+            }
+        } catch (e) {
+            console.error('Error creating subject groups:', e);
+            // Don't fail the timetable generation if group creation fails
+        }
+    };
+
 
     // 4. AI Timetable Generator (Enhanced with Cross-Class Conflict Detection)
     const generateAITimetable = async () => {
@@ -704,11 +788,14 @@ export default function Timetable() {
             setIsEditing(true);
             setShowAIModal(false);
 
+            // STEP 6: Auto-create subject-specific groups
+            await createSubjectGroups(newTimetable);
+
             // Inform user about conflicts
             if (conflictCount > 0) {
                 alert(`✅ Timetable generated!\n\n⚠️ Warning: ${conflictCount} period(s) have teacher conflicts (teacher is busy in another class at that time).\n\nPlease review and manually assign available teachers for conflicting periods.`);
             } else {
-                alert('✅ AI Timetable generated successfully! No conflicts detected. Review and save when ready.');
+                alert('✅ AI Timetable generated successfully! No conflicts detected.\n\n📚 Subject-specific groups have been created automatically for communication.');
             }
         } catch (e) {
             console.error('Error generating timetable:', e);
