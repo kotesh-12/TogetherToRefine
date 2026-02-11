@@ -112,14 +112,14 @@ body {
   margin-top: 24px;
 }
 
-/* Global Main Header Style */
+/* Global Layout Components */
 .app-header {
   position: sticky;
   top: 0;
   z-index: 1000;
   background: var(--glass);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   padding: 12px 24px;
   display: flex;
   align-items: center;
@@ -127,37 +127,76 @@ body {
   border-bottom: 1px solid var(--divider);
 }
 
-.bottom-nav-wrapper {
-  display: none;
+.sidebar-wrapper {
+  display: block;
+  /* Desktop default */
 }
 
-/* Responsive Layout Scoping */
+.bottom-nav-wrapper {
+  display: none;
+  /* Desktop default */
+}
+
+/* --- Responsive Scope: Mobile (< 768px) --- */
 @media (max-width: 768px) {
 
-  /* Mobile-specific adjustments */
+  .sidebar-wrapper,
+  .menu-toggle {
+    display: none !important;
+  }
+
   .app-header {
     padding: 12px 16px;
   }
 
   .bottom-nav-wrapper {
     display: flex;
-    /* Only shows on mobile devices now */
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: var(--glass);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border-top: 1px solid var(--divider);
+    height: 65px;
+    z-index: 2000;
+    justify-content: space-around;
+    align-items: center;
+    box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.1);
   }
 
-  /* Mobile Grid / Spacing Adjustments */
+  .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 500;
+    gap: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex: 1;
+  }
+
+  .nav-item.active {
+    color: var(--primary);
+  }
+
+  .nav-icon {
+    font-size: 22px;
+  }
+
+  .ai-nav-icon {
+    background: linear-gradient(135deg, var(--primary) 0%, #8e44ad 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
   .page-wrapper {
-    padding: 12px;
-    padding-bottom: 100px;
-  }
-
-  .teacher-actions-container {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-  }
-
-  .responsive-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
+    padding: 16px;
+    padding-bottom: 110px;
   }
 }
 
