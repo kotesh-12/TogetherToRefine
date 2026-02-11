@@ -585,15 +585,21 @@ export default function Timetable() {
             }
             setPeriodConfig(newPeriodConfig);
 
-            // Create new timetable structure
+            // STEP 5: Intelligent Scheduling with Constraint Satisfaction
             const newTimetable = {};
+
+            // Calculate how many periods each subject needs across the week
+            const totalClassPeriods = newPeriodConfig.filter(p => p.type === 'class').length * days.length;
+            const periodsPerSubject = Math.floor(totalClassPeriods / aiConfig.subjects.length);
+
+            // Track subject usage to ensure even distribution
+            const subjectUsageCount = {};
+            aiConfig.subjects.forEach(subject => {
+                subjectUsageCount[subject] = 0;
+            });
 
             days.forEach(day => {
                 newTimetable[day] = {};
-
-                // Shuffle subjects for variety each day
-                const daySubjects = [...aiConfig.subjects].sort(() => Math.random() - 0.5);
-                let subjectIndex = 0;
 
                 newPeriodConfig.forEach((period, periodIdx) => {
                     // Skip break periods
@@ -602,49 +608,85 @@ export default function Timetable() {
                         return;
                     }
 
-                    // Select subject ensuring variety
-                    let selectedSubject = daySubjects[subjectIndex % daySubjects.length];
+                    // SMART ALGORITHM: Find best subject-teacher combination for this slot
+                    let bestMatch = null;
+                    let attemptedSubjects = [];
 
-                    // Avoid same subject consecutively
-                    const prevPeriods = newPeriodConfig.slice(0, periodIdx).filter(p => p.type !== 'break');
-                    if (prevPeriods.length > 0) {
-                        const lastPeriod = prevPeriods[prevPeriods.length - 1];
-                        const prevSubject = newTimetable[day][lastPeriod.id]?.subject;
+                    // Sort subjects by usage (least used first) for even distribution
+                    const sortedSubjects = [...aiConfig.subjects].sort((a, b) =>
+                        subjectUsageCount[a] - subjectUsageCount[b]
+                    );
 
-                        if (prevSubject && prevSubject.includes(selectedSubject)) {
-                            // Try next subject
-                            subjectIndex++;
-                            selectedSubject = daySubjects[subjectIndex % daySubjects.length];
+                    for (const subject of sortedSubjects) {
+                        // Skip if we've tried this subject already
+                        if (attemptedSubjects.includes(subject)) continue;
+                        attemptedSubjects.push(subject);
+
+                        // Check if this subject was used in previous period (avoid consecutive)
+                        const prevPeriods = newPeriodConfig.slice(0, periodIdx).filter(p => p.type !== 'break');
+                        let isConsecutive = false;
+
+                        if (prevPeriods.length > 0) {
+                            const lastPeriod = prevPeriods[prevPeriods.length - 1];
+                            const prevSubject = newTimetable[day][lastPeriod.id]?.subject;
+                            if (prevSubject && prevSubject.includes(subject)) {
+                                isConsecutive = true;
+                            }
                         }
-                    }
 
+                        // Skip if consecutive (unless no other option)
+                        if (isConsecutive && attemptedSubjects.length < aiConfig.subjects.length) {
+                            continue;
+                        }
 
-                    // Get assigned teacher for this subject
-                    const assignedTeacherId = aiConfig.teacherAssignments[selectedSubject];
-                    let teacherName = '';
+                        // Check if assigned teacher is available
+                        const teacherId = aiConfig.teacherAssignments[subject];
+                        if (teacherId) {
+                            const teacher = availableTeachers.find(t => t.id === teacherId);
+                            if (teacher) {
+                                const isTeacherBusy = teacherSchedule[teacherId][day].includes(period.id);
 
-                    if (assignedTeacherId) {
-                        const teacher = availableTeachers.find(t => t.id === assignedTeacherId);
-                        if (teacher) {
-                            // Check if teacher is already assigned at this period (including other classes)
-                            const isTeacherBusy = teacherSchedule[assignedTeacherId][day].includes(period.id);
-
-                            if (!isTeacherBusy) {
-                                teacherName = teacher.name;
-                                // Mark teacher as busy for this period
-                                teacherSchedule[assignedTeacherId][day].push(period.id);
-                            } else {
-                                // Teacher is busy in another class, mark as conflict
-                                teacherName = '⚠️ Conflict';
+                                if (!isTeacherBusy) {
+                                    // PERFECT MATCH: Subject needed + Teacher available
+                                    bestMatch = {
+                                        subject: subject,
+                                        teacher: teacher,
+                                        teacherId: teacherId
+                                    };
+                                    break; // Found optimal match, stop searching
+                                }
+                            }
+                        } else {
+                            // No teacher assigned, but subject can still be scheduled
+                            if (!bestMatch) {
+                                bestMatch = {
+                                    subject: subject,
+                                    teacher: null,
+                                    teacherId: null
+                                };
                             }
                         }
                     }
 
-                    // Create cell with subject and teacher
-                    const cellValue = teacherName ? `${selectedSubject} (${teacherName})` : selectedSubject;
-                    newTimetable[day][period.id] = { subject: cellValue, span: 1 };
+                    // Assign the best match found
+                    if (bestMatch) {
+                        let cellValue;
+                        if (bestMatch.teacher) {
+                            cellValue = `${bestMatch.subject} (${bestMatch.teacher.name})`;
+                            // Mark teacher as busy
+                            teacherSchedule[bestMatch.teacherId][day].push(period.id);
+                        } else {
+                            cellValue = bestMatch.subject;
+                        }
 
-                    subjectIndex++;
+                        newTimetable[day][period.id] = { subject: cellValue, span: 1 };
+                        subjectUsageCount[bestMatch.subject]++;
+                    } else {
+                        // Fallback: No perfect match found (rare case)
+                        const fallbackSubject = sortedSubjects[0];
+                        newTimetable[day][period.id] = { subject: fallbackSubject, span: 1 };
+                        subjectUsageCount[fallbackSubject]++;
+                    }
                 });
             });
 
