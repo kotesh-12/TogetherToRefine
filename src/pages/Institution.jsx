@@ -317,6 +317,10 @@ export default function Institution() {
                         <span style={{ fontSize: '28px', marginBottom: '8px' }}>🔴</span>
                         <span>Inspection</span>
                     </button>
+                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#16a085', color: 'white' }} onClick={() => handleCardClick('/student-promotion')}>
+                        <span style={{ fontSize: '28px', marginBottom: '8px' }}>🎓</span>
+                        <span>Promotion</span>
+                    </button>
                 </div>
 
                 <div className="card" style={{ padding: '20px', borderRadius: '15px' }}>

@@ -33,6 +33,7 @@ import VideoLibrary from './pages/VideoLibrary';
 import SelectFeedbackTarget from './pages/SelectFeedbackTarget';
 import Notification from './pages/Notification';
 import Timetable from './pages/Timetable';
+import StudentPromotion from './pages/StudentPromotion';
 import DownloadApp from './pages/DownloadApp';
 import UpidHistory from './pages/UpidHistory';
 import FacultyFeedback from './pages/FacultyFeedback';
@@ -152,6 +153,7 @@ function App() {
                       <Route path="/notification" element={<Notification />} />
                       <Route path="/faculty-feedback" element={<FacultyFeedback />} />
                       <Route path="/fees/institution" element={<InstitutionFee />} />
+                      <Route path="/student-promotion" element={<StudentPromotion />} />
                     </Route>
                   </Route>
 
