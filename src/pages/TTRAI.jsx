@@ -267,7 +267,7 @@ export default function TTRAI() {
     };
 
     return (
-        <div className="ttr-ai-wrapper" style={{ display: 'flex', height: '100vh', flexDirection: 'row', overflow: 'hidden', background: 'var(--bg-body)' }}>
+        <div className="ttr-ai-wrapper" style={{ display: 'flex', height: '100%', flexDirection: 'row', overflow: 'hidden', background: 'var(--bg-body)' }}>
 
             {/* 1. LEFT SIDEBAR (History) */}
             <div className={`ai-sidebar ${showSidebar ? 'mobile-visible' : ''}`} style={{
@@ -311,8 +311,17 @@ export default function TTRAI() {
 
             {/* 2. MAIN CHAT AREA */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', background: 'var(--bg-surface)', color: 'var(--text-main)' }}>
-                <Header onToggleSidebar={() => setShowSidebar(!showSidebar)} />
-
+                <button
+                    onClick={() => setShowSidebar(!showSidebar)}
+                    style={{
+                        position: 'absolute', top: '10px', left: '10px', zIndex: 1100,
+                        background: 'var(--primary)', color: 'white', border: 'none',
+                        borderRadius: '20px', padding: '5px 15px', fontSize: '12px',
+                        fontWeight: 'bold', boxShadow: 'var(--shadow-sm)', cursor: 'pointer'
+                    }}
+                >
+                    📜 History
+                </button>
                 {/* Mobile History Toggle */}
 
 
@@ -338,7 +347,7 @@ export default function TTRAI() {
                     <div ref={messagesEndRef} />
                 </div>
 
-                <div className="input-area" style={{ borderTop: '1px solid var(--divider)', padding: '15px', paddingBottom: '90px', marginBottom: '0', background: 'var(--bg-surface)' }}>
+                <div className="input-area" style={{ borderTop: '1px solid var(--divider)', padding: '15px', paddingBottom: '70px', marginBottom: '0', background: 'var(--bg-surface)' }}>
                     {selectedImage && (
                         <div className="image-preview-container">
                             <img src={selectedImage} alt="Preview" className="image-preview" />
@@ -385,9 +394,6 @@ export default function TTRAI() {
                 )}
 
                 {/* Mobile Bottom Nav */}
-                <div className="bottom-nav-wrapper">
-                    <BottomNav />
-                </div>
             </div>
 
             {/* Styles for Responsive Sidebar */}

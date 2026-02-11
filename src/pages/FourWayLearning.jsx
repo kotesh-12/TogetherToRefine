@@ -363,20 +363,20 @@ export default function FourWayLearning() {
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--bg-body)', color: 'var(--text-main)', fontFamily: "'Segoe UI', sans-serif" }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-body)', color: 'var(--text-main)', fontFamily: "'Segoe UI', sans-serif" }}>
 
             {/* HEADER */}
-            <div style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--divider)', flexShrink: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', padding: '10px 15px' }}>
-                    <button
-                        onClick={() => setShowSidebar(true)}
-                        style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', marginRight: '15px', color: 'var(--text-main)' }}
-                    >
-                        ☰
-                    </button>
-                    <button className="btn-back-marker" onClick={() => navigate(-1)}>Back</button>
-                    <h1 style={{ margin: '0 0 0 15px', fontSize: '18px', color: 'var(--text-main)' }}>Four-Way Learning</h1>
-                </div>
+            <div style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--divider)', flexShrink: 0, position: 'relative' }}>
+                <button
+                    onClick={() => setShowSidebar(true)}
+                    style={{
+                        position: 'absolute', top: '12px', right: '10px', zIndex: 5,
+                        background: '#333', color: 'white', border: 'none',
+                        borderRadius: '4px', padding: '4px 8px', fontSize: '10px', cursor: 'pointer'
+                    }}
+                >
+                    📜 History
+                </button>
 
                 <div style={{ display: 'flex', overflowX: 'auto', padding: '0 10px', scrollbarWidth: 'none' }}>
                     {modes.map(m => (
@@ -446,7 +446,7 @@ export default function FourWayLearning() {
             </div>
 
             {/* INPUT AREA */}
-            <div style={{ padding: '15px', background: 'var(--bg-surface)', borderTop: '1px solid var(--divider)', flexShrink: 0 }}>
+            <div style={{ padding: '15px', paddingBottom: '70px', background: 'var(--bg-surface)', borderTop: '1px solid var(--divider)', flexShrink: 0 }}>
                 {activeTab === 'teaching' && (
                     <div style={{ marginBottom: '10px', display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div style={{ display: 'flex', gap: '10px' }}>
