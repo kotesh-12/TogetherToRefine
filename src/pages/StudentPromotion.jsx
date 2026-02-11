@@ -22,20 +22,56 @@ const StudentPromotion = () => {
 
         setLoading(true);
         try {
-            const studentsRef = collection(db, 'users');
-            const q = query(
-                studentsRef,
-                where('role', '==', 'student'),
-                where('institutionId', '==', userData.uid),
-                where('class', '==', selectedClass),
-                where('section', '==', selectedSection)
-            );
+            console.log('Fetching students with params:', {
+                institutionId: userData.uid,
+                class: selectedClass,
+                section: selectedSection
+            });
 
-            const snapshot = await getDocs(q);
-            const studentsList = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
+            const studentsRef = collection(db, 'users');
+
+            // Try multiple class formats to ensure we get all students
+            const classFormats = [
+                selectedClass,                                    // "1"
+                `${selectedClass}st`,                            // "1st"
+                `${selectedClass}nd`,                            // "2nd"
+                `${selectedClass}rd`,                            // "3rd"
+                `${selectedClass}th`,                            // "4th"
+                selectedClass === '1' ? '1st' : null,
+                selectedClass === '2' ? '2nd' : null,
+                selectedClass === '3' ? '3rd' : null,
+                parseInt(selectedClass) >= 4 ? `${selectedClass}th` : null
+            ].filter(Boolean);
+
+            console.log('Trying class formats:', classFormats);
+
+            // Fetch students with all possible class formats
+            const allStudents = new Map();
+
+            for (const classFormat of classFormats) {
+                const q = query(
+                    studentsRef,
+                    where('role', '==', 'student'),
+                    where('institutionId', '==', userData.uid),
+                    where('class', '==', classFormat),
+                    where('section', '==', selectedSection)
+                );
+
+                const snapshot = await getDocs(q);
+                console.log(`Found ${snapshot.docs.length} students with class format: ${classFormat}`);
+
+                snapshot.docs.forEach(doc => {
+                    if (!allStudents.has(doc.id)) {
+                        allStudents.set(doc.id, {
+                            id: doc.id,
+                            ...doc.data()
+                        });
+                    }
+                });
+            }
+
+            const studentsList = Array.from(allStudents.values());
+            console.log('Total unique students found:', studentsList.length);
 
             setStudents(studentsList);
 
@@ -52,9 +88,13 @@ const StudentPromotion = () => {
             });
 
             setPromotionData(defaultPromotion);
+
+            if (studentsList.length === 0) {
+                alert(`⚠️ No students found in Class ${selectedClass}-${selectedSection}\n\nPossible reasons:\n- No students registered in this class\n- Class format mismatch in database\n- Check console for details`);
+            }
         } catch (error) {
             console.error('Error fetching students:', error);
-            alert('Failed to fetch students');
+            alert('Failed to fetch students: ' + error.message);
         } finally {
             setLoading(false);
         }
