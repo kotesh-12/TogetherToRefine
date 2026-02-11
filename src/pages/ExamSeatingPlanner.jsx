@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { db } from '../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -17,7 +17,53 @@ export default function ExamSeatingPlanner() {
     const [seatsPerRoom, setSeatsPerRoom] = useState('');
     const [startRollNo, setStartRollNo] = useState('');
 
+    // Teacher Assignment State
+    const [teachers, setTeachers] = useState([]);
+    const [roomInvigilators, setRoomInvigilators] = useState({}); // { roomNo: teacherId }
+
     const [seatingPlan, setSeatingPlan] = useState(null);
+
+    // Fetch teachers on mount
+    useEffect(() => {
+        const fetchTeachers = async () => {
+            if (!userData?.uid) return;
+            try {
+                const q = query(
+                    collection(db, 'users'),
+                    where('role', '==', 'teacher'),
+                    where('institutionId', '==', userData.uid)
+                );
+                const snapshot = await getDocs(q);
+                const teacherList = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                setTeachers(teacherList);
+            } catch (error) {
+                console.error("Error fetching teachers:", error);
+            }
+        };
+        fetchTeachers();
+    }, [userData]);
+
+    const handleInvigilatorChange = (roomNo, teacherId) => {
+        setRoomInvigilators(prev => ({
+            ...prev,
+            [roomNo]: teacherId
+        }));
+
+        // Also update the seating plan object directly if it exists
+        if (seatingPlan) {
+            const updatedPlan = seatingPlan.map(room => {
+                if (room.roomNo === roomNo) {
+                    const teacher = teachers.find(t => t.id === teacherId);
+                    return { ...room, invigilatorId: teacherId, invigilatorName: teacher?.name || '' };
+                }
+                return room;
+            });
+            setSeatingPlan(updatedPlan);
+        }
+    };
 
     const generateSeatingPlan = () => {
         if (!totalStudents || !roomsCount || !seatsPerRoom) {
@@ -61,11 +107,17 @@ export default function ExamSeatingPlanner() {
                 studentIndex++;
             }
 
+            // Get existing assigned invigilator if any (for regeneration case)
+            const assignedTeacherId = roomInvigilators[room] || '';
+            const assignedTeacher = teachers.find(t => t.id === assignedTeacherId);
+
             plan.push({
                 roomNo: room,
                 roomName: `Room ${room}`,
                 seats: roomSeats,
-                totalSeats: studentsInRoom
+                totalSeats: studentsInRoom,
+                invigilatorId: assignedTeacherId,
+                invigilatorName: assignedTeacher?.name || ''
             });
 
             if (studentIndex >= students) break;
@@ -102,10 +154,18 @@ export default function ExamSeatingPlanner() {
                 yPos = 20;
             }
 
-            // Room header
+            // Room header with Invigilator
             doc.setFontSize(12);
             doc.setFont('helvetica', 'bold');
             doc.text(`${room.roomName} (${room.totalSeats} students)`, 20, yPos);
+
+            // Add Invigilator Info in PDF
+            if (room.invigilatorName) {
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'italic');
+                doc.text(`Invigilator: ${room.invigilatorName}`, 120, yPos);
+            }
+
             yPos += 10;
 
             // Seating table
@@ -149,8 +209,6 @@ export default function ExamSeatingPlanner() {
         let x = 10, y = 10;
         const stickerWidth = 60;
         const stickerHeight = 30;
-        const cols = 3;
-        const rows = 9;
 
         seatingPlan.forEach(room => {
             room.seats.forEach(seat => {
@@ -197,7 +255,7 @@ export default function ExamSeatingPlanner() {
                 totalStudents: parseInt(totalStudents),
                 roomsCount: parseInt(roomsCount),
                 seatsPerRoom: parseInt(seatsPerRoom),
-                seatingPlan: seatingPlan,
+                seatingPlan: seatingPlan, // Now includes invigilator info
                 createdBy: userData.uid,
                 institutionId: userData.institutionId || userData.uid,
                 createdAt: serverTimestamp()
@@ -335,9 +393,38 @@ export default function ExamSeatingPlanner() {
                         <div style={{ display: 'grid', gap: '20px' }}>
                             {seatingPlan.map(room => (
                                 <div key={room.roomNo} style={{ border: '1px solid #ddd', borderRadius: '8px', padding: '15px' }}>
-                                    <h4 style={{ margin: '0 0 15px 0', color: '#2c3e50' }}>
-                                        {room.roomName} - {room.totalSeats} Students
-                                    </h4>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <input
+                                                type="text"
+                                                className="input-field"
+                                                style={{ padding: '5px', fontSize: '14px', width: '150px', fontWeight: 'bold' }}
+                                                value={room.roomName}
+                                                onChange={(e) => {
+                                                    const updatedPlan = seatingPlan.map(r =>
+                                                        r.roomNo === room.roomNo ? { ...r, roomName: e.target.value } : r
+                                                    );
+                                                    setSeatingPlan(updatedPlan);
+                                                }}
+                                            />
+                                            <span style={{ fontSize: '14px', color: '#636e72' }}>- {room.totalSeats} Students</span>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <label style={{ fontSize: '13px', fontWeight: 'bold' }}>Invigilator:</label>
+                                            <select
+                                                className="input-field"
+                                                style={{ padding: '5px', fontSize: '13px', width: '200px' }}
+                                                value={roomInvigilators[room.roomNo] || ''}
+                                                onChange={(e) => handleInvigilatorChange(room.roomNo, e.target.value)}
+                                            >
+                                                <option value="">-- Assign Teacher --</option>
+                                                {teachers.map(t => (
+                                                    <option key={t.id} value={t.id}>{t.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+
                                     <div style={{
                                         display: 'grid',
                                         gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',

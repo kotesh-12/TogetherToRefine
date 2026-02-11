@@ -230,6 +230,31 @@ export default function ViewExamSeating() {
                             </div>
                         )}
 
+                        {/* Teacher's Invigilation Highlight */}
+                        {userData?.role === 'teacher' && selectedPlan && (
+                            (() => {
+                                const myRoom = selectedPlan.seatingPlan?.find(r => r.invigilatorId === userData.uid);
+                                return myRoom ? (
+                                    <div className="card" style={{
+                                        marginBottom: '20px',
+                                        background: 'linear-gradient(135deg, #2ecc71 0%, #27ae60 100%)',
+                                        color: 'white',
+                                        borderLeft: '5px solid #219150'
+                                    }}>
+                                        <h3 style={{ margin: '0 0 10px 0', color: 'white' }}>📋 Invigilation Duty</h3>
+                                        <div style={{ fontSize: '18px' }}>
+                                            You are assigned to <strong>{myRoom.roomName}</strong> for this exam.
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="card" style={{ marginBottom: '20px', background: '#f8f9fa', color: '#636e72' }}>
+                                        <h3 style={{ margin: '0 0 5px 0' }}>📋 Invigilation Duty</h3>
+                                        <div>You are not assigned to any room for this exam.</div>
+                                    </div>
+                                );
+                            })()
+                        )}
+
                         {/* Seating Plan Display */}
                         {selectedPlan && (
                             <div className="card">
@@ -245,9 +270,19 @@ export default function ViewExamSeating() {
                                     <div style={{ display: 'grid', gap: '20px' }}>
                                         {selectedPlan.seatingPlan.map(room => (
                                             <div key={room.roomNo} style={{ border: '1px solid #ddd', borderRadius: '8px', padding: '15px' }}>
-                                                <h4 style={{ margin: '0 0 15px 0', color: '#2c3e50' }}>
-                                                    {room.roomName} - {room.totalSeats} Students
-                                                </h4>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
+                                                    <div>
+                                                        <h4 style={{ margin: '0 0 5px 0', color: '#2c3e50' }}>
+                                                            {room.roomName} - {room.totalSeats} Students
+                                                        </h4>
+                                                        {room.invigilatorName && (
+                                                            <div style={{ fontSize: '13px', color: '#2d3436', background: '#e0ece4', padding: '4px 8px', borderRadius: '4px', display: 'inline-block' }}>
+                                                                👮‍♂️ Invigilator: <strong>{room.invigilatorName}</strong>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+
                                                 <div style={{
                                                     display: 'grid',
                                                     gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
