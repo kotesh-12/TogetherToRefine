@@ -68,49 +68,67 @@ export default function Onboarding() {
     };
 
     const handleContinue = async () => {
-        console.log("Onboarding: handleContinue triggered", { hasUserData: !!userData, isSaving });
-        if (!userData || isSaving) {
-            if (!userData) console.warn("Onboarding: No userData found in context.");
+        console.log("Onboarding: handleContinue initiated", { uid: userData?.uid, role: userData?.role });
+
+        if (isSaving) return;
+        if (!userData || !userData.uid) {
+            alert("App is still loading your profile. Please wait a second and try again.");
             return;
         }
 
         setIsSaving(true);
 
         try {
-            // Determine collection
+            // Determine collection accurately
             let collectionName = 'users';
-            if (userData.role === 'teacher') collectionName = 'teachers';
-            else if (userData.role === 'institution') collectionName = 'institutions';
+            const role = userData.role?.toLowerCase();
 
-            console.log(`Onboarding: Saving to ${collectionName}/${userData.uid}`);
+            if (role === 'teacher') collectionName = 'teachers';
+            else if (role === 'institution') collectionName = 'institutions';
+
+            console.log(`Onboarding: Saving completion to ${collectionName}/${userData.uid}`);
+
             const userRef = doc(db, collectionName, userData.uid);
             await updateDoc(userRef, {
                 onboardingCompleted: true
             });
 
-            // Update local state for immediate reactivity
+            // Update local context for instant UI switch
             if (updateUserData) {
                 updateUserData({ ...userData, onboardingCompleted: true });
             }
 
-            // Redirect based on role
-            const r = userData?.role?.toLowerCase();
-            console.log("Onboarding: Redirecting for role:", r);
+            console.log("Onboarding: Success. Redirecting...");
 
-            if (r === 'admin') navigate('/admin', { replace: true });
-            else if (r === 'teacher') navigate('/teacher', { replace: true });
-            else if (r === 'institution') navigate('/institution', { replace: true });
-            else if (r === 'student') navigate('/student', { replace: true });
-            else navigate('/details', { replace: true });
+            // Use simple navigation - snapshot in UserContext will handle the rest if needed
+            if (role === 'admin') navigate('/admin');
+            else if (role === 'teacher') navigate('/teacher');
+            else if (role === 'institution') navigate('/institution');
+            else if (role === 'student') navigate('/student');
+            else navigate('/details');
 
         } catch (e) {
-            console.error("Onboarding Save Error:", e);
-            // Fallback: Just try to navigate anyway if it's already true in DB
-            navigate('/settings');
+            console.error("Onboarding Fatal Error:", e);
+            alert("Connection error while saving settings. Please try again.");
         } finally {
             setIsSaving(false);
         }
     };
+
+    // LOADING GUARD: Prevent clicking buttons before userData is ready
+    if (!userData) {
+        return (
+            <div style={{
+                height: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: '#6c5ce7', color: 'white', fontFamily: 'sans-serif'
+            }}>
+                <div style={{ textAlign: 'center' }}>
+                    <div className="loader-mini" style={{ marginBottom: '15px', fontSize: '30px' }}>⏳</div>
+                    <p>Preparing your experience...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div style={{
