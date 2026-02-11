@@ -581,28 +581,26 @@ export default function Timetable() {
                     const existingData = existingGroup.data();
                     const oldTeacherId = existingData.teacherId;
 
-                    // Remove old teacher and add new teacher
+                    // Start with fresh members list
                     let updatedMembers = existingData.members || [];
 
-                    // Remove old teacher if different
-                    if (oldTeacherId && oldTeacherId !== teacherId) {
-                        updatedMembers = updatedMembers.filter(id => id !== oldTeacherId);
-                    }
-
-                    // Add new teacher if not already present
-                    if (teacherId && !updatedMembers.includes(teacherId)) {
-                        updatedMembers.push(teacherId);
-                    }
-
-                    // Ensure institution and all students are still members
-                    if (!updatedMembers.includes(instId)) {
-                        updatedMembers.push(instId);
-                    }
-                    studentIds.forEach(studentId => {
-                        if (!updatedMembers.includes(studentId)) {
-                            updatedMembers.push(studentId);
-                        }
+                    // IMPORTANT: Remove ALL teachers first (to clean up any old groups with multiple teachers)
+                    // We'll identify teachers by checking if they're NOT students and NOT the institution
+                    const cleanedMembers = updatedMembers.filter(memberId => {
+                        // Keep institution
+                        if (memberId === instId) return true;
+                        // Keep students
+                        if (studentIds.includes(memberId)) return true;
+                        // Remove all others (teachers)
+                        return false;
                     });
+
+                    // Now add ONLY the correct subject teacher
+                    updatedMembers = [
+                        instId,           // Institution
+                        teacherId,        // ONLY this subject's teacher
+                        ...studentIds     // All students
+                    ].filter(Boolean);
 
                     // Update the group
                     const groupDocRef = doc(db, 'groups', existingGroup.id);
@@ -613,7 +611,7 @@ export default function Timetable() {
                         updatedAt: new Date().toISOString()
                     }, { merge: true });
 
-                    console.log(`Updated group: ${groupName} (teacher changed)`);
+                    console.log(`Updated group: ${groupName} (cleaned up, only ${teacherId} teacher)`);
                 }
             }
         } catch (e) {
