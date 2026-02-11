@@ -56,12 +56,31 @@ export default function BottomNav() {
     };
 
     return (
-        <div style={navStyle}>
-            <NavItem path="/" icon="🏠" label="Home" />
-            <NavItem path="/group" icon="🏫" label="Class" />
-            <NavItem path="/ttr-ai" icon="🤖" label="AI" />
-            <NavItem path="/attendance" icon="📅" label="Attend" />
-            <NavItem path="/profile" icon="👤" label="Profile" />
-        </div>
+        <nav className="bottom-nav-wrapper">
+            <div onClick={() => { vibrate(); handleNav('/'); }} className={`nav-item ${isActive('/') ? 'active' : ''}`}>
+                <div className="nav-icon">🏠</div>
+                <span className="nav-label">Home</span>
+            </div>
+            <div onClick={() => { vibrate(); handleNav('/group'); }} className={`nav-item ${isActive('/group') ? 'active' : ''}`}>
+                <div className="nav-icon">🏫</div>
+                <span className="nav-label">Groups</span>
+            </div>
+            <div onClick={() => { vibrate(); handleNav('/ttr-ai'); }} className={`nav-item ${isActive('/ttr-ai') ? 'active' : ''}`}>
+                <div className="nav-icon ai-nav-icon">🤖</div>
+                <span className="nav-label">AI</span>
+            </div>
+            <div onClick={() => { vibrate(); handleNav('/attendance'); }} className={`nav-item ${isActive('/attendance') ? 'active' : ''}`}>
+                <div className="nav-icon">✅</div>
+                <span className="nav-label">Attend</span>
+            </div>
+            <div onClick={() => { vibrate(); handleNav('/profile'); }} className={`nav-item ${isActive('/profile') ? 'active' : ''}`}>
+                <div className="nav-icon">👤</div>
+                <span className="nav-label">Profile</span>
+            </div>
+        </nav>
     );
 }
+
+const vibrate = () => {
+    if ('vibrate' in navigator) navigator.vibrate(40);
+};

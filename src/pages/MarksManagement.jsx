@@ -25,6 +25,7 @@ export default function MarksManagement() {
     const [filterExamType, setFilterExamType] = useState(''); // NEW: Filter by exam type
     const [loading, setLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isScanning, setIsScanning] = useState(false);
 
     // Fetch students when class/section selected
     useEffect(() => {
@@ -32,6 +33,105 @@ export default function MarksManagement() {
             fetchStudents();
         }
     }, [selectedClass, selectedSection, activeTab]);
+
+    const handleAIScan = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setIsScanning(true);
+        try {
+            const reader = new FileReader();
+            const base64Promise = new Promise((resolve) => {
+                reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                reader.readAsDataURL(file);
+            });
+            const base64Img = await base64Promise;
+
+            const token = await auth.currentUser?.getIdToken();
+
+            const prompt = `Analyze this handwritten or printed marksheet. 
+            Extract:
+            1. Class (Numerical value, e.g. 1-12)
+            2. Section (e.g. A, B, C)
+            3. Exam Type (e.g. Mid-Term 1, Final Exam, Assignment 1)
+            4. Marks for each student. Identify them by Name or Roll Number.
+            
+            Return ONLY a JSON object with this structure:
+            {
+                "class": "6",
+                "section": "A",
+                "examType": "Mid-Term 1",
+                "extractedMarks": [
+                    {"idKey": "Student Name or Roll", "score": "45"}
+                ]
+            }`;
+
+            const response = await fetch(`${window.location.origin.includes('localhost') ? 'http://localhost:5000' : ''}/api/chat`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    message: prompt,
+                    image: base64Img,
+                    mimeType: file.type,
+                    userContext: userData
+                })
+            });
+
+            const data = await response.json();
+            const jsonMatch = data.text.match(/\{[\s\S]*\}/);
+
+            if (jsonMatch) {
+                const parsed = JSON.parse(jsonMatch[0]);
+
+                // Set metadata
+                if (parsed.class) setSelectedClass(String(parsed.class));
+                if (parsed.section) setSelectedSection(String(parsed.section).toUpperCase());
+                if (parsed.examType) setExamType(parsed.examType);
+
+                // We need to wait for students to be fetched or trigger it manually
+                // Since selectedClass/Section changes trigger useEffect, we need a small delay or a way to handle results 
+                // Alternatively, fetch students immediately here
+                const q = query(
+                    collection(db, "student_allotments"),
+                    where("classAssigned", "==", String(parsed.class)),
+                    where("section", "==", String(parsed.section).toUpperCase())
+                );
+                const snap = await getDocs(q);
+                const studentList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                setStudents(studentList);
+
+                // Map results
+                const newMarks = {};
+                studentList.forEach(s => {
+                    const studentId = s.studentId || s.id;
+                    const sName = (s.studentName || s.name || "").toLowerCase();
+
+                    // Look for match in extracted marks
+                    const match = parsed.extractedMarks.find(m =>
+                        String(m.idKey).toLowerCase().includes(sName) ||
+                        sName.includes(String(m.idKey).toLowerCase())
+                    );
+
+                    if (match) {
+                        newMarks[studentId] = match.score;
+                    }
+                });
+
+                setMarksData(newMarks);
+                alert("✨ AI successfully detected marks and class info!");
+            } else {
+                alert("AI couldn't extract data clearly. Please try a clearer photo.");
+            }
+        } catch (err) {
+            console.error("AI Scan Error:", err);
+            alert("Error scanning marksheet.");
+        } finally {
+            setIsScanning(false);
+        }
+    };
 
     // Fetch all marks when viewing
     useEffect(() => {
@@ -220,7 +320,45 @@ export default function MarksManagement() {
                 {/* ADD MARKS TAB */}
                 {activeTab === 'add' && (
                     <div className="card">
-                        <h3>Enter Marks</h3>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                            <h3 style={{ margin: 0 }}>Enter Marks</h3>
+                            <div>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    capture="environment"
+                                    id="marks-scanner"
+                                    hidden
+                                    onChange={handleAIScan}
+                                    disabled={isScanning}
+                                />
+                                <label
+                                    htmlFor="marks-scanner"
+                                    style={{
+                                        padding: '10px 20px',
+                                        background: isScanning ? '#7f8c8d' : 'linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%)',
+                                        color: 'white',
+                                        borderRadius: '30px',
+                                        cursor: isScanning ? 'not-allowed' : 'pointer',
+                                        fontSize: '14px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        fontWeight: 'bold',
+                                        boxShadow: '0 4px 15px rgba(108, 92, 231, 0.3)',
+                                        transition: 'transform 0.2s'
+                                    }}
+                                    onMouseOver={(e) => !isScanning && (e.currentTarget.style.transform = 'scale(1.05)')}
+                                    onMouseOut={(e) => !isScanning && (e.currentTarget.style.transform = 'scale(1)')}
+                                >
+                                    {isScanning ? '⏳ Reading Paper...' : '📸 AI Smart Scan'}
+                                </label>
+                            </div>
+                        </div>
+
+                        <p style={{ fontSize: '12px', color: '#636e72', marginBottom: '20px' }}>
+                            Tip: You can <b>Smart Scan</b> your paper marksheet using the button above to auto-fill everything!
+                        </p>
 
                         {/* Selection Row */}
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px', marginBottom: '20px' }}>

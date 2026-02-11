@@ -11,7 +11,10 @@ export default function LibraryManagement() {
     const { t } = useLanguage();
 
     const isStudent = userData?.role === 'student';
-    const [activeTab, setActiveTab] = useState(isStudent ? 'dashboard' : 'books'); // 'books', 'issue', 'return', 'dashboard'
+    const isTeacher = userData?.role === 'teacher';
+    const isAdmin = userData?.role === 'admin' || userData?.role === 'institution';
+
+    const [activeTab, setActiveTab] = useState(isStudent || isTeacher ? 'dashboard' : 'books'); // 'books', 'issue', 'return', 'dashboard'
 
     // Books State
     const [books, setBooks] = useState([]);
@@ -37,8 +40,10 @@ export default function LibraryManagement() {
     const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T')[0]);
     const [returnDate, setReturnDate] = useState('');
 
-    // Student Stats State
+    // Stats State
     const [myStats, setMyStats] = useState({ read: 0, current: [] });
+    const [libStats, setLibStats] = useState({ totalBooks: 0, totalIssued: 0, outOfStock: 0 }); // For Librarians
+    const [classStats, setClassStats] = useState({ overdue: [], totalActive: 0, leaderboard: [] }); // For Teachers
     const [reservations, setReservations] = useState([]);
 
     const [loading, setLoading] = useState(false);
@@ -48,14 +53,35 @@ export default function LibraryManagement() {
 
     useEffect(() => {
         fetchBooks();
-        if (isStudent) {
+        if (isStudent || isTeacher) {
             fetchMyStats();
             fetchReservations();
+            if (isTeacher) fetchClassLibraryStats();
         } else {
             fetchIssuedBooks();
             fetchReservations();
+            fetchLibrarianStats();
         }
     }, [userData]);
+
+    const fetchLibrarianStats = async () => {
+        try {
+            const bSnap = await getDocs(collection(db, "library_books"));
+            const iSnap = await getDocs(query(collection(db, "library_issued"), where("status", "==", "issued")));
+
+            const booksArr = bSnap.docs.map(d => d.data());
+            const totalBooks = booksArr.reduce((acc, b) => acc + (Number(b.totalCopies) || 0), 0);
+            const outOfStock = booksArr.filter(b => (Number(b.availableCopies) || 0) <= 0).length;
+
+            setLibStats({
+                totalBooks,
+                totalIssued: iSnap.size,
+                outOfStock
+            });
+        } catch (e) {
+            console.error(e);
+        }
+    };
 
     const fetchBooks = async () => {
         setLoading(true);
@@ -197,46 +223,79 @@ export default function LibraryManagement() {
     };
 
     const issueBook = async () => {
-        if (!selectedBook || !studentName || !studentRoll || !returnDate) {
-            alert("Please fill all fields");
-            return;
-        }
-
-        const book = books.find(b => b.id === selectedBook);
-        if (!book || book.availableCopies <= 0) {
-            alert("Book not available");
-            return;
-        }
-
         try {
-            // Add issue record
-            await addDoc(collection(db, "library_issued"), {
-                bookId: book.id,
-                bookTitle: book.title,
-                studentName,
-                studentRoll,
-                issueDate: new Date(issueDate),
-                expectedReturnDate: new Date(returnDate),
+            // 1. Basic Validation
+            if (!selectedBook || !studentName || !studentRoll || !returnDate) {
+                alert("⚠️ Please fill all required fields: Book, Student Name, Roll Number, and Return Date.");
+                return;
+            }
+
+            // 2. Auth Check
+            const currentUid = auth.currentUser?.uid || userData?.uid;
+            if (!currentUid) {
+                alert("❌ Authentication error. Please log out and log in again.");
+                return;
+            }
+
+            // 3. Book Availability Check
+            const book = books.find(b => b.id === selectedBook);
+            if (!book) {
+                alert("❌ Selected book not found in the catalog.");
+                return;
+            }
+
+            if (Number(book.availableCopies) <= 0) {
+                alert("❌ This book is currently out of stock (0 copies available).");
+                return;
+            }
+
+            // 4. Date Formatting (Bulletproof)
+            const dIssue = new Date(); // Use actual current time for issue
+            const dReturn = new Date(returnDate);
+
+            if (isNaN(dReturn.getTime())) {
+                alert("⚠️ The Return Date you selected is invalid. Please pick a proper date.");
+                return;
+            }
+
+            // 5. Data Object for Firestore
+            const issueData = {
+                bookId: String(book.id),
+                bookTitle: String(book.title),
+                studentName: String(studentName).trim(),
+                studentRoll: String(studentRoll).trim(),
+                studentClass: userData?.class || '', // Important for teacher tracking
+                studentSection: userData?.section || '',
+                issueDate: dIssue,
+                expectedReturnDate: dReturn,
                 status: 'issued',
-                issuedBy: userData.uid,
+                issuedBy: currentUid,
                 issuedAt: serverTimestamp()
-            });
+            };
+
+            // 6. DB Operations
+            // Add issue record
+            await addDoc(collection(db, "library_issued"), issueData);
 
             // Update book availability
             await updateDoc(doc(db, "library_books", book.id), {
-                availableCopies: book.availableCopies - 1
+                availableCopies: Number(book.availableCopies) - 1
             });
 
-            alert("✅ Book issued successfully!");
+            // 7. Success & UI Reset
+            alert("🎉 Book issued successfully!");
             setSelectedBook('');
             setStudentName('');
             setStudentRoll('');
             setReturnDate('');
+
+            // Refresh counts
             fetchBooks();
             fetchIssuedBooks();
+            if (isTeacher) fetchClassLibraryStats();
         } catch (e) {
-            console.error(e);
-            alert("Error issuing book");
+            console.error("Critical Issue Error:", e);
+            alert("Error: " + (e.message || "Failed to issue book. Check your internet connection."));
         }
     };
 
@@ -266,20 +325,32 @@ export default function LibraryManagement() {
         }
     };
 
-    const fetchMyStats = async () => {
-        if (!userData?.name) return;
+    const fetchClassLibraryStats = async () => {
+        if (!userData?.class) return;
         try {
-            // Match mostly by name since issue process is manual
-            const q = query(collection(db, "library_issued"), where("studentName", "==", userData.name));
+            // Find all books issued to students in this teacher's class/section
+            // Note: We might need to match by student rolls if cross-referenced, 
+            // but for simplicity we'll assume the 'issue' record might have glass/section or we fetch all and check.
+            const q = query(collection(db, "library_issued"), where("status", "==", "issued"));
             const snap = await getDocs(q);
-            const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            const allIssued = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-            const read = docs.filter(d => d.status === 'returned').length;
-            const current = docs.filter(d => d.status === 'issued');
+            // If we have student records, we'd filter here. 
+            // For now, let's assume 'library_issued' records include studentClass if we update the issue logic later.
+            // Simplified: Filter by comparing against current year/class patterns or teacher's overseen students.
+            const myClassIssued = allIssued.filter(rec => rec.studentClass === userData.class && rec.studentSection === userData.section);
 
-            setMyStats({ read, current });
+            const overdue = myClassIssued.filter(rec => {
+                const due = new Date(rec.expectedReturnDate.toDate ? rec.expectedReturnDate.toDate() : rec.expectedReturnDate);
+                return due < new Date();
+            });
+
+            setClassStats({
+                overdue,
+                totalActive: myClassIssued.length
+            });
         } catch (e) {
-            console.error("Error fetching stats:", e);
+            console.error("Teacher stats error:", e);
         }
     };
 
@@ -353,7 +424,7 @@ export default function LibraryManagement() {
 
                 {/* Tabs */}
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '2px solid #eee', overflowX: 'auto' }}>
-                    {isStudent && (
+                    {(isStudent || isTeacher) && (
                         <button
                             onClick={() => setActiveTab('dashboard')}
                             style={{
@@ -363,7 +434,20 @@ export default function LibraryManagement() {
                                 cursor: 'pointer', color: activeTab === 'dashboard' ? '#0984e3' : '#636e72'
                             }}
                         >
-                            📊 {t('lib_dashboard')}
+                            📊 {isTeacher ? "Class Dashboard" : t('lib_dashboard')}
+                        </button>
+                    )}
+                    {isAdmin && (
+                        <button
+                            onClick={() => setActiveTab('lib_dashboard')}
+                            style={{
+                                padding: '10px 20px', background: 'none', border: 'none',
+                                borderBottom: activeTab === 'lib_dashboard' ? '3px solid #0984e3' : 'none',
+                                fontWeight: activeTab === 'lib_dashboard' ? 'bold' : 'normal',
+                                cursor: 'pointer', color: activeTab === 'lib_dashboard' ? '#0984e3' : '#636e72'
+                            }}
+                        >
+                            🏢 Management Dashboard
                         </button>
                     )}
                     <button
@@ -401,20 +485,145 @@ export default function LibraryManagement() {
                             >
                                 ↩️ {t('lib_return')}
                             </button>
-                            <button
-                                onClick={() => setActiveTab('reservations')}
-                                style={{
-                                    padding: '10px 20px', background: 'none', border: 'none',
-                                    borderBottom: activeTab === 'reservations' ? '3px solid #0984e3' : 'none',
-                                    fontWeight: activeTab === 'reservations' ? 'bold' : 'normal',
-                                    cursor: 'pointer', color: activeTab === 'reservations' ? '#0984e3' : '#636e72'
-                                }}
-                            >
-                                📋 {t('lib_reservations')}
-                            </button>
                         </>
                     )}
                 </div>
+
+                {/* LIBRARIAN (MANAGEMENT) DASHBOARD TAB */}
+                {activeTab === 'lib_dashboard' && isAdmin && (
+                    <div style={{ display: 'grid', gap: '20px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+                            <div className="card" style={{ background: '#0984e3', color: 'white' }}>
+                                <h3 style={{ margin: '0 0 10px 0', color: 'white' }}>Total Books</h3>
+                                <div style={{ fontSize: '32px', fontWeight: 'bold' }}>{libStats.totalBooks}</div>
+                                <div style={{ opacity: 0.8 }}>Across all subjects</div>
+                            </div>
+                            <div className="card" style={{ background: '#6c5ce7', color: 'white' }}>
+                                <h3 style={{ margin: '0 0 10px 0', color: 'white' }}>Active Issues</h3>
+                                <div style={{ fontSize: '32px', fontWeight: 'bold' }}>{libStats.totalIssued}</div>
+                                <div style={{ opacity: 0.8 }}>Currently with students/staff</div>
+                            </div>
+                            <div className="card" style={{ background: libStats.outOfStock > 0 ? '#e17055' : '#00b894', color: 'white' }}>
+                                <h3 style={{ margin: '0 0 10px 0', color: 'white' }}>Out of Stock</h3>
+                                <div style={{ fontSize: '32px', fontWeight: 'bold' }}>{libStats.outOfStock}</div>
+                                <div style={{ opacity: 0.8 }}>Books needing restock</div>
+                            </div>
+                        </div>
+
+                        <div className="card" style={{ borderTop: '4px solid #f39c12' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <h3>📦 AI Shelf Auditor (Librarian Tool)</h3>
+                                <div>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        capture="environment"
+                                        id="bulk-scanner"
+                                        hidden
+                                        onChange={(e) => handleAIScan(e, 'bulk')}
+                                        disabled={isScanning}
+                                    />
+                                    <label
+                                        htmlFor="bulk-scanner"
+                                        style={{
+                                            padding: '10px 20px',
+                                            background: isScanning ? '#7f8c8d' : '#f39c12',
+                                            color: 'white',
+                                            borderRadius: '8px',
+                                            cursor: isScanning ? 'not-allowed' : 'pointer',
+                                            fontWeight: 'bold',
+                                            boxShadow: '0 4px 15px rgba(243, 156, 18, 0.3)'
+                                        }}
+                                    >
+                                        {isScanning ? '⏳ Analyzing...' : '📸 Scan Shelf Now'}
+                                    </label>
+                                </div>
+                            </div>
+                            <p style={{ color: '#636e72', fontSize: '13px' }}>
+                                Use this to verify that all books listed in the system are physically present on the shelves.
+                            </p>
+
+                            {auditResults && (
+                                <div style={{ marginTop: '15px', padding: '15px', background: '#f8f9fa', borderRadius: '10px' }}>
+                                    <h4 style={{ margin: '0 0 10px 0' }}>✅ Audit Result: Found {auditResults.length} Books</h4>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px' }}>
+                                        {auditResults.map((b, i) => (
+                                            <div key={i} style={{ fontSize: '12px', background: 'white', padding: '8px', borderRadius: '5px', border: '1px solid #ddd' }}>
+                                                📖 <strong>{b.title}</strong>
+                                                <div style={{ color: '#999' }}>{b.author}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* TEACHER DASHBOARD TAB */}
+                {activeTab === 'dashboard' && isTeacher && (
+                    <div style={{ display: 'grid', gap: '20px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+                            <div className="card" style={{ background: 'linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%)', color: 'white' }}>
+                                <h3 style={{ margin: '0 0 10px 0', color: 'white' }}>👤 My Reading Progress</h3>
+                                <div style={{ fontSize: '28px', fontWeight: 'bold' }}>{myStats.read} Books Finished</div>
+                                <div style={{ opacity: 0.9 }}>Currently Reading: {myStats.current.length}</div>
+                            </div>
+                            <div className="card" style={{ background: 'linear-gradient(135deg, #00b894 0%, #55efc4 100%)', color: 'white' }}>
+                                <h3 style={{ margin: '0 0 10px 0', color: 'white' }}>🏢 Class {userData.class}-{userData.section} Overview</h3>
+                                <div style={{ fontSize: '28px', fontWeight: 'bold' }}>{classStats.totalActive} Active Issues</div>
+                                <div style={{ color: classStats.overdue.length > 0 ? '#ff7675' : 'white', fontWeight: 'bold' }}>
+                                    {classStats.overdue.length} Overdue Now
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="card" style={{ borderTop: '4px solid #d63031' }}>
+                            <h3 style={{ color: '#d63031' }}>🕒 Overdue Books Tracker (My Class)</h3>
+                            {classStats.overdue.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '20px', color: '#27ae60' }}>
+                                    ✅ Great! No student in your class has overdue books.
+                                </div>
+                            ) : (
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                                        <thead>
+                                            <tr style={{ textAlign: 'left', borderBottom: '2px solid #eee' }}>
+                                                <th style={{ padding: '10px' }}>Student</th>
+                                                <th style={{ padding: '10px' }}>Book Title</th>
+                                                <th style={{ padding: '10px' }}>Due Date</th>
+                                                <th style={{ padding: '10px' }}>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {classStats.overdue.map(rec => (
+                                                <tr key={rec.id} style={{ borderBottom: '1px solid #eee' }}>
+                                                    <td style={{ padding: '10px' }}>
+                                                        <div style={{ fontWeight: 'bold' }}>{rec.studentName}</div>
+                                                        <div style={{ fontSize: '11px', color: '#636e72' }}>Roll: {rec.studentRoll}</div>
+                                                    </td>
+                                                    <td style={{ padding: '10px' }}>{rec.bookTitle}</td>
+                                                    <td style={{ padding: '10px', color: '#d63031', fontWeight: 'bold' }}>
+                                                        {new Date(rec.expectedReturnDate.toDate?.() || rec.expectedReturnDate).toLocaleDateString()}
+                                                    </td>
+                                                    <td style={{ padding: '10px' }}>
+                                                        <button
+                                                            onClick={() => setActiveTab('return')}
+                                                            className="btn-outline"
+                                                            style={{ fontSize: '11px', padding: '4px 8px' }}
+                                                        >
+                                                            Go to Return
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* STUDENT DASHBOARD TAB */}
                 {activeTab === 'dashboard' && isStudent && (

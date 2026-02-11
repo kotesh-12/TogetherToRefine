@@ -59,6 +59,7 @@ import ViewExamSeating from './pages/ViewExamSeating';
 import LibraryManagement from './pages/LibraryManagement';
 import MessagingSystem from './pages/MessagingSystem';
 import InspectionReadiness from './pages/InspectionReadiness';
+import UniversalScanner from './pages/UniversalScanner';
 
 import ProtectedRoute from './components/ProtectedRoute';
 import MainLayout from './components/MainLayout';
@@ -130,6 +131,7 @@ function App() {
                       <Route path="/inspector-mode" element={<InspectorMode />} />
                       <Route path="/dropout-predictor" element={<EarlyWarningSystem />} />
                       <Route path="/marks" element={<MarksManagement />} />
+                      <Route path="/universal-scanner" element={<UniversalScanner />} />
 
                       <Route path="/teacher" element={<Teacher />} />
                       <Route path="/feedback-overview" element={<FeedbackOverview />} />
@@ -171,7 +173,7 @@ function App() {
           </ThemeProvider>
         </UserProvider>
       </LanguageProvider>
-    </ErrorBoundary>
+    </ErrorBoundary >
   );
 }
 

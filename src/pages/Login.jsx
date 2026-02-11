@@ -350,30 +350,36 @@ export default function Login() {
     if (!auth) return <div className="login-container"><div className="card">Error: Firebase Auth not initialized.</div></div>;
 
     return (
-        <div className="login-container">
-            <div className="card login-card" style={{ textAlign: 'center', position: 'relative' }}>
-                {/* Language Toggle */}
-                <div style={{ position: 'absolute', top: '10px', right: '10px' }}>
-                    <LanguageSelector style={{ fontSize: '10px', padding: '4px 8px 4px 25px', minWidth: 'auto' }} />
+        <div className="auth-page-wrapper">
+            <div className="auth-card card shadow-lg">
+                <div className="auth-header">
+                    <LanguageSelector />
                 </div>
 
-                <img src={`${logo}?v=58`} alt="TTR Logo" style={{ width: '80px', height: 'auto', marginBottom: '10px' }} />
-                <h2 className="login-title">{isLogin ? t('login') : t('signup')}</h2>
-                {error && <div className="error-text">{error}</div>}
+                <div className="auth-logo-section">
+                    <img src={logo} alt="TTR" className="auth-logo" />
+                    <h1 className="brand-text">TTR</h1>
+                </div>
 
-                <form onSubmit={handleAuth}>
+                <h2 className="auth-title">{isLogin ? t('login') : t('signup')}</h2>
+                {error && <div className="error-banner">{error}</div>}
+
+                <form onSubmit={handleAuth} className="auth-form">
                     {!isLogin && (
-                        <select
-                            className="input-field"
-                            value={role}
-                            onChange={(e) => setRole(e.target.value)}
-                            required
-                        >
-                            <option value="" disabled>Select Role</option>
-                            <option value="student">Student</option>
-                            <option value="teacher">Teacher</option>
-                            <option value="institution">Institution</option>
-                        </select>
+                        <div className="form-group">
+                            <label className="form-label">Role</label>
+                            <select
+                                className="input-field"
+                                value={role}
+                                onChange={(e) => setRole(e.target.value)}
+                                required
+                            >
+                                <option value="" disabled>Select Role</option>
+                                <option value="student">Student</option>
+                                <option value="teacher">Teacher</option>
+                                <option value="institution">Institution</option>
+                            </select>
+                        </div>
                     )}
 
                     {!isLogin && (
@@ -381,7 +387,7 @@ export default function Login() {
                             <input
                                 type="text"
                                 className="input-field"
-                                placeholder={role === 'institution' ? "Institution Name" : (role === 'admin' ? "Admin Name" : "Name")}
+                                placeholder={role === 'institution' ? "Institution Name" : "Your Name"}
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 required
@@ -426,12 +432,12 @@ export default function Login() {
                             className="password-toggle"
                             onClick={() => setShowPassword(!showPassword)}
                         >
-                            {showPassword ? "HIDE" : "SHOW"}
+                            {showPassword ? "🙈" : "👁️"}
                         </button>
                     </div>
 
-                    <button type="submit" className="btn full-width" disabled={loading}>
-                        {loading ? t('loading') : (isLogin ? t('login') : t('signup'))}
+                    <button type="submit" className="btn btn-primary full-width" disabled={loading}>
+                        {loading ? <div className="spinner-sm" /> : (isLogin ? t('login') : t('signup'))}
                     </button>
                 </form>
 
@@ -443,44 +449,28 @@ export default function Login() {
 
                 <button
                     type="button"
-                    className="btn google-btn"
+                    className="btn btn-outline full-width google-btn"
                     onClick={handleGoogleSignIn}
                     disabled={loading}
                 >
-                    G Sign in with Google
+                    Log in with Google
                 </button>
 
-                <div className="toggle-link" onClick={toggleMode}>
-                    {isLogin ? t('no_account') : t('have_account')}
+                <div className="auth-footer">
+                    <span onClick={toggleMode} className="auth-toggle-link">
+                        {isLogin ? t('no_account') : t('have_account')}
+                    </span>
                 </div>
 
                 {installPrompt && (
-                    <div style={{ marginTop: '20px' }}>
-                        <button
-                            onClick={handleInstallClick}
-                            style={{
-                                background: '#1a73e8',
-                                color: 'white',
-                                padding: '10px 20px',
-                                borderRadius: '25px',
-                                border: 'none',
-                                fontWeight: 'bold',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '10px',
-                                margin: '0 auto',
-                                boxShadow: '0 4px 6px rgba(26, 115, 232, 0.3)'
-                            }}
-                        >
-                            📲 Install App for Better Experience
-                        </button>
-                    </div>
+                    <button
+                        onClick={handleInstallClick}
+                        className="btn btn-success pwa-install-btn"
+                    >
+                        📲 Install App
+                    </button>
                 )}
-
-                {/* DEBUG VERSION */}
-                <div style={{ marginTop: '20px', fontSize: '10px', color: '#b2bec3' }}>v0.0.55 (Latest)</div>
-            </div >
-        </div >
+            </div>
+        </div>
     );
 }

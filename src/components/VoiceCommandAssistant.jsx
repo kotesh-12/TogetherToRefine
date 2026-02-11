@@ -73,14 +73,49 @@ export default function VoiceCommandAssistant({ onAnnouncement }) {
             resetUI("Opening Attendance...");
             return;
         }
-        if (lowerCmd.includes("timetable")) {
+        if (lowerCmd.includes("timetable") || lowerCmd.includes("schedule") || lowerCmd.includes("my class")) {
             navigate('/timetable');
             resetUI("Opening Timetable...");
             return;
         }
-        if (lowerCmd.includes("video") || lowerCmd.includes("library")) {
+        if (lowerCmd.includes("video") || lowerCmd.includes("library") || lowerCmd.includes("movie")) {
             navigate('/video-library');
             resetUI("Opening Video Library...");
+            return;
+        }
+        if (lowerCmd.includes("marks") || lowerCmd.includes("result") || lowerCmd.includes("score")) {
+            navigate('/marks');
+            resetUI("Opening Marks Management...");
+            return;
+        }
+        if (lowerCmd.includes("group") || lowerCmd.includes("students") || lowerCmd.includes("my class")) {
+            navigate('/group');
+            resetUI("Opening Class Groups...");
+            return;
+        }
+        if (lowerCmd.includes("homework") || lowerCmd.includes("assignment")) {
+            navigate('/homework');
+            resetUI("Opening Homework...");
+            return;
+        }
+        if (lowerCmd.includes("analytic") || lowerCmd.includes("report") || lowerCmd.includes("progress")) {
+            navigate('/analytics');
+            resetUI("Opening Analytics...");
+            return;
+        }
+        if (lowerCmd.includes("feedback") || lowerCmd.includes("comment")) {
+            navigate('/general-feedback');
+            resetUI("Opening Feedback...");
+            return;
+        }
+        if (lowerCmd.includes("exam") || lowerCmd.includes("seating")) {
+            navigate('/view-exam-seating');
+            resetUI("Opening Exam Seating...");
+            return;
+        }
+        if (lowerCmd.includes("scan") || lowerCmd.includes("digitize") || lowerCmd.includes("paper")) {
+            navigate('/universal-scanner');
+            resetUI("Opening AI Scanner...");
             return;
         }
 
@@ -88,9 +123,9 @@ export default function VoiceCommandAssistant({ onAnnouncement }) {
         // Check for specific intents
         if (lowerCmd.includes("test") || lowerCmd.includes("paper") || lowerCmd.includes("quiz")) {
             await handleTestGeneration(command);
-        } else if (lowerCmd.includes("announce") || lowerCmd.includes("message")) {
+        } else if (lowerCmd.includes("announce") || lowerCmd.includes("message") || lowerCmd.includes("tell the class")) {
             // Extract message content roughly
-            const msg = command.replace(/announce|announcement|send message|tell class/gi, "").trim();
+            const msg = command.replace(/announce|announcement|send message|tell class|tell the class/gi, "").trim();
             if (onAnnouncement && msg) {
                 onAnnouncement(capitalize(msg));
                 resetUI("Drafting Announcement...");
@@ -98,9 +133,13 @@ export default function VoiceCommandAssistant({ onAnnouncement }) {
                 setResponseMessage("📢 Say: 'Announce tomorrow is a holiday'");
                 setIsProcessing(false);
             }
-        } else {
-            // Fallback: Ask AI to interpret generic queries or "Explain"
+        } else if (lowerCmd.includes("explain") || lowerCmd.includes("what is") || lowerCmd.includes("how to")) {
+            // Priority to general queries for "Explain..."
             await handleGeneralQuery(command);
+        } else {
+            // Fallback: Try to find a route anyway
+            setResponseMessage("🤔 Searching for that page...");
+            setIsProcessing(false);
         }
     };
 

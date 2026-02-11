@@ -149,47 +149,41 @@ export default function Header({ onToggleSidebar }) {
     // SEARCH MODE HEADER (YouTube Style)
     if (isSearchMode) {
         return (
-            <header className="app-header" style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--bg-surface)', position: 'relative' }}>
-                <button onClick={() => setIsSearchMode(false)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', padding: '0 10px', color: 'var(--text-main)' }}>
+            <header className="app-header header-search-mode">
+                <button
+                    onClick={() => { setIsSearchMode(false); setSearchTerm(''); }}
+                    className="icon-button back-search"
+                >
                     ←
                 </button>
-                <div style={{ flex: 1, position: 'relative' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', background: 'var(--secondary)', borderRadius: '20px', padding: '5px 15px' }}>
-                        <input
-                            autoFocus
-                            type="text"
-                            placeholder={userData?.role === 'student' ? "Search Teachers..." : "Search Students..."}
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            style={{ width: '100%', border: 'none', background: 'transparent', outline: 'none', fontSize: '16px', color: 'var(--text-main)' }}
-                        />
-                    </div>
+                <div className="search-input-wrapper">
+                    <input
+                        autoFocus
+                        type="text"
+                        placeholder={userData?.role === 'student' ? "Search Teachers..." : "Search Students..."}
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="input-field header-search-input"
+                    />
+                    {searchTerm && (
+                        <button onClick={() => setSearchTerm('')} className="search-clear">×</button>
+                    )}
 
                     {/* Suggestions Dropdown */}
                     {suggestions.length > 0 && (
-                        <div style={{
-                            position: 'absolute', top: '110%', left: 0, right: 0,
-                            background: 'var(--bg-surface)', border: '1px solid var(--divider)', borderRadius: '8px', zIndex: 2000,
-                            boxShadow: '0 4px 10px rgba(0,0,0,0.1)', maxHeight: '300px', overflowY: 'auto'
-                        }}>
+                        <div className="search-suggestions-dropdown shadow-lg">
                             {suggestions.map((item, idx) => (
                                 <div
                                     key={idx}
                                     onClick={() => handleSuggestionClick(item)}
-                                    style={{ padding: '10px 15px', borderBottom: '1px solid var(--divider)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}
-                                    onMouseEnter={e => e.currentTarget.style.background = 'var(--secondary)'}
-                                    onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-surface)'}
+                                    className="suggestion-item"
                                 >
-                                    <div style={{
-                                        width: '30px', height: '30px', borderRadius: '50%',
-                                        background: item.type === 'Teacher' ? '#0984e3' : '#e17055', color: 'white',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold'
-                                    }}>
+                                    <div className="suggestion-avatar" style={{ background: item.type === 'Teacher' ? 'var(--primary)' : 'var(--warning)' }}>
                                         {item.name ? item.name.charAt(0).toUpperCase() : '?'}
                                     </div>
-                                    <div>
-                                        <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#2d3436' }}>{item.name}</div>
-                                        <div style={{ fontSize: '11px', color: '#636e72' }}>{item.type} • {item.subject || (item.classAssigned ? `Class ${item.classAssigned}` : '')}</div>
+                                    <div className="suggestion-content">
+                                        <div className="suggestion-name">{item.name}</div>
+                                        <div className="suggestion-meta">{item.type} • {item.subject || (item.classAssigned ? `Class ${item.classAssigned}` : '')}</div>
                                     </div>
                                 </div>
                             ))}
@@ -202,152 +196,67 @@ export default function Header({ onToggleSidebar }) {
 
     // DEFAULT HEADER
     return (
-        <header className="app-header" style={{ position: 'relative', zIndex: 100000 }}>
+        <header className="app-header shadow-sm">
             {/* Left: Logo & Menu */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                <button onClick={onToggleSidebar} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '24px', color: '#5f6368' }}>
+            <div className="header-left">
+                <button onClick={onToggleSidebar} className="menu-toggle">
                     ☰
                 </button>
                 <div
                     onClick={() => navigate('/')}
-                    style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+                    className="header-brand"
                 >
-                    <img src={`${logo}?v=58`} alt="TTR Logo" style={{ height: '32px', width: 'auto' }} />
-                    <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#1a73e8', letterSpacing: '-0.5px' }}>
-                        Together To Refine
-                    </div>
+                    <img src={logo} alt="TTR" className="logo" />
+                    <h1 className="brand-text">TTR</h1>
                 </div>
             </div>
 
-            <div style={{ flex: 1 }} /> {/* Spacer */}
-
             {/* Right: Actions Group */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-
-                {/* Language Selector */}
+            <div className="header-right">
                 <LanguageSelector />
 
-                {/* Search Icon (Toggles Mode) */}
                 <button
                     onClick={() => setIsSearchMode(true)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: 'var(--text-muted)' }}
+                    className="action-icon-btn"
                     title="Search"
                 >
                     🔍
                 </button>
 
-
-
-
-
-                {/* Profile Avatar */}
                 <div
                     onClick={() => navigate('/profile')}
-                    style={{
-                        width: '32px', height: '32px',
-                        borderRadius: '50%', background: '#1a73e8', color: 'white',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontWeight: 'bold', fontSize: '14px', cursor: 'pointer'
-                    }}
-                    title={userData?.name || "Profile"}
+                    className="profile-avatar-mini"
                 >
                     {userData?.name ? userData.name.charAt(0).toUpperCase() : 'U'}
                 </div>
 
-                {/* 3-Dot Menu */}
-                <div style={{ position: 'relative' }}>
+                <div className="dropdown-wrapper">
                     <button
                         onClick={() => setMenuOpen(!menuOpen)}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            fontSize: '20px',
-                            color: '#5f6368',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '50%',
-                            transition: 'background 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.target.style.backgroundColor = '#f1f3f4'}
-                        onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                        className="more-options-btn"
                     >
                         ⋮
                     </button>
 
-                    {/* Dropdown Menu */}
                     {menuOpen && (
                         <>
-                            <div
-                                style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }}
-                                onClick={() => setMenuOpen(false)}
-                            />
-                            <div style={{
-                                position: 'absolute',
-                                top: '45px',
-                                right: '0',
-                                width: '200px',
-                                background: 'white',
-                                borderRadius: '8px',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                                zIndex: 1000,
-                                border: '1px solid #dadce0',
-                                overflow: 'hidden'
-                            }}>
-                                <div style={{ padding: '12px 16px', borderBottom: '1px solid #eee', background: '#f8f9fa' }}>
-                                    <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#202124' }}>
-                                        {userData?.name || 'User'}
-                                    </div>
-                                    <div style={{ fontSize: '12px', color: '#5f6368' }}>
-                                        {userData?.role || 'Guest'}
-                                    </div>
+                            <div className="menu-overlay" onClick={() => setMenuOpen(false)} />
+                            <div className="dropdown-menu shadow-md">
+                                <div className="menu-header">
+                                    <div className="menu-name">{userData?.name || 'User'}</div>
+                                    <div className="menu-role">{userData?.role || 'Guest'}</div>
                                 </div>
-                                <button
-                                    onClick={() => { navigate('/profile'); setMenuOpen(false); }}
-                                    style={menuItemStyle}
-                                >
-                                    👤 Profile
-                                </button>
-                                <button
-                                    onClick={() => { navigate('/settings'); setMenuOpen(false); }}
-                                    style={menuItemStyle}
-                                >
-                                    ⚙️ Settings
-                                </button>
-                                <button
-                                    onClick={toggleDesktopMode}
-                                    style={menuItemStyle}
-                                >
+                                <button onClick={() => { navigate('/profile'); setMenuOpen(false); }} className="menu-item">👤 Profile</button>
+                                <button onClick={() => { navigate('/settings'); setMenuOpen(false); }} className="menu-item">⚙️ Settings</button>
+                                <button onClick={() => { toggleDesktopMode(); setMenuOpen(false); }} className="menu-item">
                                     {desktopMode ? '📱 Mobile Site' : '🖥️ Desktop Site'}
                                 </button>
-                                <button
-                                    onClick={() => { navigate('/download'); setMenuOpen(false); }}
-                                    style={menuItemStyle}
-                                >
-                                    📥 Install App
+                                <button onClick={() => { navigate('/download'); setMenuOpen(false); }} className="menu-item">📥 Install App</button>
+                                <button onClick={() => { toggleTheme(); setMenuOpen(false); }} className="menu-item">
+                                    {theme === 'Light' ? '🌙 Dark Mode' : '☀️ Light Mode'}
                                 </button>
-                                <button
-                                    onClick={() => { window.location.href = 'mailto:support@ttr.com'; setMenuOpen(false); }}
-                                    style={menuItemStyle}
-                                >
-                                    ❓ Help
-                                </button>
-                                <button
-                                    onClick={() => { toggleTheme(); setMenuOpen(false); }}
-                                    style={menuItemStyle}
-                                >
-                                    {theme === 'Light' ? '🌙 Dark Theme' : '☀️ Light Theme'}
-                                </button>
-                                <div style={{ borderTop: '1px solid #eee', margin: '4px 0' }}></div>
-                                <button
-                                    onClick={handleLogout}
-                                    style={{ ...menuItemStyle, color: '#d93025' }}
-                                >
-                                    🚪 Logout
-                                </button>
+                                <div className="menu-divider" />
+                                <button onClick={handleLogout} className="menu-item menu-logout">🚪 Logout</button>
                             </div>
                         </>
                     )}
