@@ -392,6 +392,9 @@ export default function Login() {
                                 placeholder={role === 'institution' ? "Institution Name" : "Your Name"}
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
+                                autoComplete="off"
+                                autoCorrect="off"
+                                spellCheck="false"
                                 required
                             />
 
@@ -417,6 +420,8 @@ export default function Login() {
                         placeholder={t('email_placeholder')}
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
+                        autoComplete="off"
+                        autoCorrect="off"
                         required
                     />
 
@@ -427,6 +432,7 @@ export default function Login() {
                             placeholder={t('password_placeholder')}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
+                            autoComplete="new-password"
                             required
                         />
                         <button

@@ -33,6 +33,25 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Global Interaction Neutralizers - Block Browser Intrusions */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Hide Chrome's "Key" logo and "Contact" suggestions which disrupt the UI */
+input::-webkit-credentials-auto-fill-button,
+input::-webkit-contacts-auto-fill-button {
+  visibility: hidden !important;
+  pointer-events: none !important;
+  display: none !important;
+}
+
+input:focus {
+  outline: none;
+}
+
 #root {
   width: 100%;
   margin: 0;

@@ -164,6 +164,9 @@ export default function Header({ onToggleSidebar }) {
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="input-field header-search-input"
+                        autoComplete="off"
+                        autoCorrect="off"
+                        spellCheck="false"
                     />
                     {searchTerm && (
                         <button onClick={() => setSearchTerm('')} className="search-clear">×</button>
@@ -224,6 +227,9 @@ export default function Header({ onToggleSidebar }) {
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="input-field header-search-input"
+                            autoComplete="off"
+                            autoCorrect="off"
+                            spellCheck="false"
                         />
                         {searchTerm && (
                             <button onClick={() => setSearchTerm('')} className="search-clear" style={{ right: '15px' }}>×</button>
