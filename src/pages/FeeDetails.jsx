@@ -22,11 +22,16 @@ const FeeDetails = () => {
     const instId = userData?.role === 'institution' ? userData?.uid : userData?.institutionId;
 
     useEffect(() => {
-        if (!instId || !classParam || !titleParam) return;
+        if (!instId || !classParam || !titleParam) {
+            console.log('Missing required params:', { instId, classParam, titleParam });
+            return;
+        }
 
         const fetchPaymentStatus = async () => {
             setLoading(true);
             try {
+                console.log('Fetching fees with params:', { instId, classParam, sectionParam, titleParam });
+
                 // Fetch all fee records for this class and title
                 const feesRef = collection(db, 'fees');
                 const q = query(
@@ -36,20 +41,22 @@ const FeeDetails = () => {
                     where('title', '==', titleParam)
                 );
 
-                if (sectionParam && sectionParam !== 'All') {
-                    // Filter by section if specified
-                }
-
                 const snapshot = await getDocs(q);
+                console.log('Total fee records found:', snapshot.docs.length);
+
                 const feeRecords = snapshot.docs.map(doc => ({
                     id: doc.id,
                     ...doc.data()
                 }));
 
+                console.log('Fee records:', feeRecords);
+
                 // Filter by section if needed
                 const filteredRecords = sectionParam && sectionParam !== 'All'
                     ? feeRecords.filter(f => f.section === sectionParam)
                     : feeRecords;
+
+                console.log('Filtered records:', filteredRecords.length);
 
                 // Get fee info from first record
                 if (filteredRecords.length > 0) {
@@ -66,11 +73,14 @@ const FeeDetails = () => {
                 const paid = filteredRecords.filter(f => f.status === 'paid' || f.status === 'approved');
                 const unpaid = filteredRecords.filter(f => f.status === 'pending' || !f.status);
 
+                console.log('Paid students:', paid.length);
+                console.log('Unpaid students:', unpaid.length);
+
                 setPaidStudents(paid);
                 setUnpaidStudents(unpaid);
             } catch (error) {
                 console.error('Error fetching payment status:', error);
-                alert('Failed to load payment details');
+                alert('Failed to load payment details: ' + error.message);
             } finally {
                 setLoading(false);
             }
@@ -136,12 +146,50 @@ const FeeDetails = () => {
                         WebkitTextFillColor: 'transparent',
                         marginBottom: '10px'
                     }}>
-                        💰 {feeInfo?.title || 'Fee Details'}
+                        💰 {feeInfo?.title || titleParam || 'Fee Details'}
                     </h1>
                     <p style={{ color: '#666', fontSize: '16px' }}>
-                        Class {feeInfo?.class} - Section {feeInfo?.section}
+                        Class {feeInfo?.class || classParam} - Section {feeInfo?.section || sectionParam}
                     </p>
                 </div>
+
+                {/* No Data Message */}
+                {totalStudents === 0 && !loading && (
+                    <div style={{
+                        background: 'white',
+                        borderRadius: '15px',
+                        padding: '40px',
+                        marginBottom: '20px',
+                        boxShadow: '0 5px 15px rgba(0,0,0,0.1)',
+                        textAlign: 'center'
+                    }}>
+                        <div style={{ fontSize: '48px', marginBottom: '15px' }}>📭</div>
+                        <h3 style={{ fontSize: '24px', marginBottom: '10px', color: '#2d3436' }}>
+                            No Fee Records Found
+                        </h3>
+                        <p style={{ color: '#666', marginBottom: '20px' }}>
+                            No fee records found for this class and fee title.
+                        </p>
+                        <div style={{
+                            background: '#f8f9fa',
+                            padding: '20px',
+                            borderRadius: '10px',
+                            textAlign: 'left',
+                            maxWidth: '500px',
+                            margin: '0 auto'
+                        }}>
+                            <p style={{ marginBottom: '10px', fontWeight: 'bold' }}>Possible reasons:</p>
+                            <ul style={{ paddingLeft: '20px', color: '#666' }}>
+                                <li>Fee hasn't been assigned to this class yet</li>
+                                <li>Class or section name doesn't match</li>
+                                <li>Fee title is different</li>
+                            </ul>
+                            <p style={{ marginTop: '15px', fontSize: '14px', color: '#999' }}>
+                                Try assigning the fee from Fee Management page first.
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 {/* Stats Cards */}
                 <div style={{
