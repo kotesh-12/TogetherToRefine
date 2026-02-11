@@ -91,28 +91,109 @@ export default function ViewExamSeating() {
                     </div>
                 ) : (
                     <>
-                        {/* Exam Selector */}
-                        <div className="card" style={{ marginBottom: '20px' }}>
-                            <label style={{ fontSize: '13px', color: '#636e72', display: 'block', marginBottom: '5px' }}>
-                                Select Exam:
-                            </label>
-                            <select
-                                className="input-field"
-                                value={selectedPlan?.id || ''}
-                                onChange={(e) => {
-                                    const plan = examPlans.find(p => p.id === e.target.value);
-                                    handleSelectPlan(plan);
-                                }}
-                                style={{ maxWidth: '400px' }}
-                            >
-                                <option value="">Choose an exam</option>
-                                {examPlans.map(plan => (
-                                    <option key={plan.id} value={plan.id}>
-                                        {plan.examName} - {plan.examDate ? new Date(plan.examDate).toLocaleDateString() : 'Date TBD'}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
+                        {/* Institution View: History Table */}
+                        {userData?.role === 'institution' && !selectedPlan && (
+                            <div className="card">
+                                <h3>📜 Exam Seating History</h3>
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '15px' }}>
+                                        <thead>
+                                            <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #e9ecef' }}>
+                                                <th style={{ padding: '12px', textAlign: 'left', color: '#636e72' }}>Date Created</th>
+                                                <th style={{ padding: '12px', textAlign: 'left', color: '#636e72' }}>Exam Name</th>
+                                                <th style={{ padding: '12px', textAlign: 'left', color: '#636e72' }}>Exam Date</th>
+                                                <th style={{ padding: '12px', textAlign: 'center', color: '#636e72' }}>Students</th>
+                                                <th style={{ padding: '12px', textAlign: 'center', color: '#636e72' }}>Rooms</th>
+                                                <th style={{ padding: '12px', textAlign: 'right', color: '#636e72' }}>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {examPlans.map((plan) => (
+                                                <tr key={plan.id} style={{ borderBottom: '1px solid #f1f3f5' }}>
+                                                    <td style={{ padding: '12px' }}>
+                                                        {plan.createdAt?.seconds ? new Date(plan.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}
+                                                    </td>
+                                                    <td style={{ padding: '12px', fontWeight: 'bold', color: '#2d3436' }}>
+                                                        {plan.examName}
+                                                    </td>
+                                                    <td style={{ padding: '12px' }}>
+                                                        {plan.examDate ? new Date(plan.examDate).toLocaleDateString() : '-'}
+                                                    </td>
+                                                    <td style={{ padding: '12px', textAlign: 'center' }}>
+                                                        <span style={{ background: '#e3f2fd', color: '#0984e3', padding: '4px 8px', borderRadius: '12px', fontSize: '12px' }}>
+                                                            {plan.totalStudents}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{ padding: '12px', textAlign: 'center' }}>{plan.roomsCount}</td>
+                                                    <td style={{ padding: '12px', textAlign: 'right' }}>
+                                                        <button
+                                                            onClick={() => handleSelectPlan(plan)}
+                                                            style={{
+                                                                background: '#6c5ce7',
+                                                                color: 'white',
+                                                                border: 'none',
+                                                                padding: '6px 12px',
+                                                                borderRadius: '6px',
+                                                                cursor: 'pointer',
+                                                                fontSize: '13px'
+                                                            }}
+                                                        >
+                                                            👁️ View
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Student View (or selected plan view): Dropdown */}
+                        {(userData?.role !== 'institution' || selectedPlan) && (
+                            <div className="card" style={{ marginBottom: '20px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                        <label style={{ fontSize: '13px', color: '#636e72', display: 'block', marginBottom: '5px' }}>
+                                            Select Exam to View:
+                                        </label>
+                                        <select
+                                            className="input-field"
+                                            value={selectedPlan?.id || ''}
+                                            onChange={(e) => {
+                                                const plan = examPlans.find(p => p.id === e.target.value);
+                                                handleSelectPlan(plan);
+                                            }}
+                                            style={{ maxWidth: '400px' }}
+                                        >
+                                            <option value="">Choose an exam</option>
+                                            {examPlans.map(plan => (
+                                                <option key={plan.id} value={plan.id}>
+                                                    {plan.examName} - {plan.examDate ? new Date(plan.examDate).toLocaleDateString() : 'Date TBD'}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Back to History Button for Institution */}
+                                    {userData?.role === 'institution' && selectedPlan && (
+                                        <button
+                                            onClick={() => setSelectedPlan(null)}
+                                            style={{
+                                                background: '#f1f2f6',
+                                                color: '#2d3436',
+                                                border: '1px solid #dfe6e9',
+                                                padding: '8px 15px',
+                                                borderRadius: '6px',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            📜 Back to History
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Student's Seat Highlight */}
                         {userData?.role === 'student' && selectedPlan && (
