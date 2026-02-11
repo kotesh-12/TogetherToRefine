@@ -537,7 +537,7 @@ export default function Timetable() {
             const studentsSnapshot = await getDocs(studentsQuery);
             const studentIds = studentsSnapshot.docs.map(doc => doc.id);
 
-            // Create a group for each subject
+            // Create or update a group for each subject
             for (const [subject, teacherId] of subjectTeacherPairs) {
                 const groupName = `${subject} (${selectedClass}-${selectedSection})`;
 
@@ -569,11 +569,51 @@ export default function Timetable() {
                         subject: subject,
                         teacherId: teacherId,
                         createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
                         type: 'subject-class' // Mark as auto-created subject group
                     };
 
                     await addDoc(groupsRef, newGroup);
                     console.log(`Created group: ${groupName}`);
+                } else {
+                    // Update existing group with new teacher
+                    const existingGroup = existingSnapshot.docs[0];
+                    const existingData = existingGroup.data();
+                    const oldTeacherId = existingData.teacherId;
+
+                    // Remove old teacher and add new teacher
+                    let updatedMembers = existingData.members || [];
+
+                    // Remove old teacher if different
+                    if (oldTeacherId && oldTeacherId !== teacherId) {
+                        updatedMembers = updatedMembers.filter(id => id !== oldTeacherId);
+                    }
+
+                    // Add new teacher if not already present
+                    if (teacherId && !updatedMembers.includes(teacherId)) {
+                        updatedMembers.push(teacherId);
+                    }
+
+                    // Ensure institution and all students are still members
+                    if (!updatedMembers.includes(instId)) {
+                        updatedMembers.push(instId);
+                    }
+                    studentIds.forEach(studentId => {
+                        if (!updatedMembers.includes(studentId)) {
+                            updatedMembers.push(studentId);
+                        }
+                    });
+
+                    // Update the group
+                    const groupDocRef = doc(db, 'groups', existingGroup.id);
+                    await setDoc(groupDocRef, {
+                        ...existingData,
+                        members: updatedMembers,
+                        teacherId: teacherId,
+                        updatedAt: new Date().toISOString()
+                    }, { merge: true });
+
+                    console.log(`Updated group: ${groupName} (teacher changed)`);
                 }
             }
         } catch (e) {
