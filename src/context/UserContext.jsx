@@ -11,6 +11,16 @@ export function UserProvider({ children }) {
     const [userData, setUserData] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    // Helper to update state and cache consistently
+    const updateUserData = (data) => {
+        setUserData(data);
+        try {
+            sessionStorage.setItem('user_profile_cache', JSON.stringify(data));
+        } catch (e) {
+            console.warn("Storage update failed", e);
+        }
+    };
+
     useEffect(() => {
         let unsubscribeSnapshot = null;
         let unsubscribeSession = null;
@@ -90,36 +100,39 @@ export function UserProvider({ children }) {
 
                         if (instSnap.exists()) {
                             // 1. Set Data IMMEDIATELY
-                            setUserData({ ...instSnap.data(), uid: currentUser.uid, role: (instSnap.data().role || 'institution').toLowerCase() });
+                            const data = { ...instSnap.data(), uid: currentUser.uid, role: (instSnap.data().role || 'institution').toLowerCase() };
+                            updateUserData(data);
                             setLoading(false);
                             sessionStorage.setItem('user_collection_cache', 'institutions');
 
                             // 2. Subscribe for updates
                             unsubscribeSnapshot = onSnapshot(instRef, (d) => {
                                 if (!d.exists()) { detectFull(); return; }
-                                setUserData({ ...d.data(), uid: currentUser.uid, role: (d.data().role || 'institution').toLowerCase() });
+                                updateUserData({ ...d.data(), uid: currentUser.uid, role: (d.data().role || 'institution').toLowerCase() });
                             });
                         } else if (teachSnap.exists()) {
                             // 1. Set Data IMMEDIATELY
-                            setUserData({ ...teachSnap.data(), uid: currentUser.uid, role: (teachSnap.data().role || 'teacher').toLowerCase() });
+                            const data = { ...teachSnap.data(), uid: currentUser.uid, role: (teachSnap.data().role || 'teacher').toLowerCase() };
+                            updateUserData(data);
                             setLoading(false);
                             sessionStorage.setItem('user_collection_cache', 'teachers');
 
                             // 2. Subscribe
                             unsubscribeSnapshot = onSnapshot(teachRef, (d) => {
                                 if (!d.exists()) { detectFull(); return; }
-                                setUserData({ ...d.data(), uid: currentUser.uid, role: (d.data().role || 'teacher').toLowerCase() });
+                                updateUserData({ ...d.data(), uid: currentUser.uid, role: (d.data().role || 'teacher').toLowerCase() });
                             });
                         } else if (userSnap.exists()) {
                             // 1. Set Data IMMEDIATELY
-                            setUserData({ ...userSnap.data(), uid: currentUser.uid, role: (userSnap.data().role || 'student').toLowerCase() });
+                            const data = { ...userSnap.data(), uid: currentUser.uid, role: (userSnap.data().role || 'student').toLowerCase() };
+                            updateUserData(data);
                             setLoading(false);
                             sessionStorage.setItem('user_collection_cache', 'users');
 
                             // 2. Subscribe
                             unsubscribeSnapshot = onSnapshot(userRef, (d) => {
                                 if (!d.exists()) { detectFull(); return; }
-                                setUserData({ ...d.data(), uid: currentUser.uid, role: (d.data().role || 'student').toLowerCase() });
+                                updateUserData({ ...d.data(), uid: currentUser.uid, role: (d.data().role || 'student').toLowerCase() });
                             });
                         } else {
                             console.log("No profile found.");
@@ -146,16 +159,6 @@ export function UserProvider({ children }) {
                         console.error("Cache parsing error", e);
                     }
                 }
-
-                // Internal helper to update state and cache
-                const updateUserData = (data) => {
-                    setUserData(data);
-                    try {
-                        sessionStorage.setItem('user_profile_cache', JSON.stringify(data));
-                    } catch (e) {
-                        console.warn("Storage full?", e);
-                    }
-                };
 
                 // OPTIMIZATION: Check Collection Cache First (Background Validation)
                 const cachedCollection = sessionStorage.getItem('user_collection_cache');
