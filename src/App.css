@@ -1666,3 +1666,59 @@ button.btn.google-btn:hover {
     font-size: 13px;
   }
 }
+
+/* Institution Dashboard Elite Styles */
+.institution-hero-card {
+  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+  padding: 32px 24px;
+  border-radius: var(--radius-md);
+  color: white;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 12px 30px rgba(44, 62, 80, 0.25);
+}
+
+.institution-hero-sparkle {
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  font-size: 140px;
+  opacity: 0.1;
+  transform: rotate(15deg);
+}
+
+.institution-name-title {
+  font-size: 24px;
+  font-weight: 800;
+  margin: 0 0 10px 0;
+  letter-spacing: -0.5px;
+}
+
+.institution-hero-pill {
+  display: inline-flex;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.institution-meta-desc {
+  font-size: 14px;
+  opacity: 0.9;
+  margin: 10px 0 0;
+  font-weight: 500;
+}
+
+@media (max-width: 480px) {
+  .institution-hero-card {
+    padding: 24px 20px;
+  }
+
+  .institution-name-title {
+    font-size: 20px;
+  }
+}

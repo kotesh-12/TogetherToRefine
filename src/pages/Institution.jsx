@@ -209,118 +209,105 @@ export default function Institution() {
             <FeatureTour tourId="institution_dashboard_v1" steps={tourSteps} userData={userData} />
             <AIBadge />
 
-            <div style={{ padding: '20px', width: '100%', boxSizing: 'border-box' }}>
+            <div className="container">
+                {/* Elite Institution Hero */}
+                <div className="institution-hero-card">
+                    <div className="institution-hero-sparkle">🏛️</div>
+                    <div className="institution-hero-pill">🏫 {userData?.role || 'Institution Administrator'}</div>
+                    <h1 className="institution-name-title">
+                        {profile?.institutionName || 'Our Institution'}
+                    </h1>
 
-                {/* Bulk Import Button */}
-                <div style={{ marginBottom: '15px', display: 'flex', gap: '10px' }}>
+                    {profile?.principalName && (
+                        <p className="institution-meta-desc">
+                            Principal: {profile.principalName} | Est: {profile.estYear}
+                        </p>
+                    )}
+
+                    {profile?.pid && (
+                        <div style={{ marginTop: '15px' }} className="institution-hero-pill">
+                            ID: {profile.pid}
+                        </div>
+                    )}
+                </div>
+
+                {/* Administrative Fast Actions */}
+                <div style={{ marginBottom: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                     <button
                         id="tour-inst-announcement"
                         onClick={() => setShowModal(true)}
-                        style={{
-                            width: '45px', height: '45px', borderRadius: '50%',
-                            background: 'white', border: 'none', boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', cursor: 'pointer',
-                            color: '#6c5ce7'
-                        }}
-                        title="Make Announcement"
+                        className="teacher-announcement-btn"
+                        style={{ background: 'white', color: 'var(--primary)', boxShadow: 'var(--shadow-sm)' }}
+                        title="Broadcast Message"
                     >
                         📢
                     </button>
                     <button
                         id="tour-inst-import"
+                        className="btn btn-success"
+                        style={{ borderRadius: '30px', padding: '10px 24px' }}
                         onClick={() => {
                             const csv = prompt("Paste CSV Data (Name, Email, Password, Class)\nExample:\nJohn Doe,john@test.com,Pass123,10th");
                             if (csv) handleBulkImport(csv);
                         }}
-                        style={{
-                            padding: '0 20px', borderRadius: '25px',
-                            background: '#00b894', border: 'none', color: 'white',
-                            fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
-                        }}
                     >
-                        📤 Bulk Import Students
+                        📤 Bulk Import
                     </button>
                 </div>
 
-                <div className="card" style={{ marginBottom: '20px', borderRadius: '15px', padding: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                        {/* PID Badge */}
-                        {profile?.pid && (
-                            <div style={{
-                                background: '#f1f2f6', color: '#2d3436',
-                                display: 'inline-block', padding: '6px 14px',
-                                borderRadius: '20px', fontSize: '14px',
-                                fontWeight: 'bold', border: '1px solid #dfe6e9'
-                            }}>
-                                ID: {profile.pid}
-                            </div>
-                        )}
-                        {profile && (
-                            <div style={{ textAlign: 'right', fontSize: '15px', color: '#666' }}>
-                                <div style={{ fontWeight: '600', marginBottom: '2px' }}>{profile.principalName} (Principal)</div>
-                                <div style={{ fontSize: '13px' }}>Est: {profile.estYear}</div>
-                            </div>
-                        )}
+                <div className="teacher-grid-system" style={{ marginBottom: '32px' }}>
+                    <div className="teacher-vibe-card" style={{ borderColor: '#6c5ce7' }} onClick={() => handleCardClick('/allotment')}>
+                        <span className="teacher-vibe-icon">📘</span>
+                        <span className="teacher-vibe-label">Allotments</span>
                     </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '15px', marginBottom: '30px' }}>
-                    <button id="tour-inst-allotment" className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#6c5ce7' }} onClick={() => handleCardClick('/allotment')}>
-                        <span style={{ fontSize: '28px', marginBottom: '8px' }}>📘</span>
-                        <span>Allotments</span>
-                    </button>
-                    {/* Admission button removed - route still accessible via /admission */}
-                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0984e3' }} onClick={() => handleCardClick('/attendance')}>
-                        <span style={{ fontSize: '28px', marginBottom: '8px' }}>📅</span>
-                        <span>Attendance</span>
-                    </button>
-                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#00b894' }} onClick={() => handleCardClick('/group')}>
-                        <span style={{ fontSize: '28px', marginBottom: '8px' }}>👥</span>
-                        <span>Groups</span>
-                    </button>
-                    {/* Notify button removed - route still accessible via /notification */}
-                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#e84393' }} onClick={() => handleCardClick('/general-feedback')}>
-                        <span style={{ fontSize: '28px', marginBottom: '8px' }}>📊</span>
-                        <span>Feedback</span>
-                    </button>
-                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ff7675' }} onClick={() => handleCardClick('/health')}>
-                        <span style={{ fontSize: '28px', marginBottom: '8px' }}>🏥</span>
-                        <span>Health</span>
-                    </button>
-                    {/* Waiting List button removed - route still accessible via /waiting-list */}
-                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#d63031' }} onClick={() => handleCardClick('/video-library')}>
-                        <span style={{ fontSize: '28px', marginBottom: '8px' }}>🎬</span>
-                        <span>Video Lib</span>
-                    </button>
-                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fdcb6e', color: '#2d3436' }} onClick={() => handleCardClick('/timetable')}>
-                        <span style={{ fontSize: '28px', marginBottom: '8px' }}>🗓️</span>
-                        <span>Timetable</span>
-                    </button>
-                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#6c5ce7', color: 'white' }} onClick={() => handleCardClick('/faculty-feedback')}>
-                        <span style={{ fontSize: '28px', marginBottom: '8px' }}>👨‍🏫</span>
-                        <span>Teachers</span>
-                    </button>
-                    <button id="tour-inst-fees" className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#2c3e50', color: 'white' }} onClick={() => handleCardClick('/fees/institution')}>
-                        <span style={{ fontSize: '28px', marginBottom: '8px' }}>💰</span>
-                        <span>Fee Mgmt</span>
-                    </button>
-                    {/* TT Generator button removed - AI generation integrated into Timetable page */}
-                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#8e44ad', color: 'white' }} onClick={() => handleCardClick('/exam-seating')}>
-                        <span style={{ fontSize: '28px', marginBottom: '8px' }}>🪑</span>
-                        <span>Exam Seating</span>
-                    </button>
-                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#c0392b', color: 'white' }} onClick={() => handleCardClick('/library')}>
-                        <span style={{ fontSize: '28px', marginBottom: '8px' }}>📚</span>
-                        <span>Library</span>
-                    </button>
-                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#e74c3c', color: 'white' }} onClick={() => handleCardClick('/inspection-readiness')}>
-                        <span style={{ fontSize: '28px', marginBottom: '8px' }}>🔴</span>
-                        <span>Inspection</span>
-                    </button>
-                    <button className="btn" style={{ height: '110px', fontSize: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#16a085', color: 'white' }} onClick={() => handleCardClick('/student-promotion')}>
-                        <span style={{ fontSize: '28px', marginBottom: '8px' }}>🎓</span>
-                        <span>Promotion</span>
-                    </button>
+                    <div className="teacher-vibe-card" style={{ borderColor: '#0984e3' }} onClick={() => handleCardClick('/attendance')}>
+                        <span className="teacher-vibe-icon">📅</span>
+                        <span className="teacher-vibe-label">Attendance</span>
+                    </div>
+                    <div className="teacher-vibe-card" style={{ borderColor: '#00b894' }} onClick={() => handleCardClick('/group')}>
+                        <span className="teacher-vibe-icon">👥</span>
+                        <span className="teacher-vibe-label">Groups</span>
+                    </div>
+                    <div className="teacher-vibe-card" style={{ borderColor: '#e84393' }} onClick={() => handleCardClick('/general-feedback')}>
+                        <span className="teacher-vibe-icon">📊</span>
+                        <span className="teacher-vibe-label">Feedback</span>
+                    </div>
+                    <div className="teacher-vibe-card" style={{ borderColor: '#ff7675' }} onClick={() => handleCardClick('/health')}>
+                        <span className="teacher-vibe-icon">🏥</span>
+                        <span className="teacher-vibe-label">Health</span>
+                    </div>
+                    <div className="teacher-vibe-card" style={{ borderColor: '#d63031' }} onClick={() => handleCardClick('/video-library')}>
+                        <span className="teacher-vibe-icon">📺</span>
+                        <span className="teacher-vibe-label">Video Lib</span>
+                    </div>
+                    <div className="teacher-vibe-card" style={{ borderColor: '#fdcb6e' }} onClick={() => handleCardClick('/timetable')}>
+                        <span className="teacher-vibe-icon">🗓️</span>
+                        <span className="teacher-vibe-label">Timetable</span>
+                    </div>
+                    <div className="teacher-vibe-card" style={{ borderColor: '#6c5ce7' }} onClick={() => handleCardClick('/faculty-feedback')}>
+                        <span className="teacher-vibe-icon">👨‍🏫</span>
+                        <span className="teacher-vibe-label">Faculty</span>
+                    </div>
+                    <div className="teacher-vibe-card" style={{ borderColor: '#2c3e50' }} onClick={() => handleCardClick('/fees/institution')}>
+                        <span className="teacher-vibe-icon">💰</span>
+                        <span className="teacher-vibe-label">Fee Mgmt</span>
+                    </div>
+                    <div className="teacher-vibe-card" style={{ borderColor: '#8e44ad' }} onClick={() => handleCardClick('/exam-seating')}>
+                        <span className="teacher-vibe-icon">🪑</span>
+                        <span className="teacher-vibe-label">Exams</span>
+                    </div>
+                    <div className="teacher-vibe-card" style={{ borderColor: '#c0392b' }} onClick={() => handleCardClick('/library')}>
+                        <span className="teacher-vibe-icon">📚</span>
+                        <span className="teacher-vibe-label">Library</span>
+                    </div>
+                    <div className="teacher-vibe-card" style={{ borderColor: '#e74c3c' }} onClick={() => handleCardClick('/inspection-readiness')}>
+                        <span className="teacher-vibe-icon">🔴</span>
+                        <span className="teacher-vibe-label">Inspection</span>
+                    </div>
+                    <div className="teacher-vibe-card" style={{ borderColor: '#16a085' }} onClick={() => handleCardClick('/student-promotion')}>
+                        <span className="teacher-vibe-icon">🎓</span>
+                        <span className="teacher-vibe-label">Promotion</span>
+                    </div>
                 </div>
 
                 <div className="card" style={{ padding: '20px', borderRadius: '15px' }}>
