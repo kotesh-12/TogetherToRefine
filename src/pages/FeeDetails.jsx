@@ -3,6 +3,8 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useUser } from '../context/UserContext';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const FeeDetails = () => {
     const { feeId } = useParams();
@@ -93,6 +95,69 @@ const FeeDetails = () => {
     const collectedAmount = paidStudents.length * (feeInfo?.amount || 0);
     const pendingAmount = unpaidStudents.length * (feeInfo?.amount || 0);
     const collectionPercentage = totalStudents > 0 ? ((paidStudents.length / totalStudents) * 100).toFixed(1) : 0;
+
+    const downloadUnpaidReport = () => {
+        if (unpaidStudents.length === 0) {
+            alert("No unpaid students to report!");
+            return;
+        }
+
+        const doc = new jsPDF();
+
+        // Header
+        doc.setFontSize(10);
+        doc.setTextColor(150, 150, 150);
+        doc.text("CONFIDENTIAL - FOR OFFICE USE ONLY", 14, 10);
+
+        doc.setFontSize(18);
+        doc.setTextColor(40, 40, 40);
+        doc.text("Pending Fee Report", 14, 20);
+
+        doc.setFontSize(12);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Fee: ${feeInfo?.title}`, 14, 30);
+        doc.text(`Class: ${feeInfo?.class} - ${feeInfo?.section}`, 14, 36);
+        doc.text(`Date Generated: ${new Date().toLocaleDateString()}`, 14, 42);
+
+        // Add a note about privacy
+        doc.setFontSize(10);
+        doc.setTextColor(220, 53, 69); // Red color for warning
+        doc.text("⚠️ PRIVACY NOTICE: This document is for administrative communication with parents only.", 14, 52);
+        doc.text("Do not display this list publicly or discuss with students to protect their dignity.", 14, 57);
+
+        // Table
+        const tableColumn = ["#", "Student Name", "Amount Due", "Due Date", "Parent Contact (Use for Reminders)"];
+        const tableRows = [];
+
+        unpaidStudents.forEach((student, index) => {
+            const studentData = [
+                index + 1,
+                student.studentName || "Unknown",
+                `Rs. ${student.amount}`,
+                student.dueDate || "N/A",
+                "___________________" // Placeholder for manual notes if phone not available
+            ];
+            tableRows.push(studentData);
+        });
+
+        autoTable(doc, {
+            startY: 65,
+            head: [tableColumn],
+            body: tableRows,
+            theme: 'grid',
+            headStyles: { fillColor: [231, 76, 60] }, // Red header for unpaid
+            styles: { fontSize: 10 },
+        });
+
+        // Summary Footer
+        const finalY = (doc).lastAutoTable.finalY + 10;
+        doc.setFontSize(10);
+        doc.setTextColor(0, 0, 0);
+        doc.text(`Total Pending: ${unpaidStudents.length} Students`, 14, finalY);
+        doc.text(`Total Amount Pending: Rs. ${pendingAmount.toLocaleString()}`, 14, finalY + 6);
+
+        doc.save(`${feeInfo?.title}_Pending_Report.pdf`);
+    };
 
     if (loading) {
         return (
@@ -318,17 +383,39 @@ const FeeDetails = () => {
                         padding: '25px',
                         boxShadow: '0 5px 15px rgba(0,0,0,0.1)'
                     }}>
-                        <h3 style={{
-                            fontSize: '20px',
-                            fontWeight: 'bold',
-                            marginBottom: '15px',
-                            color: '#e74c3c',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '10px'
-                        }}>
-                            ⏳ Pending ({unpaidStudents.length})
-                        </h3>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                            <h3 style={{
+                                fontSize: '20px',
+                                fontWeight: 'bold',
+                                color: '#e74c3c',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                margin: 0
+                            }}>
+                                ⏳ Pending ({unpaidStudents.length})
+                            </h3>
+                            {unpaidStudents.length > 0 && (
+                                <button
+                                    onClick={downloadUnpaidReport}
+                                    style={{
+                                        background: '#2d3436',
+                                        color: 'white',
+                                        border: 'none',
+                                        padding: '8px 15px',
+                                        borderRadius: '8px',
+                                        fontSize: '12px',
+                                        cursor: 'pointer',
+                                        fontWeight: 'bold',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '5px'
+                                    }}
+                                >
+                                    📥 Download Report
+                                </button>
+                            )}
+                        </div>
 
                         {unpaidStudents.length === 0 ? (
                             <p style={{ color: '#27ae60', fontStyle: 'italic' }}>🎉 All students have paid!</p>
