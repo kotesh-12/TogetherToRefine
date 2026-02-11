@@ -22,64 +22,53 @@ const StudentPromotion = () => {
 
         setLoading(true);
         try {
-            console.log('Fetching students with params:', {
-                institutionId: userData.uid,
-                class: selectedClass,
-                section: selectedSection
+            console.log('Fetching ALL students for institution to ensure no misses...');
+
+            // 1. Fetch ALL students for this institution (bypasses specific class/section query issues)
+            const studentsRef = collection(db, 'users');
+            const q = query(
+                studentsRef,
+                where('role', '==', 'student'),
+                where('institutionId', '==', userData.uid)
+            );
+
+            const snapshot = await getDocs(q);
+            const allStudents = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+
+            console.log(`Total students in institution: ${allStudents.length}`);
+
+            // 2. Client-side filtering with ROBUST normalization
+            // This handles: "9" vs 9 (number), " 9 " (spaces), "9th", "A" vs "a", etc.
+            const targetClassNorm = String(selectedClass).trim().toLowerCase().replace(/(st|nd|rd|th)$/, '');
+            const targetSectionNorm = String(selectedSection).trim().toLowerCase();
+
+            const filteredStudents = allStudents.filter(student => {
+                // Safety check for missing fields
+                if (!student.class || !student.section) return false;
+
+                // Normalize student data
+                // Handle complex cases like "Class 10" or "10th Grade" if necessary, but stripping suffixes usually works
+                const sClass = String(student.class).trim().toLowerCase().replace(/(class\s*|grade\s*|st|nd|rd|th)/g, '').trim();
+                const sSection = String(student.section).trim().toLowerCase();
+
+                // Debug specific mismatches if needed
+                // if (sClass.includes('9')) console.log(`Checking ${student.name}: DB[${sClass}-${sSection}] vs Target[${targetClassNorm}-${targetSectionNorm}]`);
+
+                return sClass === targetClassNorm && sSection === targetSectionNorm;
             });
 
-            const studentsRef = collection(db, 'users');
+            console.log(`Matched ${filteredStudents.length} students for Class ${selectedClass}-${selectedSection}`);
 
-            // Try multiple class formats to ensure we get all students
-            const classFormats = [
-                selectedClass,                                    // "1"
-                `${selectedClass}st`,                            // "1st"
-                `${selectedClass}nd`,                            // "2nd"
-                `${selectedClass}rd`,                            // "3rd"
-                `${selectedClass}th`,                            // "4th"
-                selectedClass === '1' ? '1st' : null,
-                selectedClass === '2' ? '2nd' : null,
-                selectedClass === '3' ? '3rd' : null,
-                parseInt(selectedClass) >= 4 ? `${selectedClass}th` : null
-            ].filter(Boolean);
+            setStudents(filteredStudents);
 
-            console.log('Trying class formats:', classFormats);
-
-            // Fetch students with all possible class formats
-            const allStudents = new Map();
-
-            for (const classFormat of classFormats) {
-                const q = query(
-                    studentsRef,
-                    where('role', '==', 'student'),
-                    where('institutionId', '==', userData.uid),
-                    where('class', '==', classFormat),
-                    where('section', '==', selectedSection)
-                );
-
-                const snapshot = await getDocs(q);
-                console.log(`Found ${snapshot.docs.length} students with class format: ${classFormat}`);
-
-                snapshot.docs.forEach(doc => {
-                    if (!allStudents.has(doc.id)) {
-                        allStudents.set(doc.id, {
-                            id: doc.id,
-                            ...doc.data()
-                        });
-                    }
-                });
-            }
-
-            const studentsList = Array.from(allStudents.values());
-            console.log('Total unique students found:', studentsList.length);
-
-            setStudents(studentsList);
-
-            // Initialize promotion data with default next class
+            // Initialize promotion data
             const defaultPromotion = {};
             const nextClass = selectedClass === '10' ? 'Graduated' : String(parseInt(selectedClass) + 1);
 
-            studentsList.forEach(student => {
+            filteredStudents.forEach(student => {
                 defaultPromotion[student.id] = {
                     status: selectedClass === '10' ? 'graduated' : 'promoted',
                     toClass: nextClass,
@@ -89,9 +78,12 @@ const StudentPromotion = () => {
 
             setPromotionData(defaultPromotion);
 
-            if (studentsList.length === 0) {
-                alert(`⚠️ No students found in Class ${selectedClass}-${selectedSection}\n\nPossible reasons:\n- No students registered in this class\n- Class format mismatch in database\n- Check console for details`);
+            if (filteredStudents.length === 0) {
+                // Debug: Show a few examples of what classes DO exist to help the user
+                const existingClasses = [...new Set(allStudents.map(s => `${s.class}-${s.section}`))].slice(0, 5);
+                alert(`⚠️ No students found for Class ${selectedClass}-${selectedSection}\n\nExisting classes sample:\n${existingClasses.join('\n')}\n\nCheck if your data matches exactly.`);
             }
+
         } catch (error) {
             console.error('Error fetching students:', error);
             alert('Failed to fetch students: ' + error.message);
@@ -99,6 +91,7 @@ const StudentPromotion = () => {
             setLoading(false);
         }
     };
+
 
     useEffect(() => {
         if (selectedClass && selectedSection) {
