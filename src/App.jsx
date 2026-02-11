@@ -84,14 +84,13 @@ function App() {
 
                   <Route element={<MainLayout />}>
                     {/* Common Routes (Accessible to all authenticated users) */}
-
-                    <Route element={<ProtectedRoute allowedRoles={['student', 'teacher', 'institution', 'admin']} />}>
+                    <Route element={<ProtectedRoute allowedRoles={['student', 'teacher', 'institution', 'admin', 'parent']} />}>
                       <Route path="/onboarding" element={<Onboarding />} />
                       <Route path="/settings" element={<Settings />} />
                       <Route path="/profile" element={<Profile />} />
                       <Route path="/profile-view" element={<ProfileView />} />
                       <Route path="/group" element={<Group />} />
-                      <Route path="/details" element={<Details />} /> {/* Sometimes needed for editing */}
+                      <Route path="/details" element={<Details />} />
                       <Route path="/general-feedback" element={<GeneralFeedback />} />
                       <Route path="/report-harassment" element={<Report type="sexual_harassment" />} />
                       <Route path="/report-misbehavior" element={<Report type="misbehavior" />} />
@@ -107,45 +106,23 @@ function App() {
                       <Route path="/attendance-analytics" element={<AttendanceAnalytics />} />
                       <Route path="/view-exam-seating" element={<ViewExamSeating />} />
                       <Route path="/library" element={<LibraryManagement />} />
-                    </Route>
 
-                    {/* Admin Route */}
-                    <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                      {/* Dashboard Access */}
                       <Route path="/admin" element={<AdminDashboard />} />
                       <Route path="/admin/institution/:id" element={<InstitutionDetailsAdmin />} />
-                    </Route>
-
-                    {/* Student Only */}
-                    <Route element={<ProtectedRoute allowedRoles={['student']} />}>
                       <Route path="/student" element={<Student />} />
                       <Route path="/upid-history" element={<UpidHistory />} />
                       <Route path="/fees/student" element={<StudentFee />} />
-
-                    </Route>
-
-                    {/* Teacher Only */}
-                    <Route element={<ProtectedRoute allowedRoles={['teacher', 'institution']} />}>
                       <Route path="/gov-reports" element={<GovernmentReports />} />
                       <Route path="/inspector-mode" element={<InspectorMode />} />
                       <Route path="/dropout-predictor" element={<EarlyWarningSystem />} />
                       <Route path="/marks" element={<MarksManagement />} />
                       <Route path="/universal-scanner" element={<UniversalScanner />} />
-
                       <Route path="/teacher" element={<Teacher />} />
                       <Route path="/feedback-overview" element={<FeedbackOverview />} />
-                    </Route>
-
-                    {/* Parent Only */}
-                    <Route element={<ProtectedRoute allowedRoles={['parent']} />}>
                       <Route path="/parent" element={<ParentDashboard />} />
-
-                    </Route>
-
-                    {/* Institution/Admin Only */}
-                    <Route element={<ProtectedRoute allowedRoles={['institution']} />}>
                       <Route path="/timetable-generator" element={<TimetableGenerator />} />
                       <Route path="/exam-seating" element={<ExamSeatingPlanner />} />
-
                       <Route path="/inspection-readiness" element={<InspectionReadiness />} />
                       <Route path="/institution" element={<Institution />} />
                       <Route path="/admission" element={<Admission />} />
