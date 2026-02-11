@@ -629,11 +629,6 @@ export default function Attendance() {
             }
         }
 
-        // 2. Institution Restriction Check
-        if (view === 'students' && role === 'institution') {
-            alert("🚫 Institution Admin cannot mark student attendance directly. Only Teachers can.");
-            return;
-        }
 
         // 3. "Only 1 Time" Rule (Duplicate Check)
         if (person.status !== 'pending') {
@@ -879,12 +874,10 @@ export default function Attendance() {
                             )}
                         </div>
 
-                        {role === 'institution' && (
-                            <div style={{ display: 'flex', gap: '5px' }}>
-                                <button className={`btn`} style={{ padding: '10px', background: view === 'students' ? '#0984e3' : '#b2bec3' }} onClick={() => setView('students')}>Students</button>
-                                <button className={`btn`} style={{ padding: '10px', background: view === 'teachers' ? '#e17055' : '#b2bec3' }} onClick={() => setView('teachers')}>Teachers</button>
-                            </div>
-                        )}
+                        <div style={{ display: 'flex', gap: '5px' }}>
+                            <button className={`btn`} style={{ padding: '10px', background: view === 'students' ? '#0984e3' : '#b2bec3' }} onClick={() => setView('students')}>Students</button>
+                            <button className={`btn`} style={{ padding: '10px', background: view === 'teachers' ? '#e17055' : '#b2bec3' }} onClick={() => setView('teachers')}>Teachers</button>
+                        </div>
                     </div>
 
                     {/* List */}
@@ -1027,30 +1020,28 @@ export default function Attendance() {
                                                     </button>
                                                 )}
 
-                                                {!(role === 'institution' && view === 'students') && (
-                                                    <>
-                                                        <button
-                                                            disabled={suspended}
-                                                            onClick={() => markAttendance(item.id, 'present')}
-                                                            style={{
-                                                                padding: '6px 14px', borderRadius: '6px', border: 'none',
-                                                                cursor: suspended ? 'not-allowed' : 'pointer',
-                                                                background: item.status === 'present' ? '#00b894' : '#ecf0f1', color: item.status === 'present' ? 'white' : '#2d3436'
-                                                            }}>
-                                                            P
-                                                        </button>
-                                                        <button
-                                                            disabled={suspended}
-                                                            onClick={() => markAttendance(item.id, 'absent')}
-                                                            style={{
-                                                                padding: '6px 14px', borderRadius: '6px', border: 'none',
-                                                                cursor: suspended ? 'not-allowed' : 'pointer',
-                                                                background: item.status === 'absent' ? '#d63031' : '#ecf0f1', color: item.status === 'absent' ? 'white' : '#2d3436'
-                                                            }}>
-                                                            A
-                                                        </button>
-                                                    </>
-                                                )}
+                                                <>
+                                                    <button
+                                                        disabled={suspended}
+                                                        onClick={() => markAttendance(item.id, 'present')}
+                                                        style={{
+                                                            padding: '6px 14px', borderRadius: '6px', border: 'none',
+                                                            cursor: suspended ? 'not-allowed' : 'pointer',
+                                                            background: item.status === 'present' ? '#00b894' : '#ecf0f1', color: item.status === 'present' ? 'white' : '#2d3436'
+                                                        }}>
+                                                        P
+                                                    </button>
+                                                    <button
+                                                        disabled={suspended}
+                                                        onClick={() => markAttendance(item.id, 'absent')}
+                                                        style={{
+                                                            padding: '6px 14px', borderRadius: '6px', border: 'none',
+                                                            cursor: suspended ? 'not-allowed' : 'pointer',
+                                                            background: item.status === 'absent' ? '#d63031' : '#ecf0f1', color: item.status === 'absent' ? 'white' : '#2d3436'
+                                                        }}>
+                                                        A
+                                                    </button>
+                                                </>
                                             </div>
                                         </div>
                                     </div>

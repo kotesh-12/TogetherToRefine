@@ -101,8 +101,6 @@ function App() {
                       <Route path="/select-feedback-target" element={<SelectFeedbackTarget />} />
                       <Route path="/attendance" element={<Attendance />} />
                       <Route path="/timetable" element={<Timetable />} />
-                      <Route path="/attendance" element={<Attendance />} />
-                      <Route path="/timetable" element={<Timetable />} />
                       <Route path="/exam" element={<Exam />} />
                       <Route path="/announcements" element={<Announcements />} />
                       <Route path="/homework" element={<HomeworkSystem />} />
