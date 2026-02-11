@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../context/LanguageContext';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { collection, addDoc, query, where, getDocs, updateDoc, deleteDoc, doc, serverTimestamp, orderBy } from 'firebase/firestore';
 
 export default function LibraryManagement() {
@@ -20,6 +20,14 @@ export default function LibraryManagement() {
     const [bookISBN, setBookISBN] = useState('');
     const [bookCategory, setBookCategory] = useState('');
     const [bookCopies, setBookCopies] = useState('');
+    const [bookPrice, setBookPrice] = useState('');
+    const [bookSubject, setBookSubject] = useState('');
+    const [rowNumber, setRowNumber] = useState('');
+    const [shelfNumber, setShelfNumber] = useState('');
+
+    // AI Scanning state
+    const [isScanning, setIsScanning] = useState(false);
+    const [auditResults, setAuditResults] = useState(null); // For bulk scan results
 
     // Issue/Return State
     const [issuedBooks, setIssuedBooks] = useState([]);
@@ -52,13 +60,86 @@ export default function LibraryManagement() {
     const fetchBooks = async () => {
         setLoading(true);
         try {
-            const q = query(collection(db, "library_books"));
+            const q = query(collection(db, "library_books"), orderBy("addedAt", "desc"));
             const snap = await getDocs(q);
             setBooks(snap.docs.map(d => ({ id: d.id, ...d.data() })));
         } catch (e) {
             console.error(e);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleAIScan = async (e, mode = 'single') => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setIsScanning(true);
+        setAuditResults(null);
+        try {
+            const reader = new FileReader();
+            const base64Promise = new Promise((resolve) => {
+                reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                reader.readAsDataURL(file);
+            });
+            const base64Img = await base64Promise;
+
+            const token = await auth.currentUser?.getIdToken();
+
+            let prompt = "";
+            if (mode === 'bulk') {
+                prompt = "Look at this library shelf. Identify ALL books visible. For each book, extract Title and Author. Return a JSON array: { books: [{title, author}] }. Only return the JSON.";
+            } else if (mode === 'issue') {
+                prompt = "This photo contains a Book cover and a Student ID Card. Identify the Book Title AND the Student Name and Roll/ID Number from the card. Return JSON: { bookTitle, studentName, studentRoll }. Only return the JSON.";
+            } else {
+                prompt = "Explain what is this book. Extract Title, Author, Price (just number), and Subject. Format as JSON: {title, author, price, subject}.";
+            }
+
+            const response = await fetch(`${window.location.origin.includes('localhost') ? 'http://localhost:5000' : ''}/api/chat`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    message: prompt,
+                    image: base64Img,
+                    mimeType: file.type,
+                    userContext: userData
+                })
+            });
+
+            const data = await response.json();
+            const aiText = data.text;
+            const jsonMatch = aiText.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+
+            if (jsonMatch) {
+                const parsed = JSON.parse(jsonMatch[0]);
+                if (mode === 'bulk') {
+                    setAuditResults(parsed.books || []);
+                    alert(`🔍 Audit Complete: Detected ${parsed.books?.length} books.`);
+                } else if (mode === 'issue') {
+                    setStudentName(parsed.studentName || '');
+                    setStudentRoll(parsed.studentRoll || '');
+                    // Auto-find book in our local list
+                    const found = books.find(b => b.title.toLowerCase().includes(parsed.bookTitle?.toLowerCase()) || parsed.bookTitle?.toLowerCase().includes(b.title.toLowerCase()));
+                    if (found) setSelectedBook(found.id);
+                    alert("📇 Smart Detect: Linked Student '" + parsed.studentName + "' to Book '" + parsed.bookTitle + "'");
+                } else {
+                    setBookTitle(parsed.title || '');
+                    setBookAuthor(parsed.author || '');
+                    setBookPrice(parsed.price || '');
+                    setBookSubject(parsed.subject || '');
+                    alert("✨ AI successfully detected book details.");
+                }
+            } else {
+                alert("AI couldn't extract data clearly.");
+            }
+        } catch (err) {
+            console.error("AI Scan Error:", err);
+            alert("Error scanning. Try again.");
+        } finally {
+            setIsScanning(false);
         }
     };
 
@@ -90,6 +171,10 @@ export default function LibraryManagement() {
                 category: bookCategory,
                 totalCopies: parseInt(bookCopies),
                 availableCopies: parseInt(bookCopies),
+                price: bookPrice,
+                subject: bookSubject,
+                rowNumber: rowNumber,
+                shelfNumber: shelfNumber,
                 addedBy: userData.uid,
                 addedAt: serverTimestamp()
             });
@@ -100,6 +185,10 @@ export default function LibraryManagement() {
             setBookISBN('');
             setBookCategory('');
             setBookCopies('');
+            setBookPrice('');
+            setBookSubject('');
+            setRowNumber('');
+            setShelfNumber('');
             fetchBooks();
         } catch (e) {
             console.error(e);
@@ -249,6 +338,7 @@ export default function LibraryManagement() {
     const filteredBooks = books.filter(book =>
         book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         book.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        book.subject?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         book.isbn?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
@@ -383,61 +473,131 @@ export default function LibraryManagement() {
                 {/* BOOKS CATALOG TAB */}
                 {activeTab === 'books' && (
                     <>
-                        {/* Add Book Form (Admin Only) */}
+                        {/* Librarian Tools (Admin Only) */}
                         {!isStudent && (
-                            <div className="card" style={{ marginBottom: '20px' }}>
-                                <h3>Add New Book</h3>
-                                <div style={{ display: 'grid', gap: '10px' }}>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
-                                        <input
-                                            type="text"
-                                            className="input-field"
-                                            placeholder="Book Title *"
-                                            value={bookTitle}
-                                            onChange={(e) => setBookTitle(e.target.value)}
-                                        />
-                                        <input
-                                            type="text"
-                                            className="input-field"
-                                            placeholder="Author *"
-                                            value={bookAuthor}
-                                            onChange={(e) => setBookAuthor(e.target.value)}
-                                        />
-                                        <input
-                                            type="text"
-                                            className="input-field"
-                                            placeholder="ISBN (Optional)"
-                                            value={bookISBN}
-                                            onChange={(e) => setBookISBN(e.target.value)}
-                                        />
-                                        <select className="input-field" value={bookCategory} onChange={(e) => setBookCategory(e.target.value)}>
-                                            <option value="">Select Category</option>
-                                            {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                                        </select>
-                                        <input
-                                            type="number"
-                                            className="input-field"
-                                            placeholder="Number of Copies *"
-                                            value={bookCopies}
-                                            onChange={(e) => setBookCopies(e.target.value)}
-                                        />
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '20px' }}>
+                                {/* Add Book Form */}
+                                <div className="card" style={{ borderTop: '4px solid #0984e3' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                                        <h3 style={{ margin: 0 }}>Add New Book</h3>
+                                        <div>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                capture="environment"
+                                                id="ai-scanner"
+                                                hidden
+                                                onChange={(e) => handleAIScan(e, 'single')}
+                                                disabled={isScanning}
+                                            />
+                                            <label
+                                                htmlFor="ai-scanner"
+                                                style={{
+                                                    padding: '8px 15px',
+                                                    background: isScanning ? '#7f8c8d' : 'linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%)',
+                                                    color: 'white',
+                                                    borderRadius: '8px',
+                                                    cursor: isScanning ? 'not-allowed' : 'pointer',
+                                                    fontSize: '14px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '8px',
+                                                    boxShadow: '0 4px 10px rgba(108, 92, 231, 0.3)'
+                                                }}
+                                            >
+                                                {isScanning ? '⏳ Detection...' : '📸 Scan Cover'}
+                                            </label>
+                                        </div>
                                     </div>
-                                    <button onClick={addBook} className="btn">➕ Add Book</button>
+
+                                    <div style={{ display: 'grid', gap: '20px' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                            <input type="text" className="input-field" placeholder="Title" value={bookTitle} onChange={(e) => setBookTitle(e.target.value)} />
+                                            <input type="text" className="input-field" placeholder="Author" value={bookAuthor} onChange={(e) => setBookAuthor(e.target.value)} />
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                            <input type="text" className="input-field" placeholder="Subject" value={bookSubject} onChange={(e) => setBookSubject(e.target.value)} />
+                                            <input type="number" className="input-field" placeholder="Price" value={bookPrice} onChange={(e) => setBookPrice(e.target.value)} />
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                            <input type="text" className="input-field" placeholder="Row" value={rowNumber} onChange={(e) => setRowNumber(e.target.value)} />
+                                            <input type="text" className="input-field" placeholder="Shelf" value={shelfNumber} onChange={(e) => setShelfNumber(e.target.value)} />
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                            <select className="input-field" value={bookCategory} onChange={(e) => setBookCategory(e.target.value)}>
+                                                <option value="">Category</option>
+                                                {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                                            </select>
+                                            <input type="number" className="input-field" placeholder="Copies" value={bookCopies} onChange={(e) => setBookCopies(e.target.value)} />
+                                        </div>
+                                        <button onClick={addBook} className="btn" style={{ height: '40px' }}>➕ Save Book</button>
+                                    </div>
+                                </div>
+
+                                {/* Bulk Shelf Audit Tool */}
+                                <div className="card" style={{ borderTop: '4px solid #f39c12' }}>
+                                    <h3 style={{ margin: '0 0 10px 0' }}>📦 Bulk Shelf Audit</h3>
+                                    <p style={{ fontSize: '12px', color: '#636e72', marginBottom: '15px' }}>
+                                        Take one photo of multiple books. AI will identify them and check against your database.
+                                    </p>
+
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        capture="environment"
+                                        id="bulk-scanner"
+                                        hidden
+                                        onChange={(e) => handleAIScan(e, 'bulk')}
+                                        disabled={isScanning}
+                                    />
+                                    <label
+                                        htmlFor="bulk-scanner"
+                                        style={{
+                                            padding: '12px',
+                                            background: isScanning ? '#7f8c8d' : '#f39c12',
+                                            color: 'white',
+                                            borderRadius: '8px',
+                                            cursor: isScanning ? 'not-allowed' : 'pointer',
+                                            display: 'block',
+                                            textAlign: 'center',
+                                            fontWeight: 'bold'
+                                        }}
+                                    >
+                                        {isScanning ? '⏳ Analyzing Shelf...' : '📸 Audit Whole Shelf'}
+                                    </label>
+
+                                    {auditResults && (
+                                        <div style={{ marginTop: '15px', maxHeight: '200px', overflowY: 'auto', background: '#f8f9fa', padding: '10px', borderRadius: '8px' }}>
+                                            <div style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '8px', color: '#2ecc71' }}>
+                                                ✅ Found {auditResults.length} Books:
+                                            </div>
+                                            {auditResults.map((b, i) => (
+                                                <div key={i} style={{ fontSize: '12px', padding: '5px 0', borderBottom: '1px solid #ddd' }}>
+                                                    • <strong>{b.title}</strong> by {b.author}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
 
+                        {/* Quick Approval View (Librarian Burden Reducer) */}
+                        {!isStudent && activeTab === 'books' && (
+                            <PendingRequests fetchIssuedBooks={fetchIssuedBooks} />
+                        )}
+
                         {/* Books List */}
                         <div className="card">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
                                 <h3 style={{ margin: 0 }}>Books Catalog ({books.length})</h3>
                                 <input
                                     type="text"
                                     className="input-field"
-                                    placeholder="🔍 Search books..."
+                                    placeholder="🔍 Search by Title, Author, or Subject..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    style={{ maxWidth: '300px' }}
+                                    style={{ maxWidth: '400px' }}
                                 />
                             </div>
 
@@ -452,52 +612,46 @@ export default function LibraryManagement() {
                                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
                                         <thead style={{ background: '#f8f9fa' }}>
                                             <tr>
-                                                <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Title</th>
-                                                <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Author</th>
-                                                <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Category</th>
-                                                <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #dee2e6' }}>Available</th>
-                                                <th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #dee2e6' }}>{isStudent ? 'Action' : 'Total'}</th>
+                                                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Title & Author</th>
+                                                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Location</th>
+                                                <th style={{ padding: '12px', textAlign: 'center', borderBottom: '2px solid #dee2e6' }}>Status</th>
+                                                <th style={{ padding: '12px', textAlign: 'center', borderBottom: '2px solid #dee2e6' }}>Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {filteredBooks.map(book => (
                                                 <tr key={book.id} style={{ borderBottom: '1px solid #eee' }}>
-                                                    <td style={{ padding: '10px' }}>{book.title}</td>
-                                                    <td style={{ padding: '10px', color: '#636e72' }}>{book.author}</td>
-                                                    <td style={{ padding: '10px' }}>
-                                                        <span style={{
-                                                            background: '#e8f5e9',
-                                                            color: '#2e7d32',
-                                                            padding: '3px 8px',
-                                                            borderRadius: '4px',
-                                                            fontSize: '12px'
-                                                        }}>
-                                                            {book.category || 'Uncategorized'}
-                                                        </span>
+                                                    <td style={{ padding: '12px' }}>
+                                                        <div style={{ fontWeight: 'bold' }}>{book.title}</div>
+                                                        <div style={{ fontSize: '12px', color: '#636e72' }}>by {book.author} | {book.subject}</div>
+                                                    </td>
+                                                    <td style={{ padding: '12px' }}>
+                                                        <div style={{ background: '#f1f2f6', padding: '4px 8px', borderRadius: '4px', display: 'inline-block', fontSize: '12px' }}>
+                                                            Row {book.rowNumber || '?'}, Shelf {book.shelfNumber || '?'}
+                                                        </div>
                                                     </td>
                                                     <td style={{
-                                                        padding: '10px',
+                                                        padding: '12px',
                                                         textAlign: 'center',
                                                         color: book.availableCopies > 0 ? '#27ae60' : '#e74c3c',
                                                         fontWeight: 'bold'
                                                     }}>
-                                                        {book.availableCopies}
+                                                        {book.availableCopies > 0 ? 'AVAILABLE' : 'OUT'}
                                                     </td>
-                                                    <td style={{ padding: '10px', textAlign: 'center' }}>
-                                                        {isStudent ? (
-                                                            book.availableCopies === 0 ? (
-                                                                <button
-                                                                    onClick={() => handleReserve(book)}
-                                                                    className="btn"
-                                                                    style={{ padding: '5px 10px', fontSize: '12px', background: '#f39c12' }}
-                                                                >
-                                                                    🕒 Reserve
-                                                                </button>
-                                                            ) : (
-                                                                <span style={{ color: '#27ae60', fontSize: '12px' }}>Available</span>
-                                                            )
-                                                        ) : (
-                                                            book.totalCopies
+                                                    <td style={{ padding: '12px', textAlign: 'center' }}>
+                                                        {isStudent && book.availableCopies > 0 && (
+                                                            <button
+                                                                onClick={() => handleStudentSelfIssue(book)}
+                                                                className="btn"
+                                                                style={{ padding: '6px 12px', fontSize: '12px', background: '#0984e3' }}
+                                                            >
+                                                                📥 Scan to Issue
+                                                            </button>
+                                                        )}
+                                                        {!isStudent && (
+                                                            <span style={{ fontSize: '12px', color: '#999' }}>
+                                                                {book.availableCopies}/{book.totalCopies}
+                                                            </span>
                                                         )}
                                                     </td>
                                                 </tr>
@@ -512,24 +666,62 @@ export default function LibraryManagement() {
 
                 {/* ISSUE BOOK TAB */}
                 {activeTab === 'issue' && (
-                    <div className="card">
-                        <h3>Issue Book to Student</h3>
+                    <div className="card" style={{ borderTop: '4px solid #6c5ce7' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <h3 style={{ margin: 0 }}>Issue Book to Student</h3>
+                            <div>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    capture="environment"
+                                    id="issue-scanner"
+                                    hidden
+                                    onChange={(e) => handleAIScan(e, 'issue')}
+                                    disabled={isScanning}
+                                />
+                                <label
+                                    htmlFor="issue-scanner"
+                                    style={{
+                                        padding: '10px 18px',
+                                        background: isScanning ? '#7f8c8d' : 'linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%)',
+                                        color: 'white',
+                                        borderRadius: '8px',
+                                        cursor: isScanning ? 'not-allowed' : 'pointer',
+                                        fontSize: '14px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        fontWeight: 'bold',
+                                        boxShadow: '0 4px 15px rgba(108, 92, 231, 0.4)'
+                                    }}
+                                >
+                                    {isScanning ? '⏳ Reading ID & Book...' : '📸 Smart Scan (Book + ID Card)'}
+                                </label>
+                            </div>
+                        </div>
+
+                        <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '10px', marginBottom: '20px', border: '1px dashed #dcdde1' }}>
+                            <p style={{ margin: 0, fontSize: '13px', color: '#636e72' }}>
+                                💡 <strong>Pro Tip:</strong> Use "Smart Scan" to take one photo of the book cover and student's ID card together. AI will fill the details for you!
+                            </p>
+                        </div>
+
                         <div style={{ display: 'grid', gap: '15px' }}>
                             <div>
                                 <label style={{ fontSize: '13px', color: '#636e72', display: 'block', marginBottom: '5px' }}>
                                     Select Book *
                                 </label>
                                 <select className="input-field" value={selectedBook} onChange={(e) => setSelectedBook(e.target.value)}>
-                                    <option value="">Choose a book</option>
+                                    <option value="">{isScanning ? 'Detecting book...' : 'Choose a book'}</option>
                                     {books.filter(b => b.availableCopies > 0).map(book => (
                                         <option key={book.id} value={book.id}>
-                                            {book.title} by {book.author} ({book.availableCopies} available)
+                                            {book.title} ({book.availableCopies} left)
                                         </option>
                                     ))}
                                 </select>
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
                                 <div>
                                     <label style={{ fontSize: '13px', color: '#636e72', display: 'block', marginBottom: '5px' }}>
                                         Student Name *
@@ -539,38 +731,26 @@ export default function LibraryManagement() {
                                         className="input-field"
                                         value={studentName}
                                         onChange={(e) => setStudentName(e.target.value)}
-                                        placeholder="Enter student name"
+                                        placeholder="Auto-detected from ID Card"
                                     />
                                 </div>
 
                                 <div>
                                     <label style={{ fontSize: '13px', color: '#636e72', display: 'block', marginBottom: '5px' }}>
-                                        Roll Number *
+                                        Roll Number / ID *
                                     </label>
                                     <input
                                         type="text"
                                         className="input-field"
                                         value={studentRoll}
                                         onChange={(e) => setStudentRoll(e.target.value)}
-                                        placeholder="Enter roll number"
+                                        placeholder="Auto-detected from ID Card"
                                     />
                                 </div>
 
                                 <div>
                                     <label style={{ fontSize: '13px', color: '#636e72', display: 'block', marginBottom: '5px' }}>
-                                        Issue Date
-                                    </label>
-                                    <input
-                                        type="date"
-                                        className="input-field"
-                                        value={issueDate}
-                                        onChange={(e) => setIssueDate(e.target.value)}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label style={{ fontSize: '13px', color: '#636e72', display: 'block', marginBottom: '5px' }}>
-                                        Return Date *
+                                        Due Date (Select) *
                                     </label>
                                     <input
                                         type="date"
@@ -581,7 +761,7 @@ export default function LibraryManagement() {
                                 </div>
                             </div>
 
-                            <button onClick={issueBook} className="btn">✅ Issue Book</button>
+                            <button onClick={issueBook} className="btn" style={{ height: '45px', fontSize: '16px' }}>✅ Confirm & Issue Book</button>
                         </div>
                     </div>
                 )}
@@ -706,6 +886,108 @@ export default function LibraryManagement() {
                     </div>
                 )}
             </div>
-        </div >
+        </div>
+    );
+}
+
+// Burden Reducer Component: Handles Quick Approvals
+function PendingRequests({ fetchIssuedBooks }) {
+    const [requests, setRequests] = useState([]);
+
+    useEffect(() => {
+        const fetchRequests = async () => {
+            const q = query(
+                collection(db, "library_issue_requests"),
+                where("status", "==", "pending"),
+                orderBy("requestedAt", "desc")
+            );
+            const snap = await getDocs(q);
+            setRequests(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        };
+        fetchRequests();
+    }, []);
+
+    const handleAction = async (request, action) => {
+        try {
+            if (action === 'approve') {
+                const bookRef = doc(db, "library_books", request.bookId);
+                const bookSnap = await getDocs(query(collection(db, "library_books"), where("__name__", "==", request.bookId)));
+                const bookData = bookSnap.docs[0]?.data();
+
+                if (!bookData || bookData.availableCopies <= 0) {
+                    alert("Book no longer available!");
+                    return;
+                }
+
+                // 1. Create Issue Record
+                const returnDate = new Date();
+                returnDate.setDate(returnDate.getDate() + 14); // Default 14 days
+
+                await addDoc(collection(db, "library_issued"), {
+                    bookId: request.bookId,
+                    bookTitle: request.bookTitle,
+                    studentName: request.studentName,
+                    studentRoll: request.studentRoll,
+                    issueDate: new Date(),
+                    expectedReturnDate: returnDate,
+                    status: 'issued',
+                    issuedBy: 'auto-self-service',
+                    issuedAt: serverTimestamp()
+                });
+
+                // 2. Update Book
+                await updateDoc(doc(db, "library_books", request.bookId), {
+                    availableCopies: bookData.availableCopies - 1
+                });
+            }
+
+            // 3. Update Request Status
+            await updateDoc(doc(db, "library_issue_requests", request.id), {
+                status: action === 'approve' ? 'approved' : 'declined',
+                processedAt: serverTimestamp()
+            });
+
+            alert(`✅ Request ${action === 'approve' ? 'Approved' : 'Declined'}`);
+            setRequests(prev => prev.filter(r => r.id !== request.id));
+            fetchIssuedBooks();
+        } catch (e) {
+            console.error(e);
+            alert("Error processing request.");
+        }
+    };
+
+    if (requests.length === 0) return null;
+
+    return (
+        <div className="card" style={{ background: '#e3f2fd', borderLeft: '5px solid #0984e3', marginBottom: '20px' }}>
+            <h3 style={{ margin: '0 0 10px 0', color: '#0984e3' }}>🔔 Quick Approval Queue ({requests.length})</h3>
+            <p style={{ fontSize: '12px', color: '#636e72', marginBottom: '15px' }}>
+                Students have scanned these books. Verify the student is standing in front of you and click Approve.
+            </p>
+            <div style={{ display: 'grid', gap: '10px' }}>
+                {requests.map(r => (
+                    <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white', padding: '12px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                        <div>
+                            <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{r.bookTitle}</div>
+                            <div style={{ fontSize: '12px', color: '#636e72' }}>Requested by: <strong>{r.studentName}</strong> ({r.studentRoll})</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                                onClick={() => handleAction(r, 'approve')}
+                                style={{ background: '#2ecc71', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}
+                            >
+                                Approve
+                            </button>
+                            <button
+                                onClick={() => handleAction(r, 'decline')}
+                                style={{ background: '#e74c3c', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+                            >
+                                Decline
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
     );
 }
