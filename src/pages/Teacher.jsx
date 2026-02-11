@@ -239,26 +239,30 @@ export default function Teacher() {
             </div>
 
             <div className="container">
-                <div className="card text-center" style={{ marginTop: '20px', borderTop: simpleMode ? '6px solid #27ae60' : 'none' }}>
-                    <h2 style={{ marginBottom: '5px' }}>{t('teacher_welcome')}, {userData?.name || 'Teacher'}!</h2>
+                {/* Elite Teacher Hero */}
+                <div className="teacher-hero-card">
+                    <div className="teacher-hero-sparkle">🍏</div>
+                    <div className="teacher-hero-pill">🍎 {userData?.role || 'Professional Teacher'}</div>
+                    <h1 className="teacher-welcome-title">
+                        {t('teacher_welcome')}, {userData?.name || 'Academician'}!
+                    </h1>
+                    <p className="student-subtext" style={{ opacity: 1 }}>{t('teacher_intro')}</p>
 
+                    {userData?.pid && (
+                        <div style={{ marginTop: '15px' }} className="teacher-hero-pill">
+                            ID: {userData.pid}
+                        </div>
+                    )}
+                </div>
+
+                <div className="card shadow-sm" style={{ borderTop: simpleMode ? '6px solid #27ae60' : 'none' }}>
                     {!simpleMode ? (
                         <>
-                            {userData?.pid && (
-                                <div style={{
-                                    background: '#f1f2f6', color: '#2d3436',
-                                    display: 'inline-block', padding: '4px 10px',
-                                    borderRadius: '20px', fontSize: '12px',
-                                    fontWeight: 'bold', marginBottom: '15px',
-                                    border: '1px solid #dfe6e9'
-                                }}>
-                                    ID: {userData.pid}
-                                </div>
-                            )}
-                            <p>{t('teacher_intro')}</p>
                             {allotments.length > 0 ? (
-                                <div style={{ marginBottom: '15px' }}>
-                                    <h4 style={{ margin: '5px 0', color: '#636e72' }}>{t('my_classes')}:</h4>
+                                <div style={{ marginBottom: '20px' }}>
+                                    <h4 style={{ margin: '0 0 10px 0', color: 'var(--text-muted)', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                        {t('my_classes')}:
+                                    </h4>
                                     <div className="teacher-classes-list">
                                         {allotments.map(a => (
                                             <span key={a.id} className="teacher-class-pill">
@@ -268,31 +272,64 @@ export default function Teacher() {
                                     </div>
                                 </div>
                             ) : userData?.assignedClass ? (
-                                <p style={{ color: '#0984e3', fontWeight: 'bold' }}>
-                                    Assigned Class: {userData.assignedClass} - {userData.assignedSection} ({userData.subject})
-                                </p>
+                                <div className="teacher-hero-pill" style={{ color: 'var(--primary)', background: 'rgba(108, 92, 231, 0.1)', border: 'none', marginBottom: '15px' }}>
+                                    🎯 {userData.assignedClass}-{userData.assignedSection} | {userData.subject}
+                                </div>
                             ) : (
-                                <p style={{ color: '#d63031', fontSize: '13px' }}>
-                                    ⚠️ No class assigned yet.
-                                </p>
+                                <div className="status-fail" style={{ padding: '10px', borderRadius: '12px', marginBottom: '20px', fontSize: '12px' }}>
+                                    ⚠️ No active teaching allotments found.
+                                </div>
                             )}
 
-                            <div className="teacher-actions-container">
-                                <button id="tour-teacher-groups" className="btn btn-primary" onClick={() => { vibrate(); handleGoToGroups(); }}>{t('go_to_groups')}</button>
-                                <button id="tour-teacher-attendance" className="btn btn-primary" style={{ background: '#0984e3' }} onClick={() => { vibrate(); handleCardClick('/attendance'); }}>{t('mark_attendance')}</button>
-                                <button id="tour-teacher-4way" className="btn" style={{ background: '#e84393', color: 'white' }} onClick={() => { vibrate(); handleCardClick('/4-way-learning'); }}>{t('four_way')}</button>
-                                <button id="tour-teacher-library" className="btn btn-primary" style={{ background: '#d63031' }} onClick={() => { vibrate(); handleCardClick('/video-library'); }}>{t('video_library')}</button>
-                                <button className="btn btn-primary" style={{ background: '#9b59b6' }} onClick={() => { vibrate(); handleCardClick('/marks'); }}>📊 {t('marks')}</button>
-                                <button className="btn btn-primary" style={{ background: '#8e44ad' }} onClick={() => { vibrate(); handleCardClick('/analytics'); }}>📈 {t('analytics')}</button>
-                                <button className="btn btn-primary" style={{ background: '#e67e22' }} onClick={() => { vibrate(); handleCardClick('/homework'); }}>📚 {t('homework')}</button>
-                                <button className="btn btn-primary" style={{ background: '#00cec9' }} onClick={() => { vibrate(); handleCardClick('/general-feedback'); }}>{t('feedback')}</button>
-                                <button className="btn btn-primary" style={{ background: '#fdcb6e', color: '#2d3436' }} onClick={() => { vibrate(); handleCardClick('/timetable'); }}>{t('timetable')}</button>
-                                <button className="btn btn-primary" style={{ background: '#16a085' }} onClick={() => { vibrate(); handleCardClick('/attendance-analytics'); }}>📊 {t('attendance_analytics')}</button>
-                                <button className="btn btn-primary" style={{ background: '#c0392b' }} onClick={() => { vibrate(); handleCardClick('/view-exam-seating'); }}>🪑 {t('view_exam_seats')}</button>
-                                <button className="btn btn-success" onClick={() => { vibrate(); handleCardClick('/gov-reports'); }}>{t('gov_reports')}</button>
-                                <button className="btn btn-primary" style={{ background: '#d35400' }} onClick={() => { vibrate(); handleCardClick('/dropout-predictor'); }}>⚠️ {t('dropout_risk')}</button>
-                                <button className="btn btn-primary" style={{ background: '#34495e' }} onClick={() => { vibrate(); handleCardClick('/library-management'); }}>📚 Library</button>
-                                <button className="btn btn-primary" style={{ background: '#1abc9c' }} onClick={() => { vibrate(); handleCardClick('/universal-scanner'); }}>📄 AI Paper Scan</button>
+                            <div className="teacher-grid-system">
+                                <div className="teacher-vibe-card" onClick={() => { vibrate(); handleGoToGroups(); }}>
+                                    <span className="teacher-vibe-icon">👥</span>
+                                    <span className="teacher-vibe-label">{t('go_to_groups')}</span>
+                                </div>
+                                <div className="teacher-vibe-card" style={{ borderColor: '#0984e3' }} onClick={() => { vibrate(); handleCardClick('/attendance'); }}>
+                                    <span className="teacher-vibe-icon">✅</span>
+                                    <span className="teacher-vibe-label">{t('mark_attendance')}</span>
+                                </div>
+                                <div className="teacher-vibe-card" style={{ borderColor: '#e84393' }} onClick={() => { vibrate(); handleCardClick('/4-way-learning'); }}>
+                                    <span className="teacher-vibe-icon">🤝</span>
+                                    <span className="teacher-vibe-label">{t('four_way')}</span>
+                                </div>
+                                <div className="teacher-vibe-card" style={{ borderColor: '#d63031' }} onClick={() => { vibrate(); handleCardClick('/video-library'); }}>
+                                    <span className="teacher-vibe-icon">📺</span>
+                                    <span className="teacher-vibe-label">{t('video_library')}</span>
+                                </div>
+                                <div className="teacher-vibe-card" style={{ borderColor: '#9b59b6' }} onClick={() => { vibrate(); handleCardClick('/marks'); }}>
+                                    <span className="teacher-vibe-icon">📊</span>
+                                    <span className="teacher-vibe-label">{t('marks')}</span>
+                                </div>
+                                <div className="teacher-vibe-card" style={{ borderColor: '#8e44ad' }} onClick={() => { vibrate(); handleCardClick('/analytics'); }}>
+                                    <span className="teacher-vibe-icon">📈</span>
+                                    <span className="teacher-vibe-label">{t('analytics')}</span>
+                                </div>
+                                <div className="teacher-vibe-card" style={{ borderColor: '#e67e22' }} onClick={() => { vibrate(); handleCardClick('/homework'); }}>
+                                    <span className="teacher-vibe-icon">📚</span>
+                                    <span className="teacher-vibe-label">{t('homework')}</span>
+                                </div>
+                                <div className="teacher-vibe-card" style={{ borderColor: '#00cec9' }} onClick={() => { vibrate(); handleCardClick('/general-feedback'); }}>
+                                    <span className="teacher-vibe-icon">💬</span>
+                                    <span className="teacher-vibe-label">{t('feedback')}</span>
+                                </div>
+                                <div className="teacher-vibe-card" style={{ borderColor: '#fdcb6e' }} onClick={() => { vibrate(); handleCardClick('/timetable'); }}>
+                                    <span className="teacher-vibe-icon">🕒</span>
+                                    <span className="teacher-vibe-label">{t('timetable')}</span>
+                                </div>
+                                <div className="teacher-vibe-card" style={{ borderColor: '#c0392b' }} onClick={() => { vibrate(); handleCardClick('/view-exam-seating'); }}>
+                                    <span className="teacher-vibe-icon">🪑</span>
+                                    <span className="teacher-vibe-label">Exam Seats</span>
+                                </div>
+                                <div className="teacher-vibe-card" style={{ borderColor: '#27ae60' }} onClick={() => { vibrate(); handleCardClick('/gov-reports'); }}>
+                                    <span className="teacher-vibe-icon">📋</span>
+                                    <span className="teacher-vibe-label">{t('gov_reports')}</span>
+                                </div>
+                                <div className="teacher-vibe-card" style={{ borderColor: '#1abc9c' }} onClick={() => { vibrate(); handleCardClick('/universal-scanner'); }}>
+                                    <span className="teacher-vibe-icon">📄</span>
+                                    <span className="teacher-vibe-label">AI Scanner</span>
+                                </div>
                             </div>
                         </>
                     ) : (

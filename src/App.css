@@ -1546,3 +1546,123 @@ button.btn.google-btn:hover {
     border-radius: var(--radius-md);
   }
 }
+
+/* Teacher Dashboard Elite Styles */
+.teacher-hero-card {
+  background: linear-gradient(135deg, var(--primary) 0%, #4834d4 100%);
+  padding: 32px 24px;
+  border-radius: var(--radius-md);
+  color: white;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 12px 30px rgba(108, 92, 231, 0.25);
+}
+
+.teacher-hero-sparkle {
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  font-size: 140px;
+  opacity: 0.12;
+  transform: rotate(15deg);
+}
+
+.teacher-welcome-title {
+  font-size: 26px;
+  font-weight: 800;
+  margin: 0 0 10px 0;
+  letter-spacing: -0.5px;
+}
+
+.teacher-hero-pill {
+  display: inline-flex;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.teacher-grid-system {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.teacher-vibe-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-md);
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+
+.teacher-vibe-card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary-light);
+}
+
+.teacher-vibe-icon {
+  font-size: 34px;
+  margin-bottom: 4px;
+}
+
+.teacher-vibe-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+
+.teacher-class-pill {
+  display: inline-block;
+  background: var(--secondary);
+  color: var(--text-main);
+  padding: 6px 14px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  margin: 4px;
+  border: 1px solid var(--divider);
+}
+
+@media (min-width: 900px) {
+  .teacher-grid-system {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .teacher-hero-card {
+    padding: 24px 20px;
+  }
+
+  .teacher-welcome-title {
+    font-size: 22px;
+  }
+
+  .teacher-vibe-card {
+    padding: 20px 12px;
+  }
+
+  .teacher-vibe-icon {
+    font-size: 30px;
+  }
+
+  .teacher-vibe-label {
+    font-size: 13px;
+  }
+}
