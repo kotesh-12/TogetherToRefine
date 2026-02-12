@@ -6,12 +6,16 @@ service cloud.firestore {
     function isSignedIn() { return request.auth != null; }
     function isOwner(uid) { return request.auth.uid == uid; }
     
+    // NEW: Multi-collection role check
+    function hasRole(role) {
+       return (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role.lower() == role) ||
+              (exists(/databases/$(database)/documents/teachers/$(request.auth.uid)) && get(/databases/$(database)/documents/teachers/$(request.auth.uid)).data.role.lower() == role) ||
+              (exists(/databases/$(database)/documents/institutions/$(request.auth.uid)) && get(/databases/$(database)/documents/institutions/$(request.auth.uid)).data.role.lower() == role);
+    }
+
     // SECURE ADMIN CHECK: Case-insensitive & consolidated
     function isAdmin() { 
-       return isSignedIn() && (
-         exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role.lower() == 'admin'
-       );
+       return isSignedIn() && hasRole('admin');
     }
 
     // --- 1. USER PROFILES ---
@@ -70,11 +74,7 @@ service cloud.firestore {
           isAdmin()
        );
        // Only Institution/Admin can write fees
-       allow write: if isSignedIn() && (
-          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'institution') ||
-          isAdmin()
-       );
+       allow write: if isSignedIn() && (hasRole('institution') || hasRole('admin'));
     }
 
     // --- 3. ANNOUNCEMENTS (SECURED) ---
@@ -113,9 +113,7 @@ service cloud.firestore {
 
     match /timetables/{id} { 
         allow read: if isSignedIn();
-        allow write: if isSignedIn() && (
-            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['teacher', 'institution', 'admin']
-        );
+        allow write: if isSignedIn() && (hasRole('teacher') || hasRole('institution') || hasRole('admin'));
     }
 
     // Generic fallback for less critical collections (Locked to signed in for now, specific rules recommended later)
@@ -136,7 +134,8 @@ service cloud.firestore {
     match /library_reservations/{id} { allow read, write: if isSignedIn(); }
     match /homework/{id} { allow read, write: if isSignedIn(); }
     match /homework_submissions/{id} { allow read, write: if isSignedIn(); }
-    match /exam_seating_plans/{id} { allow read, write: if isSignedIn(); }
+    match /exam_seating_plans/{id} { allow read, write: if isSignedIn() && (hasRole('institution') || hasRole('admin')); }
+    match /exam_seating/{id} { allow read, write: if isSignedIn() && (hasRole('institution') || hasRole('admin')); }
 
     // --- 6. AI CHATS ---
     match /ai_chats/{userId} {

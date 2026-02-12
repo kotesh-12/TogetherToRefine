@@ -14,8 +14,10 @@ export default function ViewExamSeating() {
     const [mySeat, setMySeat] = useState(null);
 
     useEffect(() => {
-        fetchExamPlans();
-    }, []);
+        if (userData?.uid) {
+            fetchExamPlans();
+        }
+    }, [userData]);
 
     const fetchExamPlans = async () => {
         setLoading(true);
@@ -39,11 +41,16 @@ export default function ViewExamSeating() {
                     (plan.seatingPlan || []).some(room => room.invigilatorId === userData.uid)
                 );
             } else if (userData?.role === 'student') {
-                const myRoll = userData.rollNumber || userData.pid;
-                // Filter plans where this student appears in ANY room
+                const myRoll = (userData.rollNumber || userData.pid || '').toString();
+                const myUid = userData.uid;
+
+                // Filter plans where this student appears in ANY room (Double Check: UID or RollNo)
                 plans = plans.filter(plan =>
                     (plan.seatingPlan || []).some(room =>
-                        (room.seats || []).some(seat => seat.rollNo?.toString() === myRoll?.toString())
+                        (room.seats || []).some(seat =>
+                            (seat.userId === myUid) ||
+                            (seat.rollNo?.toString() === myRoll && myRoll !== '')
+                        )
                     )
                 );
 
@@ -65,12 +72,16 @@ export default function ViewExamSeating() {
     const findMySeat = (plan) => {
         if (!plan || !plan.seatingPlan) return;
 
-        const studentRoll = userData.rollNumber || userData.pid;
-        if (!studentRoll) return;
+        const studentRoll = (userData.rollNumber || userData.pid || '').toString();
+        const studentUid = userData.uid;
+        if (!studentUid && !studentRoll) return;
 
-        // Search through all rooms for this student's roll number
+        // Search through all rooms for this student
         for (const room of plan.seatingPlan) {
-            const seat = (room.seats || []).find(s => s.rollNo.toString() === studentRoll.toString());
+            const seat = (room.seats || []).find(s =>
+                (s.userId === studentUid) ||
+                (s.rollNo?.toString() === studentRoll && studentRoll !== '')
+            );
             if (seat) {
                 setMySeat({
                     roomName: room.roomName,

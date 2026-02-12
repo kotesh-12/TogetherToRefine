@@ -83,11 +83,15 @@ export default function ExamSeatingPlanner() {
                 where("classAssigned", "in", participatingClasses)
             );
             const snapshot = await getDocs(q);
-            const students = snapshot.docs.map(doc => ({
-                id: doc.id,
-                name: doc.data().studentName || doc.data().name,
-                rollNo: doc.data().rollNo || doc.data().pid || doc.id.slice(-4)
-            }));
+            const students = snapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    userId: data.userId || null, // Link to actual user account
+                    name: data.studentName || data.name,
+                    rollNo: data.pid || data.rollNo || data.userId?.slice(-6) || doc.id.slice(-6)
+                };
+            });
             setDbStudents(students);
             setTotalStudents(students.length.toString());
             alert(`✅ Loaded ${students.length} students from ${participatingClasses.join(', ')}`);
@@ -161,10 +165,12 @@ export default function ExamSeatingPlanner() {
             const studentsInRoom = Math.min(seatsPerRm, studentsCount - studentIndex);
 
             for (let seat = 1; seat <= studentsInRoom; seat++) {
+                const student = dataToDistribute[studentIndex];
                 roomSeats.push({
                     seatNo: seat,
-                    rollNo: dataToDistribute[studentIndex].rollNo,
-                    studentName: dataToDistribute[studentIndex].name
+                    rollNo: student.rollNo,
+                    studentName: student.name,
+                    userId: student.userId // CRITICAL: Allow student matching by UID
                 });
                 studentIndex++;
             }
@@ -319,6 +325,15 @@ export default function ExamSeatingPlanner() {
         try {
             console.log("Saving Seating Plan:", { examName, stats });
 
+            // 1. VALIDATE TEACHERS ARE ASSIGNED
+            const missingTeachers = seatingPlan.filter(r => !r.invigilatorId);
+            if (missingTeachers.length > 0) {
+                alert(`⚠️ Teachers are not assigned to all rooms! (${missingTeachers.length} rooms missing). Please assign invigilators before saving.`);
+                return;
+            }
+
+            const instId = (userData?.role === 'institution') ? userData.uid : userData?.institutionId;
+
             const docData = {
                 examName: examName.trim(),
                 examDate: examDate || null,
@@ -327,7 +342,7 @@ export default function ExamSeatingPlanner() {
                 seatsPerRoom: stats.seats,
                 seatingPlan: seatingPlan,
                 createdBy: userData.uid,
-                institutionId: userData.role === 'institution' ? userData.uid : (userData.institutionId || userData.uid),
+                institutionId: instId || userData.uid,
                 createdAt: serverTimestamp()
             };
 
