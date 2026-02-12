@@ -26,6 +26,7 @@ export default function ExamSeatingPlanner() {
     // Fetch teachers and available classes on mount
     useEffect(() => {
         const fetchData = async () => {
+            if (!userData) return;
             const instId = userData.role === 'institution' ? userData.uid : userData.institutionId;
             if (!instId) return;
 
@@ -39,11 +40,17 @@ export default function ExamSeatingPlanner() {
                 const snapshotT = await getDocs(qT);
                 setTeachers(snapshotT.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
-                // Fetch Unique Classes (from student_allotments or groups)
-                const qS = query(collection(db, "student_allotments"), where("createdBy", "==", instId));
+                // Fetch Unique Classes (from student_allotments)
+                const qS = query(
+                    collection(db, "student_allotments"),
+                    where("institutionId", "==", instId)
+                );
                 const snapshotS = await getDocs(qS);
                 const classes = new Set();
-                snapshotS.forEach(doc => classes.add(doc.data().class));
+                snapshotS.forEach(doc => {
+                    const data = doc.data();
+                    if (data.classAssigned) classes.add(data.classAssigned);
+                });
                 setAvailableClasses(Array.from(classes).sort());
 
             } catch (error) {
@@ -66,8 +73,8 @@ export default function ExamSeatingPlanner() {
         try {
             const q = query(
                 collection(db, "student_allotments"),
-                where("createdBy", "==", instId),
-                where("class", "in", participatingClasses)
+                where("institutionId", "==", instId),
+                where("classAssigned", "in", participatingClasses)
             );
             const snapshot = await getDocs(q);
             const students = snapshot.docs.map(doc => ({
