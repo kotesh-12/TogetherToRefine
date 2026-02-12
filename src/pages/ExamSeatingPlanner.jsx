@@ -310,23 +310,33 @@ export default function ExamSeatingPlanner() {
             return;
         }
 
+        const stats = {
+            students: parseInt(totalStudents) || 0,
+            rooms: parseInt(roomsCount) || 0,
+            seats: parseInt(seatsPerRoom) || 0
+        };
+
         try {
-            await addDoc(collection(db, "exam_seating"), {
-                examName,
+            console.log("Saving Seating Plan:", { examName, stats });
+
+            const docData = {
+                examName: examName.trim(),
                 examDate: examDate || null,
-                totalStudents: parseInt(totalStudents),
-                roomsCount: parseInt(roomsCount),
-                seatsPerRoom: parseInt(seatsPerRoom),
-                seatingPlan: seatingPlan, // Now includes invigilator info
+                totalStudents: stats.students,
+                roomsCount: stats.rooms,
+                seatsPerRoom: stats.seats,
+                seatingPlan: seatingPlan,
                 createdBy: userData.uid,
-                institutionId: userData.institutionId || userData.uid,
+                institutionId: userData.role === 'institution' ? userData.uid : (userData.institutionId || userData.uid),
                 createdAt: serverTimestamp()
-            });
+            };
+
+            await addDoc(collection(db, "exam_seating"), docData);
 
             alert("✅ Seating plan saved successfully! Students and teachers can now view it.");
         } catch (e) {
-            console.error(e);
-            alert("Error saving seating plan");
+            console.error("Fatal Save Error:", e);
+            alert("Error saving seating plan: " + e.message);
         }
     };
 
