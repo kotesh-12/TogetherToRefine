@@ -11,7 +11,7 @@ import logo from '../assets/logo.png';
 export default function Header({ onToggleSidebar }) {
     const { userData } = useUser();
     const { theme, toggleTheme } = useTheme();
-    const { language, toggleLanguage } = useLanguage();
+    const { t, language, toggleLanguage } = useLanguage();
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
     const [menuOpen, setMenuOpen] = useState(false);
