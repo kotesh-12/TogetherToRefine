@@ -115,6 +115,12 @@ function App() {
                         <Route path="/admin/institution/:id" element={<InstitutionDetailsAdmin />} />
                       </Route>
 
+                      {/* SHARED TEACHER & STUDENT */}
+                      <Route element={<ProtectedRoute allowedRoles={['teacher', 'student']} />}>
+                        <Route path="/marks" element={<MarksManagement />} />
+                        <Route path="/homework" element={<HomeworkSystem />} />
+                      </Route>
+
                       {/* TEACHER ONLY */}
                       <Route element={<ProtectedRoute allowedRoles={['teacher']} />}>
                         <Route path="/teacher" element={<Teacher />} />
@@ -134,8 +140,6 @@ function App() {
                         <Route path="/student" element={<Student />} />
                         <Route path="/fees/student" element={<StudentFee />} />
                         <Route path="/upid-history" element={<UpidHistory />} />
-                        <Route path="/marks" element={<MarksManagement />} />
-                        <Route path="/homework" element={<HomeworkSystem />} />
                       </Route>
 
                       {/* INSTITUTION ONLY */}

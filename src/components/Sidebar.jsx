@@ -16,6 +16,8 @@ export default function Sidebar({ isOpen }) {
         { path: '/teacher', label: 'Teacher', icon: '👨‍🏫', roles: ['teacher'] },
         { path: '/student', label: 'Student', icon: '🎓', roles: ['student'] },
         { path: '/group', label: t('my_class'), icon: '🏫', roles: ['teacher', 'student'] },
+        { path: '/homework', label: 'Homework', icon: '📚', roles: ['teacher', 'student'] },
+        { path: '/marks', label: 'Marks', icon: '🎯', roles: ['teacher', 'student'] },
         { path: '/attendance', label: t('attendance'), icon: '📅', roles: ['teacher', 'student', 'institution'] },
         { path: '/timetable', label: t('timetable'), icon: '🕒', roles: ['teacher', 'student', 'institution'] },
         { path: '/exam', label: t('exams'), icon: '📝', roles: ['teacher', 'student', 'institution'] },
