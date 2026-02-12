@@ -446,62 +446,62 @@ export default function FourWayLearning() {
             </div>
 
             {/* INPUT AREA */}
-            <div style={{ padding: '15px', paddingBottom: '70px', background: 'var(--bg-surface)', borderTop: '1px solid var(--divider)', flexShrink: 0 }}>
-                {activeTab === 'teaching' && (
-                    <div style={{ marginBottom: '10px', display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                            <select value={motherTongue} onChange={(e) => setMotherTongue(e.target.value)} style={{ padding: '8px', borderRadius: '5px', border: '1px solid #ddd' }}>
-                                <option value="Hindi">Hindi</option>
-                                <option value="Telugu">Telugu</option>
-                                <option value="Tamil">Tamil</option>
-                                <option value="Spanish">Spanish</option>
-                                <option value="French">French</option>
-                            </select>
-                            <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', color: '#6c5ce7', fontSize: '14px' }}>
-                                <input type="file" accept="image/*" onChange={handleImageChange} style={{ display: 'none' }} />
-                                📷 {selectedImage ? 'Image Added' : 'Add Image'}
-                            </label>
-                            {selectedImage && <button onClick={() => setSelectedImage(null)} style={{ border: 'none', background: 'none', color: 'red', cursor: 'pointer' }}>✕</button>}
-                        </div>
-                        {/* SERVER STATUS BADGE */}
-                        <div style={{
-                            fontSize: '10px', color: '#138808', fontWeight: 'bold',
-                            display: 'flex', alignItems: 'center', gap: '4px'
-                        }}>
-                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#138808', display: 'inline-block' }}></span>
-                            TTR Server Connected
-                        </div>
+            <div className="input-area">
+                {selectedImage && (
+                    <div className="image-preview-container">
+                        <img src={selectedImage} alt="Preview" className="image-preview" />
+                        <button onClick={() => setSelectedImage(null)} className="remove-image-button">✕</button>
                     </div>
                 )}
-                {activeTab !== 'teaching' && (
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '5px' }}>
-                        <div style={{
-                            fontSize: '10px', color: '#138808', fontWeight: 'bold',
-                            display: 'flex', alignItems: 'center', gap: '4px'
-                        }}>
-                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#138808', display: 'inline-block' }}></span>
-                            TTR Server Connected
-                        </div>
+
+                <div className="input-controls">
+                    <div style={{
+                        position: 'absolute', top: '-20px', right: '20px',
+                        fontSize: '9px', color: '#138808', fontWeight: 'bold',
+                        display: 'flex', alignItems: 'center', gap: '3px', opacity: 0.8
+                    }}>
+                        <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#138808', display: 'inline-block' }}></span>
+                        TTR Intelligent Link
                     </div>
-                )}
-                <div style={{ display: 'flex', gap: '10px' }}>
-                    {/* MIC BUTTON */}
+
                     <button
                         onClick={handleMicClick}
-                        style={{
-                            width: '50px', height: '50px', borderRadius: '50%', border: 'none', cursor: 'pointer',
-                            background: isListening ? '#ff7675' : '#f1f2f6',
-                            color: isListening ? 'white' : '#636e72',
-                            fontSize: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            transition: 'all 0.2s', animation: isListening ? 'pulse 1.5s infinite' : 'none'
-                        }}
+                        className={`voice-button ${isListening ? 'listening' : ''}`}
                         title="Click to Speak"
                     >
-                        {isListening ? '⏹️' : '🎙️'}
+                        {isListening ? '🛑' : '🎙️'}
                     </button>
 
-                    <input type="text" value={inputs[activeTab]} onChange={(e) => setInputs(prev => ({ ...prev, [activeTab]: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && handleGenerate()} placeholder={`Ask in ${currentMode?.title} mode...`} style={{ flex: 1, padding: '12px 15px', borderRadius: '25px', border: '1px solid var(--divider)', background: 'var(--bg-body)', color: 'var(--text-main)', outline: 'none' }} />
-                    <button onClick={handleGenerate} disabled={loading || (!inputs[activeTab] && !selectedImage)} style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#6c5ce7', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>➤</button>
+                    {activeTab === 'teaching' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <select
+                                value={motherTongue}
+                                onChange={(e) => setMotherTongue(e.target.value)}
+                                style={{ padding: '4px', borderRadius: '4px', border: '1px solid #ddd', fontSize: '12px' }}
+                            >
+                                <option value="Hindi">HI</option>
+                                <option value="Telugu">TE</option>
+                                <option value="Tamil">TA</option>
+                                <option value="Spanish">ES</option>
+                                <option value="French">FR</option>
+                            </select>
+                            <label style={{ cursor: 'pointer', fontSize: '18px' }} title="Add Image">
+                                <input type="file" accept="image/*" onChange={handleImageChange} style={{ display: 'none' }} />
+                                📷
+                            </label>
+                        </div>
+                    )}
+
+                    <input
+                        type="text"
+                        value={inputs[activeTab]}
+                        onChange={(e) => setInputs(prev => ({ ...prev, [activeTab]: e.target.value }))}
+                        onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
+                        placeholder={`Explain in ${activeTab}...`}
+                        className="chat-input"
+                    />
+
+                    <button onClick={handleGenerate} disabled={loading || (!inputs[activeTab] && !selectedImage)} className="send-button">➤</button>
                 </div>
             </div>
 

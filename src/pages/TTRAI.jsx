@@ -347,21 +347,21 @@ export default function TTRAI() {
                     <div ref={messagesEndRef} />
                 </div>
 
-                <div className="input-area" style={{ borderTop: '1px solid var(--divider)', padding: '15px', paddingBottom: '70px', marginBottom: '0', background: 'var(--bg-surface)' }}>
+                <div className="input-area">
                     {selectedImage && (
                         <div className="image-preview-container">
                             <img src={selectedImage} alt="Preview" className="image-preview" />
                             <button onClick={() => setSelectedImage(null)} className="remove-image-button">✕</button>
                         </div>
                     )}
-                    <div className="input-controls" style={{ position: 'relative' }}>
+                    <div className="input-controls">
                         <div style={{
-                            position: 'absolute', top: '-25px', right: '10px',
-                            fontSize: '10px', color: '#138808', fontWeight: 'bold',
-                            display: 'flex', alignItems: 'center', gap: '4px'
+                            position: 'absolute', top: '-18px', right: '20px',
+                            fontSize: '9px', color: '#138808', fontWeight: 'bold',
+                            display: 'flex', alignItems: 'center', gap: '3px', opacity: 0.7
                         }}>
-                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#138808', display: 'inline-block' }}></span>
-                            Connected to TTR Brain
+                            <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#138808', display: 'inline-block' }}></span>
+                            TTR Core
                         </div>
                         <button className="icon-button" onClick={handleCameraClick} title="Upload">📷</button>
                         <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageChange} style={{ display: 'none' }} />
@@ -375,7 +375,6 @@ export default function TTRAI() {
                             onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                             placeholder={selectedImage ? "Add topic..." : "Ask TTR AI anything..."}
                             className="chat-input"
-                            style={{ background: 'var(--bg-body)', color: 'var(--text-main)', border: '1px solid var(--divider)' }}
                             autoComplete="off"
                         />
                         <button onClick={handleSend} disabled={loading} className="send-button">➤</button>

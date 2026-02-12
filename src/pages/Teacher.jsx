@@ -338,6 +338,10 @@ export default function Teacher() {
                                     <span className="teacher-vibe-icon">📄</span>
                                     <span className="teacher-vibe-label">AI Scanner</span>
                                 </div>
+                                <div className="teacher-vibe-card" style={{ borderColor: '#c0392b', background: 'rgba(192, 57, 43, 0.05)' }} onClick={() => { vibrate(); handleCardClick('/early-warning'); }}>
+                                    <span className="teacher-vibe-icon">⚠️</span>
+                                    <span className="teacher-vibe-label" style={{ color: '#c0392b', fontWeight: 'bold' }}>Risk Detector</span>
+                                </div>
                             </div>
                         </>
                     ) : (

@@ -13,31 +13,48 @@ export default function EarlyWarningSystem() {
     useEffect(() => {
         const analyzeStudents = async () => {
             try {
-                // Fetch teacher's students
+                // 1. Fetch teacher's assigned students
                 const q = query(collection(db, "student_allotments"), where("teacherId", "==", userData.uid));
                 const snap = await getDocs(q);
 
-                // MOCK ANALYSIS ENGINE
-                // In a real app, this would query attendance/marks collections deeply.
-                // Here we simulate an AI analysis of browsing headers/attendance logs.
-                const analyzed = snap.docs.map((d, index) => {
-                    const data = d.data();
-                    // Simulate risk for Demo purposes (every 3rd student is "At Risk")
-                    const isRisk = index % 3 === 0;
+                const studentList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                const results = [];
 
-                    return {
-                        id: d.id,
-                        name: data.studentName || "Unknown Student",
-                        class: data.classAssigned,
-                        riskScore: isRisk ? 85 : 10, // High score = High Risk
-                        riskFactors: isRisk ? ["Absent 3 days in a row", "Failed Unit Test 2"] : [],
-                        parentPhone: "919876543210" // Mock phone
-                    };
-                }).filter(s => s.riskScore > 50); // Only show high risk
+                // 2. FOR EACH STUDENT: Fetch attendance records and calculate percentage
+                for (const student of studentList) {
+                    const targetId = student.userId || student.id;
+                    const attQuery = query(collection(db, "attendance"), where("userId", "==", targetId));
+                    const attSnap = await getDocs(attQuery);
 
-                setAtRiskStudents(analyzed);
+                    const total = attSnap.size;
+                    let present = 0;
+                    attSnap.forEach(doc => {
+                        if (doc.data().status === 'present') present++;
+                    });
+
+                    const percentage = total > 0 ? (present / total) * 100 : 100; // Assume 100% if no records yet
+
+                    // 3. APPLY RISK CRITERIA: < 50% attendance is High Risk
+                    if (percentage < 50 || total === 0) {
+                        results.push({
+                            id: student.id,
+                            name: student.name || student.studentName || "Unknown Student",
+                            class: student.classAssigned,
+                            attendancePercentage: percentage.toFixed(0),
+                            totalClasses: total,
+                            riskScore: percentage < 50 ? 90 : 10,
+                            riskFactors: [
+                                percentage < 50 ? `Critical: Attendance dropped to ${percentage.toFixed(0)}%` : "No attendance records found yet",
+                                total < 5 && total > 0 ? "Insufficient data for long-term prediction" : null
+                            ].filter(Boolean),
+                            parentPhone: student.parentPhone || student.phone || "N/A"
+                        });
+                    }
+                }
+
+                setAtRiskStudents(results);
             } catch (e) {
-                console.error(e);
+                console.error("Analysis Error:", e);
             } finally {
                 setLoading(false);
             }
@@ -84,8 +101,15 @@ export default function EarlyWarningSystem() {
                                         <h3 style={{ margin: '0 0 5px 0' }}>{student.name}</h3>
                                         <div style={{ fontSize: '12px', color: '#7f8c8d' }}>Class {student.class}</div>
                                     </div>
-                                    <div style={{ background: '#ffe6e6', color: '#c0392b', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>
-                                        Risk: High
+                                    <div style={{ textAlign: 'right' }}>
+                                        <div style={{ background: '#ffe6e6', color: '#c0392b', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>
+                                            {student.attendancePercentage < 50 ? 'CRITICAL RISK' : 'RISK'}
+                                        </div>
+                                        {student.attendancePercentage !== undefined && (
+                                            <div style={{ fontSize: '18px', fontWeight: '800', color: '#c0392b', marginTop: '4px' }}>
+                                                {student.attendancePercentage}%
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 

@@ -28,7 +28,7 @@ export default function MainLayout() {
 
 
     return (
-        <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div className="layout-wrapper">
             {/* 1. Sticky Header */}
             <Header onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
 

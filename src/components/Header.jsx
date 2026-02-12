@@ -203,8 +203,12 @@ export default function Header({ onToggleSidebar }) {
             <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexDirection: 'row' }}>
                 {/* Left: Logo & Menu */}
                 <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <button onClick={onToggleSidebar} className="menu-toggle">
-                        ☰
+                    <button onClick={onToggleSidebar} className="menu-toggle" aria-label="Menu">
+                        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <line x1="3" y1="18" x2="21" y2="18"></line>
+                        </svg>
                     </button>
                     <div
                         onClick={() => navigate('/')}
@@ -212,7 +216,7 @@ export default function Header({ onToggleSidebar }) {
                         style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                     >
                         <img src={logo} alt="TTR" className="logo" style={{ height: '32px' }} />
-                        <h1 className="brand-text" style={{ margin: 0, fontSize: '1.2rem' }}>TTR</h1>
+                        <h1 className="brand-text" style={{ margin: 0, fontSize: '1.2rem', fontWeight: '800', letterSpacing: '-0.5px' }}>TTR</h1>
                     </div>
                 </div>
 
@@ -253,11 +257,18 @@ export default function Header({ onToggleSidebar }) {
                         <div
                             onClick={() => setMenuOpen(!menuOpen)}
                             className="profile-trigger"
-                            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}
                         >
-                            <div className="profile-avatar-mini" style={{ width: '35px', height: '35px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                            <div className="profile-avatar-mini" style={{ width: '35px', height: '35px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', boxShadow: '0 2px 10px rgba(108, 92, 231, 0.2)' }}>
                                 {userData?.name ? userData.name.charAt(0).toUpperCase() : 'U'}
                             </div>
+                            <button className="more-toggle" style={{ background: 'none', border: 'none', color: 'var(--text-main)', padding: 0, display: 'flex', alignItems: 'center' }}>
+                                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="12" cy="12" r="1"></circle>
+                                    <circle cx="12" cy="5" r="1"></circle>
+                                    <circle cx="12" cy="19" r="1"></circle>
+                                </svg>
+                            </button>
                         </div>
 
                         {menuOpen && (
