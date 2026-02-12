@@ -33,7 +33,7 @@ export default function MainLayout() {
             <Header onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
 
             {/* 2. Flex Body */}
-            <div style={{ display: 'flex', flex: 1 }}>
+            <div className="layout-body">
 
                 {/* 3. Sidebar (Left) - Desktop Only via CSS */}
                 <div className="sidebar-wrapper">
