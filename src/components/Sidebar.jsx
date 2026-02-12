@@ -9,15 +9,16 @@ export default function Sidebar({ isOpen }) {
     const { userData } = useUser();
     const { t } = useLanguage();
 
-    const routes = [
+    const allRoutes = [
         { path: '/', label: t('dashboard'), icon: '🏠' },
-        { path: '/institution', label: 'Institution', icon: '🏛️' },
-        { path: '/teacher', label: 'Teacher', icon: '👨‍🏫' },
-        { path: '/student', label: 'Student', icon: '🎓' },
-        { path: '/group', label: t('my_class'), icon: '🏫' },
-        { path: '/attendance', label: t('attendance'), icon: '📅' },
-        { path: '/timetable', label: t('timetable'), icon: '🕒' },
-        { path: '/exam', label: t('exams'), icon: '📝' },
+        { path: '/admin', label: 'Admin', icon: '🛡️', roles: ['admin'] },
+        { path: '/institution', label: 'Institution', icon: '🏛️', roles: ['institution'] },
+        { path: '/teacher', label: 'Teacher', icon: '👨‍🏫', roles: ['teacher'] },
+        { path: '/student', label: 'Student', icon: '🎓', roles: ['student'] },
+        { path: '/group', label: t('my_class'), icon: '🏫', roles: ['teacher', 'student'] },
+        { path: '/attendance', label: t('attendance'), icon: '📅', roles: ['teacher', 'student', 'institution'] },
+        { path: '/timetable', label: t('timetable'), icon: '🕒', roles: ['teacher', 'student', 'institution'] },
+        { path: '/exam', label: t('exams'), icon: '📝', roles: ['teacher', 'student', 'institution'] },
         { path: '/video-library', label: t('video_library'), icon: '📺' },
         { path: '/health', label: t('health'), icon: '❤️' },
         { path: '/general-feedback', label: t('feedback'), icon: '💬' },
@@ -25,7 +26,8 @@ export default function Sidebar({ isOpen }) {
     ];
 
     // Filter by Role
-    const userRole = userData?.role || 'student';
+    const userRole = (userData?.role || 'student').toLowerCase();
+    const routes = allRoutes.filter(r => !r.roles || r.roles.includes(userRole));
 
     // Helper to check if route is active
     const isActive = (path) => {
