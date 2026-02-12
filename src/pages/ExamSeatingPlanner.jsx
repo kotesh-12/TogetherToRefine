@@ -10,41 +10,81 @@ export default function ExamSeatingPlanner() {
     const navigate = useNavigate();
     const { userData } = useUser();
 
+    const [participatingClasses, setParticipatingClasses] = useState([]);
+    const [dbStudents, setDbStudents] = useState([]);
+    const [isFetchingStudents, setIsFetchingStudents] = useState(false);
     const [examName, setExamName] = useState('');
     const [examDate, setExamDate] = useState('');
     const [totalStudents, setTotalStudents] = useState('');
     const [roomsCount, setRoomsCount] = useState('');
     const [seatsPerRoom, setSeatsPerRoom] = useState('');
     const [startRollNo, setStartRollNo] = useState('');
-
-    // Teacher Assignment State
     const [teachers, setTeachers] = useState([]);
-    const [roomInvigilators, setRoomInvigilators] = useState({}); // { roomNo: teacherId }
-
+    const [roomInvigilators, setRoomInvigilators] = useState({});
     const [seatingPlan, setSeatingPlan] = useState(null);
 
-    // Fetch teachers on mount
+    // Fetch teachers and available classes on mount
     useEffect(() => {
-        const fetchTeachers = async () => {
-            if (!userData?.uid) return;
+        const fetchData = async () => {
+            const instId = userData.role === 'institution' ? userData.uid : userData.institutionId;
+            if (!instId) return;
+
             try {
-                const q = query(
+                // Fetch Teachers
+                const qT = query(
                     collection(db, 'users'),
                     where('role', '==', 'teacher'),
-                    where('institutionId', '==', userData.uid)
+                    where('institutionId', '==', instId)
                 );
-                const snapshot = await getDocs(q);
-                const teacherList = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-                setTeachers(teacherList);
+                const snapshotT = await getDocs(qT);
+                setTeachers(snapshotT.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+                // Fetch Unique Classes (from student_allotments or groups)
+                const qS = query(collection(db, "student_allotments"), where("createdBy", "==", instId));
+                const snapshotS = await getDocs(qS);
+                const classes = new Set();
+                snapshotS.forEach(doc => classes.add(doc.data().class));
+                setAvailableClasses(Array.from(classes).sort());
+
             } catch (error) {
-                console.error("Error fetching teachers:", error);
+                console.error("Error fetching initial data:", error);
             }
         };
-        fetchTeachers();
+        fetchData();
     }, [userData]);
+
+    const [availableClasses, setAvailableClasses] = useState([]);
+
+    const fetchStudentsFromDB = async () => {
+        const instId = userData.role === 'institution' ? userData.uid : userData.institutionId;
+        if (!instId || participatingClasses.length === 0) {
+            alert("Please select participating classes first");
+            return;
+        }
+
+        setIsFetchingStudents(true);
+        try {
+            const q = query(
+                collection(db, "student_allotments"),
+                where("createdBy", "==", instId),
+                where("class", "in", participatingClasses)
+            );
+            const snapshot = await getDocs(q);
+            const students = snapshot.docs.map(doc => ({
+                id: doc.id,
+                name: doc.data().studentName || doc.data().name,
+                rollNo: doc.data().rollNo || doc.data().pid || doc.id.slice(-4)
+            }));
+            setDbStudents(students);
+            setTotalStudents(students.length.toString());
+            alert(`✅ Loaded ${students.length} students from ${participatingClasses.join(', ')}`);
+        } catch (e) {
+            console.error(e);
+            alert("Error fetching students");
+        } finally {
+            setIsFetchingStudents(false);
+        }
+    };
 
     const handleInvigilatorChange = (roomNo, teacherId) => {
         setRoomInvigilators(prev => ({
@@ -66,29 +106,37 @@ export default function ExamSeatingPlanner() {
     };
 
     const generateSeatingPlan = () => {
-        if (!totalStudents || !roomsCount || !seatsPerRoom) {
+        const studentsCount = parseInt(totalStudents);
+        const rooms = parseInt(roomsCount);
+        const seatsPerRm = parseInt(seatsPerRoom);
+
+        if (!studentsCount || !rooms || !seatsPerRm) {
             alert("Please fill all required fields");
             return;
         }
 
-        const students = parseInt(totalStudents);
-        const rooms = parseInt(roomsCount);
-        const seatsPerRm = parseInt(seatsPerRoom);
-        const startRoll = parseInt(startRollNo) || 1;
-
         // Check capacity
-        if (students > rooms * seatsPerRm) {
-            alert(`Not enough capacity! You need ${Math.ceil(students / seatsPerRm)} rooms.`);
+        if (studentsCount > rooms * seatsPerRm) {
+            alert(`Not enough capacity! You need ${Math.ceil(studentsCount / seatsPerRm)} rooms.`);
             return;
         }
 
-        // Generate randomized seating
-        const rollNumbers = Array.from({ length: students }, (_, i) => startRoll + i);
+        // Generate data to distribute
+        let dataToDistribute = [];
+        if (dbStudents.length > 0) {
+            dataToDistribute = [...dbStudents];
+        } else {
+            const startRoll = parseInt(startRollNo) || 1;
+            dataToDistribute = Array.from({ length: studentsCount }, (_, i) => ({
+                rollNo: (startRoll + i).toString(),
+                name: `Student ${startRoll + i}`
+            }));
+        }
 
         // Shuffle for randomization (prevent cheating)
-        for (let i = rollNumbers.length - 1; i > 0; i--) {
+        for (let i = dataToDistribute.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
-            [rollNumbers[i], rollNumbers[j]] = [rollNumbers[j], rollNumbers[i]];
+            [dataToDistribute[i], dataToDistribute[j]] = [dataToDistribute[j], dataToDistribute[i]];
         }
 
         // Distribute across rooms
@@ -97,12 +145,13 @@ export default function ExamSeatingPlanner() {
 
         for (let room = 1; room <= rooms; room++) {
             const roomSeats = [];
-            const studentsInRoom = Math.min(seatsPerRm, students - studentIndex);
+            const studentsInRoom = Math.min(seatsPerRm, studentsCount - studentIndex);
 
             for (let seat = 1; seat <= studentsInRoom; seat++) {
                 roomSeats.push({
                     seatNo: seat,
-                    rollNo: rollNumbers[studentIndex]
+                    rollNo: dataToDistribute[studentIndex].rollNo,
+                    studentName: dataToDistribute[studentIndex].name
                 });
                 studentIndex++;
             }
@@ -120,7 +169,7 @@ export default function ExamSeatingPlanner() {
                 invigilatorName: assignedTeacher?.name || ''
             });
 
-            if (studentIndex >= students) break;
+            if (studentIndex >= studentsCount) break;
         }
 
         setSeatingPlan(plan);
@@ -276,6 +325,61 @@ export default function ExamSeatingPlanner() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <h2>🪑 Exam Hall Seating Planner</h2>
                     <button onClick={() => navigate(-1)} className="btn-outline">← Back</button>
+                </div>
+
+                <div className="card" style={{ marginBottom: '20px' }}>
+                    <h3 style={{ marginTop: 0 }}>🧠 Smart Settings</h3>
+                    <p style={{ color: '#636e72', fontSize: '14px', marginBottom: '15px' }}>
+                        Optionally load students directly from your database by selecting participating classes.
+                    </p>
+
+                    <div style={{ marginBottom: '15px' }}>
+                        <label style={{ fontSize: '13px', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>
+                            Select Participating Classes:
+                        </label>
+                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                            {availableClasses.map(cls => (
+                                <button
+                                    key={cls}
+                                    onClick={() => {
+                                        setParticipatingClasses(prev =>
+                                            prev.includes(cls) ? prev.filter(c => c !== cls) : [...prev, cls]
+                                        );
+                                    }}
+                                    style={{
+                                        padding: '6px 14px',
+                                        borderRadius: '20px',
+                                        fontSize: '12px',
+                                        cursor: 'pointer',
+                                        background: participatingClasses.includes(cls) ? 'var(--primary)' : 'var(--bg-body)',
+                                        color: participatingClasses.includes(cls) ? 'white' : 'var(--text-main)',
+                                        border: '1px solid var(--divider)',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    {cls}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={fetchStudentsFromDB}
+                        className="btn"
+                        style={{
+                            background: '#6c5ce7',
+                            width: '100%',
+                            opacity: isFetchingStudents ? 0.7 : 1
+                        }}
+                        disabled={isFetchingStudents}
+                    >
+                        {isFetchingStudents ? '⌛ Fetching...' : `📥 Load ${participatingClasses.length} Classes Data`}
+                    </button>
+                    {dbStudents.length > 0 && (
+                        <p style={{ color: 'var(--success)', fontSize: '13px', marginTop: '10px', textAlign: 'center', fontWeight: 'bold' }}>
+                            ✅ Found {dbStudents.length} Students. Capacity check will be based on this count.
+                        </p>
+                    )}
                 </div>
 
                 <div className="card">
@@ -442,6 +546,11 @@ export default function ExamSeatingPlanner() {
                                                 <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#2c3e50' }}>
                                                     {seat.rollNo}
                                                 </div>
+                                                {seat.studentName && (
+                                                    <div style={{ fontSize: '10px', color: 'var(--primary)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                        {seat.studentName}
+                                                    </div>
+                                                )}
                                             </div>
                                         ))}
                                     </div>

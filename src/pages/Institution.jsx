@@ -314,7 +314,7 @@ export default function Institution() {
                     </div>
                     <div className="teacher-vibe-card" style={{ borderColor: '#8e44ad' }} onClick={() => handleCardClick('/exam-seating')}>
                         <span className="teacher-vibe-icon">🪑</span>
-                        <span className="teacher-vibe-label">Exams</span>
+                        <span className="teacher-vibe-label">Exam Seating</span>
                     </div>
                     <div className="teacher-vibe-card" style={{ borderColor: '#c0392b' }} onClick={() => handleCardClick('/library')}>
                         <span className="teacher-vibe-icon">📚</span>

@@ -19,6 +19,7 @@ export default function Student() {
     const { t } = useLanguage();
     const [showDropdown, setShowDropdown] = useState(false);
     const [selectedPerson, setSelectedPerson] = useState(null);
+    const [selectedGroup, setSelectedGroup] = useState(null);
     const [teacherGroups, setTeacherGroups] = useState({});
 
     const [myGroups, setMyGroups] = useState([]);
@@ -56,10 +57,10 @@ export default function Student() {
         }
     ];
 
-    const handleCardClick = (path) => {
+    const handleCardClick = (path, state = null) => {
         if (isNavigating.current) return;
         isNavigating.current = true;
-        navigate(path);
+        navigate(path, { state });
         // Reset after a delay (e.g., if navigation is cancelled or to allow re-clicking later)
         setTimeout(() => { isNavigating.current = false; }, 2000);
     };
@@ -135,6 +136,7 @@ export default function Student() {
     const handleSelect = (group) => {
         const val = group.groupName;
         setSelectedPerson(val);
+        setSelectedGroup(group);
         localStorage.setItem("selectedPerson", val);
         setShowDropdown(false);
     };
@@ -191,7 +193,7 @@ export default function Student() {
                 {selectedPerson && (
                     <div className="card text-center mt-4 fade-in" style={{ padding: '30px', border: '1px solid var(--primary-light)' }}>
                         <h2 style={{ marginBottom: '15px' }}>{selectedPerson}</h2>
-                        <button className="btn pulse-btn" onClick={() => handleCardClick('/profileview')}>{t('proceed')}</button>
+                        <button className="btn pulse-btn" onClick={() => handleCardClick('/profile-view', { target: { id: selectedGroup?.teacherId, name: selectedGroup?.teacherName, type: 'Teacher' } })}>{t('proceed')}</button>
                     </div>
                 )}
 

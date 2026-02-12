@@ -24,6 +24,7 @@ export default function Sidebar({ isOpen }) {
         { path: '/video-library', label: t('video_library'), icon: '📺' },
         { path: '/health', label: t('health'), icon: '❤️' },
         { path: '/general-feedback', label: t('feedback'), icon: '💬' },
+        { path: '/exam-seating', label: 'Seat Allotment', icon: '🪑', roles: ['institution'] },
         { path: '/settings', label: t('settings'), icon: '⚙️' },
     ];
 
@@ -46,6 +47,7 @@ export default function Sidebar({ isOpen }) {
             if (userRole === 'admin') navigate('/admin');
             else if (userRole === 'institution') navigate('/institution');
             else if (userRole === 'teacher') navigate('/teacher');
+            else if (userRole === 'parent') navigate('/parent');
             else navigate('/student');
         } else {
             navigate(item.path);
@@ -57,14 +59,13 @@ export default function Sidebar({ isOpen }) {
             width: isOpen ? '240px' : '72px',
             background: 'var(--bg-surface)',
             borderRight: '1px solid var(--divider)',
-            height: 'calc(100vh - 64px)', // Full height minus header
-            position: 'sticky',
-            top: '64px',
-            transition: 'width 0.2s',
-            overflowX: 'hidden',
+            height: '100%',
+            position: 'relative',
+            zIndex: 1100,
             display: 'flex',
             flexDirection: 'column',
-            paddingTop: '10px'
+            transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            overflow: 'hidden'
         }}>
             {routes.map((item, idx) => (
                 <div

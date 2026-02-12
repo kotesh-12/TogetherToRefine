@@ -177,6 +177,14 @@ export default function Exam() {
                     >
                         📝 Publish Exam Results
                     </button>
+                    {(userData?.role === 'institution' || userData?.role === 'teacher') && (
+                        <button
+                            style={{ flex: 1, padding: '15px', background: '#27ae60', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+                            onClick={() => navigate('/exam-seating')}
+                        >
+                            🪑 Seating Allotment
+                        </button>
+                    )}
                 </div>
 
                 {activeTab === 'announcements' ? (

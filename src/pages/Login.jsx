@@ -108,6 +108,7 @@ export default function Login() {
             case 'teacher': navigate('/teacher'); break;
             case 'institution': navigate('/institution'); break;
             case 'admin': navigate('/admin'); break;
+            case 'parent': navigate('/parent'); break;
             default: navigate('/admission');
         }
     };
@@ -141,6 +142,7 @@ export default function Login() {
                         case 'teacher': navigate('/teacher', { replace: true }); break;
                         case 'institution': navigate('/institution', { replace: true }); break;
                         case 'admin': navigate('/admin', { replace: true }); break;
+                        case 'parent': navigate('/parent', { replace: true }); break;
                         default: navigate('/admission', { replace: true });
                     }
                 }
@@ -214,7 +216,7 @@ export default function Login() {
                 setError('Please fill in all required fields.');
                 return;
             }
-            if (role !== 'institution' && role !== 'admin' && !gender) {
+            if (role !== 'institution' && role !== 'admin' && role !== 'parent' && !gender) {
                 setError('Gender is required.');
                 return;
             }
@@ -380,6 +382,7 @@ export default function Login() {
                                 <option value="student">Student</option>
                                 <option value="teacher">Teacher</option>
                                 <option value="institution">Institution</option>
+                                <option value="parent">Parent</option>
                             </select>
                         </div>
                     )}

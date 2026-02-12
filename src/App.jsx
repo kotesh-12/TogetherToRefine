@@ -107,6 +107,12 @@ function App() {
                       <Route path="/report-harassment" element={<Report type="sexual_harassment" />} />
                       <Route path="/report-misbehavior" element={<Report type="misbehavior" />} />
 
+                      {/* SHARED TEACHER, INSTITUTION & ADMIN TOOLS */}
+                      <Route element={<ProtectedRoute allowedRoles={['teacher', 'institution', 'admin']} />}>
+                        <Route path="/exam-seating" element={<ExamSeatingPlanner />} />
+                        <Route path="/inspection-readiness" element={<InspectionReadiness />} />
+                      </Route>
+
                       {/* --- ROLE-SPECIFIC DASHBOARDS --- */}
 
                       {/* ADMIN ONLY */}
@@ -121,13 +127,14 @@ function App() {
                         <Route path="/homework" element={<HomeworkSystem />} />
                       </Route>
 
+                      {/* SHARED TEACHER & INSTITUTION TOOLS */}
+                      {/* (Moved to top-level for better access) */}
+
                       {/* TEACHER ONLY */}
                       <Route element={<ProtectedRoute allowedRoles={['teacher']} />}>
                         <Route path="/teacher" element={<Teacher />} />
                         <Route path="/feedback-overview" element={<FeedbackOverview />} />
                         <Route path="/timetable-generator" element={<TimetableGenerator />} />
-                        <Route path="/exam-seating" element={<ExamSeatingPlanner />} />
-                        <Route path="/inspection-readiness" element={<InspectionReadiness />} />
                         <Route path="/gov-reports" element={<GovernmentReports />} />
                         <Route path="/inspector-mode" element={<InspectorMode />} />
                         <Route path="/dropout-predictor" element={<EarlyWarningSystem />} />
