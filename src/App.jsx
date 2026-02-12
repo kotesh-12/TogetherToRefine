@@ -133,12 +133,12 @@ function App() {
                       <Route path="/fees/institution" element={<InstitutionFee />} />
                       <Route path="/fee-details/:feeId" element={<FeeDetails />} />
                       <Route path="/student-promotion" element={<StudentPromotion />} />
+                      <Route path="/ttr-ai" element={<TTRAI />} />
                     </Route>
                   </Route>
 
-                  {/* Standalone AI Page (Custom Layout) */}
+                  {/* Standalone Pages (Custom Layout) */}
                   <Route element={<ProtectedRoute allowedRoles={['student', 'teacher', 'institution', 'admin', 'parent']} />}>
-                    <Route path="/ttr-ai" element={<TTRAI />} />
                     <Route path="/messages" element={<MessagingSystem />} />
                     <Route path="/analytics" element={<PerformanceAnalytics />} />
                   </Route>

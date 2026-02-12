@@ -267,155 +267,138 @@ export default function TTRAI() {
     };
 
     return (
-        <div className="ttr-ai-wrapper" style={{ display: 'flex', height: '100%', flexDirection: 'row', overflow: 'hidden', background: 'var(--bg-body)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative', background: 'var(--bg-body)', color: 'var(--text-main)', minHeight: 'calc(100vh - 150px)' }}>
 
-            {/* 1. LEFT SIDEBAR (History) */}
-            <div className={`ai-sidebar ${showSidebar ? 'mobile-visible' : ''}`} style={{
-                width: '260px',
-                background: '#1e1e1e',
-                color: '#ececf1',
-                display: 'flex',
-                flexDirection: 'column',
-                padding: '10px',
-                zIndex: 2000,
-                borderRight: '1px solid #333'
-            }}>
-                <div className="sidebar-header" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', alignItems: 'center' }}>
-                    <h3 style={{ margin: 0, fontSize: '16px', color: '#fff' }}>History</h3>
-                    <button className="mobile-only-btn" onClick={() => setShowSidebar(false)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '20px', cursor: 'pointer' }}>✕</button>
-                </div>
-
-                <button onClick={startNewChat} style={{ border: '1px solid #555', padding: '10px', background: 'transparent', color: 'white', borderRadius: '5px', cursor: 'pointer', marginBottom: '15px', textAlign: 'left', transition: 'background 0.2s' }}>
-                    + New Chat
-                </button>
-
-                <div className="history-list" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                    {sessions.length === 0 && <span style={{ fontSize: '12px', color: '#777' }}>No chat history.</span>}
-                    {sessions.map(s => (
-                        <div key={s.id} onClick={() => { setCurrentSessionId(s.id); setShowSidebar(false); }}
-                            style={{ padding: '10px', borderRadius: '5px', cursor: 'pointer', background: currentSessionId === s.id ? '#343541' : 'transparent', fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#ececf1' }}>
-                            {s.title || "Untitled Chat"}
-                        </div>
-                    ))}
-                </div>
-
-                <div style={{ marginTop: '10px', borderTop: '1px solid #333', paddingTop: '10px' }}>
-                    <button onClick={() => {
-                        const r = userData?.role || 'student';
-                        navigate(r === 'admin' ? '/admin' : r === 'institution' ? '/institution' : r === 'teacher' ? '/teacher' : '/student');
-                    }} style={{ width: '100%', padding: '10px', background: '#333', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span>🏠</span> Back to Dashboard
-                    </button>
-                </div>
-            </div>
-
-            {/* 2. MAIN CHAT AREA */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', background: 'var(--bg-surface)', color: 'var(--text-main)' }}>
+            {/* 1. TOP CONTROL BAR */}
+            <div style={{ padding: '10px 15px', display: 'flex', justifyContent: 'flex-end', background: 'var(--bg-surface)', borderBottom: '1px solid var(--divider)' }}>
                 <button
-                    onClick={() => setShowSidebar(!showSidebar)}
+                    onClick={() => setShowSidebar(true)}
                     style={{
-                        position: 'absolute', top: '10px', left: '10px', zIndex: 1100,
-                        background: 'var(--primary)', color: 'white', border: 'none',
-                        borderRadius: '20px', padding: '5px 15px', fontSize: '12px',
-                        fontWeight: 'bold', boxShadow: 'var(--shadow-sm)', cursor: 'pointer'
+                        background: '#333', color: 'white', border: 'none',
+                        borderRadius: '4px', padding: '4px 8px', fontSize: '10px', cursor: 'pointer'
                     }}
                 >
                     📜 History
                 </button>
-                {/* Mobile History Toggle */}
+            </div>
 
-
-                <div className="chat-area">
-                    {messages.map((msg, idx) => (
-                        <div key={idx} className={`message-bubble ${msg.sender === 'user' ? 'message-user' : 'message-ai'}`}>
-                            {msg.image && <img src={msg.image} alt="User Upload" className="message-image" />}
-                            <div className="markdown-content">
-                                {msg.sender === 'ai' && idx === messages.length - 1 && !msg.isError ? (
-                                    <TypewriterMessage text={msg.text} />
-                                ) : (
-                                    <ReactMarkdown>{msg.text}</ReactMarkdown>
-                                )}
-                            </div>
-                            {msg.sender === 'ai' && (
-                                <button onClick={() => speak(msg.text)} className="speak-button">
-                                    {speakingText === msg.text ? '🔇' : '🔊'}
-                                </button>
-                            )}
-                        </div>
-                    ))}
-                    {loading && <div style={{ color: '#888', fontStyle: 'italic', margin: '10px' }}>AI is thinking...</div>}
-                    <div ref={messagesEndRef} />
-                </div>
-
-                <div className="input-area">
-                    {selectedImage && (
-                        <div className="image-preview-container">
-                            <img src={selectedImage} alt="Preview" className="image-preview" />
-                            <button onClick={() => setSelectedImage(null)} className="remove-image-button">✕</button>
-                        </div>
-                    )}
-                    <div className="input-controls">
-                        <div style={{
-                            position: 'absolute', top: '-18px', right: '20px',
-                            fontSize: '9px', color: '#138808', fontWeight: 'bold',
-                            display: 'flex', alignItems: 'center', gap: '3px', opacity: 0.7
-                        }}>
-                            <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#138808', display: 'inline-block' }}></span>
-                            TTR Core
-                        </div>
-                        <button className="icon-button" onClick={handleCameraClick} title="Upload">📷</button>
-                        <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageChange} style={{ display: 'none' }} />
-                        <button onClick={() => listen((val) => setInput(prev => prev + ' ' + val))} className={`voice-button ${isListening ? 'listening' : ''}`} title="Voice">
-                            {isListening ? '🛑' : '🎙️'}
-                        </button>
-                        <input
-                            type="text"
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                            placeholder={selectedImage ? "Add topic..." : "Ask TTR AI anything..."}
-                            className="chat-input"
-                            autoComplete="off"
-                        />
-                        <button onClick={handleSend} disabled={loading} className="send-button">➤</button>
-                    </div>
-                </div>
-
-                {/* API KEY ERROR MODAL */}
-                {messages.some(m => m.isError && (m.text.includes("API Key Missing") || m.text.includes("System Configuration Error"))) && (
-                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 4000, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
-                        <div style={{ background: 'white', padding: '30px', borderRadius: '15px', maxWidth: '400px', textAlign: 'center', border: '2px solid red' }}>
-                            <h2 style={{ color: 'red' }}>⚠️ AI Service Maintenance</h2>
-                            <p style={{ fontSize: '14px', marginBottom: '15px' }}>The AI Brain is updating its credentials.</p>
-                            <button onClick={() => setMessages(prev => prev.filter(m => !m.isError))} className="btn" style={{ background: '#333' }}>Close</button>
-                        </div>
+            {/* 2. MAIN CHAT AREA */}
+            <div className="chat-area">
+                {messages.length === 0 && (
+                    <div style={{ textAlign: 'center', color: '#b2bec3', marginTop: '50px' }}>
+                        <div style={{ fontSize: '40px', marginBottom: '10px' }}>🤖</div>
+                        <p>I am TTR AI, your personal academic assistant.</p>
+                        <p style={{ fontSize: '13px' }}>How can I help you today?</p>
                     </div>
                 )}
 
-                {/* Mobile Bottom Nav */}
+                {messages.map((msg, idx) => (
+                    <div key={idx} style={{
+                        alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                        maxWidth: '85%',
+                        background: msg.sender === 'user' ? 'var(--primary)' : 'var(--bg-surface)',
+                        color: msg.sender === 'user' ? 'white' : 'var(--text-main)',
+                        padding: '10px 14px',
+                        borderRadius: '12px',
+                        borderBottomRightRadius: msg.sender === 'user' ? '2px' : '12px',
+                        borderBottomLeftRadius: msg.sender === 'ai' ? '2px' : '12px',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                        lineHeight: '1.4',
+                        position: 'relative',
+                        marginBottom: '10px'
+                    }}>
+                        {msg.image && <img src={msg.image} alt="User Upload" style={{ maxWidth: '100%', borderRadius: '8px', marginBottom: '10px' }} />}
+                        <div className="markdown-content">
+                            {msg.sender === 'ai' && idx === messages.length - 1 && !msg.isError ? (
+                                <TypewriterMessage text={msg.text} />
+                            ) : (
+                                <ReactMarkdown>{msg.text}</ReactMarkdown>
+                            )}
+                        </div>
+                        {msg.sender === 'ai' && (
+                            <button onClick={() => speak(msg.text)} className="speak-button">
+                                {speakingText === msg.text ? '🔇' : '🔊'}
+                            </button>
+                        )}
+                    </div>
+                ))}
+                {loading && <div style={{ alignSelf: 'flex-start', background: 'var(--bg-surface)', padding: '10px 20px', borderRadius: '20px', color: 'var(--text-muted)' }}>AI is thinking...</div>}
+                <div ref={messagesEndRef} />
             </div>
 
-            {/* Styles for Responsive Sidebar */}
-            <style>{`
-                @media (max-width: 768px) {
-                    .ai-sidebar {
-                        position: fixed;
-                        top: 0; left: 0; bottom: 0;
-                        transform: translateX(-100%);
-                        transition: transform 0.3s;
-                    }
-                    .ai-sidebar.mobile-visible {
-                        transform: translateX(0);
-                    }
-                    .mobile-history-toggle { display: block !important; }
-                    .mobile-only-btn { display: block !important; }
-                }
-                @media (min-width: 769px) {
-                    .ai-sidebar { position: static; transform: none; }
-                     .mobile-history-toggle { display: none !important; }
-                     .mobile-only-btn { display: none !important; }
-                }
-            `}</style>
+            {/* 3. INPUT AREA */}
+            <div className="input-area">
+                {selectedImage && (
+                    <div className="image-preview-container">
+                        <img src={selectedImage} alt="Preview" className="image-preview" />
+                        <button onClick={() => setSelectedImage(null)} className="remove-image-button">✕</button>
+                    </div>
+                )}
+                <div className="input-controls">
+                    <div style={{
+                        position: 'absolute', top: '-18px', right: '20px',
+                        fontSize: '9px', color: '#138808', fontWeight: 'bold',
+                        display: 'flex', alignItems: 'center', gap: '3px', opacity: 0.7
+                    }}>
+                        <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#138808', display: 'inline-block' }}></span>
+                        TTR Core
+                    </div>
+                    <button className="icon-button" onClick={handleCameraClick} title="Upload">📷</button>
+                    <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageChange} style={{ display: 'none' }} />
+                    <button onClick={() => listen((val) => setInput(prev => prev + ' ' + val))} className={`voice-button ${isListening ? 'listening' : ''}`} title="Voice">
+                        {isListening ? '🛑' : '🎙️'}
+                    </button>
+                    <input
+                        type="text"
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                        placeholder={selectedImage ? "Add topic..." : "Ask TTR AI anything..."}
+                        className="chat-input"
+                        autoComplete="off"
+                    />
+                    <button onClick={handleSend} disabled={loading} className="send-button">➤</button>
+                </div>
+            </div>
+
+            {/* 4. SIDEBAR OVERLAY (History) */}
+            {showSidebar && (
+                <div className="sidebar-overlay">
+                    <div className="sidebar-backdrop" onClick={() => setShowSidebar(false)} />
+                    <div className="sidebar-content">
+                        <h2>History</h2>
+                        <button onClick={startNewChat} className="btn" style={{ width: '100%', marginBottom: '15px', background: '#333' }}>+ New AI Chat</button>
+
+                        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {sessions.length === 0 && <p style={{ color: '#666', fontStyle: 'italic' }}>No chat history yet.</p>}
+                            {sessions.map(s => (
+                                <div key={s.id} onClick={() => { setCurrentSessionId(s.id); setShowSidebar(false); }}
+                                    style={{
+                                        padding: '10px',
+                                        background: currentSessionId === s.id ? '#e3f2fd' : '#f5f5f5',
+                                        borderRadius: '8px', cursor: 'pointer', fontSize: '14px', borderLeft: '4px solid var(--primary)'
+                                    }}>
+                                    <div style={{ fontWeight: 'bold' }}>{s.title || "Untitled Chat"}</div>
+                                    <div style={{ fontSize: '10px', color: '#999', marginTop: '4px' }}>
+                                        {s.updatedAt?.toDate ? s.updatedAt.toDate().toLocaleDateString() : 'Just now'}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 5. API KEY ERROR MODAL */}
+            {messages.some(m => m.isError && (m.text.includes("API Key Missing") || m.text.includes("System Configuration Error"))) && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 4000, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+                    <div style={{ background: 'white', padding: '30px', borderRadius: '15px', maxWidth: '400px', textAlign: 'center', border: '2px solid red' }}>
+                        <h2 style={{ color: 'red' }}>⚠️ AI Service Maintenance</h2>
+                        <p style={{ fontSize: '14px', marginBottom: '15px' }}>The AI Brain is updating its credentials.</p>
+                        <button onClick={() => setMessages(prev => prev.filter(m => !m.isError))} className="btn" style={{ background: '#333' }}>Close</button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
