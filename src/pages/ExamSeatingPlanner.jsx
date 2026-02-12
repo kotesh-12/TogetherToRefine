@@ -34,13 +34,17 @@ export default function ExamSeatingPlanner() {
 
             try {
                 // Fetch Teachers
+                // Fetch Teachers from the correct 'teachers' collection
                 const qT = query(
-                    collection(db, 'users'),
-                    where('role', '==', 'teacher'),
+                    collection(db, 'teachers'),
                     where('institutionId', '==', instId)
                 );
                 const snapshotT = await getDocs(qT);
-                setTeachers(snapshotT.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                setTeachers(snapshotT.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    name: doc.data().name || doc.data().firstName || 'Unnamed Teacher'
+                })));
 
                 // Fetch Unique Classes (from student_allotments)
                 const qS = query(

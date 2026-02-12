@@ -38,7 +38,7 @@ export default function Allotment() {
                 // Fix: Only show teachers from THIS institution
                 let q;
                 if (instId) {
-                    q = query(collection(db, "users"), where("role", "==", "teacher"), where("institutionId", "==", instId));
+                    q = query(collection(db, "teachers"), where("institutionId", "==", instId));
                 } else {
                     setExistingTeachers([]); // Prevent global leak
                     return;
