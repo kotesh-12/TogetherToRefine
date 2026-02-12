@@ -32,6 +32,9 @@ export default function MainLayout() {
             {/* 1. Sticky Header */}
             <Header onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
 
+            {/* Announcement Bar (Global) - Now pinned below Header */}
+            <AnnouncementBar leftIcon={false} />
+
             {/* 2. Flex Body */}
             <div className="layout-body">
 
@@ -42,12 +45,6 @@ export default function MainLayout() {
 
                 {/* 4. Main Content (Right) */}
                 <main className="main-content-area">
-
-
-                    {/* Announcement Bar (Global) */}
-                    <AnnouncementBar leftIcon={false} />
-
-
                     <Outlet />
                 </main>
             </div>
