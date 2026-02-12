@@ -325,7 +325,7 @@ export default function TTRAI() {
                 {/* Mobile History Toggle */}
 
 
-                <div className="chat-area" style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                <div className="chat-area">
                     {messages.map((msg, idx) => (
                         <div key={idx} className={`message-bubble ${msg.sender === 'user' ? 'message-user' : 'message-ai'}`}>
                             {msg.image && <img src={msg.image} alt="User Upload" className="message-image" />}

@@ -363,7 +363,7 @@ export default function FourWayLearning() {
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-body)', color: 'var(--text-main)', fontFamily: "'Segoe UI', sans-serif" }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative', background: 'var(--bg-body)', color: 'var(--text-main)', fontFamily: "'Segoe UI', sans-serif" }}>
 
             {/* HEADER */}
             <div style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--divider)', flexShrink: 0, position: 'relative' }}>
@@ -398,7 +398,7 @@ export default function FourWayLearning() {
             </div>
 
             {/* CHAT AREA */}
-            <div ref={chatContainerRef} style={{ flex: 1, overflowY: 'auto', padding: '15px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <div ref={chatContainerRef} className="chat-area">
                 {chats[activeTab].length === 0 && (
                     <div style={{ textAlign: 'center', color: '#b2bec3', marginTop: '50px' }}>
                         <div style={{ fontSize: '40px', marginBottom: '10px' }}>✨</div>
