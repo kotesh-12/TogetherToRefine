@@ -49,24 +49,37 @@ export default function MarksManagement() {
 
             const token = await auth.currentUser?.getIdToken();
 
-            const prompt = `Analyze this handwritten or printed marksheet. 
-            Extract:
-            1. Class (Numerical value, e.g. 1-12)
-            2. Section (e.g. A, B, C)
-            3. Exam Type (e.g. Mid-Term 1, Final Exam, Assignment 1)
-            4. Marks for each student. Identify them by Name or Roll Number.
+            const prompt = `Act as an expert OCR and Data Verification specialist. Analyze this teacher's marksheet image with 100% precision.
             
-            Return ONLY a JSON object with this structure:
+            EXTRACT THE FOLLOWING DATA:
+            1. CLASS: The numerical class (1-12).
+            2. SECTION: The alphabet section (e.g., A, B, C).
+            3. EXAM TYPE: Choose the closest match from these options: [Assignment 1, Assignment 2, Mid-Term 1, Mid-Term 2, Final Exam].
+            4. LIST OF MARKS: For every student visible, extract their name and their marks (out of 100).
+            
+            CRITICAL ACCURACY RULES:
+            - Read names very slowly and carefully to avoid typos.
+            - If a mark is "Absent", use "0".
+            - If a mark is unclear, skip it rather than guessing.
+            
+            OUTPUT CONFIGURATION:
+            Return ONLY a valid JSON object. Do not include any intro/outro text.
+            JSON STRUCTURE:
             {
-                "class": "6",
-                "section": "A",
-                "examType": "Mid-Term 1",
-                "extractedMarks": [
-                    {"idKey": "Student Name or Roll", "score": "45"}
+                "class": "String",
+                "section": "String",
+                "examType": "String",
+                "data": [
+                    {"nameKey": "Full Name as written", "marks": "Number"}
                 ]
             }`;
 
-            const response = await fetch(`${window.location.origin.includes('localhost') ? 'http://localhost:5000' : ''}/api/chat`, {
+            // Production-Safe API URL
+            const API_URL = window.location.hostname === 'localhost'
+                ? 'https://together-to-refine.vercel.app/api/chat'
+                : '/api/chat';
+
+            const response = await fetch(API_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -80,54 +93,72 @@ export default function MarksManagement() {
                 })
             });
 
-            const data = await response.json();
-            const jsonMatch = data.text.match(/\{[\s\S]*\}/);
+            if (!response.ok) throw new Error("AI Recognition failed to respond.");
 
-            if (jsonMatch) {
-                const parsed = JSON.parse(jsonMatch[0]);
+            const resData = await response.json();
+            const textResult = resData.text;
 
-                // Set metadata
-                if (parsed.class) setSelectedClass(String(parsed.class));
-                if (parsed.section) setSelectedSection(String(parsed.section).toUpperCase());
-                if (parsed.examType) setExamType(parsed.examType);
+            // Robust JSON extraction
+            const jsonStart = textResult.indexOf('{');
+            const jsonEnd = textResult.lastIndexOf('}') + 1;
+            if (jsonStart === -1 || jsonEnd === 0) throw new Error("AI could not format data correctly.");
 
-                // We need to wait for students to be fetched or trigger it manually
-                // Since selectedClass/Section changes trigger useEffect, we need a small delay or a way to handle results 
-                // Alternatively, fetch students immediately here
-                const q = query(
-                    collection(db, "student_allotments"),
-                    where("classAssigned", "==", String(parsed.class)),
-                    where("section", "==", String(parsed.section).toUpperCase())
-                );
-                const snap = await getDocs(q);
-                const studentList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                setStudents(studentList);
+            const parsed = JSON.parse(textResult.substring(jsonStart, jsonEnd));
 
-                // Map results
-                const newMarks = {};
-                studentList.forEach(s => {
-                    const studentId = s.studentId || s.id;
-                    const sName = (s.studentName || s.name || "").toLowerCase();
+            // 1. Update Metadata
+            if (parsed.class) setSelectedClass(String(parsed.class));
+            if (parsed.section) setSelectedSection(String(parsed.section).toUpperCase());
 
-                    // Look for match in extracted marks
-                    const match = parsed.extractedMarks.find(m =>
-                        String(m.idKey).toLowerCase().includes(sName) ||
-                        sName.includes(String(m.idKey).toLowerCase())
-                    );
+            // Match exam type to available options
+            const validExams = ["Assignment 1", "Assignment 2", "Mid-Term 1", "Mid-Term 2", "Final Exam"];
+            const matchedExam = validExams.find(ve => parsed.examType?.includes(ve)) || parsed.examType;
+            if (matchedExam) setExamType(matchedExam);
 
-                    if (match) {
-                        newMarks[studentId] = match.score;
-                    }
+            // 2. Fetch Students for the detected class/section immediately to sync
+            const q = query(
+                collection(db, "student_allotments"),
+                where("classAssigned", "==", String(parsed.class)),
+                where("section", "==", String(parsed.section).toUpperCase())
+            );
+            const snap = await getDocs(q);
+            const studentList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+            if (studentList.length === 0) {
+                alert(`Detected Class ${parsed.class}-${parsed.section}, but no students were found for this selection in the database.`);
+                setStudents([]);
+                return;
+            }
+
+            setStudents(studentList);
+
+            // 3. Smart Matching with extracted data
+            const newMarks = {};
+            let matchedCount = 0;
+
+            studentList.forEach(s => {
+                const sId = s.studentId || s.id;
+                const dbName = (s.studentName || s.name || "").toLowerCase().trim();
+
+                // Fuzzy matching against every extracted name
+                const extractionMatch = parsed.data?.find(m => {
+                    const extName = String(m.nameKey).toLowerCase().trim();
+                    return extName === dbName || extName.includes(dbName) || dbName.includes(extName);
                 });
 
-                setMarksData(newMarks);
-                alert("✨ AI successfully detected marks and class info!");
-            } else {
-                alert("AI couldn't extract data clearly. Please try a clearer photo.");
-            }
+                if (extractionMatch) {
+                    newMarks[sId] = extractionMatch.marks;
+                    matchedCount++;
+                } else {
+                    newMarks[sId] = ''; // Keep empty if no match
+                }
+            });
+
+            setMarksData(newMarks);
+            alert(`✨ AI Smart Scan complete!\n- Detected: Class ${parsed.class}-${parsed.section}\n- Exam: ${matchedExam}\n- Auto-filled marks for ${matchedCount} out of ${studentList.length} students.`);
+
         } catch (err) {
             console.error("AI Scan Error:", err);
-            alert("Error scanning marksheet.");
+            alert("Scan Error: " + err.message);
         } finally {
             setIsScanning(false);
         }
