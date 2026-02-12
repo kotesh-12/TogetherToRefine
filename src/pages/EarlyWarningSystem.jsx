@@ -12,43 +12,74 @@ export default function EarlyWarningSystem() {
 
     useEffect(() => {
         const analyzeStudents = async () => {
+            if (!userData?.uid) return;
             try {
-                // 1. Fetch teacher's assigned students
-                const q = query(collection(db, "student_allotments"), where("teacherId", "==", userData.uid));
-                const snap = await getDocs(q);
+                setLoading(true);
+                const instId = userData.institutionId || userData.uid; // Support both teacher and institution view
 
-                const studentList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                // 1. Fetch teacher's assigned classes from teacher_allotments
+                const allotmentsQuery = query(
+                    collection(db, "teacher_allotments"),
+                    where("teacherId", "==", userData.uid)
+                );
+                const allotmentsSnap = await getDocs(allotmentsQuery);
+                const myClasses = allotmentsSnap.docs.map(d => ({
+                    class: d.data().classAssigned,
+                    section: d.data().section
+                }));
+
+                // Fallback: If no allotments, maybe check if teacher has a direct class/section
+                if (myClasses.length === 0 && userData.class && userData.section) {
+                    myClasses.push({ class: userData.class, section: userData.section });
+                }
+
+                if (myClasses.length === 0) {
+                    setAtRiskStudents([]);
+                    setLoading(false);
+                    return;
+                }
+
+                // 2. Fetch students for these classes
                 const results = [];
+                // Process each class-section pair
+                for (const cls of myClasses) {
+                    const studentQuery = query(
+                        collection(db, "student_allotments"),
+                        where("classAssigned", "==", cls.class),
+                        where("section", "==", cls.section)
+                    );
+                    const studentSnap = await getDocs(studentQuery);
+                    const students = studentSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-                // 2. FOR EACH STUDENT: Fetch attendance records and calculate percentage
-                for (const student of studentList) {
-                    const targetId = student.userId || student.id;
-                    const attQuery = query(collection(db, "attendance"), where("userId", "==", targetId));
-                    const attSnap = await getDocs(attQuery);
+                    for (const student of students) {
+                        const targetId = student.userId || student.id;
+                        const attQuery = query(collection(db, "attendance"), where("userId", "==", targetId));
+                        const attSnap = await getDocs(attQuery);
 
-                    const total = attSnap.size;
-                    let present = 0;
-                    attSnap.forEach(doc => {
-                        if (doc.data().status === 'present') present++;
-                    });
-
-                    const percentage = total > 0 ? (present / total) * 100 : 100; // Assume 100% if no records yet
-
-                    // 3. APPLY RISK CRITERIA: < 50% attendance is High Risk
-                    if (percentage < 50 || total === 0) {
-                        results.push({
-                            id: student.id,
-                            name: student.name || student.studentName || "Unknown Student",
-                            class: student.classAssigned,
-                            attendancePercentage: percentage.toFixed(0),
-                            totalClasses: total,
-                            riskScore: percentage < 50 ? 90 : 10,
-                            riskFactors: [
-                                percentage < 50 ? `Critical: Attendance dropped to ${percentage.toFixed(0)}%` : "No attendance records found yet",
-                                total < 5 && total > 0 ? "Insufficient data for long-term prediction" : null
-                            ].filter(Boolean),
-                            parentPhone: student.parentPhone || student.phone || "N/A"
+                        const total = attSnap.size;
+                        let present = 0;
+                        attSnap.forEach(doc => {
+                            if (doc.data().status === 'present') present++;
                         });
+
+                        const percentage = total > 0 ? (present / total) * 100 : 0; // Default to 0 if no records, to flag them
+
+                        // 3. APPLY RISK CRITERIA: <= 50% attendance or no data
+                        if (percentage <= 50 || total === 0) {
+                            results.push({
+                                id: student.id,
+                                name: student.name || student.studentName || "Unknown Student",
+                                class: student.classAssigned,
+                                attendancePercentage: percentage.toFixed(0),
+                                totalClasses: total,
+                                riskScore: percentage <= 50 ? 90 : 20,
+                                riskFactors: [
+                                    total === 0 ? "No attendance records found yet" : `Critical: Attendance dropped to ${percentage.toFixed(0)}%`,
+                                    total > 0 && total < 5 ? "Insufficient data for long-term prediction" : null
+                                ].filter(Boolean),
+                                parentPhone: student.parentPhone || student.phone || "N/A"
+                            });
+                        }
                     }
                 }
 
@@ -60,7 +91,7 @@ export default function EarlyWarningSystem() {
             }
         };
 
-        if (userData?.uid) analyzeStudents();
+        analyzeStudents();
     }, [userData]);
 
     const handleWhatsApp = (student) => {
