@@ -24,7 +24,8 @@ export default function Sidebar({ isOpen }) {
         { path: '/video-library', label: t('video_library'), icon: '📺' },
         { path: '/health', label: t('health'), icon: '❤️' },
         { path: '/general-feedback', label: t('feedback'), icon: '💬' },
-        { path: '/exam-seating', label: 'Seat Allotment', icon: '🪑', roles: ['institution'] },
+        { path: '/view-exam-seating', label: 'Exam Seats', icon: '🪑', roles: ['teacher', 'student', 'institution'] },
+        { path: '/exam-seating', label: 'Seat Allotment', icon: '🛠️', roles: ['institution', 'admin'] },
         { path: '/settings', label: t('settings'), icon: '⚙️' },
     ];
 

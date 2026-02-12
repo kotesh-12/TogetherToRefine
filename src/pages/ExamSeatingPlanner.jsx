@@ -22,6 +22,8 @@ export default function ExamSeatingPlanner() {
     const [teachers, setTeachers] = useState([]);
     const [roomInvigilators, setRoomInvigilators] = useState({});
     const [seatingPlan, setSeatingPlan] = useState(null);
+    const [teacherSearch, setTeacherSearch] = useState('');
+    const [activeRoomAssign, setActiveRoomAssign] = useState(null);
 
     // Fetch teachers and available classes on mount
     useEffect(() => {
@@ -520,19 +522,90 @@ export default function ExamSeatingPlanner() {
                                             />
                                             <span style={{ fontSize: '14px', color: '#636e72' }}>- {room.totalSeats} Students</span>
                                         </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', position: 'relative' }}>
                                             <label style={{ fontSize: '13px', fontWeight: 'bold' }}>Invigilator:</label>
-                                            <select
-                                                className="input-field"
-                                                style={{ padding: '5px', fontSize: '13px', width: '200px' }}
-                                                value={roomInvigilators[room.roomNo] || ''}
-                                                onChange={(e) => handleInvigilatorChange(room.roomNo, e.target.value)}
-                                            >
-                                                <option value="">-- Assign Teacher --</option>
-                                                {teachers.map(t => (
-                                                    <option key={t.id} value={t.id}>{t.name}</option>
-                                                ))}
-                                            </select>
+                                            <div style={{ position: 'relative' }}>
+                                                <button
+                                                    onClick={() => setActiveRoomAssign(activeRoomAssign === room.roomNo ? null : room.roomNo)}
+                                                    className="btn-outline"
+                                                    style={{
+                                                        padding: '5px 10px',
+                                                        fontSize: '13px',
+                                                        minWidth: '200px',
+                                                        textAlign: 'left',
+                                                        display: 'flex',
+                                                        justifyContent: 'space-between',
+                                                        alignItems: 'center'
+                                                    }}
+                                                >
+                                                    {teachers.find(t => t.id === roomInvigilators[room.roomNo])?.name || '-- Assign Teacher --'}
+                                                    <span>▼</span>
+                                                </button>
+
+                                                {activeRoomAssign === room.roomNo && (
+                                                    <div style={{
+                                                        position: 'absolute',
+                                                        top: '100%',
+                                                        left: 0,
+                                                        right: 0,
+                                                        background: 'white',
+                                                        boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                                                        borderRadius: '8px',
+                                                        zIndex: 100,
+                                                        marginTop: '5px',
+                                                        border: '1px solid #ddd',
+                                                        padding: '10px'
+                                                    }}>
+                                                        <input
+                                                            autoFocus
+                                                            type="text"
+                                                            placeholder="Search Teacher..."
+                                                            className="input-field"
+                                                            style={{ marginBottom: '10px', padding: '6px' }}
+                                                            value={teacherSearch}
+                                                            onChange={(e) => setTeacherSearch(e.target.value)}
+                                                        />
+                                                        <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                                                            <div
+                                                                style={{ padding: '8px', cursor: 'pointer', borderBottom: '1px solid #eee' }}
+                                                                onClick={() => {
+                                                                    handleInvigilatorChange(room.roomNo, '');
+                                                                    setActiveRoomAssign(null);
+                                                                    setTeacherSearch('');
+                                                                }}
+                                                            >
+                                                                -- None --
+                                                            </div>
+                                                            {teachers
+                                                                .filter(t => (t.name || '').toLowerCase().includes(teacherSearch.toLowerCase()))
+                                                                .map(t => (
+                                                                    <div
+                                                                        key={t.id}
+                                                                        style={{
+                                                                            padding: '8px',
+                                                                            cursor: 'pointer',
+                                                                            borderBottom: '1px solid #f8f9fa',
+                                                                            background: roomInvigilators[room.roomNo] === t.id ? '#f0edff' : 'transparent'
+                                                                        }}
+                                                                        onClick={() => {
+                                                                            handleInvigilatorChange(room.roomNo, t.id);
+                                                                            setActiveRoomAssign(null);
+                                                                            setTeacherSearch('');
+                                                                        }}
+                                                                    >
+                                                                        {t.name}
+                                                                    </div>
+                                                                ))
+                                                            }
+                                                            {teachers.filter(t => (t.name || '').toLowerCase().includes(teacherSearch.toLowerCase())).length === 0 && (
+                                                                <div style={{ padding: '10px', color: '#999', fontSize: '12px', textAlign: 'center' }}>
+                                                                    No teachers found
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
 

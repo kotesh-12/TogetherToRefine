@@ -20,20 +20,41 @@ export default function ViewExamSeating() {
     const fetchExamPlans = async () => {
         setLoading(true);
         try {
-            // Fetch all exam seating plans for this institution
+            const instId = userData.role === 'institution' ? userData.uid : (userData.institutionId || userData.uid);
+            if (!instId) return;
+
+            // Fetch all seating plans for the institution
             const q = query(
                 collection(db, "exam_seating"),
+                where("institutionId", "in", [instId, userData.uid || '']), // Coverage for legacy/direct links
                 orderBy("createdAt", "desc")
             );
             const snap = await getDocs(q);
-            const plans = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            setExamPlans(plans);
+            let plans = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-            // If student, auto-find their seat in the latest exam
-            if (userData?.role === 'student' && plans.length > 0) {
-                findMySeat(plans[0]);
-                setSelectedPlan(plans[0]);
+            // ENFORCE VISIBILITY: Only show relevant plans for Teacher/Student
+            if (userData?.role === 'teacher') {
+                // Filter plans where this teacher is an invigilator in ANY room
+                plans = plans.filter(plan =>
+                    (plan.seatingPlan || []).some(room => room.invigilatorId === userData.uid)
+                );
+            } else if (userData?.role === 'student') {
+                const myRoll = userData.rollNumber || userData.pid;
+                // Filter plans where this student appears in ANY room
+                plans = plans.filter(plan =>
+                    (plan.seatingPlan || []).some(room =>
+                        (room.seats || []).some(seat => seat.rollNo?.toString() === myRoll?.toString())
+                    )
+                );
+
+                // Auto-find seat in the latest relevant plan
+                if (plans.length > 0) {
+                    findMySeat(plans[0]);
+                    setSelectedPlan(plans[0]);
+                }
             }
+
+            setExamPlans(plans);
         } catch (e) {
             console.error(e);
         } finally {

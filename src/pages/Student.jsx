@@ -246,6 +246,12 @@ export default function Student() {
                         <h3 className="card-vibe-title">{t('feedback')}</h3>
                         <p className="card-vibe-desc">Share thoughts</p>
                     </div>
+
+                    <div className="student-action-card" onClick={() => handleCardClick('/view-exam-seating')}>
+                        <span className="card-vibe-icon">🪑</span>
+                        <h3 className="card-vibe-title">Exam Seats</h3>
+                        <p className="card-vibe-desc">View your room/seat</p>
+                    </div>
                 </div>
 
                 {/* Exam Results Module */}
