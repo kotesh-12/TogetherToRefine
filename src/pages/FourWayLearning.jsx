@@ -363,7 +363,7 @@ export default function FourWayLearning() {
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative', background: 'var(--bg-body)', color: 'var(--text-main)', fontFamily: "'Segoe UI', sans-serif" }}>
+        <div className="four-way-container">
 
             {/* HEADER */}
             <div style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--divider)', flexShrink: 0, position: 'relative' }}>
@@ -407,19 +407,7 @@ export default function FourWayLearning() {
                     </div>
                 )}
                 {chats[activeTab].map((msg, idx) => (
-                    <div key={idx} style={{
-                        alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                        maxWidth: '85%',
-                        background: msg.role === 'user' ? '#6c5ce7' : 'var(--bg-surface)',
-                        color: msg.role === 'user' ? 'white' : 'var(--text-main)',
-                        padding: '10px 14px',
-                        borderRadius: '12px',
-                        borderBottomRightRadius: msg.role === 'user' ? '2px' : '12px',
-                        borderBottomLeftRadius: msg.role === 'ai' ? '2px' : '12px',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                        lineHeight: '1.4',
-                        position: 'relative' // For absolute positioning of button if needed, but flex is safer inside div
-                    }}>
+                    <div key={idx} className={`message-bubble ${msg.role === 'user' ? 'message-user' : 'message-ai'}`}>
                         {msg.image && <img src={msg.image} alt="User" style={{ maxWidth: '100%', borderRadius: '8px', marginBottom: '10px' }} />}
                         {/* TEXT CONTENT (Markdown Rendered) */}
                         <div className="markdown-content">

@@ -267,7 +267,7 @@ export default function TTRAI() {
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative', background: 'var(--bg-body)', color: 'var(--text-main)', minHeight: 'calc(100vh - 150px)' }}>
+        <div className="ttr-ai-container">
 
             {/* 1. TOP CONTROL BAR */}
             <div style={{ padding: '10px 15px', display: 'flex', justifyContent: 'flex-end', background: 'var(--bg-surface)', borderBottom: '1px solid var(--divider)' }}>
@@ -293,20 +293,7 @@ export default function TTRAI() {
                 )}
 
                 {messages.map((msg, idx) => (
-                    <div key={idx} style={{
-                        alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
-                        maxWidth: '85%',
-                        background: msg.sender === 'user' ? 'var(--primary)' : 'var(--bg-surface)',
-                        color: msg.sender === 'user' ? 'white' : 'var(--text-main)',
-                        padding: '10px 14px',
-                        borderRadius: '12px',
-                        borderBottomRightRadius: msg.sender === 'user' ? '2px' : '12px',
-                        borderBottomLeftRadius: msg.sender === 'ai' ? '2px' : '12px',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                        lineHeight: '1.4',
-                        position: 'relative',
-                        marginBottom: '10px'
-                    }}>
+                    <div key={idx} className={`message-bubble ${msg.sender === 'user' ? 'message-user' : 'message-ai'}`}>
                         {msg.image && <img src={msg.image} alt="User Upload" style={{ maxWidth: '100%', borderRadius: '8px', marginBottom: '10px' }} />}
                         <div className="markdown-content">
                             {msg.sender === 'ai' && idx === messages.length - 1 && !msg.isError ? (
