@@ -20,6 +20,25 @@
   --glass: rgba(255, 255, 255, 0.85);
 }
 
+[data-theme='Dark'] {
+  --primary: #a29bfe;
+  --primary-light: #6c5ce7;
+  --secondary: #1e293b;
+  --accent: #00cec9;
+  --success: #2ecc71;
+  --warning: #f1c40f;
+  --error: #ff7675;
+  --bg-body: #0f172a;
+  --bg-surface: #1e293b;
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --divider: #334155;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 8px 30px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.7);
+  --glass: rgba(30, 41, 59, 0.8);
+}
+
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;

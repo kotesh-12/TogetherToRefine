@@ -83,62 +83,81 @@ function App() {
                   <Route path="/access-denied" element={<AccessDenied />} />
 
                   <Route element={<MainLayout />}>
-                    {/* Common Routes (Accessible to all authenticated users) */}
+                    {/* Shared Utility Routes (Accessible to all authenticated users) */}
                     <Route element={<ProtectedRoute allowedRoles={['student', 'teacher', 'institution', 'admin', 'parent']} />}>
                       <Route path="/onboarding" element={<Onboarding />} />
                       <Route path="/settings" element={<Settings />} />
                       <Route path="/profile" element={<Profile />} />
                       <Route path="/profile-view" element={<ProfileView />} />
                       <Route path="/group" element={<Group />} />
-                      <Route path="/details" element={<Details />} />
-                      <Route path="/general-feedback" element={<GeneralFeedback />} />
-                      <Route path="/report-harassment" element={<Report type="sexual_harassment" />} />
-                      <Route path="/report-misbehavior" element={<Report type="misbehavior" />} />
+                      <Route path="/ttr-ai" element={<TTRAI />} />
                       <Route path="/4-way-learning" element={<FourWayLearning />} />
-                      <Route path="/health" element={<Health />} />
+                      <Route path="/general-feedback" element={<GeneralFeedback />} />
+                      <Route path="/announcements" element={<Announcements />} />
                       <Route path="/video-library" element={<VideoLibrary />} />
+                      <Route path="/notification" element={<Notification />} />
                       <Route path="/select-feedback-target" element={<SelectFeedbackTarget />} />
                       <Route path="/attendance" element={<Attendance />} />
                       <Route path="/timetable" element={<Timetable />} />
                       <Route path="/exam" element={<Exam />} />
-                      <Route path="/announcements" element={<Announcements />} />
-                      <Route path="/homework" element={<HomeworkSystem />} />
                       <Route path="/attendance-analytics" element={<AttendanceAnalytics />} />
                       <Route path="/view-exam-seating" element={<ViewExamSeating />} />
                       <Route path="/library" element={<LibraryManagement />} />
+                      <Route path="/health" element={<Health />} />
+                      <Route path="/report-harassment" element={<Report type="sexual_harassment" />} />
+                      <Route path="/report-misbehavior" element={<Report type="misbehavior" />} />
 
-                      {/* Dashboard Access */}
-                      <Route path="/admin" element={<AdminDashboard />} />
-                      <Route path="/admin/institution/:id" element={<InstitutionDetailsAdmin />} />
-                      <Route path="/student" element={<Student />} />
-                      <Route path="/upid-history" element={<UpidHistory />} />
-                      <Route path="/fees/student" element={<StudentFee />} />
-                      <Route path="/gov-reports" element={<GovernmentReports />} />
-                      <Route path="/inspector-mode" element={<InspectorMode />} />
-                      <Route path="/dropout-predictor" element={<EarlyWarningSystem />} />
-                      <Route path="/early-warning" element={<EarlyWarningSystem />} />
-                      <Route path="/marks" element={<MarksManagement />} />
-                      <Route path="/universal-scanner" element={<UniversalScanner />} />
-                      <Route path="/teacher" element={<Teacher />} />
-                      <Route path="/feedback-overview" element={<FeedbackOverview />} />
-                      <Route path="/parent" element={<ParentDashboard />} />
-                      <Route path="/timetable-generator" element={<TimetableGenerator />} />
-                      <Route path="/exam-seating" element={<ExamSeatingPlanner />} />
-                      <Route path="/inspection-readiness" element={<InspectionReadiness />} />
-                      <Route path="/institution" element={<Institution />} />
-                      <Route path="/admission" element={<Admission />} />
-                      <Route path="/waiting-list" element={<WaitingList />} />
-                      <Route path="/allotment" element={<Allotment />} />
-                      <Route path="/notification" element={<Notification />} />
-                      <Route path="/faculty-feedback" element={<FacultyFeedback />} />
-                      <Route path="/fees/institution" element={<InstitutionFee />} />
-                      <Route path="/fee-details/:feeId" element={<FeeDetails />} />
-                      <Route path="/student-promotion" element={<StudentPromotion />} />
-                      <Route path="/ttr-ai" element={<TTRAI />} />
+                      {/* --- ROLE-SPECIFIC DASHBOARDS --- */}
+
+                      {/* ADMIN ONLY */}
+                      <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                        <Route path="/admin" element={<AdminDashboard />} />
+                        <Route path="/admin/institution/:id" element={<InstitutionDetailsAdmin />} />
+                      </Route>
+
+                      {/* TEACHER ONLY */}
+                      <Route element={<ProtectedRoute allowedRoles={['teacher']} />}>
+                        <Route path="/teacher" element={<Teacher />} />
+                        <Route path="/feedback-overview" element={<FeedbackOverview />} />
+                        <Route path="/timetable-generator" element={<TimetableGenerator />} />
+                        <Route path="/exam-seating" element={<ExamSeatingPlanner />} />
+                        <Route path="/inspection-readiness" element={<InspectionReadiness />} />
+                        <Route path="/gov-reports" element={<GovernmentReports />} />
+                        <Route path="/inspector-mode" element={<InspectorMode />} />
+                        <Route path="/dropout-predictor" element={<EarlyWarningSystem />} />
+                        <Route path="/early-warning" element={<EarlyWarningSystem />} />
+                        <Route path="/universal-scanner" element={<UniversalScanner />} />
+                      </Route>
+
+                      {/* STUDENT ONLY */}
+                      <Route element={<ProtectedRoute allowedRoles={['student']} />}>
+                        <Route path="/student" element={<Student />} />
+                        <Route path="/fees/student" element={<StudentFee />} />
+                        <Route path="/upid-history" element={<UpidHistory />} />
+                        <Route path="/marks" element={<MarksManagement />} />
+                        <Route path="/homework" element={<HomeworkSystem />} />
+                      </Route>
+
+                      {/* INSTITUTION ONLY */}
+                      <Route element={<ProtectedRoute allowedRoles={['institution']} />}>
+                        <Route path="/institution" element={<Institution />} />
+                        <Route path="/admission" element={<Admission />} />
+                        <Route path="/waiting-list" element={<WaitingList />} />
+                        <Route path="/allotment" element={<Allotment />} />
+                        <Route path="/faculty-feedback" element={<FacultyFeedback />} />
+                        <Route path="/fees/institution" element={<InstitutionFee />} />
+                        <Route path="/fee-details/:feeId" element={<FeeDetails />} />
+                        <Route path="/student-promotion" element={<StudentPromotion />} />
+                      </Route>
+
+                      {/* PARENT ONLY */}
+                      <Route element={<ProtectedRoute allowedRoles={['parent']} />}>
+                        <Route path="/parent" element={<ParentDashboard />} />
+                      </Route>
                     </Route>
                   </Route>
 
-                  {/* Standalone Pages (Custom Layout) */}
+                  {/* Standalone Pages (Outside MainLayout) */}
                   <Route element={<ProtectedRoute allowedRoles={['student', 'teacher', 'institution', 'admin', 'parent']} />}>
                     <Route path="/messages" element={<MessagingSystem />} />
                     <Route path="/analytics" element={<PerformanceAnalytics />} />
