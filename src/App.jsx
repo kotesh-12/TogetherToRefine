@@ -116,6 +116,7 @@ function App() {
                       <Route path="/gov-reports" element={<GovernmentReports />} />
                       <Route path="/inspector-mode" element={<InspectorMode />} />
                       <Route path="/dropout-predictor" element={<EarlyWarningSystem />} />
+                      <Route path="/early-warning" element={<EarlyWarningSystem />} />
                       <Route path="/marks" element={<MarksManagement />} />
                       <Route path="/universal-scanner" element={<UniversalScanner />} />
                       <Route path="/teacher" element={<Teacher />} />
