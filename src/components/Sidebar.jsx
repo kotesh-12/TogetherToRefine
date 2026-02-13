@@ -15,7 +15,7 @@ export default function Sidebar({ isOpen }) {
         { path: '/institution', label: 'Institution View', icon: '🏛️', roles: ['institution'] },
         { path: '/teacher', label: 'Faculty Room', icon: '👨‍🏫', roles: ['teacher'] },
         { path: '/student', label: 'My Desk', icon: '🎓', roles: ['student'] },
-        { path: '/group', label: userRole === 'student' ? 'My Class' : 'Manage Groups', icon: '🏫', roles: ['teacher', 'student'] },
+        { path: '/group', label: userRole === 'student' ? 'My Class' : 'Manage Groups', icon: '🏫', roles: ['teacher', 'student', 'institution', 'admin'] },
         { path: '/homework', label: userRole === 'student' ? 'Assignments' : 'Homework Desk', icon: '📚', roles: ['teacher', 'student'] },
         { path: '/marks', label: userRole === 'student' ? 'My Progress' : 'Marks Entry', icon: '🎯', roles: ['teacher', 'student'] },
         { path: '/attendance', label: t('attendance'), icon: '📅', roles: ['teacher', 'student', 'institution'] },

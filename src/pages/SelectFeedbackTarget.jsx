@@ -22,6 +22,26 @@ export default function SelectFeedbackTarget() {
     // Institution Filter State
     const [institutionFilter, setInstitutionFilter] = useState('Teacher'); // 'Teacher' or 'Student'
 
+    const normalizeClassValue = (c) => {
+        if (!c) return [];
+        const s = String(c).trim().toLowerCase();
+        const num = parseInt(s);
+        if (isNaN(num)) return [s];
+
+        // Generate variants: "10", "10th"
+        const suffixes = ["th", "st", "nd", "rd"];
+        const mod100 = num % 100;
+        const mod10 = num % 10;
+        let suffix = suffixes[0];
+        if (mod100 >= 11 && mod100 <= 13) {
+            suffix = "th";
+        } else {
+            suffix = suffixes[mod10] || suffixes[0];
+        }
+
+        return [num.toString(), `${num}${suffix}`];
+    };
+
     useEffect(() => {
         const fetchData = async () => {
             if (!userData) return;
@@ -31,188 +51,154 @@ export default function SelectFeedbackTarget() {
 
             try {
                 if (role === 'student') {
-                    setTitle("Select Feedback Target"); // Changed title to generic
-                    // 1. Add Institution
-                    if (userData.institutionId) {
+                    setTitle("Give Feedback");
+
+                    // 1. Institution Target
+                    const instId = userData.institutionId;
+                    if (instId) {
                         try {
-                            const instDoc = await getDoc(doc(db, "institutions", userData.institutionId));
+                            const instDoc = await getDoc(doc(db, "institutions", instId));
                             if (instDoc.exists()) {
-                                list.push({
+                                setInstitutionTarget({
                                     id: instDoc.id,
                                     ...instDoc.data(),
                                     type: 'Institution',
-                                    name: instDoc.data().schoolName || instDoc.data().name || 'Your School'
+                                    name: instDoc.data().institutionName || instDoc.data().schoolName || 'Your School'
                                 });
                             }
-                        } catch (e) {
-                            console.error("Error fetching institution for student", e);
-                        }
+                        } catch (e) { console.error("Inst fetch error", e); }
                     }
 
-                    // 2. Add Teachers
+                    // 2. Teacher Targets (Based on Class/Section)
                     const userClass = userData.class || userData.assignedClass;
                     const userSection = userData.section || userData.assignedSection;
 
-                    if (userClass) {
+                    if (userClass && instId) {
+                        const classVariants = normalizeClassValue(userClass);
                         const q = query(
                             collection(db, "teacher_allotments"),
-                            where("classAssigned", "==", userClass),
-                            where("section", "==", userSection),
-                            // Filter by Institution ID to prevent cross-institution bleed
-                            // Note: Teacher Allotments should have 'createdBy' (inst ID) or we rely on 'userId' matching an institution check.
-                            // Better: Teacher Allotments already have 'createdBy' which IS the institution ID.
-                            where("createdBy", "==", userData.institutionId)
+                            where("createdBy", "==", instId),
+                            where("classAssigned", "in", classVariants)
                         );
                         const snap = await getDocs(q);
-                        const teachers = snap.docs.map(d => ({
-                            ...d.data(),
-                            id: d.data().teacherId || d.id,
-                            type: 'Teacher'
-                        }));
-                        list = [...list, ...teachers];
-                    }
-                }
-                else if (role === 'teacher') {
-                    setTitle("Select Feedback Target");
-
-                    let instId = userData.createdBy || userData.institutionId;
-                    let teacherClasses = [];
-
-                    // 1. Fetch Teacher Allotments (Find Institution ID & My Classes)
-                    try {
-                        // Standard: userId
-                        let allotQ = query(collection(db, "teacher_allotments"), where("userId", "==", userData.uid));
-                        let allotSnap = await getDocs(allotQ);
-
-                        // Legacy: teacherId
-                        if (allotSnap.empty) {
-                            allotQ = query(collection(db, "teacher_allotments"), where("teacherId", "==", userData.uid));
-                            allotSnap = await getDocs(allotQ);
-                        }
-
-                        // Legacy: Name (Very old records which usually lack IDs)
-                        if (allotSnap.empty && userData.name) {
-                            allotQ = query(collection(db, "teacher_allotments"), where("name", "==", userData.name));
-                            allotSnap = await getDocs(allotQ);
-                        }
-
-                        // Collect Data
-                        allotSnap.forEach(d => {
+                        const teachers = [];
+                        snap.forEach(d => {
                             const data = d.data();
-                            if (data.createdBy && !instId) instId = data.createdBy;
-                            if (data.classAssigned) teacherClasses.push({ cls: data.classAssigned, sec: data.section });
-                        });
-
-                    } catch (e) { console.error("Error fetching teacher allotments", e); }
-
-                    // 2. Fetch Students (Strategy A: By Institution) & Add Institution Target
-                    if (instId) {
-                        try {
-                            // Add Institution as Target (Updated to 'institutions' collection)
-                            const instDoc = await getDoc(doc(db, "institutions", instId));
-                            if (instDoc.exists()) {
-                                setInstitutionTarget({ id: instDoc.id, ...instDoc.data(), type: 'Institution', name: instDoc.data().schoolName || instDoc.data().name || 'Institution' });
-                            } else {
-                                // Fallback to 'users' if old data
-                                const instDocOld = await getDoc(doc(db, "users", instId));
-                                if (instDocOld.exists()) {
-                                    setInstitutionTarget({ id: instDocOld.id, ...instDocOld.data(), type: 'Institution', name: instDocOld.data().name || 'Institution' });
-                                }
-                            }
-
-                            // Fetch All Students from Institution
-                            const q = query(collection(db, "student_allotments"), where("createdBy", "==", instId));
-                            const snap = await getDocs(q);
-                            list = snap.docs.map(d => ({ id: d.data().userId || d.data().studentId || d.id, ...d.data(), type: 'Student' }));
-                        } catch (e) { console.error("Error fetching institution/students", e); }
-                    }
-
-                    // Fallback: Use User Profile if Allotments missing (Critical for Legacy Teachers)
-                    if (teacherClasses.length === 0 && (userData.assignedClass || userData.class)) {
-                        teacherClasses.push({ cls: userData.assignedClass || userData.class, sec: userData.assignedSection || userData.section });
-                    }
-
-                    // 3. Fetch Students (Strategy B: By Allotted Class - Always Merge)
-                    if (teacherClasses.length > 0) {
-                        try {
-                            const studentPromises = teacherClasses.map(tc => {
-                                const variants = [tc.cls];
-                                if (!isNaN(parseFloat(tc.cls))) {
-                                    const n = parseInt(tc.cls, 10);
-                                    const s = ["th", "st", "nd", "rd"];
-                                    const v = n % 100;
-                                    const suf = s[(v - 20) % 10] || s[v] || s[0];
-                                    variants.push(`${n}${suf}`);
-                                    variants.push(`${n}`);
-                                    variants.push(n);
-                                }
-                                const uniqueVars = [...new Set(variants)];
-                                const qS = query(collection(db, "student_allotments"), where("classAssigned", "in", uniqueVars));
-                                return getDocs(qS);
-                            });
-
-                            const snapshots = await Promise.all(studentPromises);
-                            snapshots.forEach(snap => {
-                                const subList = snap.docs.map(d => ({ id: d.data().userId || d.data().studentId || d.id, ...d.data(), type: 'Student' }));
-                                list = [...list, ...subList];
-                            });
-
-                            // Deduplicate by ID
-                            const uniqueIds = new Set();
-                            list = list.filter(item => {
-                                if (uniqueIds.has(item.id)) return false;
-                                uniqueIds.add(item.id);
-                                return true;
-                            });
-                        } catch (e) { console.error("Error fetching students by class", e); }
-                    }
-                }
-                else if (role === 'institution') {
-                    setTitle("Select Person for Feedback");
-                    const colName = institutionFilter === 'Teacher' ? 'teacher_allotments' : 'student_allotments';
-
-                    // Fetch all allotments created by this institution
-                    const q = query(collection(db, colName), where('createdBy', '==', userData.uid));
-                    const snap = await getDocs(q);
-                    const rawList = snap.docs.map(d => ({ ...d.data(), docId: d.id }));
-
-                    if (institutionFilter === 'Teacher') {
-                        // Deduplicate Teachers by teacherId
-                        const uniqueMap = new Map();
-                        rawList.forEach(item => {
-                            // Fallback: Use docId if teacherId missing (should not happen in valid data)
-                            const tId = item.teacherId || item.docId;
-                            if (!uniqueMap.has(tId)) {
-                                uniqueMap.set(tId, {
-                                    id: tId,
-                                    name: item.teacherName || item.name || 'Unknown Teacher',
-                                    type: 'Teacher',
-                                    subject: item.subject || 'General'
+                            // Filter by section if allotment is section-specific
+                            if (!data.section || data.section === 'All' || data.section === userSection) {
+                                teachers.push({
+                                    id: data.userId || data.teacherId || d.id,
+                                    name: data.name || data.teacherName || 'Teacher',
+                                    subject: data.subject || 'General',
+                                    type: 'Teacher'
                                 });
                             }
                         });
-                        list = Array.from(uniqueMap.values());
-                    } else {
-                        // Students
-                        list = rawList.map(item => ({
-                            id: item.studentId || item.docId,
-                            name: item.studentName || item.name,
-                            type: 'Student',
-                            classAssigned: item.classAssigned,
-                            section: item.section
-                        }));
+
+                        // Deduplicate teachers
+                        const seenT = new Set();
+                        list = teachers.filter(t => {
+                            if (seenT.has(t.id)) return false;
+                            seenT.add(t.id);
+                            return true;
+                        });
                     }
+                }
+                else if (role === 'teacher') {
+                    setTitle("Select Student or Inst");
+                    const instId = userData.institutionId || userData.createdBy;
+
+                    // 1. Institution Target
+                    if (instId) {
+                        const instDoc = await getDoc(doc(db, "institutions", instId));
+                        if (instDoc.exists()) {
+                            setInstitutionTarget({
+                                id: instDoc.id,
+                                ...instDoc.data(),
+                                type: 'Institution',
+                                name: instDoc.data().institutionName || instDoc.data().schoolName || 'Institution'
+                            });
+                        }
+                    }
+
+                    // 2. Student Targets (By Allotment)
+                    const myUid = userData.uid;
+                    const allotQ = query(collection(db, "teacher_allotments"), where("userId", "==", myUid));
+                    const allotSnap = await getDocs(allotQ);
+
+                    const myClasses = [];
+                    allotSnap.forEach(d => myClasses.push(d.data()));
+
+                    if (myClasses.length > 0) {
+                        const studentPromises = myClasses.map(allot => {
+                            const variants = normalizeClassValue(allot.classAssigned);
+                            let sq = query(collection(db, "student_allotments"),
+                                where("createdBy", "==", instId),
+                                where("classAssigned", "in", variants)
+                            );
+                            return getDocs(sq);
+                        });
+
+                        const snaps = await Promise.all(studentPromises);
+                        const students = [];
+                        snaps.forEach((sSnap, idx) => {
+                            const allot = myClasses[idx];
+                            sSnap.forEach(sd => {
+                                const sData = sd.data();
+                                if (!allot.section || allot.section === 'All' || sData.section === allot.section) {
+                                    students.push({
+                                        id: sData.userId || sData.studentId || sd.id,
+                                        name: sData.name || sData.studentName || 'Student',
+                                        classAssigned: sData.classAssigned,
+                                        section: sData.section,
+                                        type: 'Student'
+                                    });
+                                }
+                            });
+                        });
+
+                        // Deduplicate
+                        const seenS = new Set();
+                        list = students.filter(s => {
+                            if (seenS.has(s.id)) return false;
+                            seenS.add(s.id);
+                            return true;
+                        });
+                    }
+                }
+                else if (role === 'institution') {
+                    setTitle("Feedback Management");
+                    const colName = institutionFilter === 'Teacher' ? 'teacher_allotments' : 'student_allotments';
+                    const q = query(collection(db, colName), where('createdBy', '==', userData.uid));
+                    const snap = await getDocs(q);
+
+                    const uniqueMap = new Map();
+                    snap.forEach(d => {
+                        const data = d.data();
+                        const id = data.userId || data.studentId || data.teacherId || d.id;
+                        if (!uniqueMap.has(id)) {
+                            uniqueMap.set(id, {
+                                id,
+                                name: data.name || data.studentName || data.teacherName || 'Unknown',
+                                type: institutionFilter,
+                                subject: data.subject || '',
+                                classAssigned: data.classAssigned || '',
+                                section: data.section || ''
+                            });
+                        }
+                    });
+                    list = Array.from(uniqueMap.values());
                 }
 
                 setTargets(list);
             } catch (e) {
-                console.error("Error fetching targets:", e);
+                console.error("Error in SelectFeedbackTarget:", e);
+                setTargets([]);
             } finally {
                 setLoading(false);
             }
         };
 
-        setLoading(true);
         fetchData();
     }, [userData, institutionFilter]);
 

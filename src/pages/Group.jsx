@@ -128,18 +128,20 @@ export default function Group() {
             }
             // 3. Student
             else {
-                let userClass = userData.class || userData.assignedClass;
-                if (userClass && parseInt(userClass)) userClass = parseInt(userClass).toString(); // Normalize
+                let rawUserClass = userData.class || userData.assignedClass;
+                if (rawUserClass) {
+                    const variants = [rawUserClass.toString().trim()];
+                    const baseVal = rawUserClass.toString().replace(/[^0-9]/g, '');
+                    if (baseVal && baseVal !== rawUserClass) variants.push(baseVal);
+                    if (baseVal) variants.push(`${baseVal}th`);
 
-                if (userClass) {
                     if (userData.institutionId) {
                         q = query(collection(db, "groups"),
-                            where("className", "==", userClass),
+                            where("className", "in", variants),
                             where("createdBy", "==", userData.institutionId)
                         );
                     } else {
-                        // Student fallback - risky but students usually have institutionId in profile
-                        q = query(collection(db, "groups"), where("className", "==", userClass));
+                        q = query(collection(db, "groups"), where("className", "in", variants));
                     }
                 }
             }
@@ -161,7 +163,11 @@ export default function Group() {
                     // 2. Section Matches (Strict for Student/Teacher scope)
                     // OR 3. Group has NO section (Global class group) - ALLOWED for teachers of that class
 
-                    const matchesSection = !data.section || data.section === sectionFilter;
+                    // ALLOWANCE: Show if section matches OR group is for 'All' sections
+                    const groupSection = (data.section || 'All').toString().toUpperCase();
+                    const userSec = (sectionFilter || 'All').toString().toUpperCase();
+
+                    const matchesSection = groupSection === 'ALL' || groupSection === userSec;
 
                     if (userData.role === 'institution' || matchesSection) {
                         list.push({ id: d.id, ...data });
