@@ -9,6 +9,9 @@ export default function Sidebar({ isOpen }) {
     const { userData } = useUser();
     const { t } = useLanguage();
 
+    // Filter by Role
+    const userRole = (userData?.role || 'student').toLowerCase();
+
     const allRoutes = [
         { path: '/', label: t('dashboard'), icon: '🏠' },
         { path: '/admin', label: 'Admin Panel', icon: '🛡️', roles: ['admin'] },
@@ -29,8 +32,6 @@ export default function Sidebar({ isOpen }) {
         { path: '/settings', label: t('settings'), icon: '⚙️' },
     ];
 
-    // Filter by Role
-    const userRole = (userData?.role || 'student').toLowerCase();
     const routes = allRoutes.filter(r => !r.roles || r.roles.includes(userRole));
 
     // Helper to check if route is active
