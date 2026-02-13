@@ -22,83 +22,81 @@ export default function ViewExamSeating() {
     const fetchExamPlans = async () => {
         setLoading(true);
         try {
-            const instId = userData.role === 'institution' ? userData.uid : (userData.institutionId || userData.uid);
-            if (!instId) return;
+            // Standardize Institution ID lookup
+            const instId = userData.institutionId || (userData.role === 'institution' ? userData.uid : null);
 
-            // Fetch all seating plans for the institution
+            if (!instId) {
+                console.warn("No institution ID found for user:", userData.uid);
+                setExamPlans([]);
+                setLoading(false);
+                return;
+            }
+
+            // Fetch all seating plans for this institution
             const q = query(
                 collection(db, "exam_seating"),
-                where("institutionId", "in", [instId, userData.uid || '']), // Coverage for legacy/direct links
+                where("institutionId", "==", instId),
                 orderBy("createdAt", "desc")
             );
+
             const snap = await getDocs(q);
-            let plans = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            const allPlans = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-            // ENFORCE VISIBILITY: Only show relevant plans for Teacher/Student
-            if (userData?.role === 'teacher') {
-                // Filter plans where this teacher is an invigilator in ANY room
-                plans = plans.filter(plan =>
-                    (plan.seatingPlan || []).some(room => room.invigilatorId === userData.uid)
-                );
-            } else if (userData?.role === 'student') {
-                const myRoll = (userData.rollNumber || userData.pid || '').toString();
-                const myUid = userData.uid;
+            // For Students/Teachers, we show ALL plans but track their specific assignment
+            setExamPlans(allPlans);
 
-                // Filter plans where this student appears in ANY room (Double Check: UID or RollNo)
-                plans = plans.filter(plan =>
-                    (plan.seatingPlan || []).some(room =>
-                        (room.seats || []).some(seat =>
-                            (seat.userId === myUid) ||
-                            (seat.rollNo?.toString() === myRoll && myRoll !== '')
-                        )
-                    )
-                );
-
-                // Auto-find seat in the latest relevant plan
-                if (plans.length > 0) {
-                    findMySeat(plans[0]);
-                    setSelectedPlan(plans[0]);
+            // Auto-select latest plan and find assignment
+            if (allPlans.length > 0) {
+                const latest = allPlans[0];
+                setSelectedPlan(latest);
+                if (userData?.role === 'student' || userData?.role === 'teacher') {
+                    findMyAssignment(latest);
                 }
             }
 
-            setExamPlans(plans);
         } catch (e) {
-            console.error(e);
+            console.error("Error fetching exam plans:", e);
         } finally {
             setLoading(false);
         }
     };
 
-    const findMySeat = (plan) => {
+    const findMyAssignment = (plan) => {
         if (!plan || !plan.seatingPlan) return;
 
-        const studentRoll = (userData.rollNumber || userData.pid || '').toString();
-        const studentUid = userData.uid;
-        if (!studentUid && !studentRoll) return;
-
-        // Search through all rooms for this student
-        for (const room of plan.seatingPlan) {
-            const seat = (room.seats || []).find(s =>
-                (s.userId === studentUid) ||
-                (s.rollNo?.toString() === studentRoll && studentRoll !== '')
-            );
-            if (seat) {
-                setMySeat({
-                    roomName: room.roomName,
-                    roomNo: room.roomNo,
-                    seatNo: seat.seatNo,
-                    rollNo: seat.rollNo
-                });
-                return;
+        if (userData?.role === 'teacher') {
+            const room = (plan.seatingPlan || []).find(r => r.invigilatorId === userData.uid);
+            if (room) {
+                setMySeat({ isTeacher: true, roomName: room.roomName });
+            } else {
+                setMySeat(null);
             }
+        } else if (userData?.role === 'student') {
+            const myRoll = (userData.rollNumber || userData.pid || userData.rollNo || '').toString().trim();
+            const myUid = userData.uid;
+
+            for (const room of plan.seatingPlan) {
+                const seat = (room.seats || []).find(s =>
+                    (s.userId === myUid) ||
+                    (s.rollNo?.toString().trim() === myRoll && myRoll !== '')
+                );
+                if (seat) {
+                    setMySeat({
+                        roomName: room.roomName,
+                        seatNo: seat.seatNo,
+                        rollNo: seat.rollNo
+                    });
+                    return;
+                }
+            }
+            setMySeat(null);
         }
-        setMySeat(null);
     };
 
     const handleSelectPlan = (plan) => {
         setSelectedPlan(plan);
-        if (userData?.role === 'student') {
-            findMySeat(plan);
+        if (userData?.role === 'student' || userData?.role === 'teacher') {
+            findMyAssignment(plan);
         }
     };
 
@@ -262,29 +260,28 @@ export default function ViewExamSeating() {
                             </div>
                         )}
 
-                        {/* Teacher's Invigilation Highlight */}
+                        {/* Teacher/Incharge Assignment Highlight */}
                         {userData?.role === 'teacher' && selectedPlan && (
-                            (() => {
-                                const myRoom = selectedPlan.seatingPlan?.find(r => r.invigilatorId === userData.uid);
-                                return myRoom ? (
-                                    <div className="card" style={{
-                                        marginBottom: '20px',
-                                        background: 'linear-gradient(135deg, #2ecc71 0%, #27ae60 100%)',
-                                        color: 'white',
-                                        borderLeft: '5px solid #219150'
-                                    }}>
-                                        <h3 style={{ margin: '0 0 10px 0', color: 'white' }}>📋 Invigilation Duty</h3>
+                            <div className="card" style={{
+                                marginBottom: '20px',
+                                background: mySeat?.isTeacher ? 'linear-gradient(135deg, #2ecc71 0%, #27ae60 100%)' : '#f8f9fa',
+                                color: mySeat?.isTeacher ? 'white' : '#636e72',
+                                borderLeft: mySeat?.isTeacher ? '5px solid #219150' : 'none'
+                            }}>
+                                {mySeat?.isTeacher ? (
+                                    <>
+                                        <h3 style={{ margin: '0 0 10px 0', color: 'white' }}>👮‍♂️ Your Invigilation Duty</h3>
                                         <div style={{ fontSize: '18px' }}>
-                                            You are assigned to <strong>{myRoom.roomName}</strong> for this exam.
+                                            You are assigned to <strong>{mySeat.roomName}</strong> for this exam.
                                         </div>
-                                    </div>
+                                    </>
                                 ) : (
-                                    <div className="card" style={{ marginBottom: '20px', background: '#f8f9fa', color: '#636e72' }}>
-                                        <h3 style={{ margin: '0 0 5px 0' }}>📋 Invigilation Duty</h3>
+                                    <div style={{ textAlign: 'center', padding: '10px' }}>
+                                        <h3 style={{ margin: '0 0 5px 0' }}>📋 Duty Status</h3>
                                         <div>You are not assigned to any room for this exam.</div>
                                     </div>
-                                );
-                            })()
+                                )}
+                            </div>
                         )}
 
                         {/* Seating Plan Display */}
