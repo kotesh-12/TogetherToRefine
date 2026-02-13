@@ -138,14 +138,37 @@ export default function Group() {
                         variants.push(`${baseVal}st`);
                         variants.push(`${baseVal}nd`);
                         variants.push(`${baseVal}rd`);
-                        variants.push(parseInt(baseVal)); // Add Number variant
+                        variants.push(parseInt(baseVal));
+                        variants.push(`Class ${baseVal}`);
+                        variants.push(`Class ${baseVal}th`);
                     }
-
-                    // Remove duplicates
                     const uniqueVariants = Array.from(new Set(variants));
 
-                    // Query by class. We will filter by institution ID client-side for better compatibility with old data.
-                    q = query(collection(db, "groups"), where("className", "in", uniqueVariants));
+                    const instId = userData.institutionId;
+
+                    // Dual queries for security compliance + legacy support
+                    if (instId) {
+                        const q1 = query(collection(db, "groups"), where("className", "in", uniqueVariants), where("institutionId", "==", instId));
+                        const q2 = query(collection(db, "groups"), where("className", "in", uniqueVariants), where("createdBy", "==", instId));
+
+                        const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+                        const merged = new Map();
+                        snap1.forEach(d => merged.set(d.id, { id: d.id, ...d.data() }));
+                        snap2.forEach(d => merged.set(d.id, { id: d.id, ...d.data() }));
+                        const list = [];
+
+                        let sectionFilter = userData.section || userData.assignedSection;
+                        merged.forEach((data, gid) => {
+                            const groupSection = (data.section || 'All').toString().toUpperCase();
+                            const userSec = (sectionFilter || 'All').toString().toUpperCase();
+                            const matchesSection = !sectionFilter || groupSection === 'ALL' || groupSection === userSec;
+                            if (matchesSection) list.push({ id: gid, ...data });
+                        });
+                        setGroupList(list);
+                        return; // Exit early as we manually handled the fetch
+                    } else {
+                        q = query(collection(db, "groups"), where("className", "in", uniqueVariants));
+                    }
                 }
             }
 
@@ -162,11 +185,8 @@ export default function Group() {
                     const data = d.data();
 
                     // 1. INSTITUTION FILTER (Strict + Fallback)
-                    // Group must belong to student's institution
                     const instId = userData.institutionId;
                     const isMyInstitution = instId && (data.institutionId === instId || data.createdBy === instId);
-
-                    // Fallback to name matching if IDs don't match (for legacy data or different ID formats)
                     const matchesInstName = userData.institutionName && data.institutionName &&
                         userData.institutionName.toLowerCase().trim() === data.institutionName.toLowerCase().trim();
 
@@ -175,11 +195,6 @@ export default function Group() {
                     // 2. SECTION FILTER
                     const groupSection = (data.section || 'All').toString().toUpperCase();
                     const userSec = (sectionFilter || 'All').toString().toUpperCase();
-
-                    // Allow if:
-                    // - User has no section assigned (show all for class)
-                    // - Group is for 'All' sections
-                    // - Strict match
                     const matchesSection = !sectionFilter || groupSection === 'ALL' || groupSection === userSec;
 
                     if (userData.role === 'institution' || (isMyInstitution && matchesSection) || (matchesInstName && matchesSection) || (userData.role === 'teacher' && matchesSection)) {

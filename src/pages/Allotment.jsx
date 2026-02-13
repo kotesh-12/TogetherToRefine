@@ -286,12 +286,26 @@ export default function Allotment() {
             // Profile Updates
             if (finalUserId) {
                 try {
-                    const userColl = (personToAllot?.role === 'teacher') ? 'teachers' : 'users';
+                    const userColl = (role === 'teacher') ? 'teachers' : 'users';
+
+                    // Use institution data from the current user (the admin/institution)
+                    const instIdToSave = instId;
+                    const instNameToSave = userData?.schoolName || userData?.institutionName || userData?.name || null;
+
                     await setDoc(doc(db, userColl, finalUserId), {
-                        approved: true, assignedClass: cls, assignedSection: sec, class: cls, section: sec,
-                        ...(role === 'teacher' ? { subject: extra } : { age: extra }), updatedAt: new Date()
+                        approved: true,
+                        assignedClass: cls,
+                        assignedSection: sec,
+                        class: cls,
+                        section: sec,
+                        institutionId: instIdToSave,
+                        institutionName: instNameToSave,
+                        ...(role === 'teacher' ? { subject: extra } : { age: extra }),
+                        updatedAt: new Date()
                     }, { merge: true });
-                } catch (profErr) { }
+                } catch (profErr) {
+                    console.error("Profile update failed during allotment:", profErr);
+                }
             }
 
             if (personToAllot) {
@@ -428,23 +442,22 @@ export default function Allotment() {
             // 4. Update Profile (if linked)
             if (finalUserId) {
                 // Try updating standard users or teachers collection
-                try {
-                    // Update teachers collection
-                    await setDoc(doc(db, "teachers", finalUserId), {
-                        assignedClass: targetClass,
-                        assignedSection: targetSection,
-                        class: targetClass,
-                        section: targetSection
-                    }, { merge: true });
-                } catch (e) { console.log("Updating teachers coll failed, trying users..."); }
+                const instNameToSave = userData?.schoolName || userData?.institutionName || userData?.name || null;
+                const profileUpdates = {
+                    assignedClass: targetClass,
+                    assignedSection: targetSection,
+                    class: targetClass,
+                    section: targetSection,
+                    institutionId: instId,
+                    institutionName: instNameToSave
+                };
 
                 try {
-                    await setDoc(doc(db, "users", finalUserId), {
-                        assignedClass: targetClass,
-                        assignedSection: targetSection,
-                        class: targetClass,
-                        section: targetSection
-                    }, { merge: true });
+                    await setDoc(doc(db, "teachers", finalUserId), profileUpdates, { merge: true });
+                } catch (e) { }
+
+                try {
+                    await setDoc(doc(db, "users", finalUserId), profileUpdates, { merge: true });
                 } catch (e) { }
             }
 

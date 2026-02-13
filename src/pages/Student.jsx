@@ -105,37 +105,59 @@ export default function Student() {
                     variants.push(`${baseVal}st`);
                     variants.push(`${baseVal}nd`);
                     variants.push(`${baseVal}rd`);
-                    variants.push(parseInt(baseVal)); // Add Number variant
+                    variants.push(parseInt(baseVal));
+                    variants.push(`Class ${baseVal}`);
+                    variants.push(`Class ${baseVal}th`);
                 }
                 const uniqueVariants = Array.from(new Set(variants));
 
-                // Query Groups matching this Class variants
-                const q = query(
-                    collection(db, "groups"),
-                    where("className", "in", uniqueVariants)
-                );
-
-                const snap = await getDocs(q);
-                const list = [];
                 const instId = userData.institutionId;
+                if (!instId) {
+                    console.warn("Student missing institutionId in profile. Attempting fallback queries...");
+                }
 
-                snap.forEach(d => {
-                    const data = d.data();
+                // Query Groups with Institution Filter (Satisifes Rules)
+                // We use two queries to handle groups where institutionId might be missing but createdBy is correct
+                let finalGroups = [];
 
-                    // 1. Institution Check (Strict + Fallback)
-                    const isMyInstitution = instId && (data.institutionId === instId || data.createdBy === instId);
+                if (instId) {
+                    const q1 = query(
+                        collection(db, "groups"),
+                        where("className", "in", uniqueVariants),
+                        where("institutionId", "==", instId)
+                    );
+                    const q2 = query(
+                        collection(db, "groups"),
+                        where("className", "in", uniqueVariants),
+                        where("createdBy", "==", instId)
+                    );
 
+                    const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+                    const merged = new Map();
+                    snap1.forEach(d => merged.set(d.id, { id: d.id, ...d.data() }));
+                    snap2.forEach(d => merged.set(d.id, { id: d.id, ...d.data() }));
+                    finalGroups = Array.from(merged.values());
+                } else {
+                    // Fallback to only class if instId is missing (risk of rule rejection)
+                    const qFallback = query(collection(db, "groups"), where("className", "in", uniqueVariants));
+                    const snapFallback = await getDocs(qFallback);
+                    snapFallback.forEach(d => finalGroups.push({ id: d.id, ...d.data() }));
+                }
+
+                const list = [];
+                finalGroups.forEach(data => {
+                    // 1. Double check institution link in memory
                     const matchesInstName = userData.institutionName && data.institutionName &&
                         userData.institutionName.toLowerCase().trim() === data.institutionName.toLowerCase().trim();
 
-                    if (!isMyInstitution && !matchesInstName) return;
+                    if (instId && (data.institutionId !== instId && data.createdBy !== instId) && !matchesInstName) return;
 
                     // 2. Section Check
                     const groupSec = (data.section || 'All').toString().toUpperCase();
                     const userSec = (userSection || 'All').toString().toUpperCase();
 
                     if (!userSection || groupSec === 'ALL' || groupSec === userSec) {
-                        list.push({ id: d.id, ...data });
+                        list.push(data);
                     }
                 });
                 setMyGroups(list);
