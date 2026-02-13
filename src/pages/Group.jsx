@@ -130,45 +130,64 @@ export default function Group() {
             else {
                 let rawUserClass = userData.class || userData.assignedClass;
                 if (rawUserClass) {
-                    const variants = [rawUserClass.toString().trim()];
-                    const baseVal = rawUserClass.toString().replace(/[^0-9]/g, '');
-                    if (baseVal && baseVal !== rawUserClass) variants.push(baseVal);
+                    const rawCls = rawUserClass.toString().toLocaleLowerCase().trim();
+                    const baseVal = rawCls.replace(/[^0-9]/g, '');
+
+                    const variants = new Set([rawCls, baseVal]);
                     if (baseVal) {
-                        variants.push(`${baseVal}th`);
-                        variants.push(`${baseVal}st`);
-                        variants.push(`${baseVal}nd`);
-                        variants.push(`${baseVal}rd`);
-                        variants.push(parseInt(baseVal));
-                        variants.push(`Class ${baseVal}`);
-                        variants.push(`Class ${baseVal}th`);
+                        variants.add(`${baseVal}th`);
+                        variants.add(`${baseVal}st`);
+                        variants.add(`${baseVal}nd`);
+                        variants.add(`${baseVal}rd`);
+                        variants.add(parseInt(baseVal));
+                        variants.add(`class ${baseVal}`);
+                        variants.add(`class ${baseVal}th`);
                     }
-                    const uniqueVariants = Array.from(new Set(variants));
+                    const uniqueVariants = Array.from(variants).filter(v => v !== '');
 
                     const instId = userData.institutionId;
+                    let rawGroups = [];
 
-                    // Dual queries for security compliance + legacy support
                     if (instId) {
-                        const q1 = query(collection(db, "groups"), where("className", "in", uniqueVariants), where("institutionId", "==", instId));
-                        const q2 = query(collection(db, "groups"), where("className", "in", uniqueVariants), where("createdBy", "==", instId));
+                        // Strategy: Query by Institution (Satisfies Security Rules)
+                        const q1 = query(collection(db, "groups"), where("institutionId", "==", instId));
+                        const q2 = query(collection(db, "groups"), where("createdBy", "==", instId));
 
                         const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
                         const merged = new Map();
                         snap1.forEach(d => merged.set(d.id, { id: d.id, ...d.data() }));
                         snap2.forEach(d => merged.set(d.id, { id: d.id, ...d.data() }));
-                        const list = [];
-
-                        let sectionFilter = userData.section || userData.assignedSection;
-                        merged.forEach((data, gid) => {
-                            const groupSection = (data.section || 'All').toString().toUpperCase();
-                            const userSec = (sectionFilter || 'All').toString().toUpperCase();
-                            const matchesSection = !sectionFilter || groupSection === 'ALL' || groupSection === userSec;
-                            if (matchesSection) list.push({ id: gid, ...data });
-                        });
-                        setGroupList(list);
-                        return; // Exit early as we manually handled the fetch
+                        rawGroups = Array.from(merged.values());
                     } else {
-                        q = query(collection(db, "groups"), where("className", "in", uniqueVariants));
+                        // Fallback to class query
+                        const qFallback = query(collection(db, "groups"), where("className", "in", uniqueVariants.slice(0, 10)));
+                        const snapFallback = await getDocs(qFallback);
+                        snapFallback.forEach(d => rawGroups.push({ id: d.id, ...d.data() }));
                     }
+
+                    const list = [];
+                    let sectionFilter = userData.section || userData.assignedSection;
+
+                    rawGroups.forEach((data) => {
+                        // 1. CLASS MATCHING (Memory-based, very flexible)
+                        const gCls = (data.className || '').toString().toLocaleLowerCase().trim();
+                        const gBase = gCls.replace(/[^0-9]/g, '');
+
+                        const classMatches = uniqueVariants.some(v => v.toString().toLocaleLowerCase() === gCls) ||
+                            (baseVal && baseVal === gBase);
+
+                        if (!classMatches) return;
+
+                        // 2. SECTION MATCHING
+                        const gSec = (data.section || 'All').toString().toUpperCase();
+                        const uSec = (sectionFilter || 'All').toString().toUpperCase();
+
+                        if (!sectionFilter || gSec === 'ALL' || gSec === uSec) {
+                            list.push({ id: data.id || data.groupId || (data.groupName + data.className), ...data });
+                        }
+                    });
+                    setGroupList(list);
+                    return;
                 }
             }
 

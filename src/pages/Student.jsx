@@ -95,71 +95,61 @@ export default function Student() {
                 setLoadingGroups(true);
 
                 // Normalization for robust matching
-                const rawCls = userClass.toString().trim();
+                const rawCls = userClass.toString().toLocaleLowerCase().trim();
                 const baseVal = rawCls.replace(/[^0-9]/g, '');
 
-                const variants = [rawCls];
-                if (baseVal && baseVal !== rawCls) variants.push(baseVal);
+                const variants = new Set([rawCls, baseVal]);
                 if (baseVal) {
-                    variants.push(`${baseVal}th`);
-                    variants.push(`${baseVal}st`);
-                    variants.push(`${baseVal}nd`);
-                    variants.push(`${baseVal}rd`);
-                    variants.push(parseInt(baseVal));
-                    variants.push(`Class ${baseVal}`);
-                    variants.push(`Class ${baseVal}th`);
+                    variants.add(`${baseVal}th`);
+                    variants.add(`${baseVal}st`);
+                    variants.add(`${baseVal}nd`);
+                    variants.add(`${baseVal}rd`);
+                    variants.add(parseInt(baseVal));
+                    variants.add(`class ${baseVal}`);
+                    variants.add(`class ${baseVal}th`);
                 }
-                const uniqueVariants = Array.from(new Set(variants));
+                const uniqueVariants = Array.from(variants).filter(v => v !== '');
 
                 const instId = userData.institutionId;
-                if (!instId) {
-                    console.warn("Student missing institutionId in profile. Attempting fallback queries...");
-                }
-
-                // Query Groups with Institution Filter (Satisifes Rules)
-                // We use two queries to handle groups where institutionId might be missing but createdBy is correct
-                let finalGroups = [];
+                let rawGroups = [];
 
                 if (instId) {
-                    const q1 = query(
-                        collection(db, "groups"),
-                        where("className", "in", uniqueVariants),
-                        where("institutionId", "==", instId)
-                    );
-                    const q2 = query(
-                        collection(db, "groups"),
-                        where("className", "in", uniqueVariants),
-                        where("createdBy", "==", instId)
-                    );
+                    // Strategy: Query by Institution (Satisfies Security Rules)
+                    const q1 = query(collection(db, "groups"), where("institutionId", "==", instId));
+                    const q2 = query(collection(db, "groups"), where("createdBy", "==", instId));
 
                     const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
                     const merged = new Map();
                     snap1.forEach(d => merged.set(d.id, { id: d.id, ...d.data() }));
                     snap2.forEach(d => merged.set(d.id, { id: d.id, ...d.data() }));
-                    finalGroups = Array.from(merged.values());
+                    rawGroups = Array.from(merged.values());
                 } else {
-                    // Fallback to only class if instId is missing (risk of rule rejection)
-                    const qFallback = query(collection(db, "groups"), where("className", "in", uniqueVariants));
+                    // Fallback to class query if profile is incomplete
+                    const qFallback = query(collection(db, "groups"), where("className", "in", uniqueVariants.slice(0, 10)));
                     const snapFallback = await getDocs(qFallback);
-                    snapFallback.forEach(d => finalGroups.push({ id: d.id, ...d.data() }));
+                    snapFallback.forEach(d => rawGroups.push({ id: d.id, ...d.data() }));
                 }
 
                 const list = [];
-                finalGroups.forEach(data => {
-                    // 1. Double check institution link in memory
-                    const matchesInstName = userData.institutionName && data.institutionName &&
-                        userData.institutionName.toLowerCase().trim() === data.institutionName.toLowerCase().trim();
+                rawGroups.forEach(data => {
+                    // 1. CLASS MATCHING (Memory-based, very flexible)
+                    const gCls = (data.className || '').toString().toLocaleLowerCase().trim();
+                    const gBase = gCls.replace(/[^0-9]/g, '');
 
-                    if (instId && (data.institutionId !== instId && data.createdBy !== instId) && !matchesInstName) return;
+                    const classMatches = uniqueVariants.some(v => v.toString().toLocaleLowerCase() === gCls) ||
+                        (baseVal && baseVal === gBase);
 
-                    // 2. Section Check
-                    const groupSec = (data.section || 'All').toString().toUpperCase();
-                    const userSec = (userSection || 'All').toString().toUpperCase();
+                    if (!classMatches) return;
 
-                    if (!userSection || groupSec === 'ALL' || groupSec === userSec) {
+                    // 2. SECTION MATCHING
+                    const gSec = (data.section || 'All').toString().toUpperCase();
+                    const uSec = (userSection || 'All').toString().toUpperCase();
+
+                    if (!userSection || gSec === 'ALL' || gSec === uSec) {
                         list.push(data);
                     }
                 });
+                setMyGroups(list);
                 setMyGroups(list);
             } catch (e) {
                 console.error("Error fetching groups:", e);
