@@ -266,6 +266,7 @@ export default function Allotment() {
                     className: cls,
                     section: sec,
                     teacherName: name,
+                    institutionId: instId || null,
                     createdBy: currentUser ? currentUser.uid : 'system',
                     createdAt: new Date(),
                     type: 'academic'
@@ -381,6 +382,7 @@ export default function Allotment() {
                     ...groupData,
                     className: targetClass,
                     section: targetSection,
+                    institutionId: instId || groupData.institutionId || groupData.createdBy,
                     groupName: `${subject} (${targetClass}-${targetSection})`, // Update name
                     updatedAt: new Date()
                 });
@@ -394,6 +396,7 @@ export default function Allotment() {
                     className: targetClass,
                     section: targetSection,
                     teacherName: transferTarget.name,
+                    institutionId: instId || null,
                     createdBy: currentUser ? currentUser.uid : 'system',
                     createdAt: new Date(),
                     type: 'academic'

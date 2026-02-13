@@ -95,28 +95,41 @@ export default function Student() {
                 setLoadingGroups(true);
 
                 // Normalization for robust matching
-                const rawCls = userClass;
-                const normalizedCls = rawCls.replace(/(\d+)(st|nd|rd|th)/i, '$1');
+                const rawCls = userClass.toString().trim();
+                const baseVal = rawCls.replace(/[^0-9]/g, '');
 
                 const variants = [rawCls];
-                if (normalizedCls !== rawCls) variants.push(normalizedCls);
+                if (baseVal && baseVal !== rawCls) variants.push(baseVal);
+                if (baseVal) {
+                    variants.push(`${baseVal}th`);
+                    variants.push(`${baseVal}st`);
+                    variants.push(`${baseVal}nd`);
+                    variants.push(`${baseVal}rd`);
+                }
+                const uniqueVariants = Array.from(new Set(variants));
 
                 // Query Groups matching this Class variants
                 const q = query(
                     collection(db, "groups"),
-                    where("className", "in", variants)
+                    where("className", "in", uniqueVariants)
                 );
 
                 const snap = await getDocs(q);
                 const list = [];
+                const instId = userData.institutionId;
+
                 snap.forEach(d => {
                     const data = d.data();
-                    // Optional: Filter by section client-side if needed or add compound index
-                    // Show group if:
-                    // 1. Group is not section-specific (data.section is null)
-                    // 2. Group matches user's section
-                    // 3. User has NO section assigned (show all class groups)
-                    if (!data.section || data.section === userSection || !userSection) {
+
+                    // 1. Institution Check
+                    const isMyInstitution = instId && (data.institutionId === instId || data.createdBy === instId);
+                    if (!isMyInstitution) return;
+
+                    // 2. Section Check
+                    const groupSec = (data.section || 'All').toString().toUpperCase();
+                    const userSec = (userSection || 'All').toString().toUpperCase();
+
+                    if (!userSection || groupSec === 'ALL' || groupSec === userSec) {
                         list.push({ id: d.id, ...data });
                     }
                 });

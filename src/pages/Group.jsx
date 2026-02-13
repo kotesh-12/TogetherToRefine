@@ -134,15 +134,15 @@ export default function Group() {
                     const baseVal = rawUserClass.toString().replace(/[^0-9]/g, '');
                     if (baseVal && baseVal !== rawUserClass) variants.push(baseVal);
                     if (baseVal) variants.push(`${baseVal}th`);
+                    if (baseVal) variants.push(`${baseVal}st`);
+                    if (baseVal) variants.push(`${baseVal}nd`);
+                    if (baseVal) variants.push(`${baseVal}rd`);
 
-                    if (userData.institutionId) {
-                        q = query(collection(db, "groups"),
-                            where("className", "in", variants),
-                            where("createdBy", "==", userData.institutionId)
-                        );
-                    } else {
-                        q = query(collection(db, "groups"), where("className", "in", variants));
-                    }
+                    // Remove duplicates
+                    const uniqueVariants = Array.from(new Set(variants));
+
+                    // Query by class. We will filter by institution ID client-side for better compatibility with old data.
+                    q = query(collection(db, "groups"), where("className", "in", uniqueVariants));
                 }
             }
 
@@ -157,19 +157,25 @@ export default function Group() {
 
                 snap.forEach(d => {
                     const data = d.data();
-                    // FILTER LOGIC:
-                    // Show if:
-                    // 1. Institution (All)
-                    // 2. Section Matches (Strict for Student/Teacher scope)
-                    // OR 3. Group has NO section (Global class group) - ALLOWED for teachers of that class
 
-                    // ALLOWANCE: Show if section matches OR group is for 'All' sections
+                    // 1. INSTITUTION FILTER (Strict)
+                    // Group must belong to student's institution
+                    const instId = userData.institutionId;
+                    const isMyInstitution = instId && (data.institutionId === instId || data.createdBy === instId);
+
+                    if (userData.role === 'student' && !isMyInstitution) return;
+
+                    // 2. SECTION FILTER
                     const groupSection = (data.section || 'All').toString().toUpperCase();
                     const userSec = (sectionFilter || 'All').toString().toUpperCase();
 
-                    const matchesSection = groupSection === 'ALL' || groupSection === userSec;
+                    // Allow if:
+                    // - User has no section assigned (show all for class)
+                    // - Group is for 'All' sections
+                    // - Strict match
+                    const matchesSection = !sectionFilter || groupSection === 'ALL' || groupSection === userSec;
 
-                    if (userData.role === 'institution' || matchesSection) {
+                    if (userData.role === 'institution' || (isMyInstitution && matchesSection) || (userData.role === 'teacher' && matchesSection)) {
                         list.push({ id: d.id, ...data });
                     }
                 });
