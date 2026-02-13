@@ -260,6 +260,10 @@ export default function Allotment() {
             if (role === 'teacher') {
                 const subject = extra;
                 const groupId = `${subject}_${cls}_${sec}`.replace(/\s+/g, "_").toUpperCase();
+                const instRef = doc(db, "institutions", instId);
+                const instSnap = await getDoc(instRef);
+                const instName = instSnap.exists() ? (instSnap.data().schoolName || instSnap.data().name) : userData.institutionName;
+
                 await setDoc(doc(db, "groups", groupId), {
                     groupName: `${subject} (${cls}-${sec})`,
                     subject: subject,
@@ -267,6 +271,7 @@ export default function Allotment() {
                     section: sec,
                     teacherName: name,
                     institutionId: instId || null,
+                    institutionName: instName || null,
                     createdBy: currentUser ? currentUser.uid : 'system',
                     createdAt: new Date(),
                     type: 'academic'
@@ -377,12 +382,18 @@ export default function Allotment() {
 
             if (oldGroupSnap.exists()) {
                 const groupData = oldGroupSnap.data();
+                // Get institution name for transfer metadata
+                const instRef = doc(db, "institutions", instId || groupData.institutionId || groupData.createdBy);
+                const instSnap = await getDoc(instRef);
+                const instName = instSnap.exists() ? (instSnap.data().schoolName || instSnap.data().name) : null;
+
                 // Create New Group
                 await setDoc(doc(db, "groups", newGroupId), {
                     ...groupData,
                     className: targetClass,
                     section: targetSection,
                     institutionId: instId || groupData.institutionId || groupData.createdBy,
+                    institutionName: instName || groupData.institutionName || null,
                     groupName: `${subject} (${targetClass}-${targetSection})`, // Update name
                     updatedAt: new Date()
                 });
@@ -390,6 +401,10 @@ export default function Allotment() {
                 await deleteDoc(oldGroupRef);
             } else {
                 // If old group missing, create new one anyway
+                const instRefAdd = doc(db, "institutions", instId);
+                const instSnapAdd = await getDoc(instRefAdd);
+                const instNameAdd = instSnapAdd.exists() ? (instSnapAdd.data().schoolName || instSnapAdd.data().name) : null;
+
                 await setDoc(doc(db, "groups", newGroupId), {
                     groupName: `${subject} (${targetClass}-${targetSection})`,
                     subject: subject,
@@ -397,6 +412,7 @@ export default function Allotment() {
                     section: targetSection,
                     teacherName: transferTarget.name,
                     institutionId: instId || null,
+                    institutionName: instNameAdd || null,
                     createdBy: currentUser ? currentUser.uid : 'system',
                     createdAt: new Date(),
                     type: 'academic'

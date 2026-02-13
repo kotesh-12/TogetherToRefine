@@ -133,10 +133,13 @@ export default function Group() {
                     const variants = [rawUserClass.toString().trim()];
                     const baseVal = rawUserClass.toString().replace(/[^0-9]/g, '');
                     if (baseVal && baseVal !== rawUserClass) variants.push(baseVal);
-                    if (baseVal) variants.push(`${baseVal}th`);
-                    if (baseVal) variants.push(`${baseVal}st`);
-                    if (baseVal) variants.push(`${baseVal}nd`);
-                    if (baseVal) variants.push(`${baseVal}rd`);
+                    if (baseVal) {
+                        variants.push(`${baseVal}th`);
+                        variants.push(`${baseVal}st`);
+                        variants.push(`${baseVal}nd`);
+                        variants.push(`${baseVal}rd`);
+                        variants.push(parseInt(baseVal)); // Add Number variant
+                    }
 
                     // Remove duplicates
                     const uniqueVariants = Array.from(new Set(variants));
@@ -158,12 +161,16 @@ export default function Group() {
                 snap.forEach(d => {
                     const data = d.data();
 
-                    // 1. INSTITUTION FILTER (Strict)
+                    // 1. INSTITUTION FILTER (Strict + Fallback)
                     // Group must belong to student's institution
                     const instId = userData.institutionId;
                     const isMyInstitution = instId && (data.institutionId === instId || data.createdBy === instId);
 
-                    if (userData.role === 'student' && !isMyInstitution) return;
+                    // Fallback to name matching if IDs don't match (for legacy data or different ID formats)
+                    const matchesInstName = userData.institutionName && data.institutionName &&
+                        userData.institutionName.toLowerCase().trim() === data.institutionName.toLowerCase().trim();
+
+                    if (userData.role === 'student' && !isMyInstitution && !matchesInstName) return;
 
                     // 2. SECTION FILTER
                     const groupSection = (data.section || 'All').toString().toUpperCase();
@@ -175,7 +182,7 @@ export default function Group() {
                     // - Strict match
                     const matchesSection = !sectionFilter || groupSection === 'ALL' || groupSection === userSec;
 
-                    if (userData.role === 'institution' || (isMyInstitution && matchesSection) || (userData.role === 'teacher' && matchesSection)) {
+                    if (userData.role === 'institution' || (isMyInstitution && matchesSection) || (matchesInstName && matchesSection) || (userData.role === 'teacher' && matchesSection)) {
                         list.push({ id: d.id, ...data });
                     }
                 });

@@ -105,6 +105,7 @@ export default function Student() {
                     variants.push(`${baseVal}st`);
                     variants.push(`${baseVal}nd`);
                     variants.push(`${baseVal}rd`);
+                    variants.push(parseInt(baseVal)); // Add Number variant
                 }
                 const uniqueVariants = Array.from(new Set(variants));
 
@@ -121,9 +122,13 @@ export default function Student() {
                 snap.forEach(d => {
                     const data = d.data();
 
-                    // 1. Institution Check
+                    // 1. Institution Check (Strict + Fallback)
                     const isMyInstitution = instId && (data.institutionId === instId || data.createdBy === instId);
-                    if (!isMyInstitution) return;
+
+                    const matchesInstName = userData.institutionName && data.institutionName &&
+                        userData.institutionName.toLowerCase().trim() === data.institutionName.toLowerCase().trim();
+
+                    if (!isMyInstitution && !matchesInstName) return;
 
                     // 2. Section Check
                     const groupSec = (data.section || 'All').toString().toUpperCase();
