@@ -201,12 +201,23 @@ export default function MarksManagement() {
             const snap = await getDocs(q);
             let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
+            // ENFORCE STUDENT PRIVACY: If role is student, only show their own marks
+            if (userData?.role === 'student') {
+                const myPid = (userData.pid || userData.rollNo || userData.rollNumber || '').toString().trim();
+                const myUid = userData.uid;
+
+                list = list.filter(m =>
+                    (m.studentId === myUid) ||
+                    (myPid !== '' && m.rollNo?.toString().trim() === myPid)
+                );
+            }
+
             // Filter logic
             if (filterClass) {
                 list = list.filter(m => String(m.class) === String(filterClass));
             }
             if (filterSection) {
-                list = list.filter(m => String(m.section) === String(filterSection));
+                list = list.filter(m => String(m.section).toUpperCase() === String(filterSection).toUpperCase());
             }
             if (filterExamType) {
                 list = list.filter(m => m.examType === filterExamType);
@@ -313,40 +324,49 @@ export default function MarksManagement() {
         }
     };
 
+    // TAB TOGGLE: Forced 'view' for students
+    useEffect(() => {
+        if (userData?.role === 'student' && activeTab === 'add') {
+            setActiveTab('view');
+        }
+    }, [userData, activeTab]);
+
     return (
         <div className="page-wrapper">
             <div className="container">
                 {/* Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <h2>📊 Marks Management</h2>
+                    <h2>📊 {userData?.role === 'student' ? 'My Academic Progress' : 'Marks Management'}</h2>
                     <button onClick={() => navigate(-1)} className="btn-outline">← Back</button>
                 </div>
 
-                {/* Tab Toggle */}
-                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '2px solid #eee' }}>
-                    <button
-                        onClick={() => setActiveTab('add')}
-                        style={{
-                            padding: '10px 20px', background: 'none', border: 'none',
-                            borderBottom: activeTab === 'add' ? '3px solid #0984e3' : 'none',
-                            fontWeight: activeTab === 'add' ? 'bold' : 'normal',
-                            cursor: 'pointer', color: activeTab === 'add' ? '#0984e3' : '#636e72'
-                        }}
-                    >
-                        ➕ Add Marks
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('view')}
-                        style={{
-                            padding: '10px 20px', background: 'none', border: 'none',
-                            borderBottom: activeTab === 'view' ? '3px solid #0984e3' : 'none',
-                            fontWeight: activeTab === 'view' ? 'bold' : 'normal',
-                            cursor: 'pointer', color: activeTab === 'view' ? '#0984e3' : '#636e72'
-                        }}
-                    >
-                        👁️ View All Marks
-                    </button>
-                </div>
+                {/* Tab Toggle - Only for Teachers/Admins */}
+                {userData?.role !== 'student' && (
+                    <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '2px solid #eee' }}>
+                        <button
+                            onClick={() => setActiveTab('add')}
+                            style={{
+                                padding: '10px 20px', background: 'none', border: 'none',
+                                borderBottom: activeTab === 'add' ? '3px solid #0984e3' : 'none',
+                                fontWeight: activeTab === 'add' ? 'bold' : 'normal',
+                                cursor: 'pointer', color: activeTab === 'add' ? '#0984e3' : '#636e72'
+                            }}
+                        >
+                            ➕ Add Marks
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('view')}
+                            style={{
+                                padding: '10px 20px', background: 'none', border: 'none',
+                                borderBottom: activeTab === 'view' ? '3px solid #0984e3' : 'none',
+                                fontWeight: activeTab === 'view' ? 'bold' : 'normal',
+                                cursor: 'pointer', color: activeTab === 'view' ? '#0984e3' : '#636e72'
+                            }}
+                        >
+                            👁️ View All Marks
+                        </button>
+                    </div>
+                )}
 
                 {/* ADD MARKS TAB */}
                 {activeTab === 'add' && (

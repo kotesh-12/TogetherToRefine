@@ -80,12 +80,16 @@ service cloud.firestore {
     // --- 3. ANNOUNCEMENTS (SECURED) ---
     match /announcements/{id} {
         allow read: if isSignedIn();
-        // Only valid authors can create
-        allow create: if isSignedIn() && 
-            request.auth.uid == request.resource.data.author_id;
+        // Only valid authors or admins can create
+        allow create: if isSignedIn() && (
+            isAdmin() || 
+            (request.auth.uid == request.resource.data.authorId)
+        );
         // Only author or admin can delete/update
-        allow update, delete: if isSignedIn() && 
-            (resource.data.author_id == request.auth.uid || isAdmin());
+        allow update, delete: if isSignedIn() && (
+            isAdmin() || 
+            (resource.data.authorId == request.auth.uid)
+        );
     }
 
     // --- 4. GROUPS (SECURED) ---

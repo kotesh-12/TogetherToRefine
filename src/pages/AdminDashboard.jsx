@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../firebase';
-import { collection, getDocs, query, orderBy, where, doc, updateDoc, deleteDoc, getDoc, addDoc } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, where, doc, updateDoc, deleteDoc, getDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 import AnnouncementBar from '../components/AnnouncementBar';
 import AIBadge from '../components/AIBadge';
 import { useNavigate } from 'react-router-dom';
@@ -29,11 +30,14 @@ export default function AdminDashboard() {
         const text = message.trim();
         if (!text) return alert("Please enter text.");
         try {
+            const auth = getAuth();
             await addDoc(collection(db, "announcements"), {
                 text,
-                createdAt: new Date(),
+                createdAt: serverTimestamp(),
                 authorName: "Announcement",
-                type: 'global'
+                authorId: auth.currentUser?.uid || 'ADMIN',
+                type: 'global',
+                role: 'admin'
             });
             alert("Announcement Posted!");
             setMessage('');
@@ -284,23 +288,7 @@ export default function AdminDashboard() {
                         <button
                             className="btn"
                             style={{ background: '#0984e3' }}
-                            onClick={async () => {
-                                const text = message.trim(); // Use state variable
-                                if (!text) return alert("Please enter text.");
-                                try {
-                                    await addDoc(collection(db, "announcements"), {
-                                        text,
-                                        createdAt: new Date(),
-                                        authorName: "Announcement",
-                                        type: 'global'
-                                    });
-                                    alert("Announcement Posted!");
-                                    setMessage(''); // Clear state variable
-                                } catch (e) {
-                                    console.error(e);
-                                    alert("Error posting.");
-                                }
-                            }}
+                            onClick={handlePostAnnouncement}
                         >
                             Post
                         </button>
