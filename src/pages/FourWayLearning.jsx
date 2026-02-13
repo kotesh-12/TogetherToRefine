@@ -487,6 +487,10 @@ export default function FourWayLearning() {
                         onKeyPress={(e) => e.key === 'Enter' && handleGenerate()}
                         placeholder={`Explain in ${activeTab}...`}
                         className="chat-input"
+                        autoComplete="off"
+                        spellCheck="false"
+                        autoCorrect="off"
+                        autoCapitalize="none"
                     />
 
                     <button onClick={handleGenerate} disabled={loading || (!inputs[activeTab] && !selectedImage)} className="send-button">➤</button>

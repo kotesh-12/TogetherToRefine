@@ -343,6 +343,9 @@ export default function TTRAI() {
                         placeholder={selectedImage ? "Add topic..." : "Ask TTR AI anything..."}
                         className="chat-input"
                         autoComplete="off"
+                        spellCheck="false"
+                        autoCorrect="off"
+                        autoCapitalize="none"
                     />
                     <button onClick={handleSend} disabled={loading} className="send-button">➤</button>
                 </div>
