@@ -73,6 +73,9 @@ export default function Group() {
             const seen = new Set();
 
             snap.forEach(d => {
+                // Use userData from context instead of getAuth() directly for consistency
+                const uid = userData?.uid;
+                if (!uid) { alert("User not identified"); return; }
                 const data = d.data();
                 if (data.classAssigned && data.section) {
                     const key = `${data.classAssigned}-${data.section}`;
@@ -127,8 +130,9 @@ export default function Group() {
             console.log(`📦 Found ${rawGroups.length} total groups for institution.`);
 
             const list = [];
-            const normalize = (s) => (s || '').toString().toLocaleLowerCase().trim();
-            const getBase = (s) => normalize(s).replace(/[^0-9]/g, '');
+
+            // Normalize helper
+            const normalize = (s) => (s || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
 
             if (role === 'institution') {
                 rawGroups.forEach(g => list.push(g));
@@ -138,38 +142,41 @@ export default function Group() {
                 if (!targetScope) { setLoadingGroups(false); return; }
 
                 const tCls = normalize(targetScope.className || targetScope.class);
-                const tBase = getBase(tCls);
                 const tSec = (targetScope.section || 'All').toString().toUpperCase();
 
                 rawGroups.forEach(data => {
                     const gCls = normalize(data.className);
-                    const gBase = getBase(gCls);
                     const gSec = (data.section || 'All').toString().toUpperCase();
 
-                    const classMatches = (gCls === tCls) || (tBase && tBase === gBase);
+                    // Loose Matching
+                    const classMatches = gCls.includes(tCls) || tCls.includes(gCls);
                     const sectionMatches = (gSec === 'ALL' || gSec === tSec);
+
                     if (classMatches && sectionMatches) list.push(data);
                 });
             }
             else if (role === 'student') {
-                const uCls = normalize(userData.class || userData.assignedClass);
-                const uBase = getBase(uCls);
+                const uClsRaw = userData.class || userData.assignedClass;
+                const uCls = normalize(uClsRaw);
                 const uSec = (userData.section || userData.assignedSection || 'All').toString().toUpperCase();
 
-                const variants = new Set([uCls, uBase]);
-                if (uBase) {
-                    ['th', 'st', 'nd', 'rd'].forEach(s => variants.add(uBase + s));
-                    variants.add(`class ${uBase}`);
-                    variants.add(`grade ${uBase}`);
+                if (!uCls) {
+                    console.warn("Student has no class assigned.");
                 }
 
                 rawGroups.forEach(data => {
                     const gCls = normalize(data.className);
-                    const gBase = getBase(gCls);
                     const gSec = (data.section || 'All').toString().toUpperCase();
 
-                    const classMatches = variants.has(gCls) || (uBase && uBase === gBase);
+                    // Robust Matching: Check if one string contains the other (e.g. "10" matches "10th", "Class 10")
+                    const classMatches = (uCls && (gCls.includes(uCls) || uCls.includes(gCls)));
+
+                    // Section Logic: 
+                    // 1. Group is for 'ALL' sections -> Match
+                    // 2. Student is 'ALL' (rare) -> Match
+                    // 3. Exact Match
                     const sectionMatches = (gSec === 'ALL' || gSec === uSec || uSec === 'ALL');
+
                     if (classMatches && sectionMatches) list.push(data);
                 });
             }
