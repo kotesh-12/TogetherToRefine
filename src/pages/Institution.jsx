@@ -72,6 +72,7 @@ export default function Institution() {
                 subject: 'General',
                 authorName: profile?.institutionName || 'Institution Admin',
                 authorId: uid,
+                institutionId: uid, // Added
                 role: 'institution',
                 createdAt: serverTimestamp()
             });
@@ -204,6 +205,11 @@ export default function Institution() {
         </div>
     );
 
+    const handleGoToGroups = () => {
+        localStorage.removeItem("activeGroupId");
+        handleCardClick('/group');
+    };
+
     return (
         <div className="page-wrapper">
             <FeatureTour tourId="institution_dashboard_v1" steps={tourSteps} userData={userData} />
@@ -284,7 +290,7 @@ export default function Institution() {
                         <span className="teacher-vibe-icon">📅</span>
                         <span className="teacher-vibe-label">Attendance</span>
                     </div>
-                    <div className="teacher-vibe-card" style={{ borderColor: '#00b894' }} onClick={() => handleCardClick('/group')}>
+                    <div className="teacher-vibe-card" style={{ borderColor: '#00b894' }} onClick={handleGoToGroups}>
                         <span className="teacher-vibe-icon">👥</span>
                         <span className="teacher-vibe-label">Groups</span>
                     </div>

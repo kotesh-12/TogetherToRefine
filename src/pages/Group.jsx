@@ -18,6 +18,7 @@ export default function Group() {
     // Institution/Teacher Mode
     const [isSelecting, setIsSelecting] = useState(false);
     const [groupList, setGroupList] = useState([]);
+    const [loadingGroups, setLoadingGroups] = useState(false);
 
     // Teacher Specific State
     const [teacherClasses, setTeacherClasses] = useState([]);
@@ -96,134 +97,88 @@ export default function Group() {
 
     const fetchGroupsForSelection = async (scope = null) => {
         if (!userData) return;
-        setGroupList([]); // Clear old list
+        setGroupList([]);
+        setLoadingGroups(true);
+
         try {
-            let q;
-            // 1. Institution: Show all groups created by them
-            if (userData.role === 'institution') {
-                if (userData.uid) {
-                    q = query(collection(db, "groups"), where("createdBy", "==", userData.uid));
-                }
+            const role = userData.role;
+            // PRIORITY: Scope ID > Profile institutionId > profile createdBy > profile UID (for admin)
+            let instId = (scope?.institutionId) || userData.institutionId || userData.createdBy;
+            if (role === 'institution') instId = userData.uid;
+
+            if (!instId) {
+                console.warn("Could not find a valid Institution ID for selection.");
+                setLoadingGroups(false);
+                return;
             }
-            // 2. Teacher with Scope
-            else if (userData.role === 'teacher') {
+
+            console.log(`🔍 Group Fetch [Role: ${role}] [InstId: ${instId}] [Scope: ${scope?.className}]`);
+
+            // UNIFIED STRATEGY
+            const q1 = query(collection(db, "groups"), where("institutionId", "==", instId));
+            const q2 = query(collection(db, "groups"), where("createdBy", "==", instId));
+
+            const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+            const mergedMap = new Map();
+            snap1.forEach(d => mergedMap.set(d.id, { id: d.id, ...d.data() }));
+            snap2.forEach(d => mergedMap.set(d.id, { id: d.id, ...d.data() }));
+            let rawGroups = Array.from(mergedMap.values());
+
+            console.log(`📦 Found ${rawGroups.length} total groups for institution.`);
+
+            const list = [];
+            const normalize = (s) => (s || '').toString().toLocaleLowerCase().trim();
+            const getBase = (s) => normalize(s).replace(/[^0-9]/g, '');
+
+            if (role === 'institution') {
+                rawGroups.forEach(g => list.push(g));
+            }
+            else if (role === 'teacher') {
                 const targetScope = scope || selectedClassScope;
-                if (!targetScope) return;
+                if (!targetScope) { setLoadingGroups(false); return; }
 
-                // Use the Institution ID found in the allotment (Safest) or fallback to userData
-                const instId = targetScope.institutionId || userData.institutionId;
+                const tCls = normalize(targetScope.className || targetScope.class);
+                const tBase = getBase(tCls);
+                const tSec = (targetScope.section || 'All').toString().toUpperCase();
 
-                if (instId && targetScope.className) {
-                    q = query(collection(db, "groups"),
-                        where("className", "==", targetScope.className),
-                        where("createdBy", "==", instId)
-                    );
-                } else {
-                    // Safety: Do NOT query widely if no Inst ID. 
-                    // This prevents cross-institution leaks.
-                    // If we really must, we could rely on string match in a desperate case, but better to show nothing than wrong info.
-                    console.warn("Missing Institution ID for Teacher Group Scope. Aborting query.");
-                    return;
-                }
-            }
-            // 3. Student
-            else {
-                let rawUserClass = userData.class || userData.assignedClass;
-                if (rawUserClass) {
-                    const rawCls = rawUserClass.toString().toLocaleLowerCase().trim();
-                    const baseVal = rawCls.replace(/[^0-9]/g, '');
+                rawGroups.forEach(data => {
+                    const gCls = normalize(data.className);
+                    const gBase = getBase(gCls);
+                    const gSec = (data.section || 'All').toString().toUpperCase();
 
-                    const variants = new Set([rawCls, baseVal]);
-                    if (baseVal) {
-                        variants.add(`${baseVal}th`);
-                        variants.add(`${baseVal}st`);
-                        variants.add(`${baseVal}nd`);
-                        variants.add(`${baseVal}rd`);
-                        variants.add(parseInt(baseVal));
-                        variants.add(`class ${baseVal}`);
-                        variants.add(`class ${baseVal}th`);
-                    }
-                    const uniqueVariants = Array.from(variants).filter(v => v !== '');
-
-                    const instId = userData.institutionId;
-                    let rawGroups = [];
-
-                    if (instId) {
-                        // Strategy: Query by Institution (Satisfies Security Rules)
-                        const q1 = query(collection(db, "groups"), where("institutionId", "==", instId));
-                        const q2 = query(collection(db, "groups"), where("createdBy", "==", instId));
-
-                        const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
-                        const merged = new Map();
-                        snap1.forEach(d => merged.set(d.id, { id: d.id, ...d.data() }));
-                        snap2.forEach(d => merged.set(d.id, { id: d.id, ...d.data() }));
-                        rawGroups = Array.from(merged.values());
-                    } else {
-                        // Fallback to class query
-                        const qFallback = query(collection(db, "groups"), where("className", "in", uniqueVariants.slice(0, 10)));
-                        const snapFallback = await getDocs(qFallback);
-                        snapFallback.forEach(d => rawGroups.push({ id: d.id, ...d.data() }));
-                    }
-
-                    const list = [];
-                    let sectionFilter = userData.section || userData.assignedSection;
-
-                    rawGroups.forEach((data) => {
-                        // 1. CLASS MATCHING (Memory-based, very flexible)
-                        const gCls = (data.className || '').toString().toLocaleLowerCase().trim();
-                        const gBase = gCls.replace(/[^0-9]/g, '');
-
-                        const classMatches = uniqueVariants.some(v => v.toString().toLocaleLowerCase() === gCls) ||
-                            (baseVal && baseVal === gBase);
-
-                        if (!classMatches) return;
-
-                        // 2. SECTION MATCHING
-                        const gSec = (data.section || 'All').toString().toUpperCase();
-                        const uSec = (sectionFilter || 'All').toString().toUpperCase();
-
-                        if (!sectionFilter || gSec === 'ALL' || gSec === uSec) {
-                            list.push({ id: data.id || data.groupId || (data.groupName + data.className), ...data });
-                        }
-                    });
-                    setGroupList(list);
-                    return;
-                }
-            }
-
-            if (q) {
-                const snap = await getDocs(q);
-                const list = [];
-
-                // Determine Section Filter
-                let sectionFilter = null;
-                if (userData.role === 'student') sectionFilter = userData.section || userData.assignedSection;
-                if (userData.role === 'teacher') sectionFilter = (scope || selectedClassScope)?.section;
-
-                snap.forEach(d => {
-                    const data = d.data();
-
-                    // 1. INSTITUTION FILTER (Strict + Fallback)
-                    const instId = userData.institutionId;
-                    const isMyInstitution = instId && (data.institutionId === instId || data.createdBy === instId);
-                    const matchesInstName = userData.institutionName && data.institutionName &&
-                        userData.institutionName.toLowerCase().trim() === data.institutionName.toLowerCase().trim();
-
-                    if (userData.role === 'student' && !isMyInstitution && !matchesInstName) return;
-
-                    // 2. SECTION FILTER
-                    const groupSection = (data.section || 'All').toString().toUpperCase();
-                    const userSec = (sectionFilter || 'All').toString().toUpperCase();
-                    const matchesSection = !sectionFilter || groupSection === 'ALL' || groupSection === userSec;
-
-                    if (userData.role === 'institution' || (isMyInstitution && matchesSection) || (matchesInstName && matchesSection) || (userData.role === 'teacher' && matchesSection)) {
-                        list.push({ id: d.id, ...data });
-                    }
+                    const classMatches = (gCls === tCls) || (tBase && tBase === gBase);
+                    const sectionMatches = (gSec === 'ALL' || gSec === tSec);
+                    if (classMatches && sectionMatches) list.push(data);
                 });
-                setGroupList(list);
             }
+            else if (role === 'student') {
+                const uCls = normalize(userData.class || userData.assignedClass);
+                const uBase = getBase(uCls);
+                const uSec = (userData.section || userData.assignedSection || 'All').toString().toUpperCase();
+
+                const variants = new Set([uCls, uBase]);
+                if (uBase) {
+                    ['th', 'st', 'nd', 'rd'].forEach(s => variants.add(uBase + s));
+                    variants.add(`class ${uBase}`);
+                    variants.add(`grade ${uBase}`);
+                }
+
+                rawGroups.forEach(data => {
+                    const gCls = normalize(data.className);
+                    const gBase = getBase(gCls);
+                    const gSec = (data.section || 'All').toString().toUpperCase();
+
+                    const classMatches = variants.has(gCls) || (uBase && uBase === gBase);
+                    const sectionMatches = (gSec === 'ALL' || gSec === uSec || uSec === 'ALL');
+                    if (classMatches && sectionMatches) list.push(data);
+                });
+            }
+
+            setGroupList(list);
+            setLoadingGroups(false);
         } catch (e) {
-            console.error("Error loading groups", e);
+            console.error("Error loading groups:", e);
+            setLoadingGroups(false);
         }
     };
 
@@ -240,88 +195,85 @@ export default function Group() {
                 setGroupData(gData);
 
                 // FETCH MEMBERS DYNAMICALLY (Based on Class/Section)
-                if (gData.className && gData.createdBy) {
+                if (gData.className && (gData.institutionId || gData.createdBy)) {
                     const memberList = [];
-                    const instId = gData.createdBy;
+                    const instId = gData.institutionId || gData.createdBy;
 
                     try {
-                        // 1. Fetch Students
-                        const qS = query(
-                            collection(db, "student_allotments"),
+                        const targetCls = gData.className;
+                        const targetSec = (gData.section || 'All').toString().toUpperCase();
+
+                        // 1. Fetch Students (Query by Institution + Class)
+                        // Then filter section in memory for better flexibility
+                        const qS1 = query(collection(db, "student_allotments"),
+                            where("institutionId", "==", instId),
+                            where("classAssigned", "==", targetCls));
+                        const qS2 = query(collection(db, "student_allotments"),
                             where("createdBy", "==", instId),
-                            where("classAssigned", "==", gData.className),
-                            where("section", "==", gData.section || 'A') // Default to A if generic? Or handle 'All'?
-                        );
-                        // If section is missing or 'All', typically we might want all, but usually groups are specific.
-                        // Ideally check logic: if !gData.section, maybe fetch all sections? 
-                        // For now sticking to strict match if gData.section exists.
+                            where("classAssigned", "==", targetCls));
 
-                        // Refined Logic:
-                        let finalQS = qS;
-                        if (!gData.section) {
-                            // If group has no section, maybe it's a whole class group?
-                            finalQS = query(collection(db, "student_allotments"),
-                                where("createdBy", "==", instId),
-                                where("classAssigned", "==", gData.className)
-                            );
-                        }
+                        const [snapS1, snapS2] = await Promise.all([getDocs(qS1), getDocs(qS2)]);
+                        const mergedSnapsS = [...snapS1.docs, ...snapS2.docs];
 
-                        const snapS = await getDocs(finalQS);
-                        snapS.forEach(d => {
+                        mergedSnapsS.forEach(d => {
                             const md = d.data();
-                            memberList.push({
-                                id: md.studentId || md.userId || d.id,
-                                name: md.name || md.studentName,
-                                type: 'Student',
-                                role: 'student',
-                                rollNumber: md.rollNumber || 'N/A'
-                            });
-                        });
+                            const mSec = (md.section || 'A').toString().toUpperCase();
 
-                        // 2. Fetch Teachers (Assigned to this class/section)
-                        let qT;
-                        if (gData.section) {
-                            qT = query(collection(db, "teacher_allotments"),
-                                where("createdBy", "==", instId),
-                                where("classAssigned", "==", gData.className),
-                                where("section", "==", gData.section)
-                            );
-                        } else {
-                            qT = query(collection(db, "teacher_allotments"),
-                                where("createdBy", "==", instId),
-                                where("classAssigned", "==", gData.className)
-                            );
-                        }
-                        const snapT = await getDocs(qT);
-                        snapT.forEach(d => {
-                            const md = d.data();
-                            // Fix duplication if teacher assigned multiple times? Map handles unique IDs usually, but list needs filter.
-                            memberList.push({
-                                id: md.teacherId || md.userId || d.id,
-                                name: md.name || md.teacherName,
-                                type: 'Teacher',
-                                role: 'teacher',
-                                subject: md.subject || 'Class Teacher'
-                            });
-                        });
-
-                        // Deduplicate (just in case)
-                        const uniqueMembers = [];
-                        const seenIds = new Set();
-                        memberList.forEach(m => {
-                            if (!seenIds.has(m.id)) {
-                                seenIds.add(m.id);
-                                uniqueMembers.push(m);
+                            // Match section if not 'All'
+                            if (targetSec === 'ALL' || mSec === targetSec) {
+                                memberList.push({
+                                    id: md.userId || md.studentId || d.id,
+                                    userId: md.userId || md.studentId, // Explicit ID for Profile
+                                    studentId: md.studentId, // Explicit ID for Profile
+                                    name: md.name || md.studentName,
+                                    type: 'Student',
+                                    role: 'student',
+                                    rollNumber: md.rollNumber || 'N/A'
+                                });
                             }
                         });
 
-                        setMembers(uniqueMembers);
+                        // 2. Fetch Teachers
+                        const qT1 = query(collection(db, "teacher_allotments"),
+                            where("institutionId", "==", instId),
+                            where("classAssigned", "==", targetCls));
+                        const qT2 = query(collection(db, "teacher_allotments"),
+                            where("createdBy", "==", instId),
+                            where("classAssigned", "==", targetCls));
+
+                        const [snapT1, snapT2] = await Promise.all([getDocs(qT1), getDocs(qT2)]);
+                        const mergedSnapsT = [...snapT1.docs, ...snapT2.docs];
+
+                        mergedSnapsT.forEach(d => {
+                            const md = d.data();
+                            const mSec = (md.section || 'A').toString().toUpperCase();
+
+                            if (targetSec === 'ALL' || mSec === targetSec) {
+                                memberList.push({
+                                    id: md.userId || md.teacherId || d.id,
+                                    userId: md.userId || md.teacherId, // Explicit ID for Profile
+                                    teacherId: md.teacherId, // Explicit ID for Profile
+                                    name: md.name || md.teacherName,
+                                    type: 'Teacher',
+                                    role: 'teacher',
+                                    subject: md.subject || 'Class Teacher'
+                                });
+                            }
+                        });
+
+                        // Deduplicate (Using ID as key)
+                        const uniqueMap = new Map();
+                        memberList.forEach(m => {
+                            if (m.id) uniqueMap.set(m.id, m);
+                        });
+
+                        setMembers(Array.from(uniqueMap.values()));
                     } catch (err) {
                         console.error("Error fetching group members:", err);
                         setMembers([]);
                     }
                 } else {
-                    setMembers([]); // Cannot resolve members without class info
+                    setMembers([]);
                 }
 
             } else {
@@ -448,10 +400,26 @@ export default function Group() {
                     </h2>
                 </header>
                 <div className="container" style={{ marginTop: '20px' }}>
-                    {groupList.length === 0 ? (
-                        <p className="text-center text-muted">
-                            {userData?.role === 'teacher' ? "No groups found for this class." : "No groups active for your class."}
-                        </p>
+                    {loadingGroups ? (
+                        <div className="text-center" style={{ padding: '40px' }}>
+                            <div className="spinner" style={{ margin: '0 auto 15px' }}></div>
+                            <p className="text-muted">Searching for your groups...</p>
+                        </div>
+                    ) : groupList.length === 0 ? (
+                        <div className="text-center" style={{ padding: '40px', background: 'white', borderRadius: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
+                            <span style={{ fontSize: '48px', display: 'block', marginBottom: '15px' }}>🔍</span>
+                            <h3 style={{ margin: '0 0 10px 0', color: 'var(--text-main)' }}>No Groups Found</h3>
+                            <p className="text-muted" style={{ fontSize: '14px', maxWidth: '300px', margin: '0 auto' }}>
+                                {userData?.role === 'teacher'
+                                    ? "We couldn't find any chat groups for this specific class and section."
+                                    : "You haven't been added to any active chat groups yet. Please contact your institution admin."}
+                            </p>
+                            {userData?.role === 'institution' && (
+                                <p className="text-muted" style={{ fontSize: '12px', marginTop: '20px' }}>
+                                    Tip: Create allotments to automatically generate class groups.
+                                </p>
+                            )}
+                        </div>
                     ) : (
                         <div style={{ display: 'grid', gap: '15px' }}>
                             {groupList.map(g => (
@@ -601,18 +569,19 @@ export default function Group() {
                 {viewMode === 'members' || viewMode === 'about' ? (
                     members.length === 0 ? <p>Loading or no members found...</p> : (
                         members.map((m, i) => (
-                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '10px', borderBottom: '1px solid #f0f0f0' }}>
+                            <div key={i}
+                                onClick={(e) => { e.stopPropagation(); navigate('/profile-view', { state: { target: m } }); }}
+                                style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '10px', borderBottom: '1px solid #f0f0f0', cursor: 'pointer' }}>
                                 <div
-                                    onClick={(e) => { e.stopPropagation(); navigate('/profile-view', { state: { target: m } }); }}
                                     style={{
                                         width: '40px', height: '40px', borderRadius: '50%',
                                         background: m.type === 'Teacher' ? '#ff7675' : '#a29bfe',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        color: 'white', fontWeight: 'bold', cursor: 'pointer'
+                                        color: 'white', fontWeight: 'bold'
                                     }}>
                                     {m.name?.[0] || '?'}
                                 </div>
-                                <div onClick={(e) => { e.stopPropagation(); navigate('/profile-view', { state: { target: m } }); }} style={{ cursor: 'pointer', flex: 1 }}>
+                                <div style={{ flex: 1 }}>
                                     <div style={{ fontWeight: 'bold' }}>{i + 1}. {m.name} {m.type === 'Teacher' && '⭐'}</div>
                                     <div style={{ fontSize: '12px', color: '#666' }}>
                                         {m.type === 'Teacher' ? `Teacher • ${m.subject || 'General'}` : `Student • ${m.rollNumber || 'N/A'}`}

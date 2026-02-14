@@ -114,6 +114,7 @@ export default function Teacher() {
                 subject: subject || 'General',
                 authorName: userData.name,
                 authorId: userData.uid,
+                institutionId: userData.institutionId || userData.createdBy, // Added for visibility
                 role: 'teacher',
                 createdAt: serverTimestamp()
             });

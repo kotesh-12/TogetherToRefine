@@ -88,6 +88,8 @@ export default function SelectFeedbackTarget() {
                             if (!data.section || data.section === 'All' || data.section === userSection) {
                                 teachers.push({
                                     id: data.userId || data.teacherId || d.id,
+                                    userId: data.userId || data.teacherId, // Added
+                                    teacherId: data.teacherId, // Added
                                     name: data.name || data.teacherName || 'Teacher',
                                     subject: data.subject || 'General',
                                     type: 'Teacher'
@@ -148,6 +150,8 @@ export default function SelectFeedbackTarget() {
                                 if (!allot.section || allot.section === 'All' || sData.section === allot.section) {
                                     students.push({
                                         id: sData.userId || sData.studentId || sd.id,
+                                        userId: sData.userId || sData.studentId, // Added
+                                        studentId: sData.studentId, // Added
                                         name: sData.name || sData.studentName || 'Student',
                                         classAssigned: sData.classAssigned,
                                         section: sData.section,
@@ -179,6 +183,9 @@ export default function SelectFeedbackTarget() {
                         if (!uniqueMap.has(id)) {
                             uniqueMap.set(id, {
                                 id,
+                                userId: data.userId || data.studentId || data.teacherId, // Added
+                                studentId: data.studentId, // Added
+                                teacherId: data.teacherId, // Added
                                 name: data.name || data.studentName || data.teacherName || 'Unknown',
                                 type: institutionFilter,
                                 subject: data.subject || '',

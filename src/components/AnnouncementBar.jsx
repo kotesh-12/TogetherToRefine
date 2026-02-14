@@ -37,7 +37,12 @@ export default function AnnouncementBar() {
                     if (!userData) return false;
 
                     const instId = userData.role === 'institution' ? userData.uid : userData.institutionId;
-                    if (a.authorId && a.authorId !== instId) return false;
+
+                    // 1. Check Institution Mismatch
+                    if (a.institutionId && a.institutionId !== instId) return false;
+
+                    // 2. Fallback: If no institutionId, check author if it claims to be institution
+                    if (!a.institutionId && a.role === 'institution' && a.authorId !== instId) return false;
 
                     if (userData.role === 'student') {
                         const userClass = normalizeClass(userData.class);

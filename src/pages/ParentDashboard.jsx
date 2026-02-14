@@ -43,7 +43,8 @@ export default function ParentDashboard() {
                 id: d.data().studentId || d.id,
                 name: d.data().studentName || d.data().name,
                 class: d.data().classAssigned,
-                section: d.data().section
+                section: d.data().section,
+                institutionId: d.data().institutionId || d.data().createdBy // Added
             }));
 
             setChildren(list);
@@ -102,10 +103,17 @@ export default function ParentDashboard() {
                     collection(db, "announcements"),
                     where("targetClass", "==", selectedChild.class),
                     orderBy("createdAt", "desc"),
-                    limit(5)
+                    limit(20) // Fetch more for client-side filtering
                 );
                 const annSnap = await getDocs(annQuery);
-                setAnnouncements(annSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+                const all = annSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                // Filter by institutionId
+                const filtered = all.filter(a => {
+                    if (!a.institutionId) return true; // Legacy support
+                    return a.institutionId === selectedChild.institutionId;
+                }).slice(0, 5);
+
+                setAnnouncements(filtered);
             }
 
         } catch (e) {

@@ -38,8 +38,11 @@ export default function Announcements() {
                     // If author is same as my institution (for students/teachers)
                     const instId = userData.role === 'institution' ? userData.uid : userData.institutionId;
 
-                    // If matches institution
-                    if (a.authorId && a.authorId !== instId && a.role === 'institution') return false;
+                    // 1. Check Institution Mismatch
+                    if (a.institutionId && a.institutionId !== instId) return false;
+
+                    // 2. Fallback
+                    if (!a.institutionId && a.role === 'institution' && a.authorId !== instId) return false;
 
                     // Role Specific
                     if (userData.role === 'student') {

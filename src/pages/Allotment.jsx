@@ -230,7 +230,7 @@ export default function Allotment() {
                     });
 
                     // 2. Update Group
-                    const groupId = `${extra}_${cls}_${sec}`.replace(/\s+/g, "_").toUpperCase();
+                    const groupId = `${instId}_${extra}_${cls}_${sec}`.replace(/\s+/g, "_").toUpperCase();
                     await updateDoc(doc(db, "groups", groupId), { teacherName: name }).catch(e => console.log("Group update skipped"));
 
                     // 3. Update Timetable (Old Name -> New Name)
@@ -259,7 +259,7 @@ export default function Allotment() {
             // Group Creation
             if (role === 'teacher') {
                 const subject = extra;
-                const groupId = `${subject}_${cls}_${sec}`.replace(/\s+/g, "_").toUpperCase();
+                const groupId = `${instId}_${subject}_${cls}_${sec}`.replace(/\s+/g, "_").toUpperCase();
                 const instRef = doc(db, "institutions", instId);
                 const instSnap = await getDoc(instRef);
                 const instName = instSnap.exists() ? (instSnap.data().schoolName || instSnap.data().name) : userData.institutionName;
@@ -270,6 +270,7 @@ export default function Allotment() {
                     className: cls,
                     section: sec,
                     teacherName: name,
+                    teacherId: finalUserId || null,
                     institutionId: instId || null,
                     institutionName: instName || null,
                     createdBy: currentUser ? currentUser.uid : 'system',

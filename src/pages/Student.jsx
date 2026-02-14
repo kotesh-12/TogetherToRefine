@@ -150,7 +150,6 @@ export default function Student() {
                     }
                 });
                 setMyGroups(list);
-                setMyGroups(list);
             } catch (e) {
                 console.error("Error fetching groups:", e);
             } finally {
