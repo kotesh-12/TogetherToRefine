@@ -419,6 +419,12 @@ export default function Group() {
                                     Tip: Create allotments to automatically generate class groups.
                                 </p>
                             )}
+                            <button
+                                onClick={() => fetchGroupsForSelection()}
+                                style={{ marginTop: '20px', padding: '10px 20px', background: '#0984e3', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+                            >
+                                🔄 Refresh Groups
+                            </button>
                         </div>
                     ) : (
                         <div style={{ display: 'grid', gap: '15px' }}>

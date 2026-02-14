@@ -7,6 +7,7 @@ import AnnouncementBar from '../components/AnnouncementBar';
 import FeatureTour from '../components/FeatureTour';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
+import SmartAdmission from '../components/SmartAdmission';
 
 export default function Institution() {
     const navigate = useNavigate();
@@ -19,6 +20,7 @@ export default function Institution() {
     const [announcementText, setAnnouncementText] = useState('');
     const [selectedClass, setSelectedClass] = useState('All');
     const [selectedSection, setSelectedSection] = useState('All');
+    const [showSmartAdmission, setShowSmartAdmission] = useState(false);
 
     const isNavigating = useRef(false);
 
@@ -87,22 +89,15 @@ export default function Institution() {
         }
     };
 
-    const handleBulkImport = async (csvText) => {
+    const registerStudents = async (students) => {
+        if (students.length === 0) return;
+
+        const confirm = window.confirm(`Ready to import ${students.length} students?`);
+        if (!confirm) return;
+
+        setLoading(true);
         try {
-            const rows = csvText.trim().split('\n');
-            const students = rows.map(row => {
-                const [name, email, password, className] = row.split(',').map(s => s.trim());
-                return { name, email, password, class: className };
-            });
-
-            if (students.length === 0) return alert("Invalid CSV format.");
-
-            const confirm = window.confirm(`Ready to import ${students.length} students?`);
-            if (!confirm) return;
-
-            setLoading(true);
             const token = await auth.currentUser.getIdToken();
-
             const res = await fetch('/api/batch-register', {
                 method: 'POST',
                 headers: {
@@ -122,41 +117,64 @@ export default function Institution() {
                 alert(`Import Complete!\nSuccess: ${successCount}\nFailed: ${failedCount}\n\nA credentials file will now download.`);
 
                 if (successCount > 0) {
-                    // Generate Credentials Report
-                    let reportContent = "STUDENT CREDENTIALS REPORT\n" +
-                        "==================================\n" +
-                        `Date: ${new Date().toLocaleString()}\n` +
-                        "Note: Distribute these credentials securely to students.\n\n";
-
-                    data.results.success.forEach(s => {
-                        reportContent += `----------------------------------\n`;
-                        reportContent += `Name:     ${s.name}\n`;
-                        reportContent += `Class:    ${s.class}\n`;
-                        reportContent += `PID:      ${s.pid}\n`;
-                        reportContent += `Login ID: ${s.email}\n`;
-                        reportContent += `Password: ${s.password}\n`;
-                    });
-
-                    // Trigger Download
-                    const blob = new Blob([reportContent], { type: 'text/plain' });
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `Student_Credentials_${new Date().toISOString().slice(0, 10)}.txt`;
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                    document.body.removeChild(a);
+                    generateReport(data.results.success);
                 }
             } else {
                 alert("Import failed: " + (data.error || "Unknown error"));
             }
+        } catch (e) {
+            console.error(e);
+            alert("Error sending request.");
+            setLoading(false);
+        }
+    };
+
+    const generateReport = (successList) => {
+        let reportContent = "STUDENT CREDENTIALS REPORT\n" +
+            "==================================\n" +
+            `Date: ${new Date().toLocaleString()}\n` +
+            "Note: Distribute these credentials securely to students.\n\n";
+
+        successList.forEach(s => {
+            reportContent += `----------------------------------\n`;
+            reportContent += `Name:     ${s.name}\n`;
+            reportContent += `Class:    ${s.class}\n`;
+            reportContent += `PID:      ${s.pid}\n`;
+            reportContent += `Login ID: ${s.email}\n`;
+            reportContent += `Password: ${s.password}\n`;
+        });
+
+        const blob = new Blob([reportContent], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Student_Credentials_${new Date().toISOString().slice(0, 10)}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    };
+
+    const handleBulkImport = async (csvText) => {
+        try {
+            const rows = csvText.trim().split('\n');
+            const students = rows.map(row => {
+                const [name, email, password, className] = row.split(',').map(s => s.trim());
+                return { name, email, password, class: className };
+            });
+
+            if (students.length === 0) return alert("Invalid CSV format.");
+            registerStudents(students);
 
         } catch (e) {
             console.error(e);
-            alert("Error parsing CSV or sending request.");
-            setLoading(false);
+            alert("Error parsing CSV.");
         }
+    };
+
+    const handleSmartImport = (scannedData) => {
+        setShowSmartAdmission(false);
+        registerStudents(scannedData);
     };
 
     useEffect(() => {
@@ -279,7 +297,29 @@ export default function Institution() {
                     >
                         📤 Bulk Import
                     </button>
+                    <button
+                        onClick={() => setShowSmartAdmission(true)}
+                        className="btn"
+                        style={{
+                            background: 'white',
+                            color: '#e056fd',
+                            border: '2px solid #e056fd',
+                            borderRadius: '30px',
+                            padding: '12px 28px',
+                            fontSize: '14px',
+                            fontWeight: '800'
+                        }}
+                    >
+                        📸 AI Smart Admission
+                    </button>
                 </div>
+
+                {showSmartAdmission && (
+                    <SmartAdmission
+                        onClose={() => setShowSmartAdmission(false)}
+                        onScanComplete={handleSmartImport}
+                    />
+                )}
 
                 <div className="teacher-grid-system" style={{ marginBottom: '32px' }}>
                     <div className="teacher-vibe-card" style={{ borderColor: '#6c5ce7' }} onClick={() => handleCardClick('/allotment')}>
