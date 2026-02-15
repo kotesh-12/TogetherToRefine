@@ -32,19 +32,30 @@ export default function ParentDashboard() {
 
     const fetchChildren = async () => {
         try {
-            // Fetch all students linked to this parent
-            // Assuming parent's phone/email is stored in student record
+            // Fetch all students linked to this parent (Query 'users' collection)
+            const parentIdentifier = userData.phone || userData.phoneNumber || userData.email;
+            if (!parentIdentifier) {
+                console.warn("Parent has no phone/email to link children.");
+                setLoading(false);
+                return;
+            }
+
+            console.log("Fetching children for parent:", parentIdentifier);
+
+            // query users where parentPhone == parentIdentifier
             const q = query(
-                collection(db, "student_allotments"),
-                where("parentPhone", "==", userData.phone || userData.email)
+                collection(db, "users"),
+                where("parentPhone", "==", parentIdentifier),
+                where("role", "==", "student")
             );
+
             const snap = await getDocs(q);
             const list = snap.docs.map(d => ({
-                id: d.data().studentId || d.id,
-                name: d.data().studentName || d.data().name,
-                class: d.data().classAssigned,
-                section: d.data().section,
-                institutionId: d.data().institutionId || d.data().createdBy // Added
+                id: d.id,
+                name: d.data().name || d.data().firstName,
+                class: d.data().class || d.data().assignedClass,
+                section: d.data().section || d.data().assignedSection || 'A',
+                institutionId: d.data().institutionId // Direct from profile
             }));
 
             setChildren(list);

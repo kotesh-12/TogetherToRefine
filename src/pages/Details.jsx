@@ -576,6 +576,16 @@ export default function Details() {
                                     <label className="text-muted">Mother Name</label>
                                     <input name="motherName" value={formData.motherName || ''} className="input-field" onChange={handleChange} />
 
+                                    <label className="help-text">Parent/Guardian Phone Number (For Parent Login)</label>
+                                    <input
+                                        name="parentPhone"
+                                        type="tel"
+                                        value={formData.parentPhone || ''}
+                                        className="input-field"
+                                        placeholder="Use this number for Parent Login"
+                                        onChange={handleChange}
+                                    />
+
                                     <label className="text-muted">Prizes</label>
                                     <textarea name="prizes" value={formData.prizes || ''} className="input-field" placeholder="Mention prizes received, if any" onChange={handleChange}></textarea>
                                 </div>
