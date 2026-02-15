@@ -64,8 +64,9 @@ export default function Institution() {
     const handlePostAnnouncement = async () => {
         if (!announcementText.trim()) return alert("Please enter some text.");
         try {
-            const auth = getAuth();
-            const uid = auth.currentUser?.uid;
+            // Use userData from context instead of getAuth() directly for consistency
+            const uid = userData?.uid;
+            if (!uid) { alert("User not identified"); return; }
 
             await addDoc(collection(db, "announcements"), {
                 text: announcementText,
