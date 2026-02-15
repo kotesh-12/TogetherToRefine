@@ -104,9 +104,38 @@ export default function Group() {
         setLoadingGroups(true);
 
         try {
+
             const role = userData.role;
-            // PRIORITY: Scope ID > Profile institutionId > profile createdBy > profile UID (for admin)
+
+            // --- ROBUST ID RESOLUTION ---
             let instId = (scope?.institutionId) || userData.institutionId || userData.createdBy;
+
+            // Fallback: If ID is missing, try to find it from Allotments (Data Repair/Safety)
+            if (!instId && (role === 'student' || role === 'teacher')) {
+                console.log("⚠️ ID missing in profile. Attempting to resolve from allotments...");
+                try {
+                    const collectionName = role === 'student' ? 'student_allotments' : 'teacher_allotments'; // teacher_allotments
+                    const idField = role === 'student' ? 'userId' : 'userId'; // Both use userId now usually, or fallback to teacherId
+
+                    let q = query(collection(db, collectionName), where("userId", "==", userData.uid));
+                    let snap = await getDocs(q);
+
+                    if (snap.empty && role === 'teacher') {
+                        // Legacy Teacher Fallback
+                        q = query(collection(db, collectionName), where("teacherId", "==", userData.uid));
+                        snap = await getDocs(q);
+                    }
+
+                    if (!snap.empty) {
+                        const allotData = snap.docs[0].data();
+                        instId = allotData.institutionId || allotData.createdBy;
+                        console.log("✅ Resolved Institution ID from allotment:", instId);
+                    }
+                } catch (err) {
+                    console.warn("Failed to resolve ID from allotments", err);
+                }
+            }
+
             if (role === 'institution') instId = userData.uid;
 
             if (!instId) {
