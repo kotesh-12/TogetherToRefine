@@ -85,7 +85,7 @@ export default function Institution() {
             alert("Announcement Posted Successfully! 📢");
         } catch (e) {
             console.error("Error posting announcement", e);
-            alert("Failed to post announcement.");
+            alert("Failed to post announcement: " + e.message);
         }
     };
 

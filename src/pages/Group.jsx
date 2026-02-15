@@ -432,6 +432,14 @@ export default function Group() {
                             >
                                 🔄 Refresh Groups
                             </button>
+
+                            <details style={{ marginTop: '20px', textAlign: 'left', fontSize: '10px', color: '#999' }}>
+                                <summary>Debug Info</summary>
+                                <p>Role: {userData?.role}</p>
+                                <p>UID: {userData?.uid}</p>
+                                <p>Inst ID: {(scope?.institutionId) || userData?.institutionId || userData?.createdBy || 'N/A'}</p>
+                                <p>Search Scope: {JSON.stringify(scope || {})}</p>
+                            </details>
                         </div>
                     ) : (
                         <div style={{ display: 'grid', gap: '15px' }}>
