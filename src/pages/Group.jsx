@@ -110,6 +110,9 @@ export default function Group() {
             // --- ROBUST ID RESOLUTION ---
             let instId = (scope?.institutionId) || userData.institutionId || userData.createdBy;
 
+            // PRIORITY: If I am the institution, MY ID is the key
+            if (role === 'institution') instId = userData.uid;
+
             // Fallback: If ID is missing, try to find it from Allotments (Data Repair/Safety)
             if (!instId && (role === 'student' || role === 'teacher')) {
                 console.log("⚠️ ID missing in profile. Attempting to resolve from allotments...");
