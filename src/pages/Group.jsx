@@ -466,7 +466,7 @@ export default function Group() {
                                 <summary>Debug Info</summary>
                                 <p>Role: {userData?.role}</p>
                                 <p>UID: {userData?.uid}</p>
-                                <p>Inst ID: {(selectedClassScope?.institutionId) || userData?.institutionId || userData?.createdBy || 'N/A'}</p>
+                                <p>Inst ID: {userData?.role === 'institution' ? userData?.uid : ((selectedClassScope?.institutionId) || userData?.institutionId || userData?.createdBy || 'N/A')}</p>
                                 <p>Search Scope: {JSON.stringify(selectedClassScope || {})}</p>
                             </details>
                         </div>
