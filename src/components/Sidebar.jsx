@@ -9,8 +9,12 @@ export default function Sidebar({ isOpen }) {
     const { userData } = useUser();
     const { t } = useLanguage();
 
-    // Filter by Role
-    const userRole = (userData?.role || 'student').toLowerCase();
+    // Filter by Role - Wait for userData to load
+    if (!userData || !userData.role) {
+        return null; // Don't render sidebar until user data is loaded
+    }
+
+    const userRole = userData.role.toLowerCase();
 
     const allRoutes = [
         { path: '/', label: t('dashboard'), icon: '🏠' },
