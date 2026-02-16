@@ -79,6 +79,7 @@ export default function AnnouncementBar() {
             <div className="announcement-bar" onClick={() => navigate('/announcements')}>
                 <div className="ticker-wrapper">
                     <div className="ticker-item">📢 {announcement}</div>
+                    <div className="ticker-item">📢 {announcement}</div>
                 </div>
             </div>
         </div>
