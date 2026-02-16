@@ -176,15 +176,54 @@ export default function Group() {
                 const tCls = normalize(targetScope.className || targetScope.class);
                 const tSec = (targetScope.section || 'All').toString().toUpperCase();
 
+                // Fetch teacher's subjects from teacher_allotments
+                let teacherSubjects = [];
+                try {
+                    const allotQuery = query(
+                        collection(db, 'teacher_allotments'),
+                        where('userId', '==', userData.uid)
+                    );
+                    const allotSnap = await getDocs(allotQuery);
+
+                    if (allotSnap.empty) {
+                        // Legacy fallback
+                        const legacyQuery = query(
+                            collection(db, 'teacher_allotments'),
+                            where('teacherId', '==', userData.uid)
+                        );
+                        const legacySnap = await getDocs(legacyQuery);
+                        legacySnap.forEach(doc => {
+                            const subject = doc.data().subject || doc.data().subjectName;
+                            if (subject) teacherSubjects.push(normalize(subject));
+                        });
+                    } else {
+                        allotSnap.forEach(doc => {
+                            const subject = doc.data().subject || doc.data().subjectName;
+                            if (subject) teacherSubjects.push(normalize(subject));
+                        });
+                    }
+                } catch (err) {
+                    console.warn('Failed to fetch teacher subjects:', err);
+                }
+
+                console.log(`👨‍🏫 Teacher subjects:`, teacherSubjects);
+
                 rawGroups.forEach(data => {
                     const gCls = normalize(data.className);
                     const gSec = (data.section || 'All').toString().toUpperCase();
+                    const gSubject = normalize(data.subject || data.groupName);
 
-                    // Loose Matching
+                    // Class and Section matching
                     const classMatches = gCls.includes(tCls) || tCls.includes(gCls);
                     const sectionMatches = (gSec === 'ALL' || gSec === tSec);
 
-                    if (classMatches && sectionMatches) list.push(data);
+                    // Subject matching - teacher can only see groups for their subjects
+                    const subjectMatches = teacherSubjects.length === 0 ||
+                        teacherSubjects.some(ts => gSubject.includes(ts) || ts.includes(gSubject));
+
+                    if (classMatches && sectionMatches && subjectMatches) {
+                        list.push(data);
+                    }
                 });
             }
             else if (role === 'student') {
