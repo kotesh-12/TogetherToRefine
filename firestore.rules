@@ -77,40 +77,16 @@ service cloud.firestore {
        allow write: if isSignedIn() && (hasRole('institution') || hasRole('admin'));
     }
 
-    // --- 3. ANNOUNCEMENTS (SECURED) ---
+    // --- 3. ANNOUNCEMENTS (OPEN FOR DEBUG) ---
     match /announcements/{id} {
-        allow read: if isSignedIn();
-        // Secure Create: Only valid authors or admins can create
-        // A user can create if they are the author OR the institution entity
-        allow create: if isSignedIn() && (
-            isAdmin() || 
-            (request.auth.uid == request.resource.data.authorId) ||
-            (request.auth.uid == request.resource.data.institutionId)
-        );
-        // Only author or admin can delete/update
-        allow update, delete: if isSignedIn() && (
-            isAdmin() || 
-            (resource.data.authorId == request.auth.uid) ||
-            (resource.data.institutionId == request.auth.uid)
-        );
+        allow read, write: if isSignedIn();
     }
 
-    // --- 4. GROUPS (SECURED) ---
+    // --- 4. GROUPS (OPEN FOR DEBUG) ---
     match /groups/{groupId} {
-        allow read, write: if isSignedIn() && (
-            request.auth.uid in resource.data.members ||
-            resource.data.teacherId == request.auth.uid ||
-            resource.data.institutionId == request.auth.uid || 
-            resource.data.createdBy == request.auth.uid ||
-            isAdmin()
-        );
+        allow read, write: if isSignedIn();
         match /messages/{msgId} {
-             allow read, write: if isSignedIn() && (
-                request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.members ||
-                get(/databases/$(database)/documents/groups/$(groupId)).data.institutionId == request.auth.uid ||
-                get(/databases/$(database)/documents/groups/$(groupId)).data.createdBy == request.auth.uid ||
-                isAdmin()
-            );
+             allow read, write: if isSignedIn();
         }
     }
 
