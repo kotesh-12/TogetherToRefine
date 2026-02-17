@@ -311,7 +311,11 @@ export default function Group() {
                             }
                         });
 
-                        // 2. Fetch Teachers
+                        // 2. Fetch Teachers - ONLY for this group's subject
+                        const groupSubject = gData.subject || gData.groupName;
+                        const normalizeSubject = (s) => (s || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+                        const normalizedGroupSubject = normalizeSubject(groupSubject);
+
                         const qT1 = query(collection(db, "teacher_allotments"),
                             where("institutionId", "==", instId),
                             where("classAssigned", "==", targetCls));
@@ -325,12 +329,21 @@ export default function Group() {
                         mergedSnapsT.forEach(d => {
                             const md = d.data();
                             const mSec = (md.section || 'A').toString().toUpperCase();
+                            const teacherSubject = normalizeSubject(md.subject || md.subjectName || '');
 
-                            if (targetSec === 'ALL' || mSec === targetSec) {
+                            // Only add teacher if:
+                            // 1. Section matches
+                            // 2. Subject matches the group's subject
+                            const sectionMatches = (targetSec === 'ALL' || mSec === targetSec);
+                            const subjectMatches = !normalizedGroupSubject ||
+                                teacherSubject.includes(normalizedGroupSubject) ||
+                                normalizedGroupSubject.includes(teacherSubject);
+
+                            if (sectionMatches && subjectMatches) {
                                 memberList.push({
                                     id: md.userId || md.teacherId || d.id,
-                                    userId: md.userId || md.teacherId, // Explicit ID for Profile
-                                    teacherId: md.teacherId, // Explicit ID for Profile
+                                    userId: md.userId || md.teacherId,
+                                    teacherId: md.teacherId,
                                     name: md.name || md.teacherName,
                                     type: 'Teacher',
                                     role: 'teacher',
