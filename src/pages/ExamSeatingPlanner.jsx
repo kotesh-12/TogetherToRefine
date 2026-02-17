@@ -38,6 +38,12 @@ export default function ExamSeatingPlanner() {
     const [editingPlan, setEditingPlan] = useState(false);
     const [editingSeat, setEditingSeat] = useState(null); // {roomNo, seatNo}
 
+    // NEW: Step-by-Step Assignment State
+    const [showAssignmentDialog, setShowAssignmentDialog] = useState(false);
+    const [selectedClassForAssignment, setSelectedClassForAssignment] = useState(null);
+    const [selectedRoomForAssignment, setSelectedRoomForAssignment] = useState(null);
+    const [assignmentSide, setAssignmentSide] = useState(null); // 'left', 'right', or 'both'
+
     // Fetch teachers, classes and history on mount
     useEffect(() => {
         if (userData?.uid) {
@@ -282,6 +288,106 @@ export default function ExamSeatingPlanner() {
         setShowRoomConfig(false);
     };
 
+    // NEW: Step-by-Step Assignment Functions
+    const startClassAssignment = (className) => {
+        setSelectedClassForAssignment(className);
+        setShowAssignmentDialog(true);
+    };
+
+    const checkRoomAvailability = (roomNo) => {
+        if (!seatingPlan) return { leftAvailable: true, rightAvailable: true, fullyOccupied: false };
+
+        const room = seatingPlan.find(r => r.roomNo === roomNo);
+        if (!room) return { leftAvailable: true, rightAvailable: true, fullyOccupied: false };
+
+        const leftOccupied = room.assignments?.left != null;
+        const rightOccupied = room.assignments?.right != null;
+
+        return {
+            leftAvailable: !leftOccupied,
+            rightAvailable: !rightOccupied,
+            fullyOccupied: leftOccupied && rightOccupied,
+            leftClass: room.assignments?.left?.className,
+            rightClass: room.assignments?.right?.className
+        };
+    };
+
+    const assignClassToRoom = (roomNo, className, side, teacherId) => {
+        const classStudents = dbStudents.filter(s => {
+            // Filter students by class - you'll need to add class field to student data
+            return participatingClasses.includes(className);
+        });
+
+        if (classStudents.length === 0) {
+            alert(`No students found for ${className}. Please load students first.`);
+            return;
+        }
+
+        const room = seatingPlan?.find(r => r.roomNo === roomNo);
+        if (!room) {
+            alert("Room not found. Please generate rooms first.");
+            return;
+        }
+
+        const availability = checkRoomAvailability(roomNo);
+
+        // Check if selected side is available
+        if (side === 'left' && !availability.leftAvailable) {
+            alert(`LEFT side is already occupied by ${availability.leftClass}`);
+            return;
+        }
+        if (side === 'right' && !availability.rightAvailable) {
+            alert(`RIGHT side is already occupied by ${availability.rightClass}`);
+            return;
+        }
+
+        const teacher = teachers.find(t => t.id === teacherId);
+        const benchCount = room.totalSeats / 2; // Each bench has 2 seats
+        const studentsToAssign = classStudents.slice(0, benchCount);
+
+        // Update seating plan with assignment
+        setSeatingPlan(prev => prev.map(r => {
+            if (r.roomNo === roomNo) {
+                const assignments = r.assignments || {};
+                assignments[side] = {
+                    className,
+                    students: studentsToAssign,
+                    teacherId,
+                    teacherName: teacher?.name || ''
+                };
+
+                // Generate bench-wise seating
+                const benches = [];
+                const leftStudents = assignments.left?.students || [];
+                const rightStudents = assignments.right?.students || [];
+                const maxBenches = Math.max(leftStudents.length, rightStudents.length, benchCount);
+
+                for (let i = 0; i < maxBenches; i++) {
+                    benches.push({
+                        benchNo: i + 1,
+                        leftSeat: leftStudents[i] || null,
+                        rightSeat: rightStudents[i] || null
+                    });
+                }
+
+                return {
+                    ...r,
+                    assignments,
+                    benches,
+                    invigilators: [
+                        assignments.left && { ...assignments.left, side: 'LEFT' },
+                        assignments.right && { ...assignments.right, side: 'RIGHT' }
+                    ].filter(Boolean)
+                };
+            }
+            return r;
+        }));
+
+        setShowAssignmentDialog(false);
+        alert(`✅ ${className} assigned to ${side.toUpperCase()} side of ${room.roomName}`);
+    };
+
+
     const saveSeatingPlan = async () => {
         if (!seatingPlan || !examName) return alert("Please generate a seating plan first");
 
@@ -413,6 +519,31 @@ export default function ExamSeatingPlanner() {
                             <button onClick={fetchStudentsFromDB} className="btn" style={{ width: '100%', background: '#6c5ce7' }} disabled={isFetchingStudents}>
                                 {isFetchingStudents ? 'Fetching...' : `Load (${participatingClasses.length}) Classes`}
                             </button>
+
+                            {/* Show Assign to Room buttons after students are loaded */}
+                            {dbStudents.length > 0 && seatingPlan && (
+                                <div style={{ marginTop: '15px', padding: '12px', background: '#e8f5e9', borderRadius: '8px' }}>
+                                    <div style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '8px', color: '#27ae60' }}>
+                                        ✓ {dbStudents.length} students loaded. Assign classes to rooms:
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                        {participatingClasses.map(cls => (
+                                            <button
+                                                key={cls}
+                                                onClick={() => startClassAssignment(cls)}
+                                                className="btn"
+                                                style={{
+                                                    fontSize: '12px',
+                                                    padding: '6px 12px',
+                                                    background: '#27ae60'
+                                                }}
+                                            >
+                                                📍 Assign {cls} to Room
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="card">
@@ -575,6 +706,174 @@ export default function ExamSeatingPlanner() {
                                 <button onClick={generateSeatingPlan} className="btn" style={{ flex: 1, background: '#27ae60' }}>
                                     ✓ Apply & Generate
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Step-by-Step Assignment Dialog */}
+                {showAssignmentDialog && seatingPlan && (
+                    <div style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(0,0,0,0.7)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 10000,
+                        padding: '20px'
+                    }}>
+                        <div style={{
+                            background: 'var(--bg-card)',
+                            borderRadius: '12px',
+                            padding: '24px',
+                            maxWidth: '700px',
+                            width: '100%',
+                            maxHeight: '80vh',
+                            overflowY: 'auto'
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                <h3>📍 Assign {selectedClassForAssignment} to Room</h3>
+                                <button onClick={() => setShowAssignmentDialog(false)} style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    fontSize: '24px',
+                                    cursor: 'pointer',
+                                    color: 'var(--text-muted)'
+                                }}>×</button>
+                            </div>
+
+                            <div style={{ display: 'grid', gap: '15px' }}>
+                                {seatingPlan.map(room => {
+                                    const availability = checkRoomAvailability(room.roomNo);
+
+                                    return (
+                                        <div key={room.roomNo} style={{
+                                            border: '1px solid var(--divider)',
+                                            borderRadius: '8px',
+                                            padding: '15px',
+                                            background: availability.fullyOccupied ? '#f8f9fa' : 'var(--bg-surface)'
+                                        }}>
+                                            <div style={{ fontWeight: 'bold', marginBottom: '10px', color: 'var(--primary)' }}>
+                                                {room.roomName} ({room.totalSeats} seats, {room.totalSeats / 2} benches)
+                                            </div>
+
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                                                <div style={{
+                                                    padding: '8px',
+                                                    borderRadius: '6px',
+                                                    background: availability.leftAvailable ? '#e8f5e9' : '#ffebee',
+                                                    fontSize: '12px'
+                                                }}>
+                                                    <strong>LEFT Side:</strong><br />
+                                                    {availability.leftAvailable ? (
+                                                        <span style={{ color: '#27ae60' }}>✓ Available</span>
+                                                    ) : (
+                                                        <span style={{ color: '#e74c3c' }}>✗ Occupied by {availability.leftClass}</span>
+                                                    )}
+                                                </div>
+                                                <div style={{
+                                                    padding: '8px',
+                                                    borderRadius: '6px',
+                                                    background: availability.rightAvailable ? '#e8f5e9' : '#ffebee',
+                                                    fontSize: '12px'
+                                                }}>
+                                                    <strong>RIGHT Side:</strong><br />
+                                                    {availability.rightAvailable ? (
+                                                        <span style={{ color: '#27ae60' }}>✓ Available</span>
+                                                    ) : (
+                                                        <span style={{ color: '#e74c3c' }}>✗ Occupied by {availability.rightClass}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {!availability.fullyOccupied && (
+                                                <div>
+                                                    <label style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                                                        Select Teacher:
+                                                    </label>
+                                                    <select
+                                                        className="input-field"
+                                                        style={{ marginBottom: '10px', fontSize: '13px' }}
+                                                        onChange={(e) => setSelectedRoomForAssignment({ roomNo: room.roomNo, teacherId: e.target.value })}
+                                                    >
+                                                        <option value="">-- Select Teacher --</option>
+                                                        {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                                    </select>
+
+                                                    <div style={{ display: 'grid', gridTemplateColumns: availability.leftAvailable && availability.rightAvailable ? '1fr 1fr 1fr' : '1fr 1fr', gap: '8px' }}>
+                                                        <button
+                                                            onClick={() => {
+                                                                if (!selectedRoomForAssignment?.teacherId) {
+                                                                    alert("Please select a teacher first");
+                                                                    return;
+                                                                }
+                                                                assignClassToRoom(room.roomNo, selectedClassForAssignment, 'left', selectedRoomForAssignment.teacherId);
+                                                            }}
+                                                            disabled={!availability.leftAvailable}
+                                                            className="btn"
+                                                            style={{
+                                                                fontSize: '12px',
+                                                                padding: '8px',
+                                                                background: availability.leftAvailable ? '#3498db' : '#ccc',
+                                                                cursor: availability.leftAvailable ? 'pointer' : 'not-allowed'
+                                                            }}
+                                                        >
+                                                            Assign to LEFT
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                if (!selectedRoomForAssignment?.teacherId) {
+                                                                    alert("Please select a teacher first");
+                                                                    return;
+                                                                }
+                                                                assignClassToRoom(room.roomNo, selectedClassForAssignment, 'right', selectedRoomForAssignment.teacherId);
+                                                            }}
+                                                            disabled={!availability.rightAvailable}
+                                                            className="btn"
+                                                            style={{
+                                                                fontSize: '12px',
+                                                                padding: '8px',
+                                                                background: availability.rightAvailable ? '#9b59b6' : '#ccc',
+                                                                cursor: availability.rightAvailable ? 'pointer' : 'not-allowed'
+                                                            }}
+                                                        >
+                                                            Assign to RIGHT
+                                                        </button>
+                                                        {availability.leftAvailable && availability.rightAvailable && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (!selectedRoomForAssignment?.teacherId) {
+                                                                        alert("Please select a teacher first");
+                                                                        return;
+                                                                    }
+                                                                    assignClassToRoom(room.roomNo, selectedClassForAssignment, 'both', selectedRoomForAssignment.teacherId);
+                                                                }}
+                                                                className="btn"
+                                                                style={{
+                                                                    fontSize: '12px',
+                                                                    padding: '8px',
+                                                                    background: '#27ae60'
+                                                                }}
+                                                            >
+                                                                Assign to BOTH
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {availability.fullyOccupied && (
+                                                <div style={{ textAlign: 'center', padding: '10px', color: '#e74c3c', fontSize: '13px' }}>
+                                                    ❌ Room fully occupied
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
