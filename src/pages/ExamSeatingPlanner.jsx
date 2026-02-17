@@ -312,6 +312,37 @@ export default function ExamSeatingPlanner() {
         };
     };
 
+    const getAssignedTeachers = () => {
+        if (!seatingPlan) return [];
+
+        const assignedTeachers = [];
+        seatingPlan.forEach(room => {
+            if (room.assignments) {
+                if (room.assignments.left) {
+                    assignedTeachers.push({
+                        teacherId: room.assignments.left.teacherId,
+                        teacherName: room.assignments.left.teacherName,
+                        className: room.assignments.left.className,
+                        roomName: room.roomName,
+                        side: 'LEFT'
+                    });
+                }
+                if (room.assignments.right) {
+                    assignedTeachers.push({
+                        teacherId: room.assignments.right.teacherId,
+                        teacherName: room.assignments.right.teacherName,
+                        className: room.assignments.right.className,
+                        roomName: room.roomName,
+                        side: 'RIGHT'
+                    });
+                }
+            }
+        });
+
+        return assignedTeachers;
+    };
+
+
     const assignClassToRoom = (roomNo, className, side, teacherId) => {
         const classStudents = dbStudents.filter(s => {
             // Filter students by class - you'll need to add class field to student data
@@ -801,7 +832,17 @@ export default function ExamSeatingPlanner() {
                                                         onChange={(e) => setSelectedRoomForAssignment({ roomNo: room.roomNo, teacherId: e.target.value })}
                                                     >
                                                         <option value="">-- Select Teacher --</option>
-                                                        {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                                        {teachers.map(t => {
+                                                            const assignedTeachers = getAssignedTeachers();
+                                                            const assignment = assignedTeachers.find(at => at.teacherId === t.id);
+
+                                                            return (
+                                                                <option key={t.id} value={t.id}>
+                                                                    {t.name}
+                                                                    {assignment ? ` (Assigned: ${assignment.roomName} ${assignment.side} - ${assignment.className})` : ''}
+                                                                </option>
+                                                            );
+                                                        })}
                                                     </select>
 
                                                     <div style={{ display: 'grid', gridTemplateColumns: availability.leftAvailable && availability.rightAvailable ? '1fr 1fr 1fr' : '1fr 1fr', gap: '8px' }}>
