@@ -101,8 +101,8 @@ export default function ExamSeatingPlanner() {
                 return {
                     id: doc.id,
                     userId: data.userId || null,
-                    name: data.studentName || data.name,
-                    rollNo: (data.pid || data.rollNo || doc.id.slice(-6)).toString().trim()
+                    name: data.studentName || data.name || 'Unknown Student',
+                    rollNo: data.rollNumber || data.rollNo || data.pid || `STU-${doc.id.slice(-4)}`
                 };
             });
             setDbStudents(students);
@@ -353,8 +353,23 @@ export default function ExamSeatingPlanner() {
                                                     {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                                                 </select>
                                             </div>
-                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                                                {room.seats.map(s => <div key={s.seatNo} style={{ padding: '4px 8px', background: '#f8f9fa', border: '1px solid #3498db', borderRadius: '4px', fontSize: '11px' }}>{s.rollNo}</div>)}
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px' }}>
+                                                {room.seats.map(s => (
+                                                    <div key={s.seatNo} style={{
+                                                        padding: '8px',
+                                                        background: '#f8f9fa',
+                                                        border: '1px solid #3498db',
+                                                        borderRadius: '6px',
+                                                        fontSize: '11px',
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        gap: '2px'
+                                                    }}>
+                                                        <div style={{ fontWeight: 'bold', color: '#2c3e50' }}>Seat {s.seatNo}</div>
+                                                        <div style={{ color: '#3498db', fontSize: '10px' }}>Roll: {s.rollNo}</div>
+                                                        <div style={{ color: '#7f8c8d', fontSize: '10px' }}>{s.studentName}</div>
+                                                    </div>
+                                                ))}
                                             </div>
                                         </div>
                                     ))}
