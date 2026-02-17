@@ -104,25 +104,244 @@ service cloud.firestore {
     }
 
     // Generic fallback for less critical collections (Locked to signed in for now, specific rules recommended later)
-    match /student_allotments/{id} { allow read, write: if isSignedIn(); }
-    match /teacher_allotments/{id} { allow read, write: if isSignedIn(); }
-    match /submissions/{id} { allow read, write: if isSignedIn(); }
-    match /attendance/{id} { allow read, write: if isSignedIn(); }
-    match /opportunities/{id} { allow read, write: if isSignedIn(); }
-    match /general_feedback/{id} { allow read, write: if isSignedIn(); }
-    match /emergency_reports/{id} { allow read, write: if isSignedIn(); }
-    match /health_records/{id} { allow read, write: if isSignedIn(); }
-    match /videos/{id} { allow read, write: if isSignedIn(); }
+    // SECURED: Institution-based data isolation
     
-    // --- NEW MODULES ---
-    match /marks/{id} { allow read, write: if isSignedIn(); }
-    match /library_books/{id} { allow read, write: if isSignedIn(); }
-    match /library_issued_books/{id} { allow read, write: if isSignedIn(); }
-    match /library_reservations/{id} { allow read, write: if isSignedIn(); }
-    match /homework/{id} { allow read, write: if isSignedIn(); }
-    match /homework_submissions/{id} { allow read, write: if isSignedIn(); }
-    match /exam_seating_plans/{id} { allow read, write: if isSignedIn() && (hasRole('institution') || hasRole('admin')); }
-    match /exam_seating/{id} { allow read, write: if isSignedIn() && (hasRole('institution') || hasRole('admin')); }
+    // Student Allotments - Students see own data, Institutions see their students, Admins see all
+    match /student_allotments/{id} { 
+        allow read: if isSignedIn() && (
+            request.auth.uid == resource.data.userId ||
+            request.auth.uid == resource.data.studentId ||
+            request.auth.uid == resource.data.institutionId ||
+            isAdmin()
+        );
+        allow write: if isSignedIn() && (
+            request.auth.uid == resource.data.institutionId ||
+            hasRole('institution') ||
+            isAdmin()
+        );
+    }
+    
+    // Teacher Allotments - Teachers see own data, Institutions see their teachers, Admins see all
+    match /teacher_allotments/{id} { 
+        allow read: if isSignedIn() && (
+            request.auth.uid == resource.data.userId ||
+            request.auth.uid == resource.data.teacherId ||
+            request.auth.uid == resource.data.institutionId ||
+            isAdmin()
+        );
+        allow write: if isSignedIn() && (
+            request.auth.uid == resource.data.institutionId ||
+            hasRole('institution') ||
+            isAdmin()
+        );
+    }
+    
+    // Submissions - Students see own, Teachers see their class, Institutions see their students
+    match /submissions/{id} { 
+        allow read: if isSignedIn() && (
+            request.auth.uid == resource.data.studentId ||
+            request.auth.uid == resource.data.teacherId ||
+            request.auth.uid == resource.data.institutionId ||
+            isAdmin()
+        );
+        allow write: if isSignedIn() && (
+            request.auth.uid == resource.data.studentId ||
+            request.auth.uid == resource.data.institutionId ||
+            isAdmin()
+        );
+    }
+    
+    // Attendance - Students see own, Teachers can mark, Institutions see their students
+    match /attendance/{id} { 
+        allow read: if isSignedIn() && (
+            request.auth.uid == resource.data.studentId ||
+            request.auth.uid == resource.data.teacherId ||
+            request.auth.uid == resource.data.institutionId ||
+            isAdmin()
+        );
+        allow write: if isSignedIn() && (
+            hasRole('teacher') ||
+            hasRole('institution') ||
+            isAdmin()
+        );
+    }
+    
+    // Opportunities - Institution-specific
+    match /opportunities/{id} { 
+        allow read: if isSignedIn() && (
+            request.auth.uid == resource.data.institutionId ||
+            isAdmin()
+        );
+        allow write: if isSignedIn() && (
+            hasRole('institution') ||
+            isAdmin()
+        );
+    }
+    
+    // General Feedback - Students give, Institutions receive
+    match /general_feedback/{id} { 
+        allow read: if isSignedIn() && (
+            request.auth.uid == resource.data.studentId ||
+            request.auth.uid == resource.data.institutionId ||
+            isAdmin()
+        );
+        allow create: if isSignedIn();
+        allow update, delete: if isSignedIn() && (
+            request.auth.uid == resource.data.studentId ||
+            isAdmin()
+        );
+    }
+    
+    // Emergency Reports - Student creates, Institution sees their students
+    match /emergency_reports/{id} { 
+        allow read: if isSignedIn() && (
+            request.auth.uid == resource.data.studentId ||
+            request.auth.uid == resource.data.institutionId ||
+            isAdmin()
+        );
+        allow create: if isSignedIn();
+        allow update, delete: if isSignedIn() && (
+            request.auth.uid == resource.data.studentId ||
+            isAdmin()
+        );
+    }
+    
+    // Health Records - Student and Institution only
+    match /health_records/{id} { 
+        allow read: if isSignedIn() && (
+            request.auth.uid == resource.data.studentId ||
+            request.auth.uid == resource.data.institutionId ||
+            isAdmin()
+        );
+        allow write: if isSignedIn() && (
+            request.auth.uid == resource.data.studentId ||
+            hasRole('institution') ||
+            isAdmin()
+        );
+    }
+    
+    // Videos - Institution-specific
+    match /videos/{id} { 
+        allow read: if isSignedIn() && (
+            request.auth.uid == resource.data.institutionId ||
+            isAdmin()
+        );
+        allow write: if isSignedIn() && (
+            hasRole('institution') ||
+            isAdmin()
+        );
+    }
+    
+    // --- NEW MODULES (SECURED) ---
+    
+    // Marks - Students see own, Teachers can add, Institutions see their students
+    match /marks/{id} { 
+        allow read: if isSignedIn() && (
+            request.auth.uid == resource.data.studentId ||
+            request.auth.uid == resource.data.teacherId ||
+            request.auth.uid == resource.data.institutionId ||
+            isAdmin()
+        );
+        allow write: if isSignedIn() && (
+            hasRole('teacher') ||
+            hasRole('institution') ||
+            isAdmin()
+        );
+    }
+    
+    // Library Books - Institution-specific
+    match /library_books/{id} { 
+        allow read: if isSignedIn() && (
+            request.auth.uid == resource.data.institutionId ||
+            isAdmin()
+        );
+        allow write: if isSignedIn() && (
+            hasRole('institution') ||
+            isAdmin()
+        );
+    }
+    
+    // Library Issued Books - Student sees own, Institution sees their students
+    match /library_issued_books/{id} { 
+        allow read: if isSignedIn() && (
+            request.auth.uid == resource.data.studentId ||
+            request.auth.uid == resource.data.institutionId ||
+            isAdmin()
+        );
+        allow write: if isSignedIn() && (
+            hasRole('institution') ||
+            isAdmin()
+        );
+    }
+    
+    // Library Reservations - Student sees own, Institution sees their students
+    match /library_reservations/{id} { 
+        allow read: if isSignedIn() && (
+            request.auth.uid == resource.data.studentId ||
+            request.auth.uid == resource.data.institutionId ||
+            isAdmin()
+        );
+        allow write: if isSignedIn() && (
+            request.auth.uid == resource.data.studentId ||
+            hasRole('institution') ||
+            isAdmin()
+        );
+    }
+    
+    // Homework - Students see assigned, Teachers create, Institutions see their institution
+    match /homework/{id} { 
+        allow read: if isSignedIn() && (
+            request.auth.uid == resource.data.teacherId ||
+            request.auth.uid == resource.data.institutionId ||
+            isAdmin()
+        );
+        allow write: if isSignedIn() && (
+            hasRole('teacher') ||
+            hasRole('institution') ||
+            isAdmin()
+        );
+    }
+    
+    // Homework Submissions - Students submit, Teachers grade, Institutions see their students
+    match /homework_submissions/{id} { 
+        allow read: if isSignedIn() && (
+            request.auth.uid == resource.data.studentId ||
+            request.auth.uid == resource.data.teacherId ||
+            request.auth.uid == resource.data.institutionId ||
+            isAdmin()
+        );
+        allow write: if isSignedIn() && (
+            request.auth.uid == resource.data.studentId ||
+            hasRole('teacher') ||
+            hasRole('institution') ||
+            isAdmin()
+        );
+    }
+    
+    // Exam Seating Plans - Institution-specific
+    match /exam_seating_plans/{id} { 
+        allow read: if isSignedIn() && (
+            request.auth.uid == resource.data.institutionId ||
+            isAdmin()
+        );
+        allow write: if isSignedIn() && (
+            hasRole('institution') ||
+            isAdmin()
+        );
+    }
+    
+    // Exam Seating - Institution creates, Students/Teachers see their institution's seating
+    match /exam_seating/{id} { 
+        allow read: if isSignedIn() && (
+            request.auth.uid == resource.data.institutionId ||
+            resource.data.institutionId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.institutionId ||
+            isAdmin()
+        );
+        allow write: if isSignedIn() && (
+            hasRole('institution') ||
+            isAdmin()
+        );
+    }
 
     // --- 6. AI CHATS ---
     match /ai_chats/{userId} {
