@@ -32,6 +32,12 @@ export default function ExamSeatingPlanner() {
     const [showHistory, setShowHistory] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
+    // NEW: Room Configuration State
+    const [roomConfigs, setRoomConfigs] = useState([]);
+    const [showRoomConfig, setShowRoomConfig] = useState(false);
+    const [editingPlan, setEditingPlan] = useState(false);
+    const [editingSeat, setEditingSeat] = useState(null); // {roomNo, seatNo}
+
     // Fetch teachers, classes and history on mount
     useEffect(() => {
         if (userData?.uid) {
@@ -130,13 +136,53 @@ export default function ExamSeatingPlanner() {
         }
     };
 
+    const handleRoomConfigSetup = () => {
+        const rooms = parseInt(roomsCount);
+        if (!rooms || rooms < 1) return alert("Please enter number of rooms first");
+
+        // Initialize room configs
+        const configs = Array.from({ length: rooms }, (_, i) => ({
+            roomNo: i + 1,
+            roomName: `Room ${i + 1}`,
+            rows: 5,
+            columns: 6,
+            totalSeats: 30,
+            excludedSeats: [] // Array of seat numbers to exclude
+        }));
+        setRoomConfigs(configs);
+        setShowRoomConfig(true);
+    };
+
+    const updateRoomConfig = (roomNo, field, value) => {
+        setRoomConfigs(prev => prev.map(room => {
+            if (room.roomNo === roomNo) {
+                const updated = { ...room, [field]: value };
+                if (field === 'rows' || field === 'columns') {
+                    updated.totalSeats = parseInt(updated.rows || 0) * parseInt(updated.columns || 0);
+                }
+                return updated;
+            }
+            return room;
+        }));
+    };
+
     const generateSeatingPlan = () => {
         const studentsCount = parseInt(totalStudents);
-        const rooms = parseInt(roomsCount);
-        const seatsPerRm = parseInt(seatsPerRoom);
 
-        if (!studentsCount || !rooms || !seatsPerRm) return alert("Please fill all required fields");
-        if (studentsCount > rooms * seatsPerRm) return alert(`Capacity exceeded! You need more rooms.`);
+        if (!studentsCount) return alert("Please fill total students");
+
+        // Use room configs if available, otherwise use simple mode
+        const useRoomConfigs = roomConfigs.length > 0;
+
+        if (!useRoomConfigs) {
+            const rooms = parseInt(roomsCount);
+            const seatsPerRm = parseInt(seatsPerRoom);
+            if (!rooms || !seatsPerRm) return alert("Please configure rooms first");
+            if (studentsCount > rooms * seatsPerRm) return alert(`Capacity exceeded! You need more rooms.`);
+        } else {
+            const totalCapacity = roomConfigs.reduce((sum, r) => sum + (r.totalSeats - (r.excludedSeats?.length || 0)), 0);
+            if (studentsCount > totalCapacity) return alert(`Capacity exceeded! Total available seats: ${totalCapacity}`);
+        }
 
         let dataToDistribute = dbStudents.length > 0 ? [...dbStudents] : Array.from({ length: studentsCount }, (_, i) => ({
             rollNo: (parseInt(startRollNo || 1) + i).toString(),
@@ -152,36 +198,88 @@ export default function ExamSeatingPlanner() {
         const plan = [];
         let studentIndex = 0;
 
-        for (let room = 1; room <= rooms; room++) {
-            const roomSeats = [];
-            const studentsInRoom = Math.min(seatsPerRm, studentsCount - studentIndex);
+        if (useRoomConfigs) {
+            // Use configured rooms with row/column layout
+            roomConfigs.forEach(config => {
+                const roomSeats = [];
+                const excludedSet = new Set(config.excludedSeats || []);
 
-            for (let seat = 1; seat <= studentsInRoom; seat++) {
-                const student = dataToDistribute[studentIndex];
-                roomSeats.push({
-                    seatNo: seat,
-                    rollNo: student.rollNo,
-                    studentName: student.name,
-                    userId: student.userId
+                for (let row = 1; row <= config.rows; row++) {
+                    for (let col = 1; col <= config.columns; col++) {
+                        const seatNo = (row - 1) * config.columns + col;
+
+                        // Skip excluded seats
+                        if (excludedSet.has(seatNo)) continue;
+
+                        // Stop if we've assigned all students
+                        if (studentIndex >= studentsCount) break;
+
+                        const student = dataToDistribute[studentIndex];
+                        roomSeats.push({
+                            seatNo: seatNo,
+                            row: row,
+                            column: col,
+                            rollNo: student.rollNo,
+                            studentName: student.name,
+                            userId: student.userId
+                        });
+                        studentIndex++;
+                    }
+                    if (studentIndex >= studentsCount) break;
+                }
+
+                const assignedTeacherId = roomInvigilators[config.roomNo] || '';
+                const assignedTeacher = teachers.find(t => t.id === assignedTeacherId);
+
+                plan.push({
+                    roomNo: config.roomNo,
+                    roomName: config.roomName,
+                    rows: config.rows,
+                    columns: config.columns,
+                    seats: roomSeats,
+                    totalSeats: roomSeats.length,
+                    invigilatorId: assignedTeacherId,
+                    invigilatorName: assignedTeacher?.name || ''
                 });
-                studentIndex++;
-            }
-
-            const assignedTeacherId = roomInvigilators[room] || '';
-            const assignedTeacher = teachers.find(t => t.id === assignedTeacherId);
-
-            plan.push({
-                roomNo: room,
-                roomName: `Room ${room}`,
-                seats: roomSeats,
-                totalSeats: studentsInRoom,
-                invigilatorId: assignedTeacherId,
-                invigilatorName: assignedTeacher?.name || ''
             });
+        } else {
+            // Simple mode (backward compatibility)
+            const rooms = parseInt(roomsCount);
+            const seatsPerRm = parseInt(seatsPerRoom);
 
-            if (studentIndex >= studentsCount) break;
+            for (let room = 1; room <= rooms; room++) {
+                const roomSeats = [];
+                const studentsInRoom = Math.min(seatsPerRm, studentsCount - studentIndex);
+
+                for (let seat = 1; seat <= studentsInRoom; seat++) {
+                    const student = dataToDistribute[studentIndex];
+                    roomSeats.push({
+                        seatNo: seat,
+                        rollNo: student.rollNo,
+                        studentName: student.name,
+                        userId: student.userId
+                    });
+                    studentIndex++;
+                }
+
+                const assignedTeacherId = roomInvigilators[room] || '';
+                const assignedTeacher = teachers.find(t => t.id === assignedTeacherId);
+
+                plan.push({
+                    roomNo: room,
+                    roomName: `Room ${room}`,
+                    seats: roomSeats,
+                    totalSeats: studentsInRoom,
+                    invigilatorId: assignedTeacherId,
+                    invigilatorName: assignedTeacher?.name || ''
+                });
+
+                if (studentIndex >= studentsCount) break;
+            }
         }
+
         setSeatingPlan(plan);
+        setShowRoomConfig(false);
     };
 
     const saveSeatingPlan = async () => {
@@ -323,12 +421,15 @@ export default function ExamSeatingPlanner() {
                                 <input type="text" className="input-field" placeholder="Exam Name" value={examName} onChange={e => setExamName(e.target.value)} />
                                 <input type="date" className="input-field" value={examDate} onChange={e => setExamDate(e.target.value)} />
                             </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '10px' }}>
                                 <input type="number" className="input-field" placeholder="Total Students" value={totalStudents} onChange={e => setTotalStudents(e.target.value)} />
-                                <input type="number" className="input-field" placeholder="Rooms" value={roomsCount} onChange={e => setRoomsCount(e.target.value)} />
-                                <input type="number" className="input-field" placeholder="Seats/Room" value={seatsPerRoom} onChange={e => setSeatsPerRoom(e.target.value)} />
+                                <input type="number" className="input-field" placeholder="Number of Rooms" value={roomsCount} onChange={e => setRoomsCount(e.target.value)} />
+                                <input type="number" className="input-field" placeholder="Seats/Room (Optional)" value={seatsPerRoom} onChange={e => setSeatsPerRoom(e.target.value)} />
                             </div>
-                            <button onClick={generateSeatingPlan} className="btn" style={{ width: '100%' }}>⚡ Generate Plan</button>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                <button onClick={handleRoomConfigSetup} className="btn-outline" style={{ width: '100%' }}>🏫 Configure Rooms</button>
+                                <button onClick={generateSeatingPlan} className="btn" style={{ width: '100%' }}>⚡ Generate Plan</button>
+                            </div>
                         </div>
 
                         {seatingPlan && (
@@ -377,6 +478,106 @@ export default function ExamSeatingPlanner() {
                             </div>
                         )}
                     </>
+                )}
+
+                {/* Room Configuration Modal */}
+                {showRoomConfig && (
+                    <div style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(0,0,0,0.7)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 9999,
+                        padding: '20px'
+                    }}>
+                        <div style={{
+                            background: 'var(--bg-card)',
+                            borderRadius: '12px',
+                            padding: '24px',
+                            maxWidth: '800px',
+                            width: '100%',
+                            maxHeight: '80vh',
+                            overflowY: 'auto'
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                <h3>🏫 Configure Rooms</h3>
+                                <button onClick={() => setShowRoomConfig(false)} style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    fontSize: '24px',
+                                    cursor: 'pointer',
+                                    color: 'var(--text-muted)'
+                                }}>×</button>
+                            </div>
+
+                            <div style={{ display: 'grid', gap: '15px' }}>
+                                {roomConfigs.map(room => (
+                                    <div key={room.roomNo} style={{
+                                        border: '1px solid var(--divider)',
+                                        borderRadius: '8px',
+                                        padding: '15px',
+                                        background: 'var(--bg-surface)'
+                                    }}>
+                                        <div style={{ fontWeight: 'bold', marginBottom: '10px', color: 'var(--primary)' }}>
+                                            Room {room.roomNo}
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                                            <div>
+                                                <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Room Name/Number</label>
+                                                <input
+                                                    type="text"
+                                                    className="input-field"
+                                                    value={room.roomName}
+                                                    onChange={(e) => updateRoomConfig(room.roomNo, 'roomName', e.target.value)}
+                                                    placeholder="e.g., Room 101, Lab A"
+                                                    style={{ fontSize: '13px' }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Rows</label>
+                                                <input
+                                                    type="number"
+                                                    className="input-field"
+                                                    value={room.rows}
+                                                    onChange={(e) => updateRoomConfig(room.roomNo, 'rows', e.target.value)}
+                                                    min="1"
+                                                    style={{ fontSize: '13px' }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Columns</label>
+                                                <input
+                                                    type="number"
+                                                    className="input-field"
+                                                    value={room.columns}
+                                                    onChange={(e) => updateRoomConfig(room.roomNo, 'columns', e.target.value)}
+                                                    min="1"
+                                                    style={{ fontSize: '13px' }}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                                            Total Capacity: <strong>{room.totalSeats} seats</strong>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                                <button onClick={() => setShowRoomConfig(false)} className="btn-outline" style={{ flex: 1 }}>
+                                    Cancel
+                                </button>
+                                <button onClick={generateSeatingPlan} className="btn" style={{ flex: 1, background: '#27ae60' }}>
+                                    ✓ Apply & Generate
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 )}
             </div>
         </div>
