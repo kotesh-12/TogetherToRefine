@@ -400,13 +400,19 @@ app.post('/api/chat', chatLimiter, verifyAuth, async (req, res) => {
 // --- BATCH REGISTRATION (For Institutions) ---
 app.post('/api/batch-register', verifyAuth, async (req, res) => {
     // 1. Verify Requestor is an Institution
-    const requesterRole = req.user.role || (await admin.firestore().collection('institutions').doc(req.user.uid).get()).data()?.role;
+    let requesterRole = req.user.role;
+    let institutionDoc = null;
+
+    if (!requesterRole) {
+        institutionDoc = await admin.firestore().collection('institutions').doc(req.user.uid).get();
+        requesterRole = institutionDoc.data()?.role;
+    }
 
     if (requesterRole !== 'institution' && requesterRole !== 'admin') {
         return res.status(403).json({ error: "Only Institutions can batch register students." });
     }
 
-    const { students, institutionId } = req.body; // Array of { name, email, password, class, section }
+    const students = req.body.students; // Array of { name, email, password, class, section, rollNumber, isInstitutionCreated }
 
     if (!students || !Array.isArray(students) || students.length === 0) {
         return res.status(400).json({ error: "No students provided." });
@@ -434,32 +440,39 @@ app.post('/api/batch-register', verifyAuth, async (req, res) => {
             await admin.firestore().collection('users').doc(userRecord.uid).set({
                 name: student.name,
                 email: student.email,
-                role: 'student',
-                class: student.class,
+                role: student.role || 'student', // Usually 'student'
+                class: student.class || 'N/A',
                 section: student.section || 'A',
-                institutionId: institutionId || req.user.uid, // Link to this institution
+                rollNumber: student.rollNumber || null,
+                institutionId: req.user.uid, // Explicitly link to the institution that submitted this
                 pid: pid,
-                approved: true, // Auto-approve since Institution is adding them
+                approved: student.isInstitutionCreated ? true : false, // Auto-approve since Institution is adding them
+                isInstitutionCreated: student.isInstitutionCreated || false,
                 profileCompleted: true,
                 createdAt: admin.firestore.FieldValue.serverTimestamp()
             });
 
-            // C. Create Admission Record (for visibility)
-            await admin.firestore().collection('admissions').add({
-                name: student.name,
-                role: 'student',
-                userId: userRecord.uid,
-                institutionId: institutionId || req.user.uid,
-                status: 'approved',
-                class: student.class,
-                joinedAt: admin.firestore.FieldValue.serverTimestamp()
-            });
+            // C. Create Admission Record (for visibility/tracking)
+            if (student.isInstitutionCreated) {
+                await admin.firestore().collection('admissions').add({
+                    name: student.name,
+                    role: student.role || 'student',
+                    userId: userRecord.uid,
+                    institutionId: req.user.uid,
+                    status: 'approved',
+                    assignedClass: student.class || 'N/A',
+                    assignedSection: student.section || 'N/A',
+                    rollNumber: student.rollNumber || null,
+                    joinedAt: admin.firestore.FieldValue.serverTimestamp()
+                });
+            }
 
             results.success.push({
                 name: student.name,
                 email: student.email,
                 password: student.password || 'Student@123',
-                class: student.class,
+                class: student.class || 'N/A',
+                rollNumber: student.rollNumber || 'N/A',
                 pid
             });
         } catch (error) {
