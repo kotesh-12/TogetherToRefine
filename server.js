@@ -503,6 +503,21 @@ app.post('/api/batch-register', verifyAuth, async (req, res) => {
         }
     }
 
+    if (results.success.length > 0) {
+        try {
+            await admin.firestore().collection('admission_history').add({
+                institutionId: req.user.uid,
+                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                studentsAdded: results.success.length,
+                batchClass: students[0]?.class?.split('-')[0] || 'Mixed',
+                batchSection: students[0]?.class?.split('-')[1] || 'Mixed',
+                type: 'ai_scan'
+            });
+        } catch (histErr) {
+            console.error("Failed to log admission history:", histErr);
+        }
+    }
+
     res.json({
         message: `Processed ${students.length} students.`,
         results
