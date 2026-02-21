@@ -452,8 +452,9 @@ app.post('/api/batch-register', verifyAuth, async (req, res) => {
                 createdAt: admin.firestore.FieldValue.serverTimestamp()
             });
 
-            // C. Create Admission Record (for visibility/tracking)
+            // C. Create Admission Record & Allotment (for visibility/tracking)
             if (student.isInstitutionCreated) {
+                // 1. Admission Record
                 await admin.firestore().collection('admissions').add({
                     name: student.name,
                     role: student.role || 'student',
@@ -464,6 +465,18 @@ app.post('/api/batch-register', verifyAuth, async (req, res) => {
                     assignedSection: student.section || 'N/A',
                     rollNumber: student.rollNumber || null,
                     joinedAt: admin.firestore.FieldValue.serverTimestamp()
+                });
+
+                // 2. Student Allotment Record (Required for Group Visibility)
+                await admin.firestore().collection('student_allotments').add({
+                    name: student.name,
+                    classAssigned: student.class || 'N/A',
+                    section: student.section || 'A',
+                    age: 'N/A', // Age is default since it's an AI scan
+                    rollNumber: student.rollNumber || null,
+                    createdBy: req.user.uid,
+                    institutionId: req.user.uid,
+                    userId: userRecord.uid
                 });
             }
 
