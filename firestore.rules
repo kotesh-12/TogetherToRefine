@@ -292,7 +292,7 @@ service cloud.firestore {
 
     // ─── 18. VIDEOS ─────────────────────────────────────────────────────────
     match /videos/{id} {
-      allow read: if isSignedIn() && (myDoc() || isAdmin());
+      allow read: if isSignedIn() && (resource.data.institutionId == myInstitutionId() || isAdmin());
       allow write: if isSignedIn() && (isInstitution() || isAdmin());
     }
 

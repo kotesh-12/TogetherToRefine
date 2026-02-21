@@ -44,8 +44,9 @@ export default function VideoLibrary() {
             let q;
             const videoRef = collection(db, "videos");
 
+            // Build variants for students
+            let variants = [];
             if (role === 'student') {
-                // Robust Fetch for Students: Handle "10-A" vs "10th-A"
                 const rawClass = userData.class || userData.assignedClass || '';
                 const section = userData.section || userData.assignedSection || 'A';
 
@@ -54,38 +55,33 @@ export default function VideoLibrary() {
                     return;
                 }
 
-                // Generate Variants: ["10-A", "10th-A"]
-                const variants = [];
-                // 1. Raw Format (e.g., "10th")
                 variants.push(`${rawClass}-${section}`);
-
-                // 2. Normalized Format (e.g., "10")
                 const normalizedClass = rawClass.toString().replace(/(\d+)(st|nd|rd|th)/i, '$1');
                 if (normalizedClass !== rawClass.toString()) {
                     variants.push(`${normalizedClass}-${section}`);
                 }
-
-                // Query
-                q = query(videoRef, where("targetClass", "in", variants));
-            } else {
-                // Teachers/Institution: Filter by Selected Class if any
-                if (filterClass && filterClass !== 'All') {
-                    q = query(videoRef, where("targetClass", "==", filterClass), orderBy("timestamp", "desc"));
-                } else {
-                    q = query(videoRef, orderBy("timestamp", "desc"));
-                }
             }
+
+            // SECURE FETCH: explicitly specify your institutionId for the strict rule, no orderby/where combo.
+            const instId = role === 'institution' ? userData.uid : userData.institutionId;
+            q = query(videoRef, where("institutionId", "==", instId));
 
             const snapshot = await getDocs(q);
             let list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
-            // Student Filter: Subject
-            if (role === 'student' && filterSubject !== 'All') {
-                list = list.filter(v => v.subject === filterSubject);
+            // Filter locally to avoid FAILED_PRECONDITION indexing errors
+            if (role === 'student') {
+                list = list.filter(v => variants.includes(v.targetClass));
+                if (filterSubject !== 'All') {
+                    list = list.filter(v => v.subject === filterSubject);
+                }
+            } else {
+                if (filterClass && filterClass !== 'All') {
+                    list = list.filter(v => v.targetClass === filterClass);
+                }
             }
 
-            // Client-side sort by date descending (safe for 'in' queries)
-            // Handle Firestore Timestamps or Fallback
+            // Client-side sort by date descending (safe array sort)
             list.sort((a, b) => {
                 const tA = a.timestamp?.seconds || 0;
                 const tB = b.timestamp?.seconds || 0;
