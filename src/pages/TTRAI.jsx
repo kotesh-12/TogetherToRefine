@@ -88,8 +88,10 @@ export default function TTRAI() {
         }
 
         const fetchContext = async () => {
-            if (context.role === 'System Admin') {
-                try {
+            try {
+                // LEVEL 1: Advanced Real-time Context Injection
+                // Fetch dynamic data about the current user specifically for the AI
+                if (context.role === 'System Admin') {
                     const feedSnap = await getDocs(query(collection(db, "general_feedback"), orderBy("timestamp", "desc"), limit(5)));
                     const repSnap = await getDocs(query(collection(db, "emergency_reports"), orderBy("createdAt", "desc"), limit(5)));
                     context.adminData = {
@@ -98,7 +100,29 @@ export default function TTRAI() {
                             ...repSnap.docs.map(d => `- REPORT: ${d.data().description}`)
                         ]
                     };
-                } catch (e) { console.error(e); }
+                } else if (context.role === 'institution') {
+                    // Give Institution AI context about their school size
+                    const tSnap = await getDocs(query(collection(db, "teachers"), where("institutionId", "==", authUser.uid)));
+                    const sSnap = await getDocs(query(collection(db, "users"), where("institutionId", "==", authUser.uid), where("role", "==", "student")));
+                    context.schoolData = {
+                        totalTeachers: tSnap.docs.length,
+                        totalStudents: sSnap.docs.length
+                    };
+                } else if (context.role === 'teacher') {
+                    // Give Teacher AI context about the groups/classes they teach
+                    const gSnap = await getDocs(query(collection(db, "groups"), where("teacherId", "==", authUser.uid)));
+                    context.teacherData = {
+                        classesTeaching: gSnap.docs.map(d => d.data().className).join(", ") || "None assigned yet"
+                    };
+                } else if (context.role === 'student') {
+                    // Give Student AI context about their current workload
+                    const hwSnap = await getDocs(query(collection(db, "homework"), where("targetClass", "==", context.class || "Unknown"), limit(3)));
+                    context.studentData = {
+                        recentHomework: hwSnap.docs.map(d => `${d.data().subject}: ${d.data().title}`).join(" | ") || "No recent homework"
+                    };
+                }
+            } catch (e) {
+                console.error("Error fetching AI context:", e);
             }
             setUserContext(context);
         };
