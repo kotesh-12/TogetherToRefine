@@ -56,7 +56,7 @@ CRITICAL DIRECTIVES:
 
         // Role-Specific Behavior Rules
         if (userContext.role === 'student') {
-            systemInstruction += "\n\nSTUDENT GUIDELINES:\n- Be an encouraging and infinitely patient tutor.\n- When asked for help with homework, explain the concepts step-by-step. Do NOT just give the final answer (unless it's a simple fact).\n- Focus heavily on conceptual clarity and growth mindset.";
+            systemInstruction += "\n\nSTUDENT GUIDELINES:\n- Be an encouraging and infinitely patient tutor.\n- CRITICAL: Under NO circumstances should you complete a student's homework for them or give them the final answers. If a student asks you to DO their homework, you must explicitly refuse and state that TTR AI's goal is to transform education by teaching them the *concepts*.\n- Instead of giving answers, ask them guiding questions, explain the underlying theories, and help them arrive at the answer themselves.\n- Focus heavily on conceptual clarity and real learning, distinguishing yourself from basic AI tools that just give answers.";
         } else if (userContext.role === 'teacher') {
             systemInstruction += "\n\nTEACHER GUIDELINES:\n- Act as a brilliant teaching assistant and pedagogical expert.\n- Help with lesson planning, grading rubrics, and behavioral management strategies.\n- Provide professional, concise, and highly actionable advice.\n- Offer insights on how to analyze student attendance or grading trends.";
         } else if (userContext.role === 'institution') {

@@ -1,0 +1,542 @@
+[
+  {
+    "file": "src\\components\\AnnouncementBar.jsx",
+    "line": 29,
+    "text": "const q = query(collection(db, \"announcements\"), orderBy(\"createdAt\", \"desc\"), limit(20));"
+  },
+  {
+    "file": "src\\components\\DeviceManagement.jsx",
+    "line": 16,
+    "text": "const q = query(collection(db, 'users', user.uid, 'sessions'), orderBy('lastActive', 'desc'));"
+  },
+  {
+    "file": "src\\components\\Header.jsx",
+    "line": 79,
+    "text": "const q = query(collection(db, \"teacher_allotments\"), where(\"createdBy\", \"==\", instId));"
+  },
+  {
+    "file": "src\\components\\Header.jsx",
+    "line": 92,
+    "text": "const q = query(collection(db, \"student_allotments\"), where(\"createdBy\", \"==\", instId));"
+  },
+  {
+    "file": "src\\components\\Header.jsx",
+    "line": 105,
+    "text": "const qT = query(collection(db, \"teacher_allotments\"), where(\"createdBy\", \"==\", instId));"
+  },
+  {
+    "file": "src\\components\\Header.jsx",
+    "line": 116,
+    "text": "const qS = query(collection(db, \"student_allotments\"), where(\"createdBy\", \"==\", instId));"
+  },
+  {
+    "file": "src\\components\\Header.jsx",
+    "line": 129,
+    "text": "const instQuery = query(collection(db, \"users\"), where(\"role\", \"==\", \"institution\"));"
+  },
+  {
+    "file": "src\\pages\\AdminDashboard.jsx",
+    "line": 60,
+    "text": "getDocs(query(collection(db, \"general_feedback\"), orderBy(\"timestamp\", \"desc\"))),"
+  },
+  {
+    "file": "src\\pages\\AdminDashboard.jsx",
+    "line": 61,
+    "text": "getDocs(query(collection(db, \"emergency_reports\"), orderBy(\"createdAt\", \"desc\")))"
+  },
+  {
+    "file": "src\\pages\\Allotment.jsx",
+    "line": 41,
+    "text": "q = query(collection(db, \"teachers\"), where(\"institutionId\", \"==\", instId));"
+  },
+  {
+    "file": "src\\pages\\Announcements.jsx",
+    "line": 31,
+    "text": "const q = query(collection(db, \"announcements\"), orderBy(\"createdAt\", \"desc\"), limit(50));"
+  },
+  {
+    "file": "src\\pages\\Attendance.jsx",
+    "line": 49,
+    "text": "const q1 = query(collection(db, \"teacher_allotments\"), where(\"userId\", \"==\", userData.uid));"
+  },
+  {
+    "file": "src\\pages\\Attendance.jsx",
+    "line": 54,
+    "text": "const q2 = query(collection(db, \"teacher_allotments\"), where(\"teacherId\", \"==\", userData.uid));"
+  },
+  {
+    "file": "src\\pages\\Attendance.jsx",
+    "line": 60,
+    "text": "const q3 = query(collection(db, \"teacher_allotments\"), where(\"name\", \"==\", userData.name));"
+  },
+  {
+    "file": "src\\pages\\Attendance.jsx",
+    "line": 118,
+    "text": "const q1 = query(collection(db, \"attendance\"), where(\"userId\", \"==\", userData.uid));"
+  },
+  {
+    "file": "src\\pages\\Attendance.jsx",
+    "line": 133,
+    "text": "const tLinkedQ = query(collection(db, \"teacher_allotments\"), where(\"userId\", \"==\", userData.uid));"
+  },
+  {
+    "file": "src\\pages\\Attendance.jsx",
+    "line": 141,
+    "text": "attendanceQueries.push(getDocs(query(collection(db, \"attendance\"), where(\"userId\", \"==\", d.id))));"
+  },
+  {
+    "file": "src\\pages\\Attendance.jsx",
+    "line": 147,
+    "text": "const allTQ = query(collection(db, \"teacher_allotments\"));"
+  },
+  {
+    "file": "src\\pages\\Attendance.jsx",
+    "line": 163,
+    "text": "attendanceQueries.push(getDocs(query(collection(db, \"attendance\"), where(\"userId\", \"==\", d.id))));"
+  },
+  {
+    "file": "src\\pages\\Attendance.jsx",
+    "line": 187,
+    "text": "const linkedAllotQ = query(collection(db, \"student_allotments\"), where(\"userId\", \"==\", userData.uid));"
+  },
+  {
+    "file": "src\\pages\\Attendance.jsx",
+    "line": 194,
+    "text": "const q2 = query(collection(db, \"attendance\"), where(\"userId\", \"==\", d.id));"
+  },
+  {
+    "file": "src\\pages\\Attendance.jsx",
+    "line": 201,
+    "text": "const q3 = query(collection(db, \"attendance\"), where(\"userId\", \"==\", data.userId));"
+  },
+  {
+    "file": "src\\pages\\Attendance.jsx",
+    "line": 233,
+    "text": "const altQ = query(collection(db, \"student_allotments\"),"
+  },
+  {
+    "file": "src\\pages\\Attendance.jsx",
+    "line": 293,
+    "text": "const q3 = query(collection(db, \"attendance\"), where(\"userId\", \"==\", d.id)); // Attendance marked against Allotment ID"
+  },
+  {
+    "file": "src\\pages\\Attendance.jsx",
+    "line": 298,
+    "text": "const q4 = query(collection(db, \"attendance\"), where(\"userId\", \"==\", data.userId));"
+  },
+  {
+    "file": "src\\pages\\Attendance.jsx",
+    "line": 420,
+    "text": "fetchPromises.push(getDocs(query(collection(db, colName), where('createdBy', '==', creatorId))));"
+  },
+  {
+    "file": "src\\pages\\Attendance.jsx",
+    "line": 423,
+    "text": "fetchPromises.push(getDocs(query(collection(db, colName), where('institutionId', '==', creatorId))));"
+  },
+  {
+    "file": "src\\pages\\Attendance.jsx",
+    "line": 452,
+    "text": "fetchPromises.push(getDocs(query(collection(db, colName), where('classAssigned', 'in', uniqueVariants))));"
+  },
+  {
+    "file": "src\\pages\\Attendance.jsx",
+    "line": 458,
+    "text": "fetchPromises.push(getDocs(query(collection(db, colName), where('createdBy', '==', creatorId))));"
+  },
+  {
+    "file": "src\\pages\\Attendance.jsx",
+    "line": 461,
+    "text": "fetchPromises.push(getDocs(query(collection(db, colName), where('institutionId', '==', creatorId))));"
+  },
+  {
+    "file": "src\\pages\\Attendance.jsx",
+    "line": 524,
+    "text": "let attQuery = query(collection(db, \"attendance\"), where(\"date\", \"==\", selectedDate));"
+  },
+  {
+    "file": "src\\pages\\Attendance.jsx",
+    "line": 526,
+    "text": "attQuery = query(collection(db, \"attendance\"), where(\"date\", \"==\", selectedDate), where(\"subject\", \"==\", subject));"
+  },
+  {
+    "file": "src\\pages\\Attendance.jsx",
+    "line": 540,
+    "text": "qStats = query(collection(db, \"attendance\"), where(\"userId\", \"==\", targetId), where(\"subject\", \"==\", subject));"
+  },
+  {
+    "file": "src\\pages\\Attendance.jsx",
+    "line": 542,
+    "text": "qStats = query(collection(db, \"attendance\"), where(\"userId\", \"==\", targetId));"
+  },
+  {
+    "file": "src\\pages\\Details.jsx",
+    "line": 45,
+    "text": "const q = query(collection(db, \"admissions\"), where(\"userId\", \"==\", uid));"
+  },
+  {
+    "file": "src\\pages\\Details.jsx",
+    "line": 56,
+    "text": "const q = query(collection(db, \"student_allotments\"), where(\"userId\", \"==\", uid));"
+  },
+  {
+    "file": "src\\pages\\Details.jsx",
+    "line": 66,
+    "text": "const q = query(collection(db, \"teacher_allotments\"), where(\"userId\", \"==\", uid));"
+  },
+  {
+    "file": "src\\pages\\Details.jsx",
+    "line": 76,
+    "text": "const qGroup = query(collection(db, \"groups\"), where(\"teacherId\", \"==\", uid));"
+  },
+  {
+    "file": "src\\pages\\Details.jsx",
+    "line": 88,
+    "text": "const q = query(collection(db, \"users\"), where(\"institutionId\", \"==\", uid));"
+  },
+  {
+    "file": "src\\pages\\Details.jsx",
+    "line": 93,
+    "text": "const q2 = query(collection(db, \"teachers\"), where(\"institutionId\", \"==\", uid));"
+  },
+  {
+    "file": "src\\pages\\Details.jsx",
+    "line": 100,
+    "text": "const q3 = query(collection(db, \"admissions\"), where(\"institutionId\", \"==\", uid));"
+  },
+  {
+    "file": "src\\pages\\Details.jsx",
+    "line": 179,
+    "text": "const q = query(collection(db, \"institutions\"), where(\"approved\", \"==\", true));"
+  },
+  {
+    "file": "src\\pages\\EarlyWarningSystem.jsx",
+    "line": 56,
+    "text": "const attQuery = query(collection(db, \"attendance\"), where(\"userId\", \"==\", targetId));"
+  },
+  {
+    "file": "src\\pages\\Exam.jsx",
+    "line": 18,
+    "text": "const q = query(collection(db, \"opportunities\"), orderBy(\"createdAt\", \"desc\"));"
+  },
+  {
+    "file": "src\\pages\\ExamSeatingPlanner.jsx",
+    "line": 61,
+    "text": "const qT = query(collection(db, 'teachers'), where('institutionId', '==', instId));"
+  },
+  {
+    "file": "src\\pages\\ExamSeatingPlanner.jsx",
+    "line": 70,
+    "text": "const qS = query(collection(db, \"student_allotments\"), where(\"institutionId\", \"==\", instId));"
+  },
+  {
+    "file": "src\\pages\\FacultyFeedback.jsx",
+    "line": 28,
+    "text": "const q = query(collection(db, \"teacher_allotments\"), where(\"createdBy\", \"==\", userData.uid));"
+  },
+  {
+    "file": "src\\pages\\FacultyFeedback.jsx",
+    "line": 66,
+    "text": "getDocs(query(collection(db, \"general_feedback\"), where(\"targetId\", \"==\", teacher.id)))"
+  },
+  {
+    "file": "src\\pages\\FacultyFeedback.jsx",
+    "line": 72,
+    "text": "getDocs(query(collection(db, \"emergency_reports\"), where(\"institutionId\", \"==\", teacher.id)))"
+  },
+  {
+    "file": "src\\pages\\FeedbackOverview.jsx",
+    "line": 17,
+    "text": "const q = query(collection(db, \"general_feedback\"), orderBy(\"timestamp\", \"desc\"));"
+  },
+  {
+    "file": "src\\pages\\GeneralFeedback.jsx",
+    "line": 118,
+    "text": "const qAllot = query(collection(db, col), where(fieldId, \"==\", userData.uid));"
+  },
+  {
+    "file": "src\\pages\\GeneralFeedback.jsx",
+    "line": 125,
+    "text": "const qAllotName = query(collection(db, col), where(fieldName, \"==\", userData.name));"
+  },
+  {
+    "file": "src\\pages\\GeneralFeedback.jsx",
+    "line": 134,
+    "text": "const qGlobal = query(collection(db, \"general_feedback\"), orderBy(\"timestamp\", \"desc\"), limit(100));"
+  },
+  {
+    "file": "src\\pages\\GovernmentReports.jsx",
+    "line": 20,
+    "text": "const q = query(collection(db, \"teacher_allotments\"), where(\"teacherId\", \"==\", userData.uid));"
+  },
+  {
+    "file": "src\\pages\\Group.jsx",
+    "line": 63,
+    "text": "let q = query(collection(db, \"teacher_allotments\"), where(\"userId\", \"==\", userData.uid));"
+  },
+  {
+    "file": "src\\pages\\Group.jsx",
+    "line": 68,
+    "text": "q = query(collection(db, \"teacher_allotments\"), where(\"teacherId\", \"==\", userData.uid));"
+  },
+  {
+    "file": "src\\pages\\Group.jsx",
+    "line": 123,
+    "text": "let q = query(collection(db, collectionName), where(\"userId\", \"==\", userData.uid));"
+  },
+  {
+    "file": "src\\pages\\Group.jsx",
+    "line": 128,
+    "text": "q = query(collection(db, collectionName), where(\"teacherId\", \"==\", userData.uid));"
+  },
+  {
+    "file": "src\\pages\\Group.jsx",
+    "line": 153,
+    "text": "const q1 = query(collection(db, \"groups\"), where(\"institutionId\", \"==\", instId));"
+  },
+  {
+    "file": "src\\pages\\Group.jsx",
+    "line": 154,
+    "text": "const q2 = query(collection(db, \"groups\"), where(\"createdBy\", \"==\", instId));"
+  },
+  {
+    "file": "src\\pages\\Group.jsx",
+    "line": 286,
+    "text": "const qS1 = query(collection(db, \"student_allotments\"),"
+  },
+  {
+    "file": "src\\pages\\Group.jsx",
+    "line": 289,
+    "text": "const qS2 = query(collection(db, \"student_allotments\"),"
+  },
+  {
+    "file": "src\\pages\\Group.jsx",
+    "line": 319,
+    "text": "const qT1 = query(collection(db, \"teacher_allotments\"),"
+  },
+  {
+    "file": "src\\pages\\Group.jsx",
+    "line": 322,
+    "text": "const qT2 = query(collection(db, \"teacher_allotments\"),"
+  },
+  {
+    "file": "src\\pages\\Health.jsx",
+    "line": 60,
+    "text": "const q = query(collection(db, \"student_allotments\"), where(\"classAssigned\", \"==\", viewClass));"
+  },
+  {
+    "file": "src\\pages\\HomeworkSystem.jsx",
+    "line": 94,
+    "text": "const q = query(collection(db, \"homework_submissions\"), where(\"homeworkId\", \"==\", hwId), orderBy(\"submittedAt\", \"desc\"));"
+  },
+  {
+    "file": "src\\pages\\InspectorMode.jsx",
+    "line": 24,
+    "text": "const qAllotments = query(collection(db, \"student_allotments\"), where(\"teacherId\", \"==\", userData.uid));"
+  },
+  {
+    "file": "src\\pages\\InstitutionDetailsAdmin.jsx",
+    "line": 42,
+    "text": "const studentsSnap = await getDocs(query(collection(db, \"users\"), where(\"institutionId\", \"==\", id)));"
+  },
+  {
+    "file": "src\\pages\\InstitutionDetailsAdmin.jsx",
+    "line": 52,
+    "text": "const teachersSnap = await getDocs(query(collection(db, \"teachers\"), where(\"institutionId\", \"==\", id)));"
+  },
+  {
+    "file": "src\\pages\\InstitutionDetailsAdmin.jsx",
+    "line": 66,
+    "text": "getDocs(query(collection(db, \"general_feedback\"), where(\"targetId\", \"==\", id))),"
+  },
+  {
+    "file": "src\\pages\\InstitutionDetailsAdmin.jsx",
+    "line": 67,
+    "text": "getDocs(query(collection(db, \"emergency_reports\"), where(\"institutionId\", \"==\", id)))"
+  },
+  {
+    "file": "src\\pages\\InstitutionFee.jsx",
+    "line": 62,
+    "text": "const qFees = query(collection(db, \"fees\"), where(\"institutionId\", \"==\", instId));"
+  },
+  {
+    "file": "src\\pages\\InstitutionFee.jsx",
+    "line": 78,
+    "text": "getDocs(query(collection(db, \"student_allotments\"), where(\"institutionId\", \"==\", instId))),"
+  },
+  {
+    "file": "src\\pages\\InstitutionFee.jsx",
+    "line": 79,
+    "text": "getDocs(query(collection(db, \"student_allotments\"), where(\"createdBy\", \"==\", instId)))"
+  },
+  {
+    "file": "src\\pages\\LibraryManagement.jsx",
+    "line": 70,
+    "text": "const iSnap = await getDocs(query(collection(db, \"library_issued\"), where(\"status\", \"==\", \"issued\")));"
+  },
+  {
+    "file": "src\\pages\\LibraryManagement.jsx",
+    "line": 89,
+    "text": "const q = query(collection(db, \"library_books\"), orderBy(\"addedAt\", \"desc\"));"
+  },
+  {
+    "file": "src\\pages\\LibraryManagement.jsx",
+    "line": 334,
+    "text": "const q = query(collection(db, \"library_issued\"), where(\"status\", \"==\", \"issued\"));"
+  },
+  {
+    "file": "src\\pages\\LibraryManagement.jsx",
+    "line": 361,
+    "text": "q = query(collection(db, \"library_reservations\"), where(\"studentId\", \"==\", userData.uid));"
+  },
+  {
+    "file": "src\\pages\\LibraryManagement.jsx",
+    "line": 363,
+    "text": "q = query(collection(db, \"library_reservations\"), orderBy(\"reservedAt\", \"desc\"));"
+  },
+  {
+    "file": "src\\pages\\LibraryManagement.jsx",
+    "line": 1123,
+    "text": "const bookSnap = await getDocs(query(collection(db, \"library_books\"), where(\"__name__\", \"==\", request.bookId)));"
+  },
+  {
+    "file": "src\\pages\\MarksManagement.jsx",
+    "line": 199,
+    "text": "const q = query(collection(db, \"marks\"));"
+  },
+  {
+    "file": "src\\pages\\PendingApproval.jsx",
+    "line": 65,
+    "text": "const q = query(collection(db, \"admissions\"), where(\"userId\", \"==\", user.uid));"
+  },
+  {
+    "file": "src\\pages\\ProfileView.jsx",
+    "line": 76,
+    "text": "const qReceived = query(collection(db, \"general_feedback\"), where(\"targetId\", \"==\", profileData.id));"
+  },
+  {
+    "file": "src\\pages\\ProfileView.jsx",
+    "line": 81,
+    "text": "const qGiven = query(collection(db, \"general_feedback\"), where(\"authorId\", \"==\", profileData.id));"
+  },
+  {
+    "file": "src\\pages\\SelectFeedbackTarget.jsx",
+    "line": 128,
+    "text": "const allotQ = query(collection(db, \"teacher_allotments\"), where(\"userId\", \"==\", myUid));"
+  },
+  {
+    "file": "src\\pages\\SelectFeedbackTarget.jsx",
+    "line": 137,
+    "text": "let sq = query(collection(db, \"student_allotments\"),"
+  },
+  {
+    "file": "src\\pages\\SelectFeedbackTarget.jsx",
+    "line": 176,
+    "text": "const q = query(collection(db, colName), where('createdBy', '==', userData.uid));"
+  },
+  {
+    "file": "src\\pages\\Student.jsx",
+    "line": 118,
+    "text": "const q1 = query(collection(db, \"groups\"), where(\"institutionId\", \"==\", instId));"
+  },
+  {
+    "file": "src\\pages\\Student.jsx",
+    "line": 119,
+    "text": "const q2 = query(collection(db, \"groups\"), where(\"createdBy\", \"==\", instId));"
+  },
+  {
+    "file": "src\\pages\\Student.jsx",
+    "line": 128,
+    "text": "const qFallback = query(collection(db, \"groups\"), where(\"className\", \"in\", uniqueVariants.slice(0, 10)));"
+  },
+  {
+    "file": "src\\pages\\StudentFee.jsx",
+    "line": 24,
+    "text": "const allotQ = query(collection(db, \"student_allotments\"), where(\"userId\", \"==\", userData.uid));"
+  },
+  {
+    "file": "src\\pages\\Teacher.jsx",
+    "line": 67,
+    "text": "const q = query(collection(db, \"teacher_allotments\"), where(\"teacherId\", \"==\", userData.uid));"
+  },
+  {
+    "file": "src\\pages\\Timetable.jsx",
+    "line": 97,
+    "text": "const q1 = query(collection(db, \"timetables\"), where(\"institutionId\", \"==\", instId));"
+  },
+  {
+    "file": "src\\pages\\Timetable.jsx",
+    "line": 100,
+    "text": "const q2 = query(collection(db, \"timetables\"), where(\"createdBy\", \"==\", instId));"
+  },
+  {
+    "file": "src\\pages\\Timetable.jsx",
+    "line": 135,
+    "text": "let q = query(collection(db, \"teacher_allotments\"), where(\"userId\", \"==\", userData.uid));"
+  },
+  {
+    "file": "src\\pages\\Timetable.jsx",
+    "line": 177,
+    "text": "const qT = query(collection(db, \"timetables\"), where(\"institutionId\", \"==\", instId), where(\"section\", \"==\", sec));"
+  },
+  {
+    "file": "src\\pages\\Timetable.jsx",
+    "line": 391,
+    "text": "const q1 = query(collection(db, \"teacher_allotments\"), where(\"institutionId\", \"==\", instId));"
+  },
+  {
+    "file": "src\\pages\\Timetable.jsx",
+    "line": 395,
+    "text": "const q2 = query(collection(db, \"teacher_allotments\"), where(\"createdBy\", \"==\", instId));"
+  },
+  {
+    "file": "src\\pages\\Timetable.jsx",
+    "line": 472,
+    "text": "const q1 = query(collection(db, \"teacher_allotments\"), where(\"institutionId\", \"==\", instId));"
+  },
+  {
+    "file": "src\\pages\\Timetable.jsx",
+    "line": 473,
+    "text": "const q2 = query(collection(db, \"teacher_allotments\"), where(\"createdBy\", \"==\", instId));"
+  },
+  {
+    "file": "src\\pages\\TTRAI.jsx",
+    "line": 93,
+    "text": "const feedSnap = await getDocs(query(collection(db, \"general_feedback\"), orderBy(\"timestamp\", \"desc\"), limit(5)));"
+  },
+  {
+    "file": "src\\pages\\TTRAI.jsx",
+    "line": 94,
+    "text": "const repSnap = await getDocs(query(collection(db, \"emergency_reports\"), orderBy(\"createdAt\", \"desc\"), limit(5)));"
+  },
+  {
+    "file": "src\\pages\\TTRAI.jsx",
+    "line": 111,
+    "text": "const q = query(collection(db, 'ai_chats', currentUser.uid, 'sessions'), orderBy('updatedAt', 'desc'), limit(20));"
+  },
+  {
+    "file": "src\\pages\\TTRAI.jsx",
+    "line": 128,
+    "text": "const q = query(collection(db, 'ai_chats', currentUser.uid, 'sessions', currentSessionId, 'messages'), orderBy('createdAt', 'asc'));"
+  },
+  {
+    "file": "src\\pages\\WaitingList.jsx",
+    "line": 18,
+    "text": "q = query(collection(db, \"admissions\"),"
+  },
+  {
+    "file": "src\\pages\\WaitingList.jsx",
+    "line": 24,
+    "text": "q = query(collection(db, \"admissions\"), where(\"status\", \"==\", \"waiting\"));"
+  },
+  {
+    "file": "src\\pages\\WaitingList.jsx",
+    "line": 124,
+    "text": "const q = query(collection(db, \"admissions\"), where(\"userId\", \"==\", uid), where(\"status\", \"==\", \"waiting\"));"
+  },
+  {
+    "file": "src\\pages\\WaitingList.jsx",
+    "line": 134,
+    "text": "const q = query(collection(db, \"admissions\"), where(\"userId\", \"==\", uid), where(\"status\", \"==\", \"waiting\"));"
+  }
+]
