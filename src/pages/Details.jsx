@@ -458,8 +458,8 @@ export default function Details() {
                         <div className="role-specific-form fade-in">
                             <div className="role-status-box" style={{ marginBottom: '20px', padding: '10px', background: '#e2e6ea', borderRadius: '5px' }}>
                                 <strong>Selected Role:</strong> {role.toUpperCase()}
-                                <span onClick={() => { if (!passedRole) setRole(''); }} style={{ float: 'right', cursor: 'pointer', color: 'blue', fontSize: '12px', textDecoration: 'underline' }}>
-                                    {!passedRole && "(Change)"}
+                                <span onClick={() => { if (!passedRole && !initialData.isInstitutionCreated) setRole(''); }} style={{ float: 'right', cursor: 'pointer', color: 'blue', fontSize: '12px', textDecoration: 'underline' }}>
+                                    {(!passedRole && !initialData.isInstitutionCreated) && "(Change)"}
                                 </span>
                             </div>
 
@@ -540,7 +540,7 @@ export default function Details() {
                                     <input name="secondName" value={formData.secondName || ''} className="input-field" required onChange={handleChange} />
 
                                     <label>Class</label>
-                                    <select name="class" value={formData.class || 'Nursery'} className="input-field" onChange={handleChange}>
+                                    <select name="class" value={formData.class || 'Nursery'} className="input-field" onChange={handleChange} disabled={!!initialData.isInstitutionCreated}>
                                         <option>Nursery</option>
                                         {['LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'].map(c => <option key={c} value={c}>{c}</option>)}
                                     </select>
@@ -553,7 +553,7 @@ export default function Details() {
                                         className="input-field"
                                         required
                                         onChange={handleChange}
-                                        disabled={!!initialData.institutionId && initialData.approved === true} // Allow edit if NOT approved
+                                        disabled={!!initialData.institutionId && (initialData.approved === true || !!initialData.isInstitutionCreated)} // Allow edit if NOT approved and not inst-created
                                     >
                                         <option value="" disabled>Select a School to Apply</option>
                                         {institutions.map(inst => (

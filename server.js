@@ -434,21 +434,30 @@ app.post('/api/batch-register', verifyAuth, async (req, res) => {
                 displayName: student.name
             });
 
-            // B. Create Firestore Profile
+            // B. Create Standard Profile in Firestore
             const pid = `ST-${Math.floor(100000 + Math.random() * 900000)}`;
-
             await admin.firestore().collection('users').doc(userRecord.uid).set({
+                // Profile & Meta
+                profileCompleted: false, // Force them to details page on first login
+                onboardingCompleted: false,
+
+                // Core Identifiers
                 name: student.name,
                 email: student.email,
-                role: student.role || 'student', // Usually 'student'
-                class: student.class || 'N/A',
-                section: student.section || 'A',
+                firstName: student.firstName || student.name.split(' ')[0],
+                secondName: student.lastName || student.name.split(' ').slice(1).join(' '),
                 rollNumber: student.rollNumber || null,
-                institutionId: req.user.uid, // Explicitly link to the institution that submitted this
                 pid: pid,
-                approved: student.isInstitutionCreated ? true : false, // Auto-approve since Institution is adding them
+
+                // Location & Assignments
+                institutionId: req.user.uid,
+                class: student.class || 'N/A',
+                section: student.section || 'N/A',
+
+                // Auto-Approval (Security: ensure strict boolean)
+                approved: student.isInstitutionCreated ? true : false,
                 isInstitutionCreated: student.isInstitutionCreated || false,
-                profileCompleted: true,
+                role: 'student',
                 createdAt: admin.firestore.FieldValue.serverTimestamp()
             });
 
