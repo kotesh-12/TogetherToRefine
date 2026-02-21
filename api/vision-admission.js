@@ -52,19 +52,53 @@ Example: ["Robert Thompson", "Sarah Jenkins"]`;
             }
         }
 
-        // We mapped the generic names into strict Platform objects matching the existing structure of SmartAdmission CSV imports.
-        const parsedData = names.map((name, idx) => {
+        // Step 1: Parse and structure the names
+        let structuredNames = names.map(name => {
             const cleanName = name.replace(/[^a-zA-Z\s]/g, '').trim() || "Unknown";
-            const emailBase = cleanName.split(' ')[0].toLowerCase() + (100 + idx + Math.floor(Math.random() * 900));
-            const email = `${emailBase}@school.com`;
-            const randomPassword = `Pass${Math.floor(1000 + Math.random() * 9000)}`;
+            const nameParts = cleanName.split(' ');
+
+            // Extract First and Last Name
+            let firstName = nameParts[0] || "Student";
+            let lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : "";
+
+            // Capitalize first letters securely
+            const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+            firstName = capitalize(firstName);
+            lastName = lastName ? capitalize(lastName) : "";
 
             return {
-                name: name,
-                email: email,
-                password: randomPassword,
-                role: role || 'student', // Admin's pre-selection from frontend
-                class: role === 'student' ? `${dataClass}-${dataSection}` : 'N/A' // Automatically tagging class based on pre-selection
+                originalName: cleanName,
+                firstName: firstName,
+                lastName: lastName
+            };
+        });
+
+        // Step 2: Sort Alphabetically by Surname (Last Name) first, then First Name
+        structuredNames.sort((a, b) => {
+            if (a.lastName === b.lastName) {
+                return a.firstName.localeCompare(b.firstName);
+            }
+            return a.lastName.localeCompare(b.lastName);
+        });
+
+        // Step 3: Map into final structured objects with Roll Number and formatting
+        const parsedData = structuredNames.map((person, idx) => {
+            const rollNumber = idx + 1; // Series number starts at 1
+
+            // Generate Username/Password: RaviBitra37
+            const loginCredentials = `${person.firstName}${person.lastName}${rollNumber}`;
+
+            // We use this as the email/system ID for Firebase Auth
+            const email = `${loginCredentials.toLowerCase()}@school.com`;
+
+            return {
+                name: person.originalName,
+                email: email, // Acts as Username for sign in
+                password: loginCredentials,
+                role: role || 'student', // Admin's pre-selection
+                class: role === 'student' ? `${dataClass}-${dataSection}` : 'N/A', // e.g. "9-C"
+                rollNumber: rollNumber,
+                isInstitutionCreated: true // Flag to skip manual approval for institution-created accounts
             };
         });
 
