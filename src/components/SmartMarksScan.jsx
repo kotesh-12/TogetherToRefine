@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export default function SmartMarksScan({ onClose, onScanComplete }) {
     const videoRef = useRef(null);
@@ -49,26 +50,78 @@ export default function SmartMarksScan({ onClose, onScanComplete }) {
     const processImage = async (imageDataUrl) => {
         try {
             const base64Data = imageDataUrl.split(',')[1];
-            const API_URL = window.location.hostname === 'localhost'
-                ? 'http://localhost:5000/api/vision-marks'
-                : '/api/vision-marks';
 
-            const res = await fetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    image: base64Data,
-                    expectedClass: scanClass,
-                    expectedSection: scanSection,
-                    expectedExamType: examType
-                })
-            });
+            const API_KEY = process.env.GEMINI_API_KEY;
+            if (!API_KEY) throw new Error("API Key is missing in the environment. Please notify the administrator.");
+            const cleanKey = API_KEY.replace(/["']/g, "").trim();
+            const genAI = new GoogleGenerativeAI(cleanKey);
 
-            if (!res.ok) throw new Error("AI Backend returned an error.");
+            const prompt = `You are a highly advanced OCR and Data Verification AI explicitly developed to revolutionize school grading.
+Your job is to read carefully through the uploaded teacher's grading sheet or students' test papers and extract the Marks data.
 
-            const data = await res.json();
-            if (data.data && data.data.length > 0) {
-                setParsedData(data);
+CRITICAL INSTRUCTIONS:
+1. Identify the CLASS (e.g. 1 to 12) if visible. (Expected: ${scanClass || 'Any'})
+2. Identify the SECTION (e.g. A, B, C) if visible. (Expected: ${scanSection || 'Any'})
+3. Identify the EXAM TYPE from: [Assignment 1, Assignment 2, Mid-Term 1, Mid-Term 2, Final Exam]. (Expected: ${examType || 'Any'})
+4. For every student visible, extract their FULL NAME and their MARKS. If absent, marks = 0.
+5. If max marks is mentioned, adjust to standard out of 100 or simply capture what is written. For simplicity, just return the marks number.
+
+OUTPUT FORMAT:
+Return ONLY a valid JSON object. DO NOT wrap the response in markdown blocks like \`\`\`json. Return pure JSON string.
+{
+  "class": "String (number)",
+  "section": "String",
+  "examType": "String",
+  "data": [
+      { "nameKey": "John Doe", "marks": 85 }
+  ]
+}`;
+
+            const parts = [
+                { text: prompt },
+                { inlineData: { mimeType: "image/png", data: base64Data } }
+            ];
+
+            let parsedDataObj = null;
+
+            try {
+                const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+                const result = await model.generateContent(parts);
+                let rawText = result.response.text();
+                rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+                parsedDataObj = JSON.parse(rawText);
+            } catch (e) {
+                console.error("1.5-flash AI Model Vision exception:", e.message);
+                try {
+                    const modelFallback = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
+                    const resultFallback = await modelFallback.generateContent(parts);
+                    let rawTextFall = resultFallback.response.text();
+                    rawTextFall = rawTextFall.replace(/```json/gi, '').replace(/```/g, '').trim();
+                    parsedDataObj = JSON.parse(rawTextFall);
+                } catch (fallbackError) {
+                    throw new Error("Unable to parse Marks text via AI Core. Ensure the photo is clear.");
+                }
+            }
+
+            if (!parsedDataObj.class) parsedDataObj.class = scanClass || "";
+            if (!parsedDataObj.section) parsedDataObj.section = scanSection || "";
+            if (!parsedDataObj.examType) parsedDataObj.examType = examType || "";
+
+            if (parsedDataObj.class && !isNaN(parseInt(parsedDataObj.class))) {
+                parsedDataObj.class = String(parseInt(parsedDataObj.class));
+            }
+            if (parsedDataObj.data) {
+                parsedDataObj.data = parsedDataObj.data.map(item => ({
+                    nameKey: String(item.nameKey || "Unknown").trim(),
+                    marks: isNaN(Number(item.marks)) ? 0 : Number(item.marks),
+                    matchedStudentId: null
+                }));
+            } else {
+                parsedDataObj.data = [];
+            }
+
+            if (parsedDataObj.data && parsedDataObj.data.length > 0) {
+                setParsedData(parsedDataObj);
                 setStatus('review');
             } else {
                 alert("TTR AI could not extract any names or marks cleanly. Try again, ensure lighting is good.");

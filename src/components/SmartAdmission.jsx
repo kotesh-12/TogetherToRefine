@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export default function SmartAdmission({ onClose, onScanComplete }) {
     const videoRef = useRef(null);
@@ -58,27 +59,79 @@ export default function SmartAdmission({ onClose, onScanComplete }) {
             // Strip data:image/png;base64,... part for Gemini payload
             const base64Data = imageDataUrl.split(',')[1];
 
-            const API_URL = window.location.hostname === 'localhost'
-                ? 'http://localhost:5000/api/vision-admission'
-                : '/api/vision-admission';
+            const API_KEY = process.env.GEMINI_API_KEY;
+            if (!API_KEY) throw new Error("API Key is missing in the environment. Please notify the administrator.");
+            const cleanKey = API_KEY.replace(/["']/g, "").trim();
+            const genAI = new GoogleGenerativeAI(cleanKey);
 
-            // Send raw photo + Setup Settings to Gemini API Backend
-            const res = await fetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    image: base64Data,
-                    role: scanRole,
-                    dataClass: scanClass,
-                    dataSection: scanSection
-                })
+            const prompt = `You are an incredibly precise AI OCR tool explicitly developed to revolutionize school admissions.
+Your job is to read carefully through the uploaded document/image and extract ALL names of people written (either handwritten or typed).
+CRITICAL: 
+1. Ignore headings, dates, scores, addresses, or phone numbers.
+2. If there are names, return ONLY a strict, valid JSON array of strings containing the exact full names found. 
+3. DO NOT wrap the response in markdown blocks like \`\`\`json. Return pure JSON string.
+4. If the document is blank or contains no names, return [].
+Example: ["Robert Thompson", "Sarah Jenkins"]`;
+
+            const parts = [
+                { text: prompt },
+                { inlineData: { mimeType: "image/png", data: base64Data } }
+            ];
+
+            let names = [];
+            try {
+                const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+                const result = await model.generateContent(parts);
+                let rawText = result.response.text();
+                rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+                names = JSON.parse(rawText);
+            } catch (e) {
+                console.error("1.5-flash AI Model Vision exception:", e.message);
+                try {
+                    const modelFallback = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
+                    const resultFallback = await modelFallback.generateContent(parts);
+                    let rawTextFall = resultFallback.response.text();
+                    rawTextFall = rawTextFall.replace(/```json/gi, '').replace(/```/g, '').trim();
+                    names = JSON.parse(rawTextFall);
+                } catch (fallbackError) {
+                    throw new Error("Unable to parse text via AI Core. Ensure the photo is clear.");
+                }
+            }
+
+            let structuredNames = names.map(name => {
+                const cleanName = name.replace(/[^a-zA-Z\s]/g, '').trim() || "Unknown";
+                const nameParts = cleanName.split(' ');
+                let firstName = nameParts[0] || "Student";
+                let lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : "";
+                const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+                return {
+                    originalName: cleanName,
+                    firstName: capitalize(firstName),
+                    lastName: lastName ? capitalize(lastName) : ""
+                };
             });
 
-            if (!res.ok) throw new Error("Backend error processing AI visual scan. Ensure your API Key is valid.");
+            structuredNames.sort((a, b) => {
+                if (a.lastName === b.lastName) return a.firstName.localeCompare(b.firstName);
+                return a.lastName.localeCompare(b.lastName);
+            });
 
-            const data = await res.json();
-            if (data.students && data.students.length > 0) {
-                setParsedData(data.students);
+            const parsedStudentsData = structuredNames.map((person, idx) => {
+                const rollNumber = idx + 1;
+                const loginCredentials = `${person.firstName}${person.lastName}${rollNumber}`;
+                return {
+                    name: person.originalName,
+                    email: `${loginCredentials.toLowerCase()}@school.com`,
+                    password: loginCredentials,
+                    role: scanRole || 'student',
+                    class: scanRole === 'student' ? `${scanClass}-${scanSection}` : 'N/A',
+                    rollNumber: rollNumber,
+                    isInstitutionCreated: true
+                };
+            });
+
+            if (parsedStudentsData && parsedStudentsData.length > 0) {
+                setParsedData(parsedStudentsData);
                 setStatus('review');
             } else {
                 alert("TTR AI could not extract legible names from the image. Please retake carefully!");
