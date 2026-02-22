@@ -23,7 +23,7 @@ export default function ViewExamSeating() {
         setLoading(true);
         try {
             // Standardize Institution ID lookup
-            const instId = userData.institutionId || (userData.role === 'institution' ? userData.uid : null);
+            const instId = userData.institutionId || userData.createdBy || (userData.role === 'institution' ? userData.uid : null);
 
             if (!instId) {
                 console.warn("No institution ID found for user:", userData.uid);
@@ -313,93 +313,101 @@ export default function ViewExamSeating() {
 
                                 {selectedPlan.seatingPlan && selectedPlan.seatingPlan.length > 0 ? (
                                     <div style={{ display: 'grid', gap: '20px' }}>
-                                        {selectedPlan.seatingPlan.map(room => (
-                                            <div key={room.roomNo} style={{ border: '1px solid #ddd', borderRadius: '8px', padding: '15px' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
-                                                    <div>
-                                                        <h4 style={{ margin: '0 0 5px 0', color: '#2c3e50' }}>
-                                                            {room.roomName} - {room.totalSeats || 0} Students
-                                                        </h4>
-                                                        {room.invigilatorName && (
-                                                            <div style={{ fontSize: '13px', color: '#2d3436', background: '#e0ece4', padding: '4px 8px', borderRadius: '4px', display: 'inline-block' }}>
-                                                                👮‍♂️ Invigilator: <strong>{room.invigilatorName}</strong>
-                                                            </div>
-                                                        )}
-                                                        {room.invigilators && room.invigilators.length > 0 && (
-                                                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '5px' }}>
-                                                                {room.invigilators.map((inv, idx) => (
-                                                                    <div key={idx} style={{ fontSize: '12px', color: '#2d3436', background: '#e0ece4', padding: '4px 8px', borderRadius: '4px', display: 'inline-block' }}>
-                                                                        👮‍♂️ [{inv.side}] <strong>{inv.teacherName}</strong>
+                                        {selectedPlan.seatingPlan
+                                            .filter(room => {
+                                                if (userData?.role === 'teacher') {
+                                                    return room.invigilatorId === userData.uid ||
+                                                        (room.invigilators && room.invigilators.some(inv => inv.teacherId === userData.uid));
+                                                }
+                                                return true;
+                                            })
+                                            .map(room => (
+                                                <div key={room.roomNo} style={{ border: '1px solid #ddd', borderRadius: '8px', padding: '15px' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
+                                                        <div>
+                                                            <h4 style={{ margin: '0 0 5px 0', color: '#2c3e50' }}>
+                                                                {room.roomName} - {room.totalSeats || 0} Students
+                                                            </h4>
+                                                            {room.invigilatorName && (
+                                                                <div style={{ fontSize: '13px', color: '#2d3436', background: '#e0ece4', padding: '4px 8px', borderRadius: '4px', display: 'inline-block' }}>
+                                                                    👮‍♂️ Invigilator: <strong>{room.invigilatorName}</strong>
+                                                                </div>
+                                                            )}
+                                                            {room.invigilators && room.invigilators.length > 0 && (
+                                                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '5px' }}>
+                                                                    {room.invigilators.map((inv, idx) => (
+                                                                        <div key={idx} style={{ fontSize: '12px', color: '#2d3436', background: '#e0ece4', padding: '4px 8px', borderRadius: '4px', display: 'inline-block' }}>
+                                                                            👮‍♂️ [{inv.side}] <strong>{inv.teacherName}</strong>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    <div style={{
+                                                        display: 'grid',
+                                                        gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
+                                                        gap: '10px'
+                                                    }}>
+                                                        {(() => {
+                                                            let renderSeats = room.seats || [];
+                                                            if (room.benches) {
+                                                                renderSeats = [];
+                                                                room.benches.forEach(bench => {
+                                                                    if (bench.leftSeat) renderSeats.push({ seatNo: `${bench.benchNo}L`, rollNo: bench.leftSeat.rollNo, userId: bench.leftSeat.userId });
+                                                                    if (bench.rightSeat) renderSeats.push({ seatNo: `${bench.benchNo}R`, rollNo: bench.rightSeat.rollNo, userId: bench.rightSeat.userId });
+                                                                });
+                                                            }
+
+                                                            return renderSeats.map(seat => {
+                                                                // Highlight student's own seat
+                                                                const isMySeats = userData?.role === 'student' &&
+                                                                    mySeat &&
+                                                                    seat.rollNo?.toString() === mySeat.rollNo?.toString();
+
+                                                                return (
+                                                                    <div key={seat.seatNo} style={{
+                                                                        border: isMySeats ? '3px solid #f39c12' : '2px solid #3498db',
+                                                                        borderRadius: '8px',
+                                                                        padding: '10px',
+                                                                        textAlign: 'center',
+                                                                        background: isMySeats ? '#fff9e6' : '#ecf0f1',
+                                                                        position: 'relative'
+                                                                    }}>
+                                                                        {isMySeats && (
+                                                                            <div style={{
+                                                                                position: 'absolute',
+                                                                                top: '-8px',
+                                                                                right: '-8px',
+                                                                                background: '#f39c12',
+                                                                                color: 'white',
+                                                                                borderRadius: '50%',
+                                                                                width: '24px',
+                                                                                height: '24px',
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                justifyContent: 'center',
+                                                                                fontSize: '14px'
+                                                                            }}>
+                                                                                ★
+                                                                            </div>
+                                                                        )}
+                                                                        <div style={{ fontSize: '11px', color: '#7f8c8d' }}>Seat {seat.seatNo}</div>
+                                                                        <div style={{
+                                                                            fontSize: '16px',
+                                                                            fontWeight: 'bold',
+                                                                            color: isMySeats ? '#f39c12' : '#2c3e50'
+                                                                        }}>
+                                                                            {seat.rollNo}
+                                                                        </div>
                                                                     </div>
-                                                                ))}
-                                                            </div>
-                                                        )}
+                                                                );
+                                                            });
+                                                        })()}
                                                     </div>
                                                 </div>
-
-                                                <div style={{
-                                                    display: 'grid',
-                                                    gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
-                                                    gap: '10px'
-                                                }}>
-                                                    {(() => {
-                                                        let renderSeats = room.seats || [];
-                                                        if (room.benches) {
-                                                            renderSeats = [];
-                                                            room.benches.forEach(bench => {
-                                                                if (bench.leftSeat) renderSeats.push({ seatNo: `${bench.benchNo}L`, rollNo: bench.leftSeat.rollNo, userId: bench.leftSeat.userId });
-                                                                if (bench.rightSeat) renderSeats.push({ seatNo: `${bench.benchNo}R`, rollNo: bench.rightSeat.rollNo, userId: bench.rightSeat.userId });
-                                                            });
-                                                        }
-
-                                                        return renderSeats.map(seat => {
-                                                            // Highlight student's own seat
-                                                            const isMySeats = userData?.role === 'student' &&
-                                                                mySeat &&
-                                                                seat.rollNo?.toString() === mySeat.rollNo?.toString();
-
-                                                            return (
-                                                                <div key={seat.seatNo} style={{
-                                                                    border: isMySeats ? '3px solid #f39c12' : '2px solid #3498db',
-                                                                    borderRadius: '8px',
-                                                                    padding: '10px',
-                                                                    textAlign: 'center',
-                                                                    background: isMySeats ? '#fff9e6' : '#ecf0f1',
-                                                                    position: 'relative'
-                                                                }}>
-                                                                    {isMySeats && (
-                                                                        <div style={{
-                                                                            position: 'absolute',
-                                                                            top: '-8px',
-                                                                            right: '-8px',
-                                                                            background: '#f39c12',
-                                                                            color: 'white',
-                                                                            borderRadius: '50%',
-                                                                            width: '24px',
-                                                                            height: '24px',
-                                                                            display: 'flex',
-                                                                            alignItems: 'center',
-                                                                            justifyContent: 'center',
-                                                                            fontSize: '14px'
-                                                                        }}>
-                                                                            ★
-                                                                        </div>
-                                                                    )}
-                                                                    <div style={{ fontSize: '11px', color: '#7f8c8d' }}>Seat {seat.seatNo}</div>
-                                                                    <div style={{
-                                                                        fontSize: '16px',
-                                                                        fontWeight: 'bold',
-                                                                        color: isMySeats ? '#f39c12' : '#2c3e50'
-                                                                    }}>
-                                                                        {seat.rollNo}
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        });
-                                                    })()}
-                                                </div>
-                                            </div>
-                                        ))}
+                                            ))}
                                     </div>
                                 ) : (
                                     <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
