@@ -45,13 +45,17 @@ export default function SmartAdmission({ onClose, onScanComplete }) {
         const canvas = canvasRef.current;
         if (!video || !canvas) return;
 
-        // Take Snapshot
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0);
+        // Take Snapshot (Scale down to 1280px to safely avoid 20MB Gemini payload limit on modern 4K Mobile cameras)
+        const scale = Math.min(1, 1280 / video.videoWidth);
+        const w = video.videoWidth * scale;
+        const h = video.videoHeight * scale;
+
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(video, 0, 0, w, h);
 
         setStatus('processing');
-        processImage(canvas.toDataURL('image/png'));
+        processImage(canvas.toDataURL('image/jpeg', 0.8));
     };
 
     const processImage = async (imageDataUrl) => {
@@ -75,7 +79,7 @@ Example: ["Robert Thompson", "Sarah Jenkins"]`;
 
             const parts = [
                 { text: prompt },
-                { inlineData: { mimeType: "image/png", data: base64Data } }
+                { inlineData: { mimeType: "image/jpeg", data: base64Data } }
             ];
 
             let names = [];
@@ -83,19 +87,18 @@ Example: ["Robert Thompson", "Sarah Jenkins"]`;
                 const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
                 const result = await model.generateContent(parts);
                 let rawText = result.response.text();
-                rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+
+                const startIdx = rawText.indexOf('[');
+                const endIdx = rawText.lastIndexOf(']');
+                if (startIdx !== -1 && endIdx !== -1) {
+                    rawText = rawText.substring(startIdx, endIdx + 1);
+                } else {
+                    rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+                }
                 names = JSON.parse(rawText);
             } catch (e) {
-                console.error("gemini-flash-latest AI Model Vision exception:", e.message);
-                try {
-                    const modelFallback = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
-                    const resultFallback = await modelFallback.generateContent(parts);
-                    let rawTextFall = resultFallback.response.text();
-                    rawTextFall = rawTextFall.replace(/```json/gi, '').replace(/```/g, '').trim();
-                    names = JSON.parse(rawTextFall);
-                } catch (fallbackError) {
-                    throw new Error("Unable to parse text via AI Core. Ensure the photo is clear.");
-                }
+                console.error("AI Model Vision exception:", e.message);
+                throw new Error("Detailed AI Error: " + e.message);
             }
 
             let structuredNames = names.map(name => {
