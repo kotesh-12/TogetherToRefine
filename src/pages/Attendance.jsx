@@ -855,10 +855,6 @@ export default function Attendance() {
                                                     const strStatus = typeof h.status === 'string' ? h.status.toLowerCase().trim() : h.status;
                                                     histMap[dKey][s] = strStatus;
 
-                                                    // Mark as daily general attendance to act as fallback for all periods
-                                                    if (s === 'general' || (h.subject || '').trim() === '') {
-                                                        histMap[dKey]['_daily_'] = strStatus;
-                                                    }
                                                 }
                                             }
                                         });
@@ -890,8 +886,6 @@ export default function Attendance() {
                                                         if (histMap[dateStr]) {
                                                             if (histMap[dateStr][targetedSubject]) {
                                                                 status = histMap[dateStr][targetedSubject];
-                                                            } else if (histMap[dateStr]['_daily_']) {
-                                                                status = histMap[dateStr]['_daily_'];
                                                             }
                                                         }
 
