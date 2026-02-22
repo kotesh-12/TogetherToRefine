@@ -45,11 +45,11 @@ export default function ViewExamSeating() {
             // For Students/Teachers, we show ALL plans but track their specific assignment
             setExamPlans(allPlans);
 
-            // Auto-select latest plan and find assignment
+            // Auto-select latest plan and find assignment for students and teachers ONLY
             if (allPlans.length > 0) {
-                const latest = allPlans[0];
-                setSelectedPlan(latest);
                 if (userData?.role === 'student' || userData?.role === 'teacher') {
+                    const latest = allPlans[0];
+                    setSelectedPlan(latest);
                     findMyAssignment(latest);
                 }
             }
