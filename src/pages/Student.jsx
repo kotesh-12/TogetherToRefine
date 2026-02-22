@@ -240,6 +240,15 @@ export default function Student() {
                         <p className="card-vibe-desc">{t('four_way_desc')}</p>
                     </div>
 
+                    <div className="student-action-card" onClick={() => {
+                        localStorage.removeItem("activeGroupId"); // Force generic selector view
+                        handleCardClick('/group');
+                    }}>
+                        <span className="card-vibe-icon">👥</span>
+                        <h3 className="card-vibe-title">{t('groups') || 'Groups'}</h3>
+                        <p className="card-vibe-desc">Class Discussions</p>
+                    </div>
+
                     <div id="tour-card-attendance" className="student-action-card" onClick={() => handleCardClick('/attendance')}>
                         <span className="card-vibe-icon">📅</span>
                         <h3 className="card-vibe-title">{t('attendance')}</h3>
