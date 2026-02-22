@@ -431,10 +431,10 @@ export default function ExamSeatingPlanner() {
             const docData = {
                 examName: examName.trim(),
                 examDate: examDate || null,
-                totalStudents: parseInt(totalStudents),
-                roomsCount: parseInt(roomsCount),
-                seatsPerRoom: parseInt(seatsPerRoom),
-                seatingPlan: seatingPlan,
+                totalStudents: parseInt(totalStudents) || 0,
+                roomsCount: parseInt(roomsCount) || 0,
+                seatsPerRoom: parseInt(seatsPerRoom) || 0,
+                seatingPlan: JSON.parse(JSON.stringify(seatingPlan)), // Strips out 'undefined' values (like empty userId)
                 institutionId: instId,
                 createdBy: userData.uid,
                 createdAt: serverTimestamp()
