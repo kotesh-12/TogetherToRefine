@@ -835,7 +835,7 @@ export default function Attendance() {
                                         for (let day = 1; day <= daysInMonth; day++) {
                                             const dateObj = new Date(year, month - 1, day);
                                             const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                                            const dayOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][dateObj.getDay()];
+                                            const dayOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dateObj.getDay()];
                                             const daySchedule = studentTimetable ? studentTimetable[dayOfWeek] : null;
 
                                             const isSunday = dateObj.getDay() === 0;
