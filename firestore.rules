@@ -6,25 +6,21 @@ service cloud.firestore {
     function isSignedIn() { return request.auth != null; }
     function isOwner(uid) { return request.auth.uid == uid; }
 
-    // Check role from whichever profile collection the user exists in
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-    function getRole() {
-      return isSignedIn() ? getUserData().role : null;
-    }
-    function isAdmin()       { return isSignedIn() && getRole() == 'admin'; }
-    function isInstitution() { return isSignedIn() && getRole() == 'institution'; }
-    function isTeacher()     { return isSignedIn() && getRole() == 'teacher'; }
-    function isStudent()     { return isSignedIn() && getRole() == 'student'; }
+    // Check role by verifying existence in specific collections
+    function isStudent()     { return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)); }
+    function isTeacher()     { return isSignedIn() && exists(/databases/$(database)/documents/teachers/$(request.auth.uid)); }
+    function isInstitution() { return isSignedIn() && exists(/databases/$(database)/documents/institutions/$(request.auth.uid)); }
+    function isAdmin()       { return isStudent()  && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'; }
 
     // Resolve the institution UID for any logged-in user:
-    //   - institution  → their own uid
-    //   - student/teacher → their institutionId field in users doc
     function myInstitutionId() {
       return isInstitution()
         ? request.auth.uid
-        : getUserData().institutionId;
+        : (isTeacher()
+          ? get(/databases/$(database)/documents/teachers/$(request.auth.uid)).data.institutionId
+          : (isStudent()
+            ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.institutionId
+            : null));
     }
 
     // Does the document belong to my institution?
