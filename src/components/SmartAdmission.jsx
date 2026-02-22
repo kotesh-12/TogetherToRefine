@@ -80,15 +80,15 @@ Example: ["Robert Thompson", "Sarah Jenkins"]`;
 
             let names = [];
             try {
-                const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+                const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
                 const result = await model.generateContent(parts);
                 let rawText = result.response.text();
                 rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
                 names = JSON.parse(rawText);
             } catch (e) {
-                console.error("1.5-flash AI Model Vision exception:", e.message);
+                console.error("gemini-flash-latest AI Model Vision exception:", e.message);
                 try {
-                    const modelFallback = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
+                    const modelFallback = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
                     const resultFallback = await modelFallback.generateContent(parts);
                     let rawTextFall = resultFallback.response.text();
                     rawTextFall = rawTextFall.replace(/```json/gi, '').replace(/```/g, '').trim();
