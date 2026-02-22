@@ -17,69 +17,90 @@ export default function EarlyWarningSystem() {
                 setLoading(true);
                 const instId = userData.institutionId || userData.uid; // Support both teacher and institution view
 
-                // 1. Fetch teacher's assigned classes from teacher_allotments
-                const allotmentsQuery = query(
-                    collection(db, "teacher_allotments"),
-                    where("teacherId", "==", userData.uid)
-                );
-                const allotmentsSnap = await getDocs(allotmentsQuery);
-                const myClasses = allotmentsSnap.docs.map(d => ({
-                    class: d.data().classAssigned,
-                    section: d.data().section
-                }));
-
-                // Fallback: If no allotments, maybe check if teacher has a direct class/section
-                if (myClasses.length === 0 && userData.class && userData.section) {
-                    myClasses.push({ class: userData.class, section: userData.section });
-                }
-
-                if (myClasses.length === 0) {
-                    setAtRiskStudents([]);
-                    setLoading(false);
-                    return;
-                }
-
-                // 2. Fetch students for these classes
-                const results = [];
-                // Process each class-section pair
-                for (const cls of myClasses) {
-                    const studentQuery = query(
-                        collection(db, "student_allotments"),
-                        where("classAssigned", "==", cls.class),
-                        where("section", "==", cls.section)
+                // 1. Determine if Teacher or Institution
+                let myClasses = [];
+                if (userData.role === 'teacher') {
+                    const allotmentsQuery = query(
+                        collection(db, "teacher_allotments"),
+                        where("teacherId", "==", userData.uid)
                     );
-                    const studentSnap = await getDocs(studentQuery);
-                    const students = studentSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    const allotmentsSnap = await getDocs(allotmentsQuery);
+                    myClasses = allotmentsSnap.docs.map(d => ({
+                        class: (d.data().classAssigned || '').toLowerCase().trim(),
+                        section: (d.data().section || '').toLowerCase().trim()
+                    }));
 
-                    for (const student of students) {
-                        const targetId = student.userId || student.id;
-                        const attQuery = query(collection(db, "attendance"), where("userId", "==", targetId));
-                        const attSnap = await getDocs(attQuery);
-
-                        const total = attSnap.size;
-                        let present = 0;
-                        attSnap.forEach(doc => {
-                            if (doc.data().status === 'present') present++;
+                    if (myClasses.length === 0 && userData.class && userData.section) {
+                        myClasses.push({
+                            class: (userData.class).toLowerCase().trim(),
+                            section: (userData.section).toLowerCase().trim()
                         });
+                    }
 
-                        const percentage = total > 0 ? (present / total) * 100 : 0; // Default to 0 if no records, to flag them
+                    if (myClasses.length === 0) {
+                        setAtRiskStudents([]);
+                        setLoading(false);
+                        return;
+                    }
+                }
 
-                        // 3. APPLY RISK CRITERIA: <= 50% attendance or no data
-                        if (percentage <= 50 || total === 0) {
-                            results.push({
-                                id: student.id,
-                                name: student.name || student.studentName || "Unknown Student",
-                                class: student.classAssigned,
-                                attendancePercentage: percentage.toFixed(0),
-                                totalClasses: total,
-                                riskScore: percentage <= 50 ? 90 : 20,
-                                riskFactors: [
-                                    total === 0 ? "No attendance records found yet" : `Critical: Attendance dropped to ${percentage.toFixed(0)}%`,
-                                    total > 0 && total < 5 ? "Insufficient data for long-term prediction" : null
-                                ].filter(Boolean),
-                                parentPhone: student.parentPhone || student.phone || "N/A"
-                            });
-                        }
+                // 2. Fetch all students for the institution to bypass Firestore composite index & casing issues
+                const studentQuery = query(
+                    collection(db, "student_allotments"),
+                    where("institutionId", "==", instId)
+                );
+                const studentSnap = await getDocs(studentQuery);
+                let students = studentSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                // 3. If teacher, filter students to only those in their assigned classes
+                if (userData.role === 'teacher') {
+                    students = students.filter(st => {
+                        const stClass = (st.classAssigned || '').toLowerCase().trim();
+                        const stSec = (st.section || '').toLowerCase().trim();
+                        return myClasses.some(c => c.class === stClass && c.section === stSec);
+                    });
+                }
+
+                // Deduplicate students by ID
+                const uniqueStudents = new Map();
+                for (const st of students) {
+                    const stId = st.userId || st.id;
+                    if (!uniqueStudents.has(stId)) {
+                        uniqueStudents.set(stId, st);
+                    }
+                }
+                students = Array.from(uniqueStudents.values());
+
+                const results = [];
+                // 4. Calculate attendance percentage
+                for (const student of students) {
+                    const targetId = student.userId || student.id;
+                    const attQuery = query(collection(db, "attendance"), where("userId", "==", targetId));
+                    const attSnap = await getDocs(attQuery);
+
+                    const total = attSnap.size;
+                    let present = 0;
+                    attSnap.forEach(doc => {
+                        if (doc.data().status === 'present') present++;
+                    });
+
+                    const percentage = total > 0 ? (present / total) * 100 : 0;
+
+                    // 5. APPLY RISK CRITERIA: < 35% attendance or no data
+                    if (total === 0 || percentage < 35) {
+                        results.push({
+                            id: student.id,
+                            name: student.name || student.studentName || "Unknown Student",
+                            class: student.classAssigned,
+                            attendancePercentage: percentage.toFixed(0),
+                            totalClasses: total,
+                            riskScore: percentage < 35 ? 90 : 20,
+                            riskFactors: [
+                                total === 0 ? "No attendance records found yet" : `Critical: Attendance dropped to ${percentage.toFixed(0)}%`,
+                                total > 0 && total < 5 ? "Insufficient data for long-term prediction" : null
+                            ].filter(Boolean),
+                            parentPhone: student.parentPhone || student.phone || "N/A"
+                        });
                     }
                 }
 
@@ -134,7 +155,7 @@ export default function EarlyWarningSystem() {
                                     </div>
                                     <div style={{ textAlign: 'right' }}>
                                         <div style={{ background: '#ffe6e6', color: '#c0392b', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>
-                                            {student.attendancePercentage < 50 ? 'CRITICAL RISK' : 'RISK'}
+                                            {student.totalClasses === 0 ? 'NO DATA' : 'CRITICAL RISK'}
                                         </div>
                                         {student.attendancePercentage !== undefined && (
                                             <div style={{ fontSize: '18px', fontWeight: '800', color: '#c0392b', marginTop: '4px' }}>
