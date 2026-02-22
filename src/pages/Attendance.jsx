@@ -892,12 +892,6 @@ export default function Attendance() {
                                                                 status = histMap[dateStr][targetedSubject];
                                                             } else if (histMap[dateStr]['_daily_']) {
                                                                 status = histMap[dateStr]['_daily_'];
-                                                            } else {
-                                                                // Fallback: If only 1 specific subject was taken, carry it over if general is missing
-                                                                const availableStatuses = Object.values(histMap[dateStr]).filter(v => typeof v === 'string' && (v === 'present' || v === 'absent' || v === 'leave'));
-                                                                if (availableStatuses.length > 0) {
-                                                                    status = availableStatuses[0];
-                                                                }
                                                             }
                                                         }
 
