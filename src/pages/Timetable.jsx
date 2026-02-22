@@ -321,8 +321,8 @@ export default function Timetable() {
             await setDoc(doc(db, "timetables", docId), {
                 class: cleanClass,
                 section: cleanSection,
-                schedule: timetable,
-                periods: periodConfig,
+                schedule: JSON.parse(JSON.stringify(timetable)),
+                periods: JSON.parse(JSON.stringify(periodConfig)),
                 updatedBy: userData.uid,
                 institutionId: userData.uid, // CRITICAL
                 updatedAt: new Date()
