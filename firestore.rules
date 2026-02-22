@@ -129,6 +129,7 @@ service cloud.firestore {
     match /student_allotments/{id} {
       allow read: if isSignedIn() && (
         request.auth.uid == resource.data.userId ||
+        myDoc() ||
         isTeacher() ||
         isInstitution() ||
         isAdmin()
@@ -152,9 +153,11 @@ service cloud.firestore {
     // ─── 9. ATTENDANCE ──────────────────────────────────────────────────────
     match /attendance/{id} {
       allow read: if isSignedIn() && (
+        request.auth.uid == resource.data.userId ||
         request.auth.uid == resource.data.studentId ||
         isTeacher() ||
         isInstitution() ||
+        isStudent() ||
         isAdmin()
       );
       allow create: if isSignedIn() && (isTeacher() || isInstitution() || isAdmin());
