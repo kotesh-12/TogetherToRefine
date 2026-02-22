@@ -740,7 +740,7 @@ export default function Attendance() {
         const targetId = person.userId || id;
 
         try {
-            const finalSubject = view === 'teachers' ? 'General' : subject;
+            const finalSubject = view === 'teachers' ? 'General' : (subject || userData.subject || 'General');
             const docId = `${selectedDate}_${targetId}_${finalSubject}`;
 
             await setDoc(doc(db, "attendance", docId), {
@@ -880,11 +880,11 @@ export default function Attendance() {
                                                         const subj = daySchedule ? daySchedule[p.id]?.subject : null;
                                                         let displayStatus = <span style={{ color: '#b2bec3' }}>-</span>;
 
-                                                        const targetedSubject = (subj || 'General').trim().toLowerCase();
+                                                        const targetedSubject = (subj || '').trim().toLowerCase();
                                                         let status = null;
 
                                                         if (histMap[dateStr]) {
-                                                            if (histMap[dateStr][targetedSubject]) {
+                                                            if (targetedSubject && histMap[dateStr][targetedSubject]) {
                                                                 status = histMap[dateStr][targetedSubject];
                                                             }
                                                         }
