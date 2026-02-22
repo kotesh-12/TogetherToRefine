@@ -83,11 +83,17 @@ export default function ExamSeatingPlanner() {
         try {
             const q = query(
                 collection(db, "exam_seating"),
-                where("institutionId", "==", instId),
-                orderBy("createdAt", "desc")
+                where("institutionId", "==", instId)
             );
             const snap = await getDocs(q);
-            setHistory(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+            const results = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            // Client-side sort to bypass Firestore missing composite index failure
+            results.sort((a, b) => {
+                const timeA = a.createdAt?.seconds || 0;
+                const timeB = b.createdAt?.seconds || 0;
+                return timeB - timeA;
+            });
+            setHistory(results);
         } catch (e) {
             console.error("History error:", e);
         }
