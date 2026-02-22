@@ -502,7 +502,21 @@ export default function Attendance() {
 
             // Deduplicate & Merge
             let fetched = rawList;
-            if (view === 'teachers') {
+            if (view === 'students') {
+                const uniqueMap = new Map();
+                rawList.forEach(item => {
+                    // Deduplicate by userId if available, otherwise by roll number + name combo
+                    const stId = item.userId || `${(item.rollNo || item.rollNumber || item.pid || 'NOROLL')}-${(item.studentName || item.name || 'NONAME').toLowerCase().trim()}`;
+                    if (!uniqueMap.has(stId)) {
+                        uniqueMap.set(stId, {
+                            ...item,
+                            id: item.id,
+                            name: item.studentName || item.name || 'Unknown Student'
+                        });
+                    }
+                });
+                fetched = Array.from(uniqueMap.values());
+            } else if (view === 'teachers') {
                 const uniqueMap = new Map();
                 rawList.forEach(item => {
                     const tId = item.userId || item.teacherId || item.id;
