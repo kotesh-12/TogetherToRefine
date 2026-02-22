@@ -15,7 +15,12 @@ export default function EarlyWarningSystem() {
             if (!userData?.uid) return;
             try {
                 setLoading(true);
-                const instId = userData.institutionId || userData.uid; // Support both teacher and institution view
+                const instId = userData.institutionId || userData.createdBy || (userData.role === 'institution' ? userData.uid : null);
+                if (!instId) {
+                    setAtRiskStudents([]);
+                    setLoading(false);
+                    return;
+                }
 
                 // 1. Determine if Teacher or Institution
                 let myClasses = [];
