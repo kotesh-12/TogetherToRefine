@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, deleteDoc } from 'firebase/firestore';
 
 export default function ViewExamSeating() {
     const navigate = useNavigate();
@@ -114,6 +114,19 @@ export default function ViewExamSeating() {
         }
     };
 
+    const handleDeletePlan = async (e, planId) => {
+        e.stopPropagation();
+        if (!window.confirm("Are you sure you want to delete this seating plan? This action cannot be undone.")) return;
+
+        try {
+            await deleteDoc(doc(db, "exam_seating", planId));
+            setExamPlans(prev => prev.filter(p => p.id !== planId));
+        } catch (error) {
+            console.error("Error deleting plan:", error);
+            alert("Failed to delete the plan.");
+        }
+    };
+
     const handleSelectPlan = (plan) => {
         setSelectedPlan(plan);
         if (userData?.role === 'student' || userData?.role === 'teacher') {
@@ -176,7 +189,7 @@ export default function ViewExamSeating() {
                                                         </span>
                                                     </td>
                                                     <td style={{ padding: '12px', textAlign: 'center' }}>{plan.roomsCount}</td>
-                                                    <td style={{ padding: '12px', textAlign: 'right' }}>
+                                                    <td style={{ padding: '12px', textAlign: 'right', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                                                         <button
                                                             onClick={() => handleSelectPlan(plan)}
                                                             style={{
@@ -190,6 +203,20 @@ export default function ViewExamSeating() {
                                                             }}
                                                         >
                                                             👁️ View
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => handleDeletePlan(e, plan.id)}
+                                                            style={{
+                                                                background: '#e74c3c',
+                                                                color: 'white',
+                                                                border: 'none',
+                                                                padding: '6px 12px',
+                                                                borderRadius: '6px',
+                                                                cursor: 'pointer',
+                                                                fontSize: '13px'
+                                                            }}
+                                                        >
+                                                            🗑️ Delete
                                                         </button>
                                                     </td>
                                                 </tr>
