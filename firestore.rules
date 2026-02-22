@@ -163,6 +163,17 @@ service cloud.firestore {
       );
     }
 
+    // ─── 9.5 EXAM SEATING ───────────────────────────────────────────────────
+    match /exam_seating/{id} {
+      allow read: if isSignedIn() && (
+        isTeacher() ||
+        isStudent() ||
+        isInstitution() ||
+        isAdmin()
+      );
+      allow write: if isSignedIn() && (isInstitution() || isAdmin());
+    }
+
     // ─── 10. SUBMISSIONS ────────────────────────────────────────────────────
     match /submissions/{id} {
       allow read: if isSignedIn() && (
