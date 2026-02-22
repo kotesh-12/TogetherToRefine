@@ -427,7 +427,8 @@ export default function Attendance() {
                 subjectsObj[subj].total++;
                 globalTotal++;
 
-                if (data.status === 'present') {
+                const rawStatus = typeof data.status === 'string' ? data.status.toLowerCase().trim() : data.status;
+                if (rawStatus === 'present' || rawStatus === 'p') {
                     subjectsObj[subj].present++;
                     globalPresent++;
                 }
@@ -635,7 +636,11 @@ export default function Attendance() {
 
                 const allAtt = await getDocs(qStats);
                 let total = 0, present = 0;
-                allAtt.forEach(doc => { total++; if (doc.data().status === 'present') present++; });
+                allAtt.forEach(doc => {
+                    total++;
+                    const statusStr = typeof doc.data().status === 'string' ? doc.data().status.toLowerCase().trim() : doc.data().status;
+                    if (statusStr === 'present' || statusStr === 'p') present++;
+                });
 
                 return {
                     id: p.id,
