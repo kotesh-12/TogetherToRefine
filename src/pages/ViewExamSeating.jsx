@@ -32,15 +32,20 @@ export default function ViewExamSeating() {
                 return;
             }
 
-            // Fetch all seating plans for this institution
+            // Fetch all seating plans for this institution (removing orderBy to avoid requiring a composite index)
             const q = query(
                 collection(db, "exam_seating"),
-                where("institutionId", "==", instId),
-                orderBy("createdAt", "desc")
+                where("institutionId", "==", instId)
             );
 
             const snap = await getDocs(q);
-            const allPlans = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            const allPlans = snap.docs
+                .map(d => ({ id: d.id, ...d.data() }))
+                .sort((a, b) => {
+                    const timeA = a.createdAt?.seconds || 0;
+                    const timeB = b.createdAt?.seconds || 0;
+                    return timeB - timeA; // Descending order
+                });
 
             // For Students/Teachers, we show ALL plans but track their specific assignment
             setExamPlans(allPlans);
