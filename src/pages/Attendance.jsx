@@ -812,9 +812,20 @@ export default function Attendance() {
 
                                         const histMap = {};
                                         myHistory.forEach(h => {
-                                            if (!histMap[h.date]) histMap[h.date] = {};
-                                            const s = h.subject || 'General';
-                                            histMap[h.date][s] = h.status;
+                                            if (h.date) {
+                                                const parts = h.date.split('-');
+                                                if (parts.length === 3) {
+                                                    const dKey = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+                                                    if (!histMap[dKey]) histMap[dKey] = {};
+                                                    const s = (h.subject || 'General').trim().toLowerCase();
+                                                    histMap[dKey][s] = h.status;
+
+                                                    // Mark as daily general attendance to act as fallback for all periods
+                                                    if (s === 'general' || (h.subject || '').trim() === '') {
+                                                        histMap[dKey]['_daily_'] = h.status;
+                                                    }
+                                                }
+                                            }
                                         });
 
                                         const rows = [];
@@ -843,13 +854,21 @@ export default function Attendance() {
                                                         } else if (isFuture) {
                                                             displayStatus = <span style={{ color: '#dfe6e9' }}>-</span>;
                                                         } else {
-                                                            const targetedSubject = (subj === 'General' || !subj) ? 'General' : subj;
+                                                            const targetedSubject = (subj || 'General').trim().toLowerCase();
 
                                                             let status = null;
-                                                            if (histMap[dateStr] && histMap[dateStr][targetedSubject]) {
-                                                                status = histMap[dateStr][targetedSubject];
-                                                            } else if (histMap[dateStr] && histMap[dateStr]['General']) {
-                                                                status = histMap[dateStr]['General'];
+                                                            if (histMap[dateStr]) {
+                                                                if (histMap[dateStr][targetedSubject]) {
+                                                                    status = histMap[dateStr][targetedSubject];
+                                                                } else if (histMap[dateStr]['_daily_']) {
+                                                                    status = histMap[dateStr]['_daily_'];
+                                                                } else {
+                                                                    // Fallback: If only 1 specific subject was taken, carry it over if general is missing
+                                                                    const availableStatuses = Object.values(histMap[dateStr]).filter(v => v === 'present' || v === 'absent' || v === 'leave');
+                                                                    if (availableStatuses.length > 0) {
+                                                                        status = availableStatuses[0];
+                                                                    }
+                                                                }
                                                             }
 
                                                             if (status === 'present') displayStatus = <span style={{ color: '#00b894', fontWeight: 'bold', fontSize: '16px' }}>P</span>;
