@@ -33,6 +33,15 @@ export default function Attendance() {
     const [showSubjects, setShowSubjects] = useState(false); // Toggle state for subject dropdown
     const [debugLogs, setDebugLogs] = useState([]); // Troubleshooting Logs
 
+    // Student specific monthly timetable-based attendance
+    const [attendanceMonth, setAttendanceMonth] = useState(() => {
+        const d = new Date();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        return `${d.getFullYear()}-${m}`;
+    });
+    const [studentTimetable, setStudentTimetable] = useState(null);
+    const [studentPeriods, setStudentPeriods] = useState([]);
+
 
     useEffect(() => {
         if (role === 'teacher' && userData?.uid) {
@@ -86,6 +95,49 @@ export default function Attendance() {
             fetchAllowedClasses();
         }
     }, [role, userData]);
+
+    useEffect(() => {
+        if (role === 'student' && userData?.uid) {
+            const fetchStudentTimetable = async () => {
+                try {
+                    const uInstId = userData.institutionId || userData.createdBy;
+                    const uClass = (userData.class || userData.assignedClass || userData.classAssigned || '').toString().trim();
+                    const uSec = (userData.section || 'A').toString().trim();
+                    if (!uInstId || !uClass) return;
+
+                    const normClass = uClass.replace(/(\d+)(st|nd|rd|th)/i, '$1');
+                    const classVariants = [normClass, uClass, `${normClass}th`];
+
+                    const qT = query(collection(db, "timetables"), where("institutionId", "==", uInstId));
+                    const snap = await getDocs(qT);
+
+                    let foundT = null;
+                    for (const d of snap.docs) {
+                        const dt = d.data();
+                        const dtClass = (dt.class || '').toString().trim();
+                        const dtClassNorm = dtClass.replace(/(\d+)(st|nd|rd|th)/i, '$1');
+
+                        if (classVariants.includes(dtClass) || normClass === dtClassNorm) {
+                            if ((dt.section || '').toLowerCase() === uSec.toLowerCase()) {
+                                foundT = dt;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (foundT) {
+                        setStudentTimetable(foundT.schedule || {});
+                        setStudentPeriods(foundT.periods || Array.from({ length: 8 }, (_, i) => ({ id: `p${i + 1}`, name: `${i + 1}th Period`, type: 'class' })));
+                    } else {
+                        setStudentPeriods(Array.from({ length: 8 }, (_, i) => ({ id: `p${i + 1}`, name: `${i + 1}th Period`, type: 'class' })));
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch student timetable", err);
+                }
+            };
+            fetchStudentTimetable();
+        }
+    }, [userData, role]);
 
     useEffect(() => {
         if (role) {
@@ -727,32 +779,99 @@ export default function Attendance() {
                         )}
                     </div>
 
-                    {/* Recent History with Feedback Giver */}
-                    <div className="card" style={{ marginTop: '30px' }}>
-                        <h3>📅 Recent History</h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            {myHistory.map(h => (
-                                <div key={h.id} style={{
-                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                    padding: '12px', borderBottom: '1px solid #eee'
-                                }}>
-                                    <div>
-                                        <div style={{ fontWeight: '600' }}>{h.subject}</div>
-                                        <div style={{ fontSize: '12px', color: '#888' }}>
-                                            {h.date} • by {h.updaterName || "Teacher"}
-                                        </div>
-                                    </div>
-                                    <span style={{
-                                        fontWeight: 'bold',
-                                        padding: '4px 8px', borderRadius: '4px',
-                                        background: h.status === 'present' ? '#e6ffec' : '#ffe6e6',
-                                        color: h.status === 'present' ? '#00b894' : '#d63031'
-                                    }}>
-                                        {h.status.toUpperCase()}
-                                    </span>
-                                </div>
-                            ))}
+                    {/* Monthly Timetable Attendance View */}
+                    <div className="card" style={{ marginTop: '30px', overflowX: 'auto', borderRadius: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                            <h3 style={{ margin: 0, color: '#2d3436' }}>📅 Monthly Period Tracker</h3>
+                            <input
+                                type="month"
+                                className="input-field"
+                                style={{ width: 'auto', margin: 0, padding: '5px 10px' }}
+                                value={attendanceMonth}
+                                onChange={(e) => setAttendanceMonth(e.target.value)}
+                            />
                         </div>
+
+                        {studentPeriods && studentPeriods.length > 0 ? (
+                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '14px' }}>
+                                <thead>
+                                    <tr style={{ background: '#f5f7fa', borderBottom: '2px solid #dfe6e9' }}>
+                                        <th style={{ padding: '12px 10px', color: '#636e72', fontWeight: 'bold' }}>S.No</th>
+                                        <th style={{ padding: '12px 10px', color: '#636e72', fontWeight: 'bold' }}>Date</th>
+                                        {studentPeriods.filter(p => p.type !== 'break').map(p => (
+                                            <th key={p.id} style={{ padding: '12px 10px', color: '#636e72', fontWeight: 'bold' }}>{p.name}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(() => {
+                                        const [y, m] = attendanceMonth.split('-');
+                                        const year = parseInt(y, 10);
+                                        const month = parseInt(m, 10);
+                                        const daysInMonth = new Date(year, month, 0).getDate();
+
+                                        const histMap = {};
+                                        myHistory.forEach(h => {
+                                            if (!histMap[h.date]) histMap[h.date] = {};
+                                            const s = h.subject || 'General';
+                                            histMap[h.date][s] = h.status;
+                                        });
+
+                                        const rows = [];
+                                        const classPeriods = studentPeriods.filter(p => p.type !== 'break');
+                                        const today = new Date();
+
+                                        for (let day = 1; day <= daysInMonth; day++) {
+                                            const dateObj = new Date(year, month - 1, day);
+                                            const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                                            const dayOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][dateObj.getDay()];
+                                            const daySchedule = studentTimetable ? studentTimetable[dayOfWeek] : null;
+
+                                            const isSunday = dateObj.getDay() === 0;
+                                            const isFuture = dateObj > today;
+
+                                            rows.push(
+                                                <tr key={day} style={{ borderBottom: '1px solid #f1f2f6', background: isSunday ? '#fff3cd' : 'transparent' }}>
+                                                    <td style={{ padding: '12px 10px', color: '#636e72' }}>{day}</td>
+                                                    <td style={{ padding: '12px 10px', fontWeight: 'bold', color: '#2d3436' }}>{dateStr.slice(5)}</td>
+                                                    {classPeriods.map(p => {
+                                                        const subj = daySchedule ? daySchedule[p.id]?.subject : null;
+                                                        let displayStatus = <span style={{ color: '#b2bec3' }}>-</span>;
+
+                                                        if (isSunday) {
+                                                            displayStatus = <span style={{ color: '#d63031', fontSize: '10px', fontWeight: 'bold' }}>HOLIDAY</span>;
+                                                        } else if (isFuture) {
+                                                            displayStatus = <span style={{ color: '#dfe6e9' }}>-</span>;
+                                                        } else {
+                                                            const targetedSubject = (subj === 'General' || !subj) ? 'General' : subj;
+
+                                                            let status = null;
+                                                            if (histMap[dateStr] && histMap[dateStr][targetedSubject]) {
+                                                                status = histMap[dateStr][targetedSubject];
+                                                            } else if (histMap[dateStr] && histMap[dateStr]['General']) {
+                                                                status = histMap[dateStr]['General'];
+                                                            }
+
+                                                            if (status === 'present') displayStatus = <span style={{ color: '#00b894', fontWeight: 'bold', fontSize: '16px' }}>P</span>;
+                                                            else if (status === 'absent') displayStatus = <span style={{ color: '#d63031', fontWeight: 'bold', fontSize: '16px' }}>A</span>;
+                                                            else if (status === 'leave') displayStatus = <span style={{ color: '#e1b12c', fontWeight: 'bold', fontSize: '16px' }}>L</span>;
+                                                            else if (subj) displayStatus = <span style={{ color: '#636e72', fontSize: '11px', textTransform: 'uppercase', opacity: 0.7 }}>{subj.length > 5 ? subj.substring(0, 5) + '..' : subj}</span>;
+                                                        }
+
+                                                        return <td key={p.id} style={{ padding: '12px 10px' }}>{displayStatus}</td>;
+                                                    })}
+                                                </tr>
+                                            );
+                                        }
+                                        return rows;
+                                    })()}
+                                </tbody>
+                            </table>
+                        ) : (
+                            <div style={{ textAlign: 'center', padding: '40px', color: '#636e72' }}>
+                                No timetable mapped.
+                            </div>
+                        )}
                     </div>
 
 
