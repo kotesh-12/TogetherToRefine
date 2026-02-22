@@ -4,12 +4,15 @@ import { useUser } from '../context/UserContext';
 import { db } from '../firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 
+const CLASSES = ['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+const SECTIONS = ['A', 'B', 'C', 'D', 'E'];
+
 export default function ExamSeatingPlanner() {
     const navigate = useNavigate();
     const { userData } = useUser();
 
-    const [availableClasses, setAvailableClasses] = useState([]);
     const [selectedClass, setSelectedClass] = useState('');
+    const [selectedSection, setSelectedSection] = useState('');
     const [dbStudents, setDbStudents] = useState([]);
 
     const [examName, setExamName] = useState('');
@@ -25,7 +28,7 @@ export default function ExamSeatingPlanner() {
     const [isSaving, setIsSaving] = useState(false);
     const [isFetchingStudents, setIsFetchingStudents] = useState(false);
 
-    // Initial Fetch (classes and teachers)
+    // Initial Fetch (teachers)
     useEffect(() => {
         if (userData?.uid) {
             fetchInitialData();
@@ -45,31 +48,27 @@ export default function ExamSeatingPlanner() {
                 ...d.data(),
                 name: d.data().name || d.data().firstName || 'Unnamed Teacher'
             })));
-
-            // Fetch Unique Classes from student allotments
-            const qS = query(collection(db, "student_allotments"), where("institutionId", "==", instId));
-            const snapS = await getDocs(qS);
-            const classes = new Set();
-            snapS.forEach(d => { if (d.data().classAssigned) classes.add(d.data().classAssigned); });
-            setAvailableClasses(Array.from(classes).sort());
         } catch (error) {
             console.error("Error fetching initial data:", error);
         }
     };
 
-    // When a class is selected, fetch students automatically
-    const handleClassSelect = async (e) => {
-        const cls = e.target.value;
-        setSelectedClass(cls);
-        setSeatingPlan(null);
-        if (!cls) {
+    // When a class or section changes, fetch students automatically
+    useEffect(() => {
+        if (selectedClass && selectedSection) {
+            fetchStudents(selectedClass, selectedSection);
+        } else {
             setDbStudents([]);
             setTotalStudents('');
-            return;
+            setSeatingPlan(null);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedClass, selectedSection]);
 
+    const fetchStudents = async (cls, sec) => {
         const instId = userData.role === 'institution' ? userData.uid : userData.institutionId;
         setIsFetchingStudents(true);
+        setSeatingPlan(null);
         try {
             const q = query(
                 collection(db, "student_allotments"),
@@ -77,15 +76,15 @@ export default function ExamSeatingPlanner() {
                 where("classAssigned", "==", cls)
             );
             const snapshot = await getDocs(q);
-            const students = snapshot.docs.map(d => {
-                const data = d.data();
-                return {
-                    id: d.id,
+            const students = snapshot.docs
+                .map(d => ({ id: d.id, ...d.data() }))
+                .filter(d => (d.section || '').trim().toLowerCase() === sec.trim().toLowerCase())
+                .map(data => ({
+                    id: data.id,
                     userId: data.userId || null,
                     name: data.studentName || data.name || 'Unknown Student',
-                    rollNo: data.rollNumber || data.rollNo || data.pid || `STU-${d.id.slice(-4)}`
-                };
-            });
+                    rollNo: data.rollNumber || data.rollNo || data.pid || `STU-${data.id.slice(-4)}`
+                }));
             setDbStudents(students);
             setTotalStudents(students.length.toString());
         } catch (error) {
@@ -115,7 +114,7 @@ export default function ExamSeatingPlanner() {
     };
 
     const generateSeatingPlan = () => {
-        if (!selectedClass) return alert("Please select a class first.");
+        if (!selectedClass || !selectedSection) return alert("Please select a class and section first.");
         if (!examName || !examDate) return alert("Please provide an Exam Name and Date.");
 
         const studentsCount = parseInt(totalStudents);
@@ -213,31 +212,51 @@ export default function ExamSeatingPlanner() {
             <div className="container" style={{ maxWidth: '800px', margin: '0 auto' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <h2>🪑 AI Exam Seating Wizard</h2>
-                    <button onClick={() => navigate(-1)} className="btn-outline">Exit</button>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <button onClick={() => navigate('/view-exam-seating')} className="btn-outline">
+                            📜 View History
+                        </button>
+                        <button onClick={() => navigate(-1)} className="btn-outline">Exit</button>
+                    </div>
                 </div>
 
                 <div className="card" style={{ marginBottom: '20px' }}>
                     <h3 style={{ marginBottom: '15px' }}>Step 1: Select Class</h3>
-                    <select
-                        className="input-field"
-                        value={selectedClass}
-                        onChange={handleClassSelect}
-                        style={{ marginBottom: '10px' }}
-                    >
-                        <option value="">-- Select Dropdown --</option>
-                        {availableClasses.map(cls => <option key={cls} value={cls}>{cls}</option>)}
-                    </select>
+                    <div style={{ display: 'flex', gap: '15px', marginBottom: '10px' }}>
+                        <div style={{ flex: 1 }}>
+                            <label style={{ fontSize: '12px', color: '#666', marginBottom: '5px', display: 'block' }}>Class</label>
+                            <select
+                                className="input-field"
+                                value={selectedClass}
+                                onChange={(e) => setSelectedClass(e.target.value)}
+                            >
+                                <option value="">-- Select Class --</option>
+                                {CLASSES.map(cls => <option key={cls} value={cls}>{cls}</option>)}
+                            </select>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <label style={{ fontSize: '12px', color: '#666', marginBottom: '5px', display: 'block' }}>Section</label>
+                            <select
+                                className="input-field"
+                                value={selectedSection}
+                                onChange={(e) => setSelectedSection(e.target.value)}
+                            >
+                                <option value="">-- Select Section --</option>
+                                {SECTIONS.map(sec => <option key={sec} value={sec}>{sec}</option>)}
+                            </select>
+                        </div>
+                    </div>
 
-                    {isFetchingStudents && <div style={{ color: '#888', fontSize: '12px', marginTop: '10px' }}>Fetching student data for {selectedClass}...</div>}
+                    {isFetchingStudents && <div style={{ color: '#888', fontSize: '12px', marginTop: '10px' }}>Fetching student data for {selectedClass} - {selectedSection}...</div>}
 
-                    {selectedClass && !isFetchingStudents && (
+                    {selectedClass && selectedSection && !isFetchingStudents && (
                         <div style={{ background: '#e8f5e9', padding: '10px', borderRadius: '8px', color: '#27ae60', fontSize: '13px', marginTop: '10px' }}>
-                            ✓ Located <strong>{totalStudents}</strong> students in {selectedClass}.
+                            ✓ Located <strong>{totalStudents}</strong> students in {selectedClass} - {selectedSection}.
                         </div>
                     )}
                 </div>
 
-                {selectedClass && !isFetchingStudents && dbStudents.length > 0 && (
+                {selectedClass && selectedSection && !isFetchingStudents && dbStudents.length > 0 && (
                     <div className="card" style={{ marginBottom: '20px' }}>
                         <h3 style={{ marginBottom: '15px' }}>Step 2: Exam & Room Setup</h3>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
