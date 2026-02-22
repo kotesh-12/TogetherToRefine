@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { db } from '../firebase';
 import { collection, addDoc, query, where, getDocs, serverTimestamp, orderBy, writeBatch, doc, setDoc } from 'firebase/firestore';
+import SmartMarksScan from '../components/SmartMarksScan';
 
 export default function MarksManagement() {
     const navigate = useNavigate();
@@ -25,7 +26,7 @@ export default function MarksManagement() {
     const [filterExamType, setFilterExamType] = useState(''); // NEW: Filter by exam type
     const [loading, setLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isScanning, setIsScanning] = useState(false);
+    const [showSmartMarks, setShowSmartMarks] = useState(false);
 
     // Fetch students when class/section selected
     useEffect(() => {
@@ -34,87 +35,21 @@ export default function MarksManagement() {
         }
     }, [selectedClass, selectedSection, activeTab]);
 
-    const handleAIScan = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+    const handleSmartComplete = async (parsed) => {
+        setShowSmartMarks(false);
+        if (!parsed) return;
 
-        setIsScanning(true);
+        // 1. Update Metadata
+        if (parsed.class) setSelectedClass(String(parsed.class));
+        if (parsed.section) setSelectedSection(String(parsed.section).toUpperCase());
+
+        // Match exam type to available options
+        const validExams = ["Assignment 1", "Assignment 2", "Mid-Term 1", "Mid-Term 2", "Final Exam"];
+        const matchedExam = validExams.find(ve => parsed.examType?.includes(ve)) || parsed.examType;
+        if (matchedExam) setExamType(matchedExam);
+
+        // 2. Fetch Students for the detected class/section immediately to sync
         try {
-            const reader = new FileReader();
-            const base64Promise = new Promise((resolve) => {
-                reader.onloadend = () => resolve(reader.result.split(',')[1]);
-                reader.readAsDataURL(file);
-            });
-            const base64Img = await base64Promise;
-
-            const token = await auth.currentUser?.getIdToken();
-
-            const prompt = `Act as an expert OCR and Data Verification specialist. Analyze this teacher's marksheet image with 100% precision.
-            
-            EXTRACT THE FOLLOWING DATA:
-            1. CLASS: The numerical class (1-12).
-            2. SECTION: The alphabet section (e.g., A, B, C).
-            3. EXAM TYPE: Choose the closest match from these options: [Assignment 1, Assignment 2, Mid-Term 1, Mid-Term 2, Final Exam].
-            4. LIST OF MARKS: For every student visible, extract their name and their marks (out of 100).
-            
-            CRITICAL ACCURACY RULES:
-            - Read names very slowly and carefully to avoid typos.
-            - If a mark is "Absent", use "0".
-            - If a mark is unclear, skip it rather than guessing.
-            
-            OUTPUT CONFIGURATION:
-            Return ONLY a valid JSON object. Do not include any intro/outro text.
-            JSON STRUCTURE:
-            {
-                "class": "String",
-                "section": "String",
-                "examType": "String",
-                "data": [
-                    {"nameKey": "Full Name as written", "marks": "Number"}
-                ]
-            }`;
-
-            // Production-Safe API URL
-            const API_URL = window.location.hostname === 'localhost'
-                ? 'https://together-to-refine.vercel.app/api/chat'
-                : '/api/chat';
-
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    message: prompt,
-                    image: base64Img,
-                    mimeType: file.type,
-                    userContext: userData
-                })
-            });
-
-            if (!response.ok) throw new Error("AI Recognition failed to respond.");
-
-            const resData = await response.json();
-            const textResult = resData.text;
-
-            // Robust JSON extraction
-            const jsonStart = textResult.indexOf('{');
-            const jsonEnd = textResult.lastIndexOf('}') + 1;
-            if (jsonStart === -1 || jsonEnd === 0) throw new Error("AI could not format data correctly.");
-
-            const parsed = JSON.parse(textResult.substring(jsonStart, jsonEnd));
-
-            // 1. Update Metadata
-            if (parsed.class) setSelectedClass(String(parsed.class));
-            if (parsed.section) setSelectedSection(String(parsed.section).toUpperCase());
-
-            // Match exam type to available options
-            const validExams = ["Assignment 1", "Assignment 2", "Mid-Term 1", "Mid-Term 2", "Final Exam"];
-            const matchedExam = validExams.find(ve => parsed.examType?.includes(ve)) || parsed.examType;
-            if (matchedExam) setExamType(matchedExam);
-
-            // 2. Fetch Students for the detected class/section immediately to sync
             const q = query(
                 collection(db, "student_allotments"),
                 where("classAssigned", "==", String(parsed.class)),
@@ -140,7 +75,9 @@ export default function MarksManagement() {
                 const dbName = (s.studentName || s.name || "").toLowerCase().trim();
 
                 // Fuzzy matching against every extracted name
+                // Also match first parts of name if no exact match
                 const extractionMatch = parsed.data?.find(m => {
+                    if (!m.nameKey) return false;
                     const extName = String(m.nameKey).toLowerCase().trim();
                     return extName === dbName || extName.includes(dbName) || dbName.includes(extName);
                 });
@@ -155,12 +92,9 @@ export default function MarksManagement() {
 
             setMarksData(newMarks);
             alert(`✨ AI Smart Scan complete!\n- Detected: Class ${parsed.class}-${parsed.section}\n- Exam: ${matchedExam}\n- Auto-filled marks for ${matchedCount} out of ${studentList.length} students.`);
-
         } catch (err) {
             console.error("AI Scan Error:", err);
             alert("Scan Error: " + err.message);
-        } finally {
-            setIsScanning(false);
         }
     };
 
@@ -374,23 +308,15 @@ export default function MarksManagement() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                             <h3 style={{ margin: 0 }}>Enter Marks</h3>
                             <div>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    capture="environment"
-                                    id="marks-scanner"
-                                    hidden
-                                    onChange={handleAIScan}
-                                    disabled={isScanning}
-                                />
-                                <label
-                                    htmlFor="marks-scanner"
+                                <button
+                                    onClick={() => setShowSmartMarks(true)}
                                     style={{
                                         padding: '10px 20px',
-                                        background: isScanning ? '#7f8c8d' : 'linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%)',
+                                        background: 'linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%)',
                                         color: 'white',
+                                        border: 'none',
                                         borderRadius: '30px',
-                                        cursor: isScanning ? 'not-allowed' : 'pointer',
+                                        cursor: 'pointer',
                                         fontSize: '14px',
                                         display: 'flex',
                                         alignItems: 'center',
@@ -399,11 +325,11 @@ export default function MarksManagement() {
                                         boxShadow: '0 4px 15px rgba(108, 92, 231, 0.3)',
                                         transition: 'transform 0.2s'
                                     }}
-                                    onMouseOver={(e) => !isScanning && (e.currentTarget.style.transform = 'scale(1.05)')}
-                                    onMouseOut={(e) => !isScanning && (e.currentTarget.style.transform = 'scale(1)')}
+                                    onMouseOver={(e) => (e.currentTarget.style.transform = 'scale(1.05)')}
+                                    onMouseOut={(e) => (e.currentTarget.style.transform = 'scale(1)')}
                                 >
-                                    {isScanning ? '⏳ Reading Paper...' : '📸 AI Smart Scan'}
-                                </label>
+                                    📸 AI Smart Scan
+                                </button>
                             </div>
                         </div>
 
@@ -568,6 +494,12 @@ export default function MarksManagement() {
                             </div>
                         )}
                     </div>
+                )}
+                {showSmartMarks && (
+                    <SmartMarksScan
+                        onClose={() => setShowSmartMarks(false)}
+                        onScanComplete={handleSmartComplete}
+                    />
                 )}
             </div>
         </div>
