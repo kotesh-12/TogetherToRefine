@@ -45,19 +45,27 @@ export default function EarlyWarningSystem() {
                 }
 
                 // 2. Fetch all students for the institution to bypass Firestore composite index & casing issues
-                const studentQuery = query(
-                    collection(db, "student_allotments"),
-                    where("institutionId", "==", instId)
-                );
-                const studentSnap = await getDocs(studentQuery);
-                let students = studentSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                // Note: Some legacy records might use 'createdBy' instead of 'institutionId'
+                const studentQuery1 = query(collection(db, "student_allotments"), where("institutionId", "==", instId));
+                const studentQuery2 = query(collection(db, "student_allotments"), where("createdBy", "==", instId));
+
+                const [snap1, snap2] = await Promise.all([
+                    getDocs(studentQuery1).catch(e => { console.warn(e); return { docs: [] }; }),
+                    getDocs(studentQuery2).catch(e => { console.warn(e); return { docs: [] }; })
+                ]);
+
+                let students = [...snap1.docs, ...snap2.docs].map(d => ({ id: d.id, ...d.data() }));
 
                 // 3. If teacher, filter students to only those in their assigned classes
                 if (userData.role === 'teacher') {
+                    const normClass = (c) => c.replace(/(\d+)(st|nd|rd|th)/i, '$1');
                     students = students.filter(st => {
                         const stClass = (st.classAssigned || '').toLowerCase().trim();
                         const stSec = (st.section || '').toLowerCase().trim();
-                        return myClasses.some(c => c.class === stClass && c.section === stSec);
+                        return myClasses.some(c =>
+                            (c.class === stClass || normClass(c.class) === normClass(stClass)) &&
+                            c.section === stSec
+                        );
                     });
                 }
 
