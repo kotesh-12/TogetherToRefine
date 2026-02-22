@@ -129,7 +129,8 @@ service cloud.firestore {
     match /student_allotments/{id} {
       allow read: if isSignedIn() && (
         request.auth.uid == resource.data.userId ||
-        myDoc() ||
+        isTeacher() ||
+        isInstitution() ||
         isAdmin()
       );
       // Only institution or admin can create/update/delete allotments
@@ -152,7 +153,8 @@ service cloud.firestore {
     match /attendance/{id} {
       allow read: if isSignedIn() && (
         request.auth.uid == resource.data.studentId ||
-        myDoc() ||
+        isTeacher() ||
+        isInstitution() ||
         isAdmin()
       );
       allow create: if isSignedIn() && (isTeacher() || isInstitution() || isAdmin());
