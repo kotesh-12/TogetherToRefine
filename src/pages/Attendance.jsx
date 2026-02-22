@@ -281,22 +281,47 @@ export default function Attendance() {
                         // Remove duplicates
                         const uniqueVariants = [...new Set(classVariants)];
 
-                        // Remove 'section' from Firestore query to avoid Index issues and handle case sensitivity client-side
-                        const altQ = query(collection(db, "student_allotments"),
-                            where("classAssigned", "in", uniqueVariants)
-                        );
-                        const altSnap = await getDocs(altQ);
+                        // Better Fallback: Fetch by institutionId/createdBy to avoid missing records that use 'class' instead of 'classAssigned'
+                        let altDocs = [];
+                        const uInstId = userData.institutionId || userData.createdBy;
+                        if (uInstId) {
+                            const qA = query(collection(db, "student_allotments"), where("institutionId", "==", uInstId));
+                            const qB = query(collection(db, "student_allotments"), where("createdBy", "==", uInstId));
+                            const [snapA, snapB] = await Promise.all([
+                                getDocs(qA).catch(() => ({ docs: [] })),
+                                getDocs(qB).catch(() => ({ docs: [] }))
+                            ]);
+                            const seenA = new Set();
+                            [...snapA.docs, ...snapB.docs].forEach(d => {
+                                if (!seenA.has(d.id)) {
+                                    seenA.add(d.id);
+                                    altDocs.push(d);
+                                }
+                            });
+                        } else {
+                            const altQ = query(collection(db, "student_allotments"), where("classAssigned", "in", uniqueVariants));
+                            const altSnap = await getDocs(altQ);
+                            altDocs = altSnap.docs;
+                        }
 
-                        setDebugLogs(prev => [...prev, `Scanning ${altSnap.size} allotments in Class Variants: ${uniqueVariants.join(', ')}`]);
-                        setDebugLogs(prev => [...prev, `Class Roster: ${altSnap.docs.map(d => d.data().name).join(', ')}`]);
+                        setDebugLogs(prev => [...prev, `Scanning ${altDocs.length} allotments in Institution`]);
 
                         const targetName = rawName.toLowerCase().replace(/\s+/g, ''); // normalize spaces
                         // Robust Section Matching: Handle "A", "A ", "a"
                         const targetSec = (uSection || '').trim().toLowerCase();
+                        const targetNormClass = normalizedClass.toLowerCase();
                         let nameMatches = 0;
 
-                        altSnap.forEach(d => {
+                        altDocs.forEach(d => {
                             const data = d.data();
+
+                            // 0. Class Matching (Client-Side for full field compatibility)
+                            const iClass = (data.class || data.assignedClass || data.classAssigned || '').toString().trim().toLowerCase();
+                            const normIClass = iClass.replace(/(\d+)(st|nd|rd|th)/, '$1');
+
+                            if (normIClass !== targetNormClass && iClass !== (uClass || '').trim().toLowerCase() && iClass !== `${targetNormClass}th`) {
+                                return; // Skip wrong class
+                            }
 
                             // 1. Check Name Match FIRST (most specific)
                             // Allow partial matches if the name is long enough (>3 chars) to avoid false positives on "Al", "Jo" etc.
