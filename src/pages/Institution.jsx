@@ -27,9 +27,9 @@ export default function Institution() {
     // Feature Tour Steps
     const tourSteps = [
         {
-            target: 'tour-inst-import',
-            title: '📤 Bulk Import',
-            content: 'Register hundreds of students at once using a CSV file. Credentials will be generated automatically.'
+            target: 'tour-inst-smart',
+            title: '📸 AI Smart Admission',
+            content: 'Register hundreds of students instantly by scanning a roster image. Credentials will be generated automatically.'
         },
         {
             target: 'tour-inst-announcement',
@@ -156,22 +156,6 @@ export default function Institution() {
         document.body.removeChild(a);
     };
 
-    const handleBulkImport = async (csvText) => {
-        try {
-            const rows = csvText.trim().split('\n');
-            const students = rows.map(row => {
-                const [name, email, password, className] = row.split(',').map(s => s.trim());
-                return { name, email, password, class: className };
-            });
-
-            if (students.length === 0) return alert("Invalid CSV format.");
-            registerStudents(students);
-
-        } catch (e) {
-            console.error(e);
-            alert("Error parsing CSV.");
-        }
-    };
 
     const handleSmartImport = (scannedData) => {
         setShowSmartAdmission(false);
@@ -282,23 +266,7 @@ export default function Institution() {
                         📢
                     </button>
                     <button
-                        id="tour-inst-import"
-                        className="btn btn-success"
-                        style={{
-                            borderRadius: '30px',
-                            padding: '12px 28px',
-                            boxShadow: '0 6px 15px rgba(39, 174, 96, 0.25)',
-                            fontSize: '14px',
-                            fontWeight: '800'
-                        }}
-                        onClick={() => {
-                            const csv = prompt("Paste CSV Data (Name, Email, Password, Class)\nExample:\nJohn Doe,john@test.com,Pass123,10th");
-                            if (csv) handleBulkImport(csv);
-                        }}
-                    >
-                        📤 Bulk Import
-                    </button>
-                    <button
+                        id="tour-inst-smart"
                         onClick={() => setShowSmartAdmission(true)}
                         className="btn"
                         style={{
