@@ -307,49 +307,53 @@ export default function Attendance() {
                         setDebugLogs(prev => [...prev, `Scanning ${altDocs.length} allotments in Institution`]);
 
                         const targetName = rawName.toLowerCase().replace(/\s+/g, ''); // normalize spaces
-                        // Robust Section Matching: Handle "A", "A ", "a"
                         const targetSec = (uSection || '').trim().toLowerCase();
                         const targetNormClass = normalizedClass.toLowerCase();
+                        const targetRoll = (userData.rollNo || userData.rollNumber || userData.pid || '').toString().trim().toLowerCase();
+
                         let nameMatches = 0;
 
                         altDocs.forEach(d => {
                             const data = d.data();
 
-                            // 0. Class Matching (Client-Side for full field compatibility)
-                            const iClass = (data.class || data.assignedClass || data.classAssigned || '').toString().trim().toLowerCase();
-                            const normIClass = iClass.replace(/(\d+)(st|nd|rd|th)/, '$1');
+                            const docRoll = (data.rollNo || data.rollNumber || data.pid || '').toString().trim().toLowerCase();
+                            const isRollMatch = (docRoll && targetRoll && docRoll === targetRoll);
 
-                            if (normIClass !== targetNormClass && iClass !== (uClass || '').trim().toLowerCase() && iClass !== `${targetNormClass}th`) {
-                                return; // Skip wrong class
-                            }
-
-                            // 1. Check Name Match FIRST (most specific)
-                            // Allow partial matches if the name is long enough (>3 chars) to avoid false positives on "Al", "Jo" etc.
                             const allotmentName = (data.name || "").toLowerCase().replace(/\s+/g, '');
-
                             let isNameMatch = false;
-                            if (allotmentName === targetName) isNameMatch = true;
-                            else if (targetName.length > 3 && allotmentName.includes(targetName)) isNameMatch = true;
-                            else if (allotmentName.length > 3 && targetName.includes(allotmentName)) isNameMatch = true;
 
-                            // Fallback: Part Matching
-                            if (!isNameMatch) {
-                                const ap = (data.name || "").toLowerCase().split(/\s+/).filter(p => p.length > 2);
-                                const tp = rawName.toLowerCase().split(/\s+/).filter(p => p.length > 2);
-                                if (tp.length > 0 && ap.length > 0) {
-                                    const overlap = tp.filter(t => ap.some(a => a.includes(t) || t.includes(a)));
-                                    if (overlap.length > 0) isNameMatch = true;
+                            if (allotmentName && targetName) {
+                                if (allotmentName === targetName) isNameMatch = true;
+                                else if (targetName.length > 3 && allotmentName.includes(targetName)) isNameMatch = true;
+                                else if (allotmentName.length > 3 && targetName.includes(allotmentName)) isNameMatch = true;
+
+                                if (!isNameMatch) {
+                                    const ap = (data.name || "").toLowerCase().split(/\s+/).filter(p => p.length > 2);
+                                    const tp = rawName.toLowerCase().split(/\s+/).filter(p => p.length > 2);
+                                    if (tp.length > 0 && ap.length > 0) {
+                                        const overlap = tp.filter(t => ap.some(a => a.includes(t) || t.includes(a)));
+                                        if (overlap.length > 0) isNameMatch = true;
+                                    }
                                 }
                             }
 
-                            if (!isNameMatch) return; // Skip if name doesn't match at all
+                            // If neither roll matches nor name matches, skip entirely
+                            if (!isRollMatch && !isNameMatch) return;
 
-                            // 2. Name Matched! Now check Section
-                            const docSec = (data.section || '').trim().toLowerCase();
+                            // If name matches but roll doesn't exist, we must still respect class and section lightly
+                            if (!isRollMatch) {
+                                const iClass = (data.class || data.assignedClass || data.classAssigned || '').toString().trim().toLowerCase();
+                                const normIClass = iClass.replace(/(\d+)(st|nd|rd|th)/, '$1');
 
-                            if (docSec !== targetSec) {
-                                setDebugLogs(prev => [...prev, `Found Name match "${data.name}" but Section mismatch: Doc="${data.section}" vs User="${uSection}"`]);
-                                return;
+                                // Only block if we have strong class details on both ends completely clashing
+                                if (normIClass && targetNormClass && normIClass !== targetNormClass && iClass !== (uClass || '').trim().toLowerCase() && iClass !== `${targetNormClass}th`) {
+                                    return; // Skip wrong class
+                                }
+
+                                const docSec = (data.section || '').trim().toLowerCase();
+                                if (docSec && targetSec && docSec !== targetSec) {
+                                    return; // Skip wrong section
+                                }
                             }
 
                             // 3. Match Found!
