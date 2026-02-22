@@ -818,11 +818,12 @@ export default function Attendance() {
                                                     const dKey = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
                                                     if (!histMap[dKey]) histMap[dKey] = {};
                                                     const s = (h.subject || 'General').trim().toLowerCase();
-                                                    histMap[dKey][s] = h.status;
+                                                    const strStatus = typeof h.status === 'string' ? h.status.toLowerCase().trim() : h.status;
+                                                    histMap[dKey][s] = strStatus;
 
                                                     // Mark as daily general attendance to act as fallback for all periods
                                                     if (s === 'general' || (h.subject || '').trim() === '') {
-                                                        histMap[dKey]['_daily_'] = h.status;
+                                                        histMap[dKey]['_daily_'] = strStatus;
                                                     }
                                                 }
                                             }
@@ -849,32 +850,36 @@ export default function Attendance() {
                                                         const subj = daySchedule ? daySchedule[p.id]?.subject : null;
                                                         let displayStatus = <span style={{ color: '#b2bec3' }}>-</span>;
 
-                                                        if (isSunday) {
+                                                        const targetedSubject = (subj || 'General').trim().toLowerCase();
+                                                        let status = null;
+
+                                                        if (histMap[dateStr]) {
+                                                            if (histMap[dateStr][targetedSubject]) {
+                                                                status = histMap[dateStr][targetedSubject];
+                                                            } else if (histMap[dateStr]['_daily_']) {
+                                                                status = histMap[dateStr]['_daily_'];
+                                                            } else {
+                                                                // Fallback: If only 1 specific subject was taken, carry it over if general is missing
+                                                                const availableStatuses = Object.values(histMap[dateStr]).filter(v => typeof v === 'string' && (v === 'present' || v === 'absent' || v === 'leave'));
+                                                                if (availableStatuses.length > 0) {
+                                                                    status = availableStatuses[0];
+                                                                }
+                                                            }
+                                                        }
+
+                                                        // Override output hierarchically
+                                                        if (status === 'present') {
+                                                            displayStatus = <span style={{ color: '#00b894', fontWeight: 'bold', fontSize: '16px' }}>P</span>;
+                                                        } else if (status === 'absent') {
+                                                            displayStatus = <span style={{ color: '#d63031', fontWeight: 'bold', fontSize: '16px' }}>A</span>;
+                                                        } else if (status === 'leave') {
+                                                            displayStatus = <span style={{ color: '#e1b12c', fontWeight: 'bold', fontSize: '16px' }}>L</span>;
+                                                        } else if (isSunday) {
                                                             displayStatus = <span style={{ color: '#d63031', fontSize: '10px', fontWeight: 'bold' }}>HOLIDAY</span>;
                                                         } else if (isFuture) {
                                                             displayStatus = <span style={{ color: '#dfe6e9' }}>-</span>;
-                                                        } else {
-                                                            const targetedSubject = (subj || 'General').trim().toLowerCase();
-
-                                                            let status = null;
-                                                            if (histMap[dateStr]) {
-                                                                if (histMap[dateStr][targetedSubject]) {
-                                                                    status = histMap[dateStr][targetedSubject];
-                                                                } else if (histMap[dateStr]['_daily_']) {
-                                                                    status = histMap[dateStr]['_daily_'];
-                                                                } else {
-                                                                    // Fallback: If only 1 specific subject was taken, carry it over if general is missing
-                                                                    const availableStatuses = Object.values(histMap[dateStr]).filter(v => v === 'present' || v === 'absent' || v === 'leave');
-                                                                    if (availableStatuses.length > 0) {
-                                                                        status = availableStatuses[0];
-                                                                    }
-                                                                }
-                                                            }
-
-                                                            if (status === 'present') displayStatus = <span style={{ color: '#00b894', fontWeight: 'bold', fontSize: '16px' }}>P</span>;
-                                                            else if (status === 'absent') displayStatus = <span style={{ color: '#d63031', fontWeight: 'bold', fontSize: '16px' }}>A</span>;
-                                                            else if (status === 'leave') displayStatus = <span style={{ color: '#e1b12c', fontWeight: 'bold', fontSize: '16px' }}>L</span>;
-                                                            else if (subj) displayStatus = <span style={{ color: '#636e72', fontSize: '11px', textTransform: 'uppercase', opacity: 0.7 }}>{subj.length > 5 ? subj.substring(0, 5) + '..' : subj}</span>;
+                                                        } else if (subj) {
+                                                            displayStatus = <span style={{ color: '#636e72', fontSize: '11px', textTransform: 'uppercase', opacity: 0.7 }}>{subj.length > 5 ? subj.substring(0, 5) + '..' : subj}</span>;
                                                         }
 
                                                         return <td key={p.id} style={{ padding: '12px 10px' }}>{displayStatus}</td>;
