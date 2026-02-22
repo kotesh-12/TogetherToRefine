@@ -23,7 +23,7 @@ export default function ViewExamSeating() {
         setLoading(true);
         try {
             // Standardize Institution ID lookup
-            const instId = userData.institutionId || userData.createdBy || (userData.role === 'institution' ? userData.uid : null);
+            const instId = userData.role === 'institution' ? userData.uid : (userData.institutionId || userData.createdBy);
 
             if (!instId) {
                 console.warn("No institution ID found for user:", userData.uid);
