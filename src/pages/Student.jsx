@@ -181,17 +181,20 @@ export default function Student() {
             <FeatureTour tourId="student_dashboard_v1" steps={tourSteps} userData={userData} />
             <AIBadge />
 
-            {/* Student Hero Section */}
-            <div className="student-hero-vibe">
-                <div className="hero-sparkle">🎓</div>
-                <h1 className="student-greeting">
-                    {t('welcome') || 'Hello'}, {userData?.name?.split(' ')[0] || 'Scholar'}! ✨
-                </h1>
-                <p className="student-subtext">
-                    Ready to master your classes today? Your AI Tutor is here to help you excel.
-                </p>
-                <div className="streak-badge-mini">
-                    🔥 7 Day Learning Streak
+            {/* Clean Dashboard Greeting */}
+            <div className="dash-greeting-bar">
+                <div className="dash-greeting-left">
+                    <div className="dash-avatar">
+                        {userData?.name?.charAt(0).toUpperCase() || 'S'}
+                    </div>
+                    <div>
+                        <p className="dash-welcome-label">{t('welcome') || 'Welcome back'}</p>
+                        <h1 className="dash-name">{userData?.name?.split(' ')[0] || 'Scholar'}</h1>
+                    </div>
+                </div>
+                <div className="dash-greeting-right">
+                    <span className="dash-role-pill">🎓 Student</span>
+                    {userData?.pid && <span className="dash-id-pill">ID: {userData.pid}</span>}
                 </div>
             </div>
 

@@ -219,25 +219,24 @@ export default function Institution() {
             <AIBadge />
 
             <div className="container">
-                {/* Elite Institution Hero */}
-                <div className="institution-hero-card">
-                    <div className="institution-hero-sparkle">🏛️</div>
-                    <div className="institution-hero-pill">🏫 {userData?.role || 'Institution Administrator'}</div>
-                    <h1 className="institution-name-title">
-                        {profile?.institutionName || 'Our Institution'}
-                    </h1>
-
-                    {profile?.principalName && (
-                        <p className="institution-meta-desc">
-                            Principal: {profile.principalName} | Est: {profile.estYear}
-                        </p>
-                    )}
-
-                    {profile?.pid && (
-                        <div style={{ marginTop: '15px' }} className="institution-hero-pill">
-                            ID: {profile.pid}
+                {/* Clean Dashboard Greeting */}
+                <div className="dash-greeting-bar">
+                    <div className="dash-greeting-left">
+                        <div className="dash-avatar" style={{ background: 'linear-gradient(135deg, #2c3e50 0%, #4a6080 100%)' }}>
+                            {(profile?.institutionName || 'I').charAt(0).toUpperCase()}
                         </div>
-                    )}
+                        <div>
+                            <p className="dash-welcome-label">Institution Dashboard</p>
+                            <h1 className="dash-name">{profile?.institutionName || 'Your Institution'}</h1>
+                            {profile?.principalName && (
+                                <p className="dash-meta">Principal: {profile.principalName}{profile.estYear ? ` · Est. ${profile.estYear}` : ''}</p>
+                            )}
+                        </div>
+                    </div>
+                    <div className="dash-greeting-right">
+                        <span className="dash-role-pill">🏫 Admin</span>
+                        {profile?.pid && <span className="dash-id-pill">ID: {profile.pid}</span>}
+                    </div>
                 </div>
 
                 {/* Administrative Fast Actions - Centered for Elite Balance */}

@@ -248,20 +248,21 @@ export default function Teacher() {
             </div>
 
             <div className="container">
-                {/* Elite Teacher Hero */}
-                <div className="teacher-hero-card">
-                    <div className="teacher-hero-sparkle">🍏</div>
-                    <div className="teacher-hero-pill">🍎 {userData?.role || 'Professional Teacher'}</div>
-                    <h1 className="teacher-welcome-title">
-                        {t('teacher_welcome')}, {userData?.name || 'Academician'}!
-                    </h1>
-                    <p className="student-subtext" style={{ opacity: 1 }}>{t('teacher_intro')}</p>
-
-                    {userData?.pid && (
-                        <div style={{ marginTop: '15px' }} className="teacher-hero-pill">
-                            ID: {userData.pid}
+                {/* Clean Dashboard Greeting */}
+                <div className="dash-greeting-bar">
+                    <div className="dash-greeting-left">
+                        <div className="dash-avatar" style={{ background: 'linear-gradient(135deg, #4834d4 0%, #6c5ce7 100%)' }}>
+                            {userData?.name?.charAt(0).toUpperCase() || 'T'}
                         </div>
-                    )}
+                        <div>
+                            <p className="dash-welcome-label">{t('teacher_welcome') || 'Welcome back'}</p>
+                            <h1 className="dash-name">{userData?.name || 'Teacher'}</h1>
+                        </div>
+                    </div>
+                    <div className="dash-greeting-right">
+                        <span className="dash-role-pill">🍎 Teacher</span>
+                        {userData?.pid && <span className="dash-id-pill">ID: {userData.pid}</span>}
+                    </div>
                 </div>
 
                 <div className="card shadow-sm" style={{ borderTop: simpleMode ? '6px solid #27ae60' : 'none' }}>
