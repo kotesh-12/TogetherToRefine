@@ -200,7 +200,7 @@ export default function Header({ onToggleSidebar }) {
     // DEFAULT HEADER
     return (
         <header className="app-header shadow-sm">
-            <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexDirection: 'row' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '0 16px' }}>
                 {/* Left: Logo & Menu */}
                 <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                     <button onClick={onToggleSidebar} className="menu-toggle" aria-label="Menu">
@@ -213,10 +213,9 @@ export default function Header({ onToggleSidebar }) {
                     <div
                         onClick={() => navigate('/')}
                         className="header-brand"
-                        style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
                     >
-                        <img src={logo} alt="TTR" className="logo" style={{ height: '32px' }} />
-                        <h1 className="brand-text" style={{ margin: 0, fontSize: '1.2rem', fontWeight: '800', letterSpacing: '-0.5px' }}>TTR</h1>
+                        <img src={logo} alt="TTR" className="logo" style={{ height: '36px', width: 'auto', objectFit: 'contain' }} />
                     </div>
                 </div>
 

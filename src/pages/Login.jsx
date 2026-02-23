@@ -361,8 +361,7 @@ export default function Login() {
                 </div>
 
                 <div className="auth-logo-section">
-                    <img src={logo} alt="TTR" className="auth-logo" />
-                    <h1 className="brand-text">TTR</h1>
+                    <img src={logo} alt="Together To Refine" className="auth-logo" />
                 </div>
 
                 <h2 className="auth-title">{isLogin ? t('login') : t('signup')}</h2>
