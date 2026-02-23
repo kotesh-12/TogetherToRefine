@@ -31,25 +31,21 @@ Example: ["Robert Thompson", "Sarah Jenkins"]`;
         let names = [];
 
         try {
-            // Priority: gemini-1.5-flash for speed & excellent vision
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
             const result = await model.generateContent(parts);
             let rawText = result.response.text();
-            rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+
+            const startIdx = rawText.indexOf('[');
+            const endIdx = rawText.lastIndexOf(']');
+            if (startIdx !== -1 && endIdx !== -1) {
+                rawText = rawText.substring(startIdx, endIdx + 1);
+            } else {
+                rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+            }
             names = JSON.parse(rawText);
         } catch (e) {
-            console.error("1.5-flash AI Model Vision exception:", e.message);
-            // Fallback (e.g. if quota issue or model restriction)
-            try {
-                const modelFallback = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
-                const resultFallback = await modelFallback.generateContent(parts);
-                let rawTextFall = resultFallback.response.text();
-                rawTextFall = rawTextFall.replace(/```json/gi, '').replace(/```/g, '').trim();
-                names = JSON.parse(rawTextFall);
-            } catch (fallbackError) {
-                console.error("Fallback Model failed too:", fallbackError.message);
-                throw new Error("Unable to parse text via AI Core. Ensure the photo is clear.");
-            }
+            console.error("AI Model Vision exception:", e.message);
+            throw new Error(e.message);
         }
 
         // Step 1: Parse and structure the names
