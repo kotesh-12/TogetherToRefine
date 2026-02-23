@@ -5,6 +5,10 @@ import 'jspdf-autotable';
 import { useUser } from '../context/UserContext';
 import axios from 'axios';
 
+const API_BASE = window.location.hostname === 'localhost'
+    ? 'http://localhost:5000'
+    : 'https://together-to-refine.vercel.app';
+
 // WEB SPEECH API COMPATIBILITY
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -169,7 +173,7 @@ export default function VoiceCommandAssistant({ onAnnouncement }) {
             // Assuming we have a helper or can direct fetch.
             // Using the /api/chat endpoint from server.js
 
-            const res = await axios.post('/api/chat', {
+            const res = await axios.post(`${API_BASE}/api/chat`, {
                 message: prompt,
                 // userContext: removed to force use of systemInstruction for JSON output
                 systemInstruction: systemPrompt
@@ -197,7 +201,7 @@ export default function VoiceCommandAssistant({ onAnnouncement }) {
         setResponseMessage("🤔 Thinking...");
         try {
             const token = await userData.getIdToken();
-            const res = await axios.post('/api/chat', {
+            const res = await axios.post(`${API_BASE}/api/chat`, {
                 message: prompt,
                 userContext: { role: 'teacher', name: userData.name },
                 // Allow the server's default "Teacher" persona to handler it, which interprets pedagogical questions well

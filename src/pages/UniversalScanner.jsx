@@ -97,8 +97,8 @@ export default function UniversalScanner() {
 
             // Correct API URL to match platform standards
             const API_URL = window.location.hostname === 'localhost'
-                ? 'https://together-to-refine.vercel.app/api/chat'
-                : '/api/chat';
+                ? 'http://localhost:5000/api/chat'
+                : 'https://together-to-refine.vercel.app/api/chat';
 
             const response = await fetch(API_URL, {
                 method: 'POST',

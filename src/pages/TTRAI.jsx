@@ -244,7 +244,7 @@ export default function TTRAI() {
 
                 const API_URL = window.location.hostname === 'localhost'
                     ? 'http://localhost:5000/api/chat'
-                    : '/api/chat';
+                    : 'https://together-to-refine.vercel.app/api/chat';
 
                 const res = await fetch(API_URL, {
                     method: 'POST',

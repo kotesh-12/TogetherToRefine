@@ -307,7 +307,7 @@ export default function FourWayLearning() {
             // Connect to Production Server if on Localhost
             const API_URL = window.location.hostname === 'localhost'
                 ? 'https://together-to-refine.vercel.app/api/chat'
-                : '/api/chat';
+                : 'https://together-to-refine.vercel.app/api/chat';
 
             const res = await fetch(API_URL, {
                 method: 'POST',
