@@ -49,7 +49,7 @@ export default function TTRAI() {
     const [statusLog, setStatusLog] = useState("Ready");
 
     // AI & UI State
-    const MODEL_NAME = "gemini-flash-latest";
+    const MODEL_NAME = "gemini-2.0-flash";
     const [selectedImage, setSelectedImage] = useState(null);
     const [showSidebar, setShowSidebar] = useState(false);
 

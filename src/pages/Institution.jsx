@@ -99,7 +99,13 @@ export default function Institution() {
         setLoading(true);
         try {
             const token = await auth.currentUser.getIdToken();
-            const res = await fetch('/api/batch-register', {
+
+            // Use Vercel backend for API calls (Firebase Hosting is static-only)
+            const API_BASE = window.location.hostname === 'localhost'
+                ? ''  // dev proxy handles it
+                : 'https://together-to-refine.vercel.app';
+
+            const res = await fetch(`${API_BASE}/api/batch-register`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -124,8 +130,8 @@ export default function Institution() {
                 alert("Import failed: " + (data.error || "Unknown error"));
             }
         } catch (e) {
-            console.error(e);
-            alert("Error sending request.");
+            console.error("Batch register error:", e);
+            alert("Error sending request: " + e.message);
             setLoading(false);
         }
     };

@@ -56,7 +56,7 @@ Return ONLY a valid JSON object. DO NOT wrap the response in markdown blocks lik
         let parsedData = null;
 
         try {
-            const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+            const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
             const result = await model.generateContent(parts);
             let rawText = result.response.text();
 

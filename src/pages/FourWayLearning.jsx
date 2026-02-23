@@ -101,7 +101,7 @@ export default function FourWayLearning() {
     const currentMode = modes.find(m => m.id === activeTab);
 
     // AI Helper - MOVED TO BACKEND (/api/chat) for Security
-    const MODEL_NAME = "gemini-flash-latest";
+    const MODEL_NAME = "gemini-2.0-flash";
 
     // Speech Hook
     const { speak, listen, isListening, speakingText } = useSpeech();
