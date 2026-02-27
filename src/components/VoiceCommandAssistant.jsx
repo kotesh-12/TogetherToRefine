@@ -3,11 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { useUser } from '../context/UserContext';
+import { auth } from '../firebase';
 import axios from 'axios';
 
-const API_BASE = window.location.hostname === 'localhost'
-    ? 'http://localhost:5000'
-    : 'https://together-to-refine.vercel.app';
+const API_BASE = 'https://together-to-refine.vercel.app';
 
 // WEB SPEECH API COMPATIBILITY
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -168,7 +167,7 @@ export default function VoiceCommandAssistant({ onAnnouncement }) {
             `;
 
             // Use existing generic chat endpoint but with high temp for creativity
-            const token = await userData.getIdToken();
+            const token = await auth.currentUser?.getIdToken();
             // Note: In real app, we should use a dedicated endpoint or secure token. 
             // Assuming we have a helper or can direct fetch.
             // Using the /api/chat endpoint from server.js
@@ -200,7 +199,7 @@ export default function VoiceCommandAssistant({ onAnnouncement }) {
     const handleGeneralQuery = async (prompt) => {
         setResponseMessage("🤔 Thinking...");
         try {
-            const token = await userData.getIdToken();
+            const token = await auth.currentUser?.getIdToken();
             const res = await axios.post(`${API_BASE}/api/chat`, {
                 message: prompt,
                 userContext: { role: 'teacher', name: userData.name },

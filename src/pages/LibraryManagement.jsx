@@ -121,7 +121,7 @@ export default function LibraryManagement() {
                 prompt = "Explain what is this book. Extract Title, Author, Price (just number), and Subject. Format as JSON: {title, author, price, subject}.";
             }
 
-            const response = await fetch(`${window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'https://together-to-refine.vercel.app'}/api/chat`, {
+            const response = await fetch('https://together-to-refine.vercel.app/api/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

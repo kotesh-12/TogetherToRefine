@@ -95,10 +95,7 @@ export default function UniversalScanner() {
                 prompt = `Analyze this student's written work for student: ${student?.name || 'Unknown'}. Provide a brief summary of the content and auto-grade it on a scale of 1-10 based on effort and clarity. Correct any obvious mistakes.`;
             }
 
-            // Correct API URL to match platform standards
-            const API_URL = window.location.hostname === 'localhost'
-                ? 'http://localhost:5000/api/chat'
-                : 'https://together-to-refine.vercel.app/api/chat';
+            const API_URL = 'https://together-to-refine.vercel.app/api/chat';
 
             const response = await fetch(API_URL, {
                 method: 'POST',
