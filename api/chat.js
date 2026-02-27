@@ -1,7 +1,28 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const API_KEY = process.env.GEMINI_API_KEY;
-console.log("Runtime API Key Check:", API_KEY ? `Present (ends with ${API_KEY.slice(-4)})` : "Missing");
+
+// --- Simple In-Memory Rate Limiter (10 requests per minute per IP) ---
+const rateLimitMap = new Map();
+const RATE_LIMIT = 10;
+const RATE_WINDOW_MS = 60 * 1000; // 1 minute
+
+function isRateLimited(ip) {
+    const now = Date.now();
+    const record = rateLimitMap.get(ip) || { count: 0, start: now };
+
+    // Reset window if expired
+    if (now - record.start > RATE_WINDOW_MS) {
+        rateLimitMap.set(ip, { count: 1, start: now });
+        return false;
+    }
+
+    if (record.count >= RATE_LIMIT) return true;
+
+    record.count++;
+    rateLimitMap.set(ip, record);
+    return false;
+}
 
 export default async function handler(req, res) {
     // CORS Headers
@@ -107,26 +128,30 @@ CRITICAL DIRECTIVES:
         return response.text();
     };
 
+    // --- Apply Rate Limit ---
+    const clientIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+    if (isRateLimited(clientIp)) {
+        return res.status(429).json({ error: "Too many requests. Please wait a moment before trying again." });
+    }
+
     try {
-        // Attempt with new model (gemini-2.0-flash)
+        // Attempt with primary model (gemini-2.0-flash)
         const text = await tryGenerate("gemini-2.0-flash");
         return res.status(200).json({ text });
     } catch (e) {
-        console.warn(`Model 'gemini-2.0-flash' failed: ${e.message}`);
-
         // If Key is invalid/expired, DO NOT RETRY - Fail fast
         if (e.message.includes("API key expired") || e.message.includes("API_KEY_INVALID") || e.message.includes("403")) {
             return res.status(401).json({ error: "Configuration Error: API Key Expired. Administrator must update Vercel Settings." });
         }
 
-        // Retry with gemini-2.5-flash
+        // Retry with fallback model
         try {
-            console.log("Switching to fallback model: 'gemini-2.5-flash'");
             const text = await tryGenerate("gemini-2.5-flash");
             return res.status(200).json({ text });
         } catch (eFallback) {
+            // Return a safe generic error — do NOT expose internal model/API details to browser
             console.error("AI Generation Fatal Error:", eFallback.message);
-            return res.status(500).json({ error: `AI Service Error: ${e.message} | Fallback failed: ${eFallback.message}` });
+            return res.status(500).json({ error: "The AI service is temporarily unavailable. Please try again shortly." });
         }
     }
 }

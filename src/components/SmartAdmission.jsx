@@ -1,5 +1,4 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export default function SmartAdmission({ onClose, onScanComplete }) {
     const videoRef = useRef(null);
@@ -45,7 +44,7 @@ export default function SmartAdmission({ onClose, onScanComplete }) {
         const canvas = canvasRef.current;
         if (!video || !canvas) return;
 
-        // Take Snapshot (Scale down to 1280px to safely avoid 20MB Gemini payload limit on modern 4K Mobile cameras)
+        // Take Snapshot (Scale down to 1280px to safely avoid 20MB payload limit on modern 4K Mobile cameras)
         const scale = Math.min(1, 1280 / video.videoWidth);
         const w = video.videoWidth * scale;
         const h = video.videoHeight * scale;
@@ -60,78 +59,32 @@ export default function SmartAdmission({ onClose, onScanComplete }) {
 
     const processImage = async (imageDataUrl) => {
         try {
-            // Strip data:image/png;base64,... part for Gemini payload
+            // Strip data URL prefix — send only raw base64 to the secure Vercel backend
             const base64Data = imageDataUrl.split(',')[1];
 
-            const API_KEY = process.env.GEMINI_API_KEY;
-            if (!API_KEY) throw new Error("API Key is missing in the environment. Please notify the administrator.");
-            const cleanKey = API_KEY.replace(/["']/g, "").trim();
-            const genAI = new GoogleGenerativeAI(cleanKey);
+            // SECURITY: API key is NEVER used here. The Vercel serverless function handles Gemini auth.
+            const API_URL = window.location.hostname === 'localhost'
+                ? 'http://localhost:5000/api/vision-admission'
+                : 'https://together-to-refine.vercel.app/api/vision-admission';
 
-            const prompt = `You are an incredibly precise AI OCR tool explicitly developed to revolutionize school admissions.
-Your job is to read carefully through the uploaded document/image and extract ALL names of people written (either handwritten or typed).
-CRITICAL: 
-1. Ignore headings, dates, scores, addresses, or phone numbers.
-2. If there are names, return ONLY a strict, valid JSON array of strings containing the exact full names found. 
-3. DO NOT wrap the response in markdown blocks like \`\`\`json. Return pure JSON string.
-4. If the document is blank or contains no names, return [].
-Example: ["Robert Thompson", "Sarah Jenkins"]`;
+            const res = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    image: base64Data,
+                    role: scanRole,
+                    dataClass: scanClass,
+                    dataSection: scanSection
+                })
+            });
 
-            const parts = [
-                { text: prompt },
-                { inlineData: { mimeType: "image/jpeg", data: base64Data } }
-            ];
-
-            let names = [];
-            try {
-                const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-                const result = await model.generateContent(parts);
-                let rawText = result.response.text();
-
-                const startIdx = rawText.indexOf('[');
-                const endIdx = rawText.lastIndexOf(']');
-                if (startIdx !== -1 && endIdx !== -1) {
-                    rawText = rawText.substring(startIdx, endIdx + 1);
-                } else {
-                    rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
-                }
-                names = JSON.parse(rawText);
-            } catch (e) {
-                console.error("AI Model Vision exception:", e.message);
-                throw new Error("Detailed AI Error: " + e.message);
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.error || 'Scan server returned an error.');
             }
 
-            let structuredNames = names.map(name => {
-                const cleanName = name.replace(/[^a-zA-Z\s]/g, '').trim() || "Unknown";
-                const nameParts = cleanName.split(' ');
-                let firstName = nameParts[0] || "Student";
-                let lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : "";
-                const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
-                return {
-                    originalName: cleanName,
-                    firstName: capitalize(firstName),
-                    lastName: lastName ? capitalize(lastName) : ""
-                };
-            });
-
-            structuredNames.sort((a, b) => {
-                if (a.lastName === b.lastName) return a.firstName.localeCompare(b.firstName);
-                return a.lastName.localeCompare(b.lastName);
-            });
-
-            const parsedStudentsData = structuredNames.map((person, idx) => {
-                const rollNumber = idx + 1;
-                const loginCredentials = `${person.firstName}${person.lastName}${rollNumber}`;
-                return {
-                    name: person.originalName,
-                    email: `${loginCredentials.toLowerCase()}@school.com`,
-                    password: loginCredentials,
-                    role: scanRole || 'student',
-                    class: scanRole === 'student' ? `${scanClass}-${scanSection}` : 'N/A',
-                    rollNumber: rollNumber,
-                    isInstitutionCreated: true
-                };
-            });
+            const data = await res.json();
+            const parsedStudentsData = data.students;
 
             if (parsedStudentsData && parsedStudentsData.length > 0) {
                 setParsedData(parsedStudentsData);

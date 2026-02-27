@@ -1,5 +1,4 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export default function SmartMarksScan({ onClose, onScanComplete }) {
     const videoRef = useRef(null);
@@ -56,73 +55,28 @@ export default function SmartMarksScan({ onClose, onScanComplete }) {
         try {
             const base64Data = imageDataUrl.split(',')[1];
 
-            const API_KEY = process.env.GEMINI_API_KEY;
-            if (!API_KEY) throw new Error("API Key is missing in the environment. Please notify the administrator.");
-            const cleanKey = API_KEY.replace(/["']/g, "").trim();
-            const genAI = new GoogleGenerativeAI(cleanKey);
+            // SECURITY: API key is NEVER used here. The Vercel serverless function handles Gemini auth.
+            const API_URL = window.location.hostname === 'localhost'
+                ? 'http://localhost:5000/api/vision-marks'
+                : 'https://together-to-refine.vercel.app/api/vision-marks';
 
-            const prompt = `You are a highly advanced OCR and Data Verification AI explicitly developed to revolutionize school grading.
-Your job is to read carefully through the uploaded teacher's grading sheet or students' test papers and extract the Marks data.
+            const res = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    image: base64Data,
+                    expectedClass: scanClass,
+                    expectedSection: scanSection,
+                    expectedExamType: examType
+                })
+            });
 
-CRITICAL INSTRUCTIONS:
-1. Identify the CLASS (e.g. 1 to 12) if visible. (Expected: ${scanClass || 'Any'})
-2. Identify the SECTION (e.g. A, B, C) if visible. (Expected: ${scanSection || 'Any'})
-3. Identify the EXAM TYPE from: [Assignment 1, Assignment 2, Mid-Term 1, Mid-Term 2, Final Exam]. (Expected: ${examType || 'Any'})
-4. For every student visible, extract their FULL NAME and their MARKS. If absent, marks = 0.
-5. If max marks is mentioned, adjust to standard out of 100 or simply capture what is written. For simplicity, just return the marks number.
-
-OUTPUT FORMAT:
-Return ONLY a valid JSON object. DO NOT wrap the response in markdown blocks like \`\`\`json. Return pure JSON string.
-{
-  "class": "String (number)",
-  "section": "String",
-  "examType": "String",
-  "data": [
-      { "nameKey": "John Doe", "marks": 85 }
-  ]
-}`;
-
-            const parts = [
-                { text: prompt },
-                { inlineData: { mimeType: "image/jpeg", data: base64Data } }
-            ];
-
-            let parsedDataObj = null;
-
-            try {
-                const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-                const result = await model.generateContent(parts);
-                let rawText = result.response.text();
-
-                const startIdx = rawText.indexOf('{');
-                const endIdx = rawText.lastIndexOf('}');
-                if (startIdx !== -1 && endIdx !== -1) {
-                    rawText = rawText.substring(startIdx, endIdx + 1);
-                } else {
-                    rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
-                }
-                parsedDataObj = JSON.parse(rawText);
-            } catch (e) {
-                console.error("AI Model Vision exception:", e.message);
-                throw new Error("Detailed AI Error: " + e.message);
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.error || 'Marks scan server returned an error.');
             }
 
-            if (!parsedDataObj.class) parsedDataObj.class = scanClass || "";
-            if (!parsedDataObj.section) parsedDataObj.section = scanSection || "";
-            if (!parsedDataObj.examType) parsedDataObj.examType = examType || "";
-
-            if (parsedDataObj.class && !isNaN(parseInt(parsedDataObj.class))) {
-                parsedDataObj.class = String(parseInt(parsedDataObj.class));
-            }
-            if (parsedDataObj.data) {
-                parsedDataObj.data = parsedDataObj.data.map(item => ({
-                    nameKey: String(item.nameKey || "Unknown").trim(),
-                    marks: isNaN(Number(item.marks)) ? 0 : Number(item.marks),
-                    matchedStudentId: null
-                }));
-            } else {
-                parsedDataObj.data = [];
-            }
+            const parsedDataObj = await res.json();
 
             if (parsedDataObj.data && parsedDataObj.data.length > 0) {
                 setParsedData(parsedDataObj);
