@@ -1,6 +1,8 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const API_KEY = process.env.GEMINI_API_KEY;
+// TEMPORARY FALLBACK: Uses Vercel Env Variable if available, otherwise falls back to the .env key provided.
+// IMPORTANT NOTE: Remove this hardcoded fallback once you correctly set GEMINI_API_KEY in the Vercel Dashboard!
+const API_KEY = process.env.GEMINI_API_KEY || "AIzaSyBwQacGXJCFpRZgq34jCwv_YkSA0EISDJs";
 console.log("Runtime API Key Check:", API_KEY ? `Present (ends with ${API_KEY.slice(-4)})` : "Missing");
 
 export default async function handler(req, res) {
