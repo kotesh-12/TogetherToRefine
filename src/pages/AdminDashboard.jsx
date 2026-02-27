@@ -96,7 +96,6 @@ export default function AdminDashboard() {
                     students: usersSnap.size,
                     teachers: teacherSnap.size,
                     institutions: instSnap.size,
-                    inputs: instSnap.size,
                     feedbacks: feedbackSnap.size
                 });
 
@@ -267,8 +266,8 @@ export default function AdminDashboard() {
                         <h3>System Tools</h3>
                         <div style={{ display: 'grid', gap: '10px' }}>
                             {/* Removed generic view button as the card is now clickable */}
-                            <button className="btn" style={{ background: '#2d3436' }}>
-                                🔧 Site Settings (Coming Soon)
+                            <button className="btn" style={{ background: '#2d3436' }} onClick={() => navigate('/admin/settings')}>
+                                🔧 Site Settings
                             </button>
                         </div>
                     </div>

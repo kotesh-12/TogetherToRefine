@@ -40,6 +40,7 @@ import UpidHistory from './pages/UpidHistory';
 import FacultyFeedback from './pages/FacultyFeedback';
 import AdminDashboard from './pages/AdminDashboard';
 import InstitutionDetailsAdmin from './pages/InstitutionDetailsAdmin';
+import AdminSettings from './pages/AdminSettings';
 import Onboarding from './pages/Onboarding';
 import Settings from './pages/Settings';
 import StudentFee from './pages/StudentFee';
@@ -119,6 +120,7 @@ function App() {
                       <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
                         <Route path="/admin" element={<AdminDashboard />} />
                         <Route path="/admin/institution/:id" element={<InstitutionDetailsAdmin />} />
+                        <Route path="/admin/settings" element={<AdminSettings />} />
                       </Route>
 
                       {/* SHARED TEACHER & STUDENT */}

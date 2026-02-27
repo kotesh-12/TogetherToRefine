@@ -540,9 +540,9 @@ export default function Details() {
                                     <input name="secondName" value={formData.secondName || ''} className="input-field" required onChange={handleChange} />
 
                                     <label>Class</label>
-                                    <select name="class" value={formData.class || 'Nursery'} className="input-field" onChange={handleChange} disabled={!!initialData.isInstitutionCreated}>
+                                    <select name="class" value={formData.class || 'Nursery'} className="input-field" onChange={handleChange}>
                                         <option>Nursery</option>
-                                        {['LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'].map(c => <option key={c} value={c}>{c}</option>)}
+                                        {['LKG', 'UKG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th', '11th', '12th'].map(c => <option key={c} value={c}>{c}</option>)}
                                     </select>
 
                                     <label style={{ color: '#d63031', fontWeight: 'bold', marginTop: '15px' }}>Apply to School/Institution:</label>

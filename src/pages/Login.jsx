@@ -268,7 +268,7 @@ export default function Login() {
                     uid = userCredential.user.uid;
                 }
 
-                // Temporary logic: Navigate to Details to complete profile
+                // Two-step registration: account created, now collect profile details
                 navigate('/details', { state: { role } });
                 return;
             }
