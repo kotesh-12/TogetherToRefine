@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
-import { doc, collection, getDocs, addDoc, updateDoc, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
+import { doc, collection, getDocs, addDoc, updateDoc, query, orderBy, onSnapshot, limit, where } from 'firebase/firestore';
 import Header from '../components/Header';
 import { useSpeech } from '../hooks/useSpeech';
 import { useUser } from '../context/UserContext';
