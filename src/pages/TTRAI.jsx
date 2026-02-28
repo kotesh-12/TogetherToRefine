@@ -78,6 +78,7 @@ export default function TTRAI() {
             name: userData?.name || 'User',
             class: userData?.class || 'N/A',
             gender: userData?.gender || 'N/A',
+            gurukul_path: userData?.gurukul_path || null,   // ← Gurukul Hero Path
             upcomingEvents: [],
             adminData: null
         };

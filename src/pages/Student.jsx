@@ -6,6 +6,7 @@ import AIBadge from '../components/AIBadge';
 import FeatureTour from '../components/FeatureTour';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../context/LanguageContext';
+import GurukullPathSelector, { GURUKUL_HEROES } from '../components/GurukullPathSelector';
 
 // Cache object outside component to persist across unmounts/remounts (Back button navigation)
 const GROUP_CACHE = {
@@ -21,6 +22,12 @@ export default function Student() {
     const [selectedPerson, setSelectedPerson] = useState(null);
     const [selectedGroup, setSelectedGroup] = useState(null);
     const [teacherGroups, setTeacherGroups] = useState({});
+
+    // ── Gurukul Path ──
+    const [showGurukul, setShowGurukul] = useState(false);
+    const gurukulPath = userData?.gurukul_path
+        ? GURUKUL_HEROES.find(h => h.id === userData.gurukul_path)
+        : null;
 
     const [myGroups, setMyGroups] = useState([]);
     const [loadingGroups, setLoadingGroups] = useState(false);
@@ -181,20 +188,52 @@ export default function Student() {
             <FeatureTour tourId="student_dashboard_v1" steps={tourSteps} userData={userData} />
             <AIBadge />
 
+            {/* Gurukul Path Selector Modal */}
+            {showGurukul && (
+                <GurukullPathSelector
+                    onClose={() => setShowGurukul(false)}
+                    onSelect={() => setShowGurukul(false)}
+                />
+            )}
+
             {/* Clean Dashboard Greeting */}
             <div className="dash-greeting-bar">
                 <div className="dash-greeting-left">
-                    <div className="dash-avatar">
-                        {userData?.name?.charAt(0).toUpperCase() || 'S'}
+                    <div
+                        className="dash-avatar"
+                        style={gurukulPath ? { background: gurukulPath.gradient, boxShadow: `0 4px 15px ${gurukulPath.shadow}` } : {}}
+                    >
+                        {gurukulPath ? gurukulPath.emoji : (userData?.name?.charAt(0).toUpperCase() || 'S')}
                     </div>
                     <div>
                         <p className="dash-welcome-label">{t('welcome') || 'Welcome back'}</p>
                         <h1 className="dash-name">{userData?.name?.split(' ')[0] || 'Scholar'}</h1>
+                        {gurukulPath && (
+                            <span style={{
+                                fontSize: '10px', fontWeight: '700', color: gurukulPath.color,
+                                textTransform: 'uppercase', letterSpacing: '0.5px'
+                            }}>
+                                {gurukulPath.emoji} {gurukulPath.title}
+                            </span>
+                        )}
                     </div>
                 </div>
                 <div className="dash-greeting-right">
                     <span className="dash-role-pill">🎓 Student</span>
                     {userData?.pid && <span className="dash-id-pill">ID: {userData.pid}</span>}
+                    <button
+                        onClick={() => setShowGurukul(true)}
+                        title="Change Gurukul Path"
+                        style={{
+                            background: gurukulPath ? gurukulPath.gradient : 'linear-gradient(135deg, #667eea, #764ba2)',
+                            border: 'none', borderRadius: '20px',
+                            color: '#fff', fontSize: '10px', fontWeight: '700',
+                            padding: '5px 10px', cursor: 'pointer',
+                            boxShadow: gurukulPath ? `0 3px 12px ${gurukulPath.shadow}` : 'none'
+                        }}
+                    >
+                        {gurukulPath ? `${gurukulPath.emoji} Path` : '🏛️ Gurukul Path'}
+                    </button>
                 </div>
             </div>
 
@@ -226,6 +265,63 @@ export default function Student() {
                     <div className="card text-center mt-4 fade-in" style={{ padding: '30px', border: '1px solid var(--primary-light)' }}>
                         <h2 style={{ marginBottom: '15px' }}>{selectedPerson}</h2>
                         <button className="btn pulse-btn" onClick={() => handleCardClick('/profile-view', { target: { id: selectedGroup?.teacherId, name: selectedGroup?.teacherName, type: 'Teacher' } })}>{t('proceed')}</button>
+                    </div>
+                )}
+
+                {/* Gurukul Invite Banner — shown only if no path chosen */}
+                {!gurukulPath && (
+                    <div
+                        onClick={() => setShowGurukul(true)}
+                        style={{
+                            background: 'linear-gradient(135deg, #667eea22, #764ba222)',
+                            border: '1px dashed rgba(102, 126, 234, 0.5)',
+                            borderRadius: '16px', padding: '18px 20px',
+                            marginBottom: '20px', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: '14px',
+                            transition: 'all 0.2s ease'
+                        }}
+                    >
+                        <span style={{ fontSize: '32px' }}>🏛️</span>
+                        <div>
+                            <div style={{ fontWeight: '800', fontSize: '14px', marginBottom: '3px' }}>
+                                Choose Your Gurukul Path
+                            </div>
+                            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                                Walk in the footsteps of Arjuna, Ekalavya, Krishna & more. Let the AI teach you their way.
+                            </div>
+                        </div>
+                        <span style={{ marginLeft: 'auto', fontSize: '18px' }}>→</span>
+                    </div>
+                )}
+
+                {/* Gurukul Active Banner — shown when path is chosen */}
+                {gurukulPath && (
+                    <div
+                        style={{
+                            background: gurukulPath.gradient,
+                            borderRadius: '16px', padding: '14px 18px',
+                            marginBottom: '20px',
+                            display: 'flex', alignItems: 'center', gap: '12px',
+                            boxShadow: `0 6px 20px ${gurukulPath.shadow}`
+                        }}
+                    >
+                        <span style={{ fontSize: '28px' }}>{gurukulPath.emoji}</span>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ color: '#fff', fontWeight: '900', fontSize: '13px' }}>
+                                {gurukulPath.name} Path Active
+                            </div>
+                            <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '11px' }}>
+                                {gurukulPath.quote}
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => setShowGurukul(true)}
+                            style={{
+                                background: 'rgba(255,255,255,0.2)', border: 'none',
+                                borderRadius: '8px', color: '#fff',
+                                fontSize: '10px', padding: '4px 8px', cursor: 'pointer'
+                            }}
+                        >Change</button>
                     </div>
                 )}
 

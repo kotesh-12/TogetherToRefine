@@ -17,6 +17,11 @@ import LanguageSelector from '../components/LanguageSelector';
 
 
 
+// ─── ADMIN GUARD ─────────────────────────────────────────────────────────────
+// Only this Google account is auto-promoted to Admin. No role selector shown.
+const ADMIN_EMAIL = 'koteshbitra789@gmail.com';
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function Login() {
     // -------------------------------------------------------------------------
     // 1. ALL HOOK DECLARATIONS (Must be at top, unconditional)
@@ -171,6 +176,22 @@ export default function Login() {
                 if (result && isMounted) {
                     setLoading(true);
                     const user = result.user;
+
+                    // ── ADMIN BYPASS (Redirect flow) ──────────────────────
+                    if (user.email === ADMIN_EMAIL) {
+                        await setDoc(doc(db, 'users', user.uid), {
+                            name: user.displayName || 'Admin',
+                            email: user.email,
+                            role: 'admin',
+                            approved: true,
+                            profileCompleted: true,
+                            onboardingCompleted: true,
+                        }, { merge: true });
+                        if (isMounted) navigate('/admin', { replace: true });
+                        return;
+                    }
+                    // ─────────────────────────────────────────────────────
+
                     const { role, isNew, approved } = await checkUserExists(user.uid);
 
                     if (isMounted) {
@@ -291,6 +312,22 @@ export default function Login() {
         try {
             const result = await signInWithPopup(auth, provider);
             const user = result.user;
+
+            // ── ADMIN BYPASS (Popup flow) ─────────────────────────────────
+            if (user.email === ADMIN_EMAIL) {
+                await setDoc(doc(db, 'users', user.uid), {
+                    name: user.displayName || 'Admin',
+                    email: user.email,
+                    role: 'admin',
+                    approved: true,
+                    profileCompleted: true,
+                    onboardingCompleted: true,
+                }, { merge: true });
+                navigate('/admin', { replace: true });
+                return;
+            }
+            // ─────────────────────────────────────────────────────────────
+
             const { role: dbRole, isNew, approved } = await checkUserExists(user.uid);
 
             if (dbRole && !isNew) {
