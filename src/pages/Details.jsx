@@ -118,16 +118,25 @@ export default function Details() {
             if (user) {
                 setUserId(user.uid);
 
-                // If we received a role from Login page, trust it and skip DB check
-                if (passedRole) {
-                    setRole(passedRole);
-                    setLoading(false);
-                    setIsRoleLocked(true); // LOCK THE ROLE to prevent changing
-                    return;
-                }
-
                 // Try to get role from Firestore if not in local state
                 try {
+                    // If we received a role from Login page, trust it but STILL fetch initial data
+                    if (passedRole) {
+                        setRole(passedRole);
+                        setIsRoleLocked(true);
+
+                        const colName = passedRole === 'institution' ? 'institutions' : (passedRole === 'teacher' ? 'teachers' : 'users');
+                        const userDoc = await getDoc(doc(db, colName, user.uid));
+                        if (userDoc.exists()) {
+                            const data = userDoc.data();
+                            setFormData(data);
+                            setInitialData(data); // Capture baseline (e.g., approved: true from smart admission)
+                        }
+
+                        setLoading(false);
+                        return;
+                    }
+
                     // Check 'users' (Student)
                     let userDoc = await getDoc(doc(db, "users", user.uid));
                     if (userDoc.exists()) {
