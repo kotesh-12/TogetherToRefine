@@ -1,18 +1,31 @@
 import admin from 'firebase-admin';
 
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+
 // Initialize Firebase Admin only once
 if (!admin.apps.length) {
     let serviceAccount;
     try {
-        serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+        // Try to load from Local file First (for Dev)
+        serviceAccount = require("../serviceAccountKey.json");
     } catch (e) {
-        console.error("Vercel Admin Auth Error: Missing/Invalid FIREBASE_SERVICE_ACCOUNT env var.");
+        // Fallback to Vercel Environment Variables
+        if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+            try {
+                serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+            } catch (jsonErr) {
+                console.error("Vercel Admin Auth Error: Invalid FIREBASE_SERVICE_ACCOUNT JSON object.");
+            }
+        }
     }
 
     if (serviceAccount) {
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount)
         });
+    } else {
+        console.error("CRITICAL ALARM: Firebase Service Account could not be loaded anywhere!");
     }
 }
 
@@ -39,9 +52,11 @@ export default async function handler(req, res) {
 
         let user;
         try {
+            if (!admin.apps.length) throw new Error("Firebase Admin SDK failed to initialize. Check your Vercel Environment Variables.");
             user = await admin.auth().verifyIdToken(token);
         } catch (e) {
-            return res.status(401).json({ error: 'Invalid or Expired Token' });
+            console.error("Token Auth Error:", e.message);
+            return res.status(401).json({ error: 'Auth Error: ' + e.message });
         }
 
         let requesterRole = user.role;
