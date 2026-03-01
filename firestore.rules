@@ -48,7 +48,9 @@ service cloud.firestore {
       allow update: if isSignedIn() && (
         isAdmin() ||
         (isOwner(userId) &&
-         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role','approved']))
+         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])) &&
+         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['approved']) || request.resource.data.approved == false)
+        )
       );
 
       allow delete: if isSignedIn() && (isOwner(userId) || isAdmin());
@@ -66,7 +68,9 @@ service cloud.firestore {
       allow update: if isSignedIn() && (
         isAdmin() ||
         (isOwner(teacherId) &&
-         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role','approved']))
+         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])) &&
+         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['approved']) || request.resource.data.approved == false)
+        )
       );
       allow delete: if isSignedIn() && (isOwner(teacherId) || isAdmin());
     }
@@ -78,7 +82,9 @@ service cloud.firestore {
       allow update: if isSignedIn() && (
         isAdmin() ||
         (isOwner(instId) &&
-         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role','approved']))
+         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])) &&
+         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['approved']) || request.resource.data.approved == false)
+        )
       );
       allow delete: if isSignedIn() && (isOwner(instId) || isAdmin());
     }
@@ -114,7 +120,7 @@ service cloud.firestore {
     match /admissions/{id} {
       allow create: if true; // Public form submissions
       allow read, update, delete: if isSignedIn() && (
-        resource.data.institutionId == request.auth.uid || isAdmin()
+        resource.data.institutionId == request.auth.uid || isAdmin() || resource.data.userId == request.auth.uid
       );
     }
 
