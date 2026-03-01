@@ -1,33 +1,6 @@
 import admin from 'firebase-admin';
 
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
-
-// Initialize Firebase Admin only once
-if (!admin.apps.length) {
-    let serviceAccount;
-    try {
-        // Try to load from Local file First (for Dev)
-        serviceAccount = require("../serviceAccountKey.json");
-    } catch (e) {
-        // Fallback to Vercel Environment Variables
-        if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-            try {
-                serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-            } catch (jsonErr) {
-                console.error("Vercel Admin Auth Error: Invalid FIREBASE_SERVICE_ACCOUNT JSON object.");
-            }
-        }
-    }
-
-    if (serviceAccount) {
-        admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount)
-        });
-    } else {
-        console.error("CRITICAL ALARM: Firebase Service Account could not be loaded anywhere!");
-    }
-}
+// Helper logic logic moved inside handler
 
 export default async function handler(req, res) {
     // CORS configuration
@@ -43,6 +16,51 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method Not Allowed' });
     }
 
+    // Serverless platforms aggressively garbage collect models. Initialize *inside* execution.
+    if (!admin.apps.length) {
+        let serviceAccount = null;
+
+        // Try ENV first (Safest for Vercel)
+        if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+            try {
+                serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+                console.log("Successfully loaded Service Account from ENV");
+            } catch (jsonErr) {
+                console.error("Parse Error for FIREBASE_SERVICE_ACCOUNT ENV:", jsonErr);
+            }
+        }
+
+        // Fallback to local file for dev, using dynamic import so Vercel doesn't crash if missing
+        if (!serviceAccount) {
+            try {
+                // Read via filesystem instead of require to prevent Next.js/Webpack build crashes
+                const fs = await import('fs');
+                const path = await import('path');
+                const keyPath = path.resolve(process.cwd(), 'serviceAccountKey.json');
+                if (fs.existsSync(keyPath)) {
+                    serviceAccount = JSON.parse(fs.readFileSync(keyPath, 'utf8'));
+                    console.log("Successfully loaded Service Account from local JSON file");
+                }
+            } catch (e) {
+                console.error("Failed to load local serviceAccountKey.json", e.message);
+            }
+        }
+
+        if (serviceAccount) {
+            try {
+                admin.initializeApp({
+                    credential: admin.credential.cert(serviceAccount)
+                });
+            } catch (initErr) {
+                console.error("Firebase Initialization Failed:", initErr);
+                return res.status(500).json({ error: "Auth Subsystem Error: " + initErr.message });
+            }
+        } else {
+            console.error("CRITICAL: No Service Account Configured");
+            return res.status(500).json({ error: "Missing Firebase Service Account Config in Vercel Deployment." });
+        }
+    }
+
     try {
         // --- 1. Verify Auth Token ---
         const token = req.headers.authorization?.split('Bearer ')[1];
@@ -52,7 +70,6 @@ export default async function handler(req, res) {
 
         let user;
         try {
-            if (!admin.apps.length) throw new Error("Firebase Admin SDK failed to initialize. Check your Vercel Environment Variables.");
             user = await admin.auth().verifyIdToken(token);
         } catch (e) {
             console.error("Token Auth Error:", e.message);
