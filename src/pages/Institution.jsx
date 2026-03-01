@@ -230,11 +230,11 @@ export default function Institution() {
                 <div className="dash-greeting-bar">
                     <div className="dash-greeting-left">
                         <div className="dash-avatar" style={{ background: 'linear-gradient(135deg, #2c3e50 0%, #4a6080 100%)' }}>
-                            {(profile?.institutionName || 'I').charAt(0).toUpperCase()}
+                            {(userData?.name || profile?.institutionName || 'I').charAt(0).toUpperCase()}
                         </div>
                         <div>
                             <p className="dash-welcome-label">Institution Dashboard</p>
-                            <h1 className="dash-name">{profile?.institutionName || 'Your Institution'}</h1>
+                            <h1 className="dash-name">{userData?.name || profile?.institutionName || 'Your Institution'}</h1>
                             {profile?.principalName && (
                                 <p className="dash-meta">Principal: {profile.principalName}{profile.estYear ? ` · Est. ${profile.estYear}` : ''}</p>
                             )}
