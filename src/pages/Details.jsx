@@ -339,8 +339,6 @@ export default function Details() {
                     approved: false
                 }, { merge: true });
 
-                // CLEANUP: Cancel/Delete ALL previous 'waiting' admission requests to avoid confusion
-                // (e.g. if I applied to School A, then changed to School B, School A request should die)
                 try {
                     const qAdmissions = query(
                         collection(db, "admissions"),
@@ -348,28 +346,26 @@ export default function Details() {
                         where("status", "==", "waiting")
                     );
                     const snapAdmissions = await getDocs(qAdmissions);
-                    const cleanupPromises = [];
-                    snapAdmissions.forEach((d) => {
-                        console.log(`Deleting obsolete admission request: ${d.id}`);
-                        cleanupPromises.push(deleteDoc(d.ref));
-                    });
-                    if (cleanupPromises.length > 0) await Promise.all(cleanupPromises);
-                } catch (cleanupErr) {
-                    console.warn("Cleanup of old admissions failed (non-fatal):", cleanupErr);
-                }
 
-                // Create Admission Request
-                await addDoc(collection(db, "admissions"), {
-                    name: newDisplayName,
-                    role: role,
-                    [role === 'teacher' ? 'subject' : 'age']: role === 'teacher' ? (formData.subject || 'General') : (formData.dob ? new Date().getFullYear() - new Date(formData.dob).getFullYear() : 'N/A'),
-                    class: formData.class || '',
-                    institutionId: formData.institutionId,
-                    institutionName: instName,
-                    userId: userId,
-                    status: 'waiting',
-                    joinedAt: new Date()
-                });
+                    if (!snapAdmissions.empty) {
+                        console.log("Admission request already exists, skipping creation");
+                    } else {
+                        // Create Admission Request only if it doesn't exist
+                        await addDoc(collection(db, "admissions"), {
+                            name: newDisplayName,
+                            role: role,
+                            [role === 'teacher' ? 'subject' : 'age']: role === 'teacher' ? (formData.subject || 'General') : (formData.dob ? new Date().getFullYear() - new Date(formData.dob).getFullYear() : 'N/A'),
+                            class: formData.class || '',
+                            institutionId: formData.institutionId,
+                            institutionName: instName,
+                            userId: userId,
+                            status: 'waiting',
+                            joinedAt: new Date()
+                        });
+                    }
+                } catch (admissionErr) {
+                    console.error("Failed to manage admissions:", admissionErr);
+                }
 
                 setUserData(prev => ({ ...prev, approved: false })); // Lock UI
                 navigate('/pending-approval');
