@@ -452,11 +452,6 @@ function getCachedPrompt(context) {
 
 // --- MIDDLEWARE: Basic Auth Check (Can be enhanced with Admin SDK later) ---
 const verifyAuth = async (req, res, next) => {
-    // 1. Check for missing required fields (Basic Validation)
-    if (!req.body.userContext && !req.body.history && !req.body.message) {
-        return res.status(400).json({ error: "Invalid Request Payload" });
-    }
-
     // 2. [SECURE: Full Admin SDK Verify]
     // VULN-002 FIXED: We now verify the token signature with Google's public keys.
     const token = req.headers.authorization?.split('Bearer ')[1];
@@ -490,6 +485,11 @@ const chatLimiter = rateLimit({
 });
 
 app.post('/api/chat', chatLimiter, verifyAuth, async (req, res) => {
+    // Basic Validation for Chat
+    if (!req.body.userContext && !req.body.history && !req.body.message) {
+        return res.status(400).json({ error: "Invalid Request Payload for Chat" });
+    }
+
     try {
         const { history, message, image, mimeType, userContext, systemInstruction } = req.body;
 
@@ -647,6 +647,81 @@ Example: ["Robert Thompson", "Sarah Jenkins"]`;
     } catch (error) {
         console.error("Local Vision Scan Error:", error);
         res.status(500).json({ error: "AI Scan encountered a failure: " + error.message });
+    }
+});
+
+// --- AI MARKS SCAN PRE-SCAN (AI Vision Pipeline for Local Testing) ---
+app.post('/api/vision-marks', async (req, res) => {
+    try {
+        const { image, expectedClass, expectedSection, expectedExamType } = req.body;
+        if (!image) return res.status(400).json({ error: "Analysis failed: No image provided." });
+
+        const prompt = `You are a highly advanced OCR and Data Verification AI explicitly developed to revolutionize school grading.
+Your job is to read carefully through the uploaded teacher's grading sheet or students' test papers and extract the Marks data.
+
+CRITICAL INSTRUCTIONS:
+1. Identify the CLASS (e.g. 1 to 12) if visible. (Expected: ${expectedClass || 'Any'})
+2. Identify the SECTION (e.g. A, B, C) if visible. (Expected: ${expectedSection || 'Any'})
+3. Identify the EXAM TYPE from: [Assignment 1, Assignment 2, Mid-Term 1, Mid-Term 2, Final Exam]. (Expected: ${expectedExamType || 'Any'})
+4. For every student visible, extract their FULL NAME and their MARKS. If absent, marks = 0.
+5. If max marks is mentioned, adjust to standard out of 100 or simply capture what is written. For simplicity, just return the marks number.
+
+OUTPUT FORMAT:
+Return ONLY a valid JSON object. DO NOT wrap the response in markdown blocks like \`\`\`json. Return pure JSON string.
+{
+  "class": "String (number)",
+  "section": "String",
+  "examType": "String",
+  "data": [
+      { "nameKey": "John Doe", "marks": 85 }
+  ]
+}`;
+
+        const parts = [
+            { text: prompt },
+            { inlineData: { mimeType: "image/jpeg", data: image } }
+        ];
+
+        let parsedData = null;
+        try {
+            const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+            const result = await model.generateContent(parts);
+            let rawText = result.response.text();
+
+            const startIdx = rawText.indexOf('{');
+            const endIdx = rawText.lastIndexOf('}');
+            if (startIdx !== -1 && endIdx !== -1) {
+                rawText = rawText.substring(startIdx, endIdx + 1);
+            } else {
+                rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+            }
+            parsedData = JSON.parse(rawText);
+        } catch (e) {
+            console.error("AI Model Vision exception:", e.message);
+            throw new Error(e.message);
+        }
+
+        if (!parsedData.class) parsedData.class = expectedClass || "";
+        if (!parsedData.section) parsedData.section = expectedSection || "";
+        if (!parsedData.examType) parsedData.examType = expectedExamType || "";
+
+        if (parsedData.class && !isNaN(parseInt(parsedData.class))) {
+            parsedData.class = String(parseInt(parsedData.class));
+        }
+        if (parsedData.data) {
+            parsedData.data = parsedData.data.map(item => ({
+                nameKey: String(item.nameKey || "Unknown").trim(),
+                marks: isNaN(Number(item.marks)) ? 0 : Number(item.marks),
+                matchedStudentId: null
+            }));
+        } else {
+            parsedData.data = [];
+        }
+
+        res.json(parsedData);
+    } catch (error) {
+        console.error("Local Marks Vision Scan Error:", error);
+        res.status(500).json({ error: "Marks AI Scan encountered a failure: " + error.message });
     }
 });
 
