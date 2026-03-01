@@ -50,14 +50,27 @@ export default function BottomNav() {
     };
 
     const handleNav = (path) => {
+        if (path === '/') {
+            const role = (location.pathname.split('/')[1] || '').toLowerCase();
+            if (role === 'admin' || role === 'institution' || role === 'teacher' || role === 'student' || role === 'parent') {
+                path = `/${role}`;
+            } else {
+                path = '/student'; // fallback
+            }
+        }
+
         if (location.pathname !== path) {
             navigate(path, { replace: true });
         }
     };
 
+    const isHomeActive = () => {
+        return ['/student', '/teacher', '/institution', '/admin', '/parent', '/'].includes(location.pathname);
+    };
+
     return (
         <nav className="bottom-nav-wrapper">
-            <div onClick={() => { vibrate(); handleNav('/'); }} className={`nav-item ${isActive('/') ? 'active' : ''}`}>
+            <div onClick={() => { vibrate(); handleNav('/'); }} className={`nav-item ${isHomeActive() ? 'active' : ''}`}>
                 <div className="nav-icon">🏠</div>
                 <span className="nav-label">Home</span>
             </div>
