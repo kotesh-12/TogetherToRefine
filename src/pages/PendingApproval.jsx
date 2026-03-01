@@ -59,14 +59,11 @@ export default function PendingApproval() {
             }
 
             if (userDoc.exists()) {
-                const userData = userDoc.data();
-                if (userData.approved === true) {
-                    console.log("User is already approved! Redirecting...");
-                    setStatusMsg('Approved! Redirecting...');
-                    let path = '/student';
-                    if (role === 'teacher') path = '/teacher';
-                    if (role === 'institution') path = '/institution';
-                    setTimeout(() => navigate(path), 1000);
+                const data = userDoc.data();
+                if (data.approved === true) {
+                    console.log("User is already approved! Status update complete.");
+                    setStatusMsg('Approved! Updating system...');
+                    // The useEffect above will handle redirection cleanly once context updates
                     return;
                 }
             }

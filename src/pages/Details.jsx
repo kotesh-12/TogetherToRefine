@@ -373,6 +373,7 @@ export default function Details() {
                 }
 
                 setUserData(prev => ({ ...prev, approved: false })); // Lock UI
+                sessionStorage.clear(); // Force fresh detection on redirect
                 navigate('/pending-approval');
             } else if (role === 'institution') {
                 // New Institution Registration Logic

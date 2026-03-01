@@ -61,15 +61,17 @@ const ProtectedRoute = ({ allowedRoles }) => {
     // If they are allowed by role, but NOT approved yet, send to pending.
     // SECURE FIX: Check explicitly for !== true to catch undefined/null cases
     // Institutional accounts are pre-approved.
-    if ((userData.role === 'student' || userData.role === 'teacher') &&
+    if ((userRole === 'student' || userRole === 'teacher') &&
         userData.approved !== true) {
+        console.log(`ProtectedRoute: User '${userRole}' is not approved. Redirecting to /pending-approval.`);
         return <Navigate to="/pending-approval" replace />;
     }
 
     // ONBOARDING CHECK (Verified via Firestore/Context)
     // If user is logged in but hasn't done setup, send to Onboarding
-    // Exception: If already there, allow it.
-    if (!userData.onboardingCompleted && location.pathname !== '/onboarding') {
+    // ONLY check if they are ALREADY approved.
+    if (userData.approved === true && !userData.onboardingCompleted && location.pathname !== '/onboarding') {
+        console.log(`ProtectedRoute: User '${userRole}' has not completed onboarding. Redirecting to /onboarding.`);
         return <Navigate to="/onboarding" replace />;
     }
 
