@@ -455,11 +455,15 @@ export default function Allotment() {
 
                 try {
                     await setDoc(doc(db, "teachers", finalUserId), profileUpdates, { merge: true });
-                } catch (e) { }
+                } catch (e) {
+                    console.error("Failed to update teacher profile during transfer:", e);
+                }
 
                 try {
                     await setDoc(doc(db, "users", finalUserId), profileUpdates, { merge: true });
-                } catch (e) { }
+                } catch (e) {
+                    console.error("Failed to update user profile during transfer:", e);
+                }
             }
 
             // 5. Update Timetable (Remove Teacher Name from OLD Class)

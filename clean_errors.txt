@@ -1,0 +1,43 @@
+C:\Users\hp\.vscode\TogetherToRefine\src\components\GurukullPathSelector.jsx:
+  7:14 - Warning: Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components. (react-refresh/only-export-components)
+  150:14 - Warning: Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components. (react-refresh/only-export-components)
+C:\Users\hp\.vscode\TogetherToRefine\src\context\LanguageContext.jsx:
+  39:14 - Warning: Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components. (react-refresh/only-export-components)
+C:\Users\hp\.vscode\TogetherToRefine\src\context\PWAContext.jsx:
+  5:14 - Warning: Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components. (react-refresh/only-export-components)
+C:\Users\hp\.vscode\TogetherToRefine\src\context\ThemeContext.jsx:
+  5:14 - Warning: Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components. (react-refresh/only-export-components)
+C:\Users\hp\.vscode\TogetherToRefine\src\context\UserContext.jsx:
+  212:17 - Warning: Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components. (react-refresh/only-export-components)
+C:\Users\hp\.vscode\TogetherToRefine\src\pages\Group.jsx:
+  390:13 - Error: Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  388 |
+  389 |         if (!gid) {
+> 390 |             startSelectionFlow();
+      |             ^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  391 |             return;
+  392 |         }
+  393 | (react-hooks/set-state-in-effect)
+C:\Users\hp\.vscode\TogetherToRefine\src\pages\Health.jsx:
+  55:13 - Error: Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  53 |         const user = auth.currentUser;
+  54 |         if (user) {
+> 55 |             setUserId(user.uid);
+     |             ^^^^^^^^^ Avoid calling setState() directly within an effect
+  56 |             fetchUserRole(user.uid);
+  57 |         }
+  58 |     }, []); (react-hooks/set-state-in-effect)

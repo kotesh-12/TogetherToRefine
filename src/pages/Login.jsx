@@ -437,7 +437,7 @@ export default function Login() {
                                 required
                             />
 
-                            {role !== 'institution' && role !== 'admin' && (
+                            {role !== 'institution' && role !== 'admin' && role !== 'parent' && (
                                 <select
                                     className="input-field"
                                     value={gender}
@@ -517,7 +517,13 @@ export default function Login() {
                         📲 Install App
                     </button>
                 )}
+
+                <div style={{ marginTop: '24px', textAlign: 'center', color: '#636e72', fontSize: '11px', borderTop: '1px solid #eee', paddingTop: '16px' }}>
+                    <strong>We do not sell student data. Period.</strong>
+                    <br />
+                    TTR follows the strict Anonymizer Privacy Protocol. Your personal interactions learning with the AI are totally private and never used against you.
+                </div>
             </div>
-        </div>
+        </div >
     );
 }

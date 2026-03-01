@@ -25,7 +25,7 @@ export function useSpeech() {
             return;
         }
 
-        const cleanText = text.replace(/[*#_`\[\]]/g, '');
+        const cleanText = text.replace(/[*#_`[\]]/g, '');
 
         // Chunking logic for Mobile stability
         // Split by reasonable punctuation or length

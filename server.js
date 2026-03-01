@@ -46,14 +46,25 @@ const apiLimiter = rateLimit({
 // app.use('/api/', apiLimiter);
 
 const PORT = 5000;
-const API_KEY = process.env.GEMINI_API_KEY;
+const API_KEYS = [
+    process.env.GEMINI_API_KEY,
+    process.env.GEMINI_API_KEY_2,
+    process.env.GEMINI_API_KEY_3
+].filter(key => key !== undefined && key !== '');
 
-if (!API_KEY) {
+if (API_KEYS.length === 0) {
     console.error("Error: GEMINI_API_KEY is missing in .env");
     process.exit(1);
 }
 
-const genAI = new GoogleGenerativeAI(API_KEY);
+let currentKeyIndex = 0;
+let genAI = new GoogleGenerativeAI(API_KEYS[currentKeyIndex]);
+
+function rotateApiKey() {
+    currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
+    console.log(`🔄 Rotating to API Key Index: ${currentKeyIndex}`);
+    genAI = new GoogleGenerativeAI(API_KEYS[currentKeyIndex]);
+}
 
 // --- DYNAMIC MODEL FALLBACK SYSTEM ---
 // Based on list-mode check: gemini-1.5-flash is stable.
@@ -105,44 +116,13 @@ function generateTTRSystemPrompt(context) {
     const customChars = context?.customCharacters || {};
 
     // THE MASTER LIST (100 CORE CONCEPTS) - "The Avengers of Education"
-    // Note: If a user has a custom override, the AI logic below ensures it takes precedence.
-    const MASTER_UNIVERSE = `
-    **CORE CHARACTERS (PHYSICS):**
-    -   Proton -> Pranav | Electron -> Esha | Neutron -> Neel | Gravity -> Gajraj | Friction -> Firoz
-    -   Velocity -> Veer | Acceleration -> Arjun | Mass -> Maya | Time -> Tara | Light -> Lux
-    -   Sound -> Surya | Magnetism -> Magnus | Current -> Amara | Voltage -> Vikram | Resistance -> Rocky
-    -   Energy -> Zorawar | Thermodynamics -> Thermo | Entropy -> Chaos | Quantum -> Quinn | Relativity -> Rishi
-
-    **CORE CHARACTERS (CHEMISTRY):**
-    -   Atom -> Anu | Molecule -> Moli | Bond -> Bandhan | Acid -> Aziz | Base -> Basanti
-    -   Catalyst -> Cat | Solid -> Stony | Liquid -> Leela | Gas -> Gagan | Metal -> Iron Man
-    -   Carbon -> Kabir | Oxygen -> Ojas | Hydrogen -> Hydro | Reaction -> Boom | Periodic Table -> The Grid
-
-    **CORE CHARACTERS (BIOLOGY):**
-    -   Cell -> Chaitanya | Nucleus -> Nawab | DNA -> Dina | RNA -> Rina | Mitochondria -> Mitran
-    -   Ribosome -> Robo | Virus -> Viru | Bacteria -> Bac | Plant -> groot | Animal -> sarkar
-    -   Brain -> Brain | Heart -> Hart | Lungs -> Vayu | Blood -> Rakt | Gene -> Genie
-    -   Evolution -> Evo | Ecosystem -> Eco | Photosynthesis -> Photo | Enzyme -> Zian
-
-    **CORE CHARACTERS (MATH):**
-    -   Zero -> Shoonya | Infinity -> Anant | Pi -> Pie | Variable -> Xavier | Constant -> Conny
-    -   Function -> Factory | Graph -> Grid | Triangle -> Tri | Circle -> Gola | Matrix -> Neo
-    -   Vector -> Arrow | Calculus -> Cal | Probability -> Chance | Algebra -> Al | Geometry -> Geo | Prime -> Primo
-
-    **CORE CHARACTERS (TECH & COMMERCE):**
-    -   Code -> Coda | Bug -> Glitch | Algorithm -> Algo | Data -> Datum | Cloud -> Nimbus
-    -   AI -> Aio | Internet -> Net | Server -> Butler | Money -> Rox | Inflation -> Balloon
-    `;
-
     const SHARED_PROTOCOLS = `
     ### THE "CONSISTENT UNIVERSE" PROTOCOL (Strict Adherence)
     To bridge the gap between Students and Teachers, you MUST use the SAME character personas for abstract concepts across all interactions.
-    
-    **THE MASTER CHARACTER LIST:**
-    ${MASTER_UNIVERSE}
+    (Relevant characters will be provided below if the user's message matches known topics).
 
     **PROTOCOL Z: THE HIVE MIND (Dynamic Character Creation)**
-    -   **Scenario:** If the user asks about a concept NOT in the Master List above.
+    -   **Scenario:** If the user asks about a concept NOT in the known lists.
     -   **Action:** You must INVENT a consistent character name immediately.
     -   **Rule:** Use the "First Letter Rule" (e.g., "Quasar" -> "Quincy").
     -   **IMPORTANT:** Treat this new name as if it has always existed.
@@ -150,6 +130,13 @@ function generateTTRSystemPrompt(context) {
     **PROTOCOL Y: PERSONAL OVERRIDES (User Specific)**
     -   The user has defined these custom names: ${JSON.stringify(customChars)}.
     -   **Rule:** These Personal Overrides OVERRULE the Master List. If the user calls 'Gravity' -> 'Newton', use 'Newton', not 'Gajraj'.
+    
+    ### MASTER UNIVERSE DIRECTORY
+    **PHYSICS:** Proton->Pranav|Electron->Esha|Neutron->Neel|Gravity->Gajraj|Friction->Firoz|Velocity->Veer|Acceleration->Arjun|Mass->Maya|Time->Tara|Light->Lux|Sound->Surya|Magnetism->Magnus|Current->Amara|Voltage->Vikram|Resistance->Rocky|Energy->Zorawar|Thermodynamics->Thermo|Entropy->Chaos|Quantum->Quinn|Relativity->Rishi
+    **CHEMISTRY:** Atom->Anu|Molecule->Moli|Bond->Bandhan|Acid->Aziz|Base->Basanti|Catalyst->Cat|Solid->Stony|Liquid->Leela|Gas->Gagan|Metal->Iron Man|Carbon->Kabir|Oxygen->Ojas|Hydrogen->Hydro|Reaction->Boom|Periodic Table->The Grid
+    **BIOLOGY:** Cell->Chaitanya|Nucleus->Nawab|DNA->Dina|RNA->Rina|Mitochondria->Mitran|Ribosome->Robo|Virus->Viru|Bacteria->Bac|Plant->groot|Animal->sarkar|Brain->Brain|Heart->Hart|Lungs->Vayu|Blood->Rakt|Gene->Genie|Evolution->Evo|Ecosystem->Eco|Photosynthesis->Photo|Enzyme->Zian
+    **MATH:** Zero->Shoonya|Infinity->Anant|Pi->Pie|Variable->Xavier|Constant->Conny|Function->Factory|Graph->Grid|Triangle->Tri|Circle->Gola|Matrix->Neo|Vector->Arrow|Calculus->Cal|Probability->Chance|Algebra->Al|Geometry->Geo|Prime->Primo
+    **TECH & COMMERCE:** Code->Coda|Bug->Glitch|Algorithm->Algo|Data->Datum|Cloud->Nimbus|AI->Aio|Internet->Net|Server->Butler|Money->Rox|Inflation->Balloon
     `;
 
     // --- PROTOCOL: THE ATTENTION ENGINEER (For Teachers/Institutions) ---
@@ -272,6 +259,71 @@ function generateTTRSystemPrompt(context) {
             value_anchor: 'Satya (Truth) is the highest Dharma. Admitting what you do not know is wisdom, not weakness.',
             praise_style: 'A completely honest, thorough answer — Dharmaraj would be proud. Truth-seeking is the rarest quality.',
             ethics_anchor: 'Dharmaraj lost a kingdom but never his truth. Your integrity is worth more than any exam score.',
+        },
+        abhimanyu: {
+            name: 'Abhimanyu', emoji: '🛡️',
+            teaching_style: 'Encourage fearless exploration. Teach them to enter the hardest problems even if they don\'t know the full solution yet.',
+            challenge_line: 'Abhimanyu entered the Chakravyuha knowing he might not return. Dive into this challenging problem — I will guide you out.',
+            value_anchor: 'Courage is acting despite not having all the answers. Start the work.',
+            praise_style: 'Fearless! You tackled that complex logic head-on like Abhimanyu breaking into the labyrinth.',
+            ethics_anchor: 'Abhimanyu fought with honor until his last breath, even when surrounded. True courage is standing by what is right, alone.',
+        },
+        bheema: {
+            name: 'Bheema', emoji: '💪',
+            teaching_style: 'Focus on raw endurance and foundational strength. No tricks, just pure hard work and practice.',
+            challenge_line: 'Bheema practiced with his mace until hills crumbled. Your mind is your weapon — strengthen it with another repetition.',
+            value_anchor: 'Raw strength is built through repetition. Never shy away from hard work.',
+            praise_style: 'Unstoppable! You powered through that difficult problem through sheer will.',
+            ethics_anchor: 'Bheema\'s strength was always used to protect his family. Use your knowledge to build, never to bully.',
+        },
+        ghatotkacha: {
+            name: 'Ghatotkacha', emoji: '⛰️',
+            teaching_style: 'Emphasize loyalty, immense energy, and lifting up the group. Think big and bold.',
+            challenge_line: 'Ghatotkacha gave his absolute all for his people. Are you giving this your best effort, or holding back?',
+            value_anchor: 'True power is used in service of others.',
+            praise_style: 'Massive impact! You completely crushed that concept.',
+            ethics_anchor: 'Ghatotkacha sacrificed himself so his side could win the war. Sometimes, you must put the team\'s success above your own ego.',
+        },
+        hanuman: {
+            name: 'Hanuman', emoji: '🐒',
+            teaching_style: 'Combine supreme intellect with ultimate humility. Remind them of their own hidden, limitless potential.',
+            challenge_line: 'Hanuman forgot his own strength until Jambavan reminded him. I am reminding you now: you are fully capable of solving this. Leap!',
+            value_anchor: 'You have boundless potential within you; you only need the faith to use it.',
+            praise_style: 'You leaped across the ocean of doubt to find the right answer. Incredible devotion to learning!',
+            ethics_anchor: 'Despite holding the power to move mountains, Hanuman remained the humblest servant. Knowledge should bring humility, not arrogance.',
+        },
+        // --- TEACHER PATHS ---
+        dronacharya: {
+            name: 'Dronacharya', emoji: '🎯',
+            teaching_style: 'The ultimate master. Demand absolute discipline, identify the unique genius in each student, and push them to their absolute limits.',
+            challenge_line: 'A true Guru provides the arrow, but you must draw the bow. Show me your focus.',
+            value_anchor: 'Excellence requires a master to demand it from you. Accept the struggle.',
+            praise_style: 'A masterstroke! You have proven the value of your training.',
+            ethics_anchor: 'Dronacharya\'s loyalty bound him to the throne, but his respect was for skill. Seek skill above all.',
+        },
+        bhishma: {
+            name: 'Bhishma', emoji: '👑',
+            teaching_style: 'The elder statesman. Teach with vast, historical perspective, patience, and unbreakable principles.',
+            challenge_line: 'I have seen generations make this mistake. Will you learn from history, or repeat it?',
+            value_anchor: 'Endurance and vows shape destiny. Keep your promises to yourself.',
+            praise_style: 'A wise and mature response, worthy of the ancients.',
+            ethics_anchor: 'Bhishma sacrificed everything for a vow. Learn the power of absolute commitment to your duty.',
+        },
+        parashurama: {
+            name: 'Parashurama', emoji: '🪓',
+            teaching_style: 'Fierce, unyielding, and demands absolute purity of intent. No patience for arrogance or entitlement.',
+            challenge_line: 'Knowledge given to the unworthy destroys them. Prove your humility before you ask for the answer.',
+            value_anchor: 'True mastery belongs only to those who possess absolute self-discipline.',
+            praise_style: 'You have earned this knowledge through hard work, not privilege.',
+            ethics_anchor: 'Parashurama cursed Karna for a lie. The foundation of learning must be built on absolute truth.',
+        },
+        chanakya: {
+            name: 'Chanakya', emoji: '📜',
+            teaching_style: 'The kingmaker. Focus on sharp intellect, ruthless logic, practical applications, and building leaders.',
+            challenge_line: 'A student who cannot see the consequence of their actions is blind. What is the real-world strategy here?',
+            value_anchor: 'Education is the tool with which we build empires. Never waste it.',
+            praise_style: 'Brilliant strategy! You are thinking like a leader, not just a follower.',
+            ethics_anchor: 'Chanakya believed that an individual must be sacrificed for a family, a family for a village, but the nation is above all. Think of the greater good.',
         }
     };
 
@@ -445,7 +497,7 @@ app.post('/api/chat', chatLimiter, verifyAuth, async (req, res) => {
 
         // Use the Server-Side Algorithm if context is provided, otherwise fallback to client's instruction (or default)
         // OPTIMIZATION: Use Caching
-        const finalSystemInstruction = userContext
+        let finalSystemInstruction = userContext
             ? getCachedPrompt(userContext)
             : (systemInstruction || "You are a helpful assistant.");
 
@@ -464,12 +516,137 @@ app.post('/api/chat', chatLimiter, verifyAuth, async (req, res) => {
             parts.push({ inlineData: { mimeType: mimeType || "image/jpeg", data: image } });
         }
 
-        const result = await chat.sendMessage(parts);
-        const response = await result.response;
-        res.json({ text: response.text() });
+        try {
+            const result = await chat.sendMessage(parts);
+            const response = await result.response;
+            res.json({ text: response.text() });
+        } catch (chatError) {
+            // Check for API limits or quota errors
+            if (chatError.message && (chatError.message.includes("429") || chatError.message.includes("quota") || chatError.message.includes("Resource has been exhausted"))) {
+                console.warn("⚠️ Rate limit or Quota exceeded caught, rotating key...");
+                rotateApiKey();
+                // Re-init chat model with new key wrapper
+                chatModel = genAI.getGenerativeModel({
+                    model: currentModelName,
+                    systemInstruction: finalSystemInstruction
+                });
+                const chatRetry = chatModel.startChat({ history: history || [] });
+                const retryResult = await chatRetry.sendMessage(parts);
+                const retryResponse = await retryResult.response;
+                res.json({ text: retryResponse.text() });
+            } else {
+                throw chatError; // Throw if it's not a rate limit error so outer catch handles it
+            }
+        }
     } catch (error) {
         console.error("AI Generation Error:", error.message);
         res.status(500).json({ error: error.message });
+    }
+});
+
+// --- AI TRAINING DATASET PIPELINE ---
+app.post('/api/ai-feedback', verifyAuth, async (req, res) => {
+    try {
+        const { question, answer, context, rating, feedbackText } = req.body;
+
+        if (!question || !answer || !rating) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        // We specifically want to capture Data where Rating is "good" or "Thumbs Up" 
+        // to build our Fine-Tuning dataset for our own Open Source Model later.
+        await admin.firestore().collection('ai_training_dataset').add({
+            userId: req.user.uid,
+            question: question,
+            answer: answer,
+            context: context || {},
+            rating: rating, // 'positive' or 'negative'
+            feedbackText: feedbackText || "",
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            source: 'ttr_ai_chat',
+            isProcessed: false // Set to true when we export this for fine-tuning
+        });
+
+        res.json({ success: true, message: "Feedback saved for training pipeline" });
+    } catch (error) {
+        console.error("AI Feedback Error:", error);
+        res.status(500).json({ error: "Failed to save feedback" });
+    }
+});
+
+// --- BATCH REGISTRATION PRE-SCAN (AI Vision Pipeline for Local Testing) ---
+app.post('/api/vision-admission', async (req, res) => {
+    try {
+        const { image, role, dataClass, dataSection, startRollNumber = 1 } = req.body;
+        if (!image) return res.status(400).json({ error: "Analysis failed: No image was provided." });
+
+        const prompt = `You are an incredibly precise AI OCR tool explicitly developed to revolutionize school admissions.
+Your job is to read carefully through the uploaded document/image and extract ALL names of people written (either handwritten or typed).
+CRITICAL: 
+1. Ignore headings, dates, scores, addresses, or phone numbers.
+2. If there are names, return ONLY a strict, valid JSON array of strings containing the exact full names found. 
+3. DO NOT wrap the response in markdown blocks like \`\`\`json. Return pure JSON string.
+4. If the document is blank or contains no names, return [].
+Example: ["Robert Thompson", "Sarah Jenkins"]`;
+
+        const parts = [
+            { text: prompt },
+            { inlineData: { mimeType: "image/jpeg", data: image } }
+        ];
+
+        let names = [];
+        try {
+            const visionModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+            const result = await visionModel.generateContent(parts);
+            let rawText = result.response.text();
+
+            const startIdx = rawText.indexOf('[');
+            const endIdx = rawText.lastIndexOf(']');
+            if (startIdx !== -1 && endIdx !== -1) {
+                rawText = rawText.substring(startIdx, endIdx + 1);
+            } else {
+                rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+            }
+            names = JSON.parse(rawText);
+        } catch (e) {
+            console.error("AI Model Vision exception:", e.message);
+            throw new Error(e.message);
+        }
+
+        let structuredNames = names.map(name => {
+            const cleanName = name.replace(/[^a-zA-Z\s]/g, '').trim() || "Unknown";
+            const nameParts = cleanName.split(' ');
+            let firstName = nameParts[0] || "Student";
+            let lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : "";
+            const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+            firstName = capitalize(firstName);
+            lastName = lastName ? capitalize(lastName) : "";
+
+            return { originalName: cleanName, firstName, lastName };
+        });
+
+        structuredNames.sort((a, b) => a.lastName === b.lastName ? a.firstName.localeCompare(b.firstName) : a.lastName.localeCompare(b.lastName));
+
+        const parsedData = structuredNames.map((person, idx) => {
+            const rollNumber = startRollNumber + idx;
+            const loginCredentials = `${person.firstName}${person.lastName}${rollNumber}`;
+            const email = `${loginCredentials.toLowerCase()}@gmail.com`; // GMAIL update
+
+            return {
+                name: person.originalName,
+                email: email,
+                password: loginCredentials,
+                role: role || 'student',
+                class: role === 'student' ? `${dataClass}-${dataSection}` : 'N/A',
+                rollNumber: rollNumber,
+                isInstitutionCreated: true
+            };
+        });
+
+        res.json({ students: parsedData });
+    } catch (error) {
+        console.error("Local Vision Scan Error:", error);
+        res.status(500).json({ error: "AI Scan encountered a failure: " + error.message });
     }
 });
 

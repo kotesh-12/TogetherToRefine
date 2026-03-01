@@ -1,0 +1,223 @@
+﻿C:\Users\hp\.vscode\TogetherToRefine\src\components\VoiceCommandAssistant.jsx:39 - Error: Cannot access variable before it is declared
+
+`processCommand` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  37 |                 const text = event.results[0][0].transcript;
+  38 |                 setTranscript(text);
+> 39 |                 processCommand(text);
+     |                 ^^^^^^^^^^^^^^ `processCommand` accessed before it is declared
+  40 |             };
+  41 |
+  42 |             recognition.current.onerror = (event) => {
+
+  187 |
+  188 |     // --- MAIN INTELLIGENCE (GEMINI + REGEX) ---
+> 189 |     const processCommand = async (command) => {
+      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 190 |         setIsProcessing(true);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 191 |         const lowerCmd = command.toLowerCase();
+      ╬ô├ç┬¬
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 266 |         }
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 267 |     };
+      | ^^^^^^^ `processCommand` is declared here
+  268 |
+  269 |
+  270 |
+C:\Users\hp\.vscode\TogetherToRefine\src\context\UserContext.jsx:153 - Empty block statement.
+C:\Users\hp\.vscode\TogetherToRefine\src\hooks\useSpeech.js:28 - Unnecessary escape character: \[.
+C:\Users\hp\.vscode\TogetherToRefine\src\pages\Allotment.jsx:458 - Empty block statement.
+C:\Users\hp\.vscode\TogetherToRefine\src\pages\Allotment.jsx:462 - Empty block statement.
+C:\Users\hp\.vscode\TogetherToRefine\src\pages\Details.jsx:278 - Empty block statement.
+C:\Users\hp\.vscode\TogetherToRefine\src\pages\FourWayLearning.jsx:17 - Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  15 |     useEffect(() => {
+  16 |         indexRef.current = 0;
+> 17 |         setDisplayedText('');
+     |         ^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  18 |         const interval = setInterval(() => {
+  19 |             setDisplayedText((prev) => {
+  20 |                 if (indexRef.current < text.length) {
+C:\Users\hp\.vscode\TogetherToRefine\src\pages\GeneralFeedback.jsx:129 - Empty block statement.
+C:\Users\hp\.vscode\TogetherToRefine\src\pages\Group.jsx:41 - Error: Cannot access variable before it is declared
+
+`startSelectionFlow` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  39 |
+  40 |         if (!gid) {
+> 41 |             startSelectionFlow();
+     |             ^^^^^^^^^^^^^^^^^^ `startSelectionFlow` accessed before it is declared
+  42 |             return;
+  43 |         }
+  44 |
+
+  48 |     }, [navigate, userData]);
+  49 |
+> 50 |     const startSelectionFlow = () => {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 51 |         setIsSelecting(true);
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 52 |         if (userData?.role === 'teacher') {
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 53 |             fetchTeacherClasses();
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 54 |         } else {
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 55 |             fetchGroupsForSelection();
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 56 |         }
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 57 |     };
+     | ^^^^^^^ `startSelectionFlow` is declared here
+  58 |
+  59 |     const fetchTeacherClasses = async () => {
+  60 |         if (!userData?.uid) return;
+C:\Users\hp\.vscode\TogetherToRefine\src\pages\Group.jsx:46 - Error: Cannot access variable before it is declared
+
+`loadGroupChat` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  44 |
+  45 |         setGroupId(gid);
+> 46 |         const unsubscribe = loadGroupChat(gid);
+     |                             ^^^^^^^^^^^^^ `loadGroupChat` accessed before it is declared
+  47 |         return () => { if (unsubscribe) unsubscribe(); };
+  48 |     }, [navigate, userData]);
+  49 |
+
+  261 |     };
+  262 |
+> 263 |     const loadGroupChat = (gid) => {
+      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 264 |         if (!gid) return;
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^
+> 265 |
+      ╬ô├ç┬¬
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^
+> 394 |         return unsubscribe;
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^
+> 395 |     };
+      | ^^^^^^^ `loadGroupChat` is declared here
+  396 |
+  397 |     const scrollToBottom = () => {
+  398 |         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+C:\Users\hp\.vscode\TogetherToRefine\src\pages\Health.jsx:28 - Error: Cannot access variable before it is declared
+
+`fetchUserRole` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  26 |         if (user) {
+  27 |             setUserId(user.uid);
+> 28 |             fetchUserRole(user.uid);
+     |             ^^^^^^^^^^^^^ `fetchUserRole` accessed before it is declared
+  29 |         }
+  30 |     }, []);
+  31 |
+
+  30 |     }, []);
+  31 |
+> 32 |     const fetchUserRole = async (uid) => {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 33 |         // Check Institution
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 34 |         const instSnap = await getDoc(doc(db, "institutions", uid));
+     ╬ô├ç┬¬
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 44 |         }
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 45 |     };
+     | ^^^^^^^ `fetchUserRole` is declared here
+  46 |
+  47 |     const fetchMyReport = async (uid) => {
+  48 |         try {
+C:\Users\hp\.vscode\TogetherToRefine\src\pages\InstitutionFee.jsx:114 - Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  112 |     useEffect(() => {
+  113 |         if (!targetClass) {
+> 114 |             setPreviewList([]);
+      |             ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  115 |             setSchoolStats(prev => ({ ...prev, matchingNow: 0 }));
+  116 |             return;
+  117 |         }
+C:\Users\hp\.vscode\TogetherToRefine\src\pages\MessagingSystem.jsx:32 - Error: Cannot access variable before it is declared
+
+`validateAccess` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  30 |
+  31 |         // Validate access control
+> 32 |         const isAllowed = validateAccess();
+     |                           ^^^^^^^^^^^^^^ `validateAccess` accessed before it is declared
+  33 |         if (!isAllowed) {
+  34 |             alert("You don't have permission to message this user");
+  35 |             navigate(-1);
+
+  55 |     }, [recipientInfo, userData]);
+  56 |
+> 57 |     const validateAccess = () => {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 58 |         const myRole = userData.role;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 59 |         const theirRole = recipientInfo.role;
+     ╬ô├ç┬¬
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 75 |         return false;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 76 |     };
+     | ^^^^^^^ `validateAccess` is declared here
+  77 |
+  78 |     const getConversationId = (uid1, uid2) => {
+  79 |         // Create consistent conversation ID regardless of who initiates
+C:\Users\hp\.vscode\TogetherToRefine\src\pages\MessagingSystem.jsx:40 - Error: Cannot access variable before it is declared
+
+`getConversationId` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+  38 |
+  39 |         // Subscribe to messages
+> 40 |         const conversationId = getConversationId(userData.uid, recipientInfo.uid);
+     |                                ^^^^^^^^^^^^^^^^^ `getConversationId` accessed before it is declared
+  41 |         const q = query(
+  42 |             collection(db, "messages"),
+  43 |             where("conversationId", "==", conversationId),
+
+  76 |     };
+  77 |
+> 78 |     const getConversationId = (uid1, uid2) => {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 79 |         // Create consistent conversation ID regardless of who initiates
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 80 |         return [uid1, uid2].sort().join('_');
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 81 |     };
+     | ^^^^^^^ `getConversationId` is declared here
+  82 |
+  83 |     const sendMessage = async () => {
+  84 |         if (!newMessage.trim()) return;
+C:\Users\hp\.vscode\TogetherToRefine\src\pages\Onboarding.jsx:35 - Empty block statement.
+C:\Users\hp\.vscode\TogetherToRefine\src\pages\TTRAI.jsx:18 - Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  16 |     useEffect(() => {
+  17 |         indexRef.current = 0;
+> 18 |         setDisplayedText('');
+     |         ^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  19 |
+  20 |         const interval = setInterval(() => {
+  21 |             setDisplayedText((prev) => {
+C:\Users\hp\.vscode\TogetherToRefine\src\pages\TTRAI.jsx:156 - Empty block statement.

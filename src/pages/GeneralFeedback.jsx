@@ -126,7 +126,7 @@ export default function GeneralFeedback() {
                                 const allotSnapName = await getDocs(qAllotName);
                                 allotSnapName.forEach(d => myIds.add(d.id));
                             }
-                        } catch (e) { }
+                        } catch (e) { console.error("Failed to fetch allotment aliases:", e); }
                     }
 
                     // 2. EMERGENCY FETCH: Get last 100 feedbacks globally and filter client-side

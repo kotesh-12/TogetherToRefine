@@ -3,6 +3,7 @@ import AIBadge from '../components/AIBadge';
 import AnnouncementBar from '../components/AnnouncementBar';
 import FeatureTour from '../components/FeatureTour';
 import VoiceCommandAssistant from '../components/VoiceCommandAssistant';
+import GurukullPathSelector, { GURUKUL_TEACHER_HEROES } from '../components/GurukullPathSelector';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -20,6 +21,12 @@ export default function Teacher() {
     const [allotments, setAllotments] = useState([]);
     const [simpleMode, setSimpleMode] = useState(localStorage.getItem('teacher_simple_mode') === 'true');
     const [currentTask, setCurrentTask] = useState(null);
+
+    // Gurukul Path State
+    const [showGurukul, setShowGurukul] = useState(false);
+    const gurukulPath = userData?.gurukul_path
+        ? GURUKUL_TEACHER_HEROES.find(h => h.id === userData.gurukul_path)
+        : null;
 
     // Selection State
     const [selectedClass, setSelectedClass] = useState('');
@@ -72,6 +79,19 @@ export default function Teacher() {
                 } catch (e) { console.error(e); }
             };
             fetchAllotments();
+
+            const fetchInstitutionModules = async () => {
+                const instId = userData.institutionId || userData.createdBy;
+                if (!instId) return;
+                try {
+                    const snap = await getDocs(query(collection(db, "institutions"), where("__name__", "==", instId)));
+                    if (!snap.empty) {
+                        const data = snap.docs[0].data();
+                        if (data.modules) setInstitutionModules(prev => ({ ...prev, ...data.modules }));
+                    }
+                } catch (e) { console.error("Error fetching institution modules:", e); }
+            };
+            fetchInstitutionModules();
         }
     }, [userData, showModal]);
 
@@ -251,12 +271,28 @@ export default function Teacher() {
                 {/* Clean Dashboard Greeting */}
                 <div className="dash-greeting-bar">
                     <div className="dash-greeting-left">
-                        <div className="dash-avatar" style={{ background: 'linear-gradient(135deg, #4834d4 0%, #6c5ce7 100%)' }}>
-                            {userData?.name?.charAt(0).toUpperCase() || 'T'}
+                        <div className="dash-avatar" style={{
+                            background: gurukulPath ? gurukulPath.gradient : 'linear-gradient(135deg, #4834d4 0%, #6c5ce7 100%)',
+                            boxShadow: gurukulPath ? `0 4px 15px ${gurukulPath.shadow}` : 'none'
+                        }}>
+                            {gurukulPath ? gurukulPath.emoji : (userData?.name?.charAt(0).toUpperCase() || 'T')}
                         </div>
                         <div>
                             <p className="dash-welcome-label">{t('teacher_welcome') || 'Welcome back'}</p>
                             <h1 className="dash-name">{userData?.name || 'Teacher'}</h1>
+                            <div
+                                onClick={() => { vibrate(); setShowGurukul(true); }}
+                                style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                    background: gurukulPath ? gurukulPath.gradient : 'linear-gradient(135deg, #667eea, #764ba2)',
+                                    color: '#fff', padding: '4px 10px', borderRadius: '12px',
+                                    fontSize: '11px', fontWeight: '800', cursor: 'pointer', marginTop: '4px',
+                                    boxShadow: gurukulPath ? `0 3px 12px ${gurukulPath.shadow}` : 'none'
+                                }}
+                                title="Change Teaching Path"
+                            >
+                                {gurukulPath ? `${gurukulPath.emoji} Path` : '🏛️ Choose Teaching Path'}
+                            </div>
                         </div>
                     </div>
                     <div className="dash-greeting-right">
@@ -300,15 +336,15 @@ export default function Teacher() {
                                     <span className="teacher-vibe-icon">✅</span>
                                     <span className="teacher-vibe-label">{t('mark_attendance')}</span>
                                 </div>
-                                <div className="teacher-vibe-card" style={{ borderColor: '#e84393' }} onClick={() => { vibrate(); handleCardClick('/4-way-learning'); }}>
+                                <div className="teacher-vibe-card" style={{ borderColor: '#6c5ce7' }} onClick={() => { vibrate(); handleCardClick('/four-way-learning'); }}>
                                     <span className="teacher-vibe-icon">🤝</span>
                                     <span className="teacher-vibe-label">{t('four_way')}</span>
                                 </div>
                                 <div className="teacher-vibe-card" style={{ borderColor: '#d63031' }} onClick={() => { vibrate(); handleCardClick('/video-library'); }}>
-                                    <span className="teacher-vibe-icon">📺</span>
+                                    <span className="teacher-vibe-icon">📻</span>
                                     <span className="teacher-vibe-label">{t('video_library')}</span>
                                 </div>
-                                <div className="teacher-vibe-card" style={{ borderColor: '#9b59b6' }} onClick={() => { vibrate(); handleCardClick('/marks'); }}>
+                                <div className="teacher-vibe-card" style={{ borderColor: '#fdcb6e' }} onClick={() => { vibrate(); handleCardClick('/marks'); }}>
                                     <span className="teacher-vibe-icon">📊</span>
                                     <span className="teacher-vibe-label">{t('marks')}</span>
                                 </div>
@@ -487,6 +523,15 @@ export default function Teacher() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Gurukul Teacher Path Selector Modal */}
+            {showGurukul && (
+                <GurukullPathSelector
+                    onClose={() => setShowGurukul(false)}
+                    onSelect={() => setShowGurukul(false)}
+                    isTeacher={true}
+                />
             )}
         </div>
     );

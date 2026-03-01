@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { auth, db } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -150,7 +151,9 @@ export function UserProvider({ children }) {
                             setUserData(cachedProfile);
                             setLoading(false);
                         }
-                    } catch (e) { }
+                    } catch (e) {
+                        console.error('Failed to parse cached profile:', e);
+                    }
                 }
 
                 // Background Validation

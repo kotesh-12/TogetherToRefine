@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { collection, query, where, getDocs, doc, getDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, addDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { onAuthStateChanged, getAuth } from 'firebase/auth';
 import AIBadge from '../components/AIBadge';
@@ -175,7 +175,8 @@ export default function Institution() {
                 try {
                     const docSnap = await getDoc(doc(db, "institutions", user.uid));
                     if (docSnap.exists()) {
-                        setProfile(docSnap.data());
+                        const data = docSnap.data();
+                        setProfile(data);
                     }
                 } catch (e) {
                     console.error("Error fetching profile:", e);
@@ -458,6 +459,8 @@ export default function Institution() {
                     </div>
                 )
             }
+
+            {/* End of Modals */}
         </div >
     );
 }

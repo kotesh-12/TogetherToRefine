@@ -30,24 +30,9 @@ export default function Group() {
     const [viewMode, setViewMode] = useState(null); // 'members', 'photos', 'files', 'docs'
     const [members, setMembers] = useState([]);
 
-    useEffect(() => {
-        const gid = localStorage.getItem("activeGroupId");
 
-        // RESET NAVIGATION ON MOUNT
-        // If we are a teacher, we might want to start fresh or restore state?
-        // For now, if no GID, go to selection.
 
-        if (!gid) {
-            startSelectionFlow();
-            return;
-        }
-
-        setGroupId(gid);
-        const unsubscribe = loadGroupChat(gid);
-        return () => { if (unsubscribe) unsubscribe(); };
-    }, [navigate, userData]);
-
-    const startSelectionFlow = () => {
+    function startSelectionFlow() {
         setIsSelecting(true);
         if (userData?.role === 'teacher') {
             fetchTeacherClasses();
@@ -260,7 +245,7 @@ export default function Group() {
         }
     };
 
-    const loadGroupChat = (gid) => {
+    function loadGroupChat(gid) {
         if (!gid) return;
 
         // Fetch group data
@@ -393,6 +378,24 @@ export default function Group() {
 
         return unsubscribe;
     };
+
+    useEffect(() => {
+        const gid = localStorage.getItem("activeGroupId");
+
+        // RESET NAVIGATION ON MOUNT
+        // If we are a teacher, we might want to start fresh or restore state?
+        // For now, if no GID, go to selection.
+
+        if (!gid) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            startSelectionFlow();
+            return;
+        }
+
+        setGroupId(gid);
+        const unsubscribe = loadGroupChat(gid);
+        return () => { if (unsubscribe) unsubscribe(); };
+    }, [navigate, userData]);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

@@ -62,7 +62,6 @@ export default function ExamSeatingPlanner() {
             setTotalStudents('');
             setSeatingPlan(null);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedClass, selectedSection]);
 
     const fetchStudents = async (cls, sec) => {

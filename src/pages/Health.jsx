@@ -20,16 +20,9 @@ export default function Health() {
     // Student/Teacher State
     const [myReport, setMyReport] = useState(null);
 
-    useEffect(() => {
-        const auth = getAuth();
-        const user = auth.currentUser;
-        if (user) {
-            setUserId(user.uid);
-            fetchUserRole(user.uid);
-        }
-    }, []);
 
-    const fetchUserRole = async (uid) => {
+
+    async function fetchUserRole(uid) {
         // Check Institution
         const instSnap = await getDoc(doc(db, "institutions", uid));
         if (instSnap.exists()) {
@@ -54,6 +47,16 @@ export default function Health() {
             console.error(e);
         }
     };
+
+    useEffect(() => {
+        const auth = getAuth();
+        const user = auth.currentUser;
+        if (user) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setUserId(user.uid);
+            fetchUserRole(user.uid);
+        }
+    }, []);
 
     const fetchStudents = async () => {
         if (!viewClass) return;

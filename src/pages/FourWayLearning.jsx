@@ -14,7 +14,6 @@ const TypewriterMessage = ({ text }) => {
 
     useEffect(() => {
         indexRef.current = 0;
-        setDisplayedText('');
         const interval = setInterval(() => {
             setDisplayedText((prev) => {
                 if (indexRef.current < text.length) {

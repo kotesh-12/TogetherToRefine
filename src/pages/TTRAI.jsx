@@ -15,7 +15,6 @@ const TypewriterMessage = ({ text, onComplete }) => {
 
     useEffect(() => {
         indexRef.current = 0;
-        setDisplayedText('');
 
         const interval = setInterval(() => {
             setDisplayedText((prev) => {
@@ -153,8 +152,7 @@ export default function TTRAI() {
         const q = query(collection(db, 'ai_chats', currentUser.uid, 'sessions', currentSessionId, 'messages'), orderBy('createdAt', 'asc'));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const loadedMsgs = snapshot.docs.map(doc => doc.data());
-            if (loadedMsgs.length === 0) {
-            } else {
+            if (loadedMsgs.length > 0) {
                 setMessages(loadedMsgs);
             }
         });
@@ -291,6 +289,48 @@ export default function TTRAI() {
         }
     };
 
+    const handleFeedback = async (msgIndex, rating) => {
+        if (!currentUser) return;
+
+        // Find the AI message and the user's question before it
+        const aiMsg = messages[msgIndex];
+        let userQuestion = "Unknown Question";
+        for (let i = msgIndex - 1; i >= 0; i--) {
+            if (messages[i].sender === 'user') {
+                userQuestion = messages[i].text;
+                break;
+            }
+        }
+
+        // Optimistic UI update
+        const updatedMessages = [...messages];
+        updatedMessages[msgIndex] = { ...aiMsg, rated: rating };
+        setMessages(updatedMessages);
+
+        try {
+            const token = await authUser.getIdToken();
+            const API_URL = window.location.hostname === 'localhost'
+                ? 'http://localhost:5000/api/ai-feedback'
+                : 'https://together-to-refine.vercel.app/api/ai-feedback';
+
+            await fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    question: userQuestion,
+                    answer: aiMsg.text,
+                    context: userContext,
+                    rating: rating
+                })
+            });
+        } catch (error) {
+            console.error("Feedback failed:", error);
+        }
+    };
+
     return (
         <div className="ttr-ai-container">
 
@@ -327,10 +367,25 @@ export default function TTRAI() {
                                 <ReactMarkdown>{msg.text}</ReactMarkdown>
                             )}
                         </div>
-                        {msg.sender === 'ai' && (
-                            <button onClick={() => speak(msg.text)} className="speak-button">
-                                {speakingText === msg.text ? '🔇' : '🔊'}
-                            </button>
+                        {msg.sender === 'ai' && !msg.isError && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px' }}>
+                                <button onClick={() => speak(msg.text)} className="speak-button" style={{ border: 'none', background: 'none', cursor: 'pointer' }}>
+                                    {speakingText === msg.text ? '🔇' : '🔊'}
+                                </button>
+                                {/* AI Dataset Feedback System */}
+                                <div style={{ display: 'flex', gap: '5px', marginLeft: 'auto' }}>
+                                    <button
+                                        onClick={() => !msg.rated && handleFeedback(idx, 'positive')}
+                                        style={{ background: 'none', border: 'none', cursor: msg.rated ? 'default' : 'pointer', opacity: msg.rated === 'positive' ? 1 : 0.5, fontSize: '14px' }}
+                                        title="Good Answer (Helps train our Custom AI)"
+                                    >👍</button>
+                                    <button
+                                        onClick={() => !msg.rated && handleFeedback(idx, 'negative')}
+                                        style={{ background: 'none', border: 'none', cursor: msg.rated ? 'default' : 'pointer', opacity: msg.rated === 'negative' ? 1 : 0.5, fontSize: '14px' }}
+                                        title="Bad Answer"
+                                    >👎</button>
+                                </div>
+                            </div>
                         )}
                     </div>
                 ))}

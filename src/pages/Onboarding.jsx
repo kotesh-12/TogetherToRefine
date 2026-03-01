@@ -25,14 +25,16 @@ export default function Onboarding() {
             const micStatus = await navigator.permissions.query({ name: 'microphone' });
             setPerms(p => ({ ...p, mic: micStatus.state }));
         } catch (e) {
-            // Firefox/Safari might not support query for mic
+            console.error("Mic permission check failed:", e);
         }
 
         // Check Camera
         try {
             const camStatus = await navigator.permissions.query({ name: 'camera' });
             setPerms(p => ({ ...p, camera: camStatus.state }));
-        } catch (e) { }
+        } catch (e) {
+            console.error("Camera permission check failed:", e);
+        }
 
         // Check Notifications
         if ('Notification' in window) {

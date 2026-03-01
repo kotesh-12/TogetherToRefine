@@ -1,6 +1,10 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../firebase';
+import { useUser } from '../context/UserContext';
 
 export default function SmartAdmission({ onClose, onScanComplete }) {
+    const { userData } = useUser();
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
     const [status, setStatus] = useState('setup'); // Flow: setup -> camera -> processing -> review
@@ -59,6 +63,36 @@ export default function SmartAdmission({ onClose, onScanComplete }) {
 
     const processImage = async (imageDataUrl) => {
         try {
+            // Find existing roll numbers
+            let startRollNumber = 1;
+
+            if (scanRole === 'student') {
+                const instId = userData?.role === 'institution' ? userData?.uid : userData?.institutionId;
+                if (instId) {
+                    const q = query(
+                        collection(db, 'users'),
+                        where('institutionId', '==', instId),
+                        where('role', '==', 'student')
+                    );
+                    const snap = await getDocs(q);
+
+                    let maxRoll = 0;
+                    const targetClass = `${scanClass}-${scanSection}`;
+
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        if (d.class === targetClass || (d.class === scanClass && d.section === scanSection)) {
+                            const r = parseInt(d.rollNumber);
+                            if (!isNaN(r) && r > maxRoll) {
+                                maxRoll = r;
+                            }
+                        }
+                    });
+
+                    startRollNumber = maxRoll + 1;
+                }
+            }
+
             // Strip data URL prefix — send only raw base64 to the secure Vercel backend
             const base64Data = imageDataUrl.split(',')[1];
 
@@ -74,7 +108,8 @@ export default function SmartAdmission({ onClose, onScanComplete }) {
                     image: base64Data,
                     role: scanRole,
                     dataClass: scanClass,
-                    dataSection: scanSection
+                    dataSection: scanSection,
+                    startRollNumber: startRollNumber
                 })
             });
 
@@ -212,13 +247,36 @@ export default function SmartAdmission({ onClose, onScanComplete }) {
                                                     setParsedData(list);
                                                 }}
                                                 style={{ border: 'none', width: '100%', fontWeight: '600', color: '#2d3436', background: 'transparent' }}
+                                                placeholder="Name"
                                             />
                                         </td>
                                         <td style={{ padding: '10px', color: '#0984e3', fontWeight: '500' }}>
                                             {s.role === 'teacher' ? 'Teacher' : `Class ${s.class}`}
                                         </td>
-                                        <td style={{ padding: '10px', color: '#b2bec3', fontSize: '11px' }}>{s.email}</td>
-                                        <td style={{ padding: '10px', color: '#d63031', fontSize: '11px', fontWeight: 'bold' }}>{s.password}</td>
+                                        <td style={{ padding: '10px', color: '#b2bec3', fontSize: '11px' }}>
+                                            <input
+                                                value={s.email}
+                                                onChange={(e) => {
+                                                    const list = [...parsedData];
+                                                    list[i].email = e.target.value;
+                                                    setParsedData(list);
+                                                }}
+                                                style={{ border: '1px solid #ddd', width: '100%', fontSize: '11px', color: '#2d3436', background: 'white', padding: '2px 4px', borderRadius: '4px' }}
+                                                placeholder="Login ID"
+                                            />
+                                        </td>
+                                        <td style={{ padding: '10px', color: '#d63031', fontSize: '11px', fontWeight: 'bold' }}>
+                                            <input
+                                                value={s.password}
+                                                onChange={(e) => {
+                                                    const list = [...parsedData];
+                                                    list[i].password = e.target.value;
+                                                    setParsedData(list);
+                                                }}
+                                                style={{ border: '1px solid #ddd', width: '100%', fontSize: '11px', color: '#d63031', fontWeight: 'bold', background: 'white', padding: '2px 4px', borderRadius: '4px' }}
+                                                placeholder="Password"
+                                            />
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>

@@ -21,6 +21,34 @@ export default function MessagingSystem() {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
+
+
+    function validateAccess() {
+        const myRole = userData.role;
+        const theirRole = recipientInfo.role;
+
+        // Teacher → Parent
+        if (myRole === 'teacher' && theirRole === 'parent') return true;
+
+        // Institution → Parent
+        if (myRole === 'institution' && theirRole === 'parent') return true;
+
+        // Institution → Teacher
+        if (myRole === 'institution' && theirRole === 'teacher') return true;
+
+        // Reverse directions (Parent → Teacher, etc.)
+        if (myRole === 'parent' && theirRole === 'teacher') return true;
+        if (myRole === 'parent' && theirRole === 'institution') return true;
+        if (myRole === 'teacher' && theirRole === 'institution') return true;
+
+        return false;
+    };
+
+    function getConversationId(uid1, uid2) {
+        // Create consistent conversation ID regardless of who initiates
+        return [uid1, uid2].sort().join('_');
+    };
+
     useEffect(() => {
         if (!recipientInfo) {
             alert("No recipient selected");
@@ -53,32 +81,6 @@ export default function MessagingSystem() {
 
         return () => unsubscribe();
     }, [recipientInfo, userData]);
-
-    const validateAccess = () => {
-        const myRole = userData.role;
-        const theirRole = recipientInfo.role;
-
-        // Teacher → Parent
-        if (myRole === 'teacher' && theirRole === 'parent') return true;
-
-        // Institution → Parent
-        if (myRole === 'institution' && theirRole === 'parent') return true;
-
-        // Institution → Teacher
-        if (myRole === 'institution' && theirRole === 'teacher') return true;
-
-        // Reverse directions (Parent → Teacher, etc.)
-        if (myRole === 'parent' && theirRole === 'teacher') return true;
-        if (myRole === 'parent' && theirRole === 'institution') return true;
-        if (myRole === 'teacher' && theirRole === 'institution') return true;
-
-        return false;
-    };
-
-    const getConversationId = (uid1, uid2) => {
-        // Create consistent conversation ID regardless of who initiates
-        return [uid1, uid2].sort().join('_');
-    };
 
     const sendMessage = async () => {
         if (!newMessage.trim()) return;

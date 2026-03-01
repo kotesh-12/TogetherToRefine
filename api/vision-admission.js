@@ -5,7 +5,7 @@ const API_KEY = process.env.GEMINI_API_KEY;
 export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
-    const { image, role, dataClass, dataSection } = req.body;
+    const { image, role, dataClass, dataSection, startRollNumber = 1 } = req.body;
     if (!API_KEY) return res.status(500).json({ error: "Server Configuration Error: API_KEY is missing." });
     if (!image) return res.status(400).json({ error: "Analysis failed: No image was provided for the OCR process." });
 
@@ -79,13 +79,13 @@ Example: ["Robert Thompson", "Sarah Jenkins"]`;
 
         // Step 3: Map into final structured objects with Roll Number and formatting
         const parsedData = structuredNames.map((person, idx) => {
-            const rollNumber = idx + 1; // Series number starts at 1
+            const rollNumber = startRollNumber + idx; // Add to highest existing roll number
 
             // Generate Username/Password: RaviBitra37
             const loginCredentials = `${person.firstName}${person.lastName}${rollNumber}`;
 
             // We use this as the email/system ID for Firebase Auth
-            const email = `${loginCredentials.toLowerCase()}@school.com`;
+            const email = `${loginCredentials.toLowerCase()}@gmail.com`;
 
             return {
                 name: person.originalName,

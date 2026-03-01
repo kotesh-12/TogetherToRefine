@@ -23,7 +23,6 @@ export default function InstitutionFee() {
         matchingNow: 0
     });
     const [allStudentAllotments, setAllStudentAllotments] = useState([]);
-    const [previewList, setPreviewList] = useState([]);
 
     const navigate = useNavigate();
 
@@ -108,25 +107,19 @@ export default function InstitutionFee() {
         fetchData();
     }, [instId]);
 
-    // 2. Live Preview Filter
-    useEffect(() => {
-        if (!targetClass) {
-            setPreviewList([]);
-            setSchoolStats(prev => ({ ...prev, matchingNow: 0 }));
-            return;
-        }
-
+    // 2. Live Preview Filter (derived state, not effect)
+    const filtered = React.useMemo(() => {
+        if (!targetClass) return [];
         const normalizedTarget = normalizeClass(targetClass);
-        const filtered = allStudentAllotments.filter(s => {
-            // Allotments use 'classAssigned' field
+        return allStudentAllotments.filter(s => {
             const matchesClass = normalizeClass(s.classAssigned) === normalizedTarget;
             const matchesSection = targetSection === 'All' || s.section === targetSection;
             return matchesClass && matchesSection;
         });
-
-        setPreviewList(filtered.slice(0, 10)); // Show top 10 names
-        setSchoolStats(prev => ({ ...prev, matchingNow: filtered.length }));
     }, [targetClass, targetSection, allStudentAllotments]);
+
+    const previewList = React.useMemo(() => filtered.slice(0, 10), [filtered]);
+    const matchingNow = filtered.length;
 
     const handleAssignFee = async (e) => {
         if (e) e.preventDefault();
@@ -280,11 +273,11 @@ export default function InstitutionFee() {
                         {targetClass && (
                             <div style={{ background: '#f8f9fa', padding: '20px', borderRadius: '20px', border: '1px solid #e9ecef' }}>
                                 <div style={{ fontWeight: 'bold', color: '#0fb9b1', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    🎯 Targeting {schoolStats.matchingNow} Total Students
+                                    🎯 Targeting {matchingNow} Total Students
                                 </div>
                                 {previewList.length > 0 && (
                                     <div style={{ marginTop: '10px', fontSize: '0.8rem', color: '#636e72' }}>
-                                        Roster Preview: {previewList.map(s => s.name || s.studentName).join(', ')} {schoolStats.matchingNow > 10 ? '...' : ''}
+                                        Roster Preview: {previewList.map(s => s.name || s.studentName).join(', ')} {matchingNow > 10 ? '...' : ''}
                                     </div>
                                 )}
                             </div>

@@ -21,7 +21,6 @@ export default function Student() {
     const [showDropdown, setShowDropdown] = useState(false);
     const [selectedPerson, setSelectedPerson] = useState(null);
     const [selectedGroup, setSelectedGroup] = useState(null);
-    const [teacherGroups, setTeacherGroups] = useState({});
 
     // ── Gurukul Path ──
     const [showGurukul, setShowGurukul] = useState(false);
@@ -206,34 +205,38 @@ export default function Student() {
                         {gurukulPath ? gurukulPath.emoji : (userData?.name?.charAt(0).toUpperCase() || 'S')}
                     </div>
                     <div>
-                        <p className="dash-welcome-label">{t('welcome') || 'Welcome back'}</p>
-                        <h1 className="dash-name">{userData?.name?.split(' ')[0] || 'Scholar'}</h1>
+                        <p className="dash-welcome-label">{t('student_welcome') || 'Welcome back'}</p>
+                        <h1 className="dash-name">{userData?.name || 'Student'}</h1>
+
                         {gurukulPath && (
-                            <span style={{
-                                fontSize: '10px', fontWeight: '700', color: gurukulPath.color,
-                                textTransform: 'uppercase', letterSpacing: '0.5px'
+                            <div style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                padding: '4px 10px', borderRadius: '12px', marginTop: '4px',
+                                fontSize: '10px', fontWeight: '700',
+                                boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                                color: gurukulPath.color
                             }}>
                                 {gurukulPath.emoji} {gurukulPath.title}
-                            </span>
+                            </div>
                         )}
                     </div>
                 </div>
-                <div className="dash-greeting-right">
-                    <span className="dash-role-pill">🎓 Student</span>
-                    {userData?.pid && <span className="dash-id-pill">ID: {userData.pid}</span>}
-                    <button
+                <div className="dash-greeting-right" style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
+                    <span className="dash-role-pill">📚 {userData?.class || 'Class'} | {userData?.section || 'Sec'}</span>
+
+                    <div
                         onClick={() => setShowGurukul(true)}
-                        title="Change Gurukul Path"
+                        title="Change Learning Path"
                         style={{
+                            display: 'flex', alignItems: 'center', gap: '6px',
                             background: gurukulPath ? gurukulPath.gradient : 'linear-gradient(135deg, #667eea, #764ba2)',
-                            border: 'none', borderRadius: '20px',
-                            color: '#fff', fontSize: '10px', fontWeight: '700',
-                            padding: '5px 10px', cursor: 'pointer',
+                            color: '#fff', padding: '6px 12px', borderRadius: '20px',
+                            fontSize: '11px', fontWeight: '800', cursor: 'pointer',
                             boxShadow: gurukulPath ? `0 3px 12px ${gurukulPath.shadow}` : 'none'
                         }}
                     >
-                        {gurukulPath ? `${gurukulPath.emoji} Path` : '🏛️ Gurukul Path'}
-                    </button>
+                        {gurukulPath ? `${gurukulPath.emoji} Path` : '🏛️ Choose Path'}
+                    </div>
                 </div>
             </div>
 
@@ -282,13 +285,13 @@ export default function Student() {
                         }}
                     >
                         <span style={{ fontSize: '32px' }}>🏛️</span>
-                        <div>
-                            <div style={{ fontWeight: '800', fontSize: '14px', marginBottom: '3px' }}>
+                        <div style={{ flex: 1 }}>
+                            <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '800', color: '#fff' }}>
                                 Choose Your Gurukul Path
-                            </div>
-                            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                                Walk in the footsteps of Arjuna, Ekalavya, Krishna & more. Let the AI teach you their way.
-                            </div>
+                            </h3>
+                            <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.7)', lineHeight: '1.4' }}>
+                                Select an ancient hero's philosophy for how the AI will teach you.
+                            </p>
                         </div>
                         <span style={{ marginLeft: 'auto', fontSize: '18px' }}>→</span>
                     </div>
@@ -306,11 +309,11 @@ export default function Student() {
                         }}
                     >
                         <span style={{ fontSize: '28px' }}>{gurukulPath.emoji}</span>
-                        <div style={{ flex: 1 }}>
-                            <div style={{ color: '#fff', fontWeight: '900', fontSize: '13px' }}>
-                                {gurukulPath.name} Path Active
+                        <div style={{ padding: '0 16px', flex: 1 }}>
+                            <div style={{ color: '#fff', fontWeight: '900', fontSize: '15px' }}>
+                                {`${gurukulPath.name} Path`} Active
                             </div>
-                            <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '11px' }}>
+                            <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '11px', fontStyle: 'italic' }}>
                                 {gurukulPath.quote}
                             </div>
                         </div>

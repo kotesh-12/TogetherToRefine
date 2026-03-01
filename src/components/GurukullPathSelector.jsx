@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { useState } from 'react';
 import { db } from '../firebase';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -88,15 +89,132 @@ export const GURUKUL_HEROES = [
         aiStyle: 'My TTR AI will always present the full truth — multiple perspectives, no bias — just like Dharmaraj himself.',
         qualities: ['📢 Truth even when it hurts', '⚖️ Justice over victory', '🔮 Integrity under pressure'],
         quote: '"Satya (Truth) is the highest Dharma." — Yudhishthira'
+    },
+    {
+        id: 'abhimanyu',
+        name: 'Abhimanyu',
+        emoji: '🛡️',
+        title: 'The Fearless Explorer',
+        color: '#E63946',
+        gradient: 'linear-gradient(135deg, #E63946, #9B2226)',
+        shadow: 'rgba(230, 57, 70, 0.4)',
+        trait: 'Courage & Action',
+        description: 'Abhimanyu entered the unbreakable Chakravyuha without fear, even though he didn\'t know the full way out. You will dive into complex problems with absolute confidence.',
+        aiStyle: 'My TTR AI will push you to start exploring even when you don\'t have all the answers. Courage first, knowledge follows.',
+        qualities: ['⚡ Fearless action', '🧠 Solving the unknown', '🔥 Unbreakable spirit'],
+        quote: '"I know only how to enter the formation; let the future lie in the hands of action." — Abhimanyu\'s spirit'
+    },
+    {
+        id: 'bheema',
+        name: 'Bheema',
+        emoji: '💪',
+        title: 'The Unstoppable Force',
+        color: '#F9C74F',
+        gradient: 'linear-gradient(135deg, #F9C74F, #F3722C)',
+        shadow: 'rgba(249, 199, 79, 0.4)',
+        trait: 'Raw Strength & Endurance',
+        description: 'Bheema swung his mace repeatedly until mountains crumbled. Your mind will become equally unstoppable through practice and repetition.',
+        aiStyle: 'My TTR AI will focus on foundational strength and repetition. We will master the core basics until you are unshakeable.',
+        qualities: ['🏋️ Limitless endurance', '⚒️ Hard work over talent', '🛡️ Protective strength'],
+        quote: '"True strength is born of pure effort, not privilege."'
+    },
+    {
+        id: 'ghatotkacha',
+        name: 'Ghatotkacha',
+        emoji: '⛰️',
+        title: 'The Loyal Giant',
+        color: '#2A9D8F',
+        gradient: 'linear-gradient(135deg, #2A9D8F, #264653)',
+        shadow: 'rgba(42, 157, 143, 0.4)',
+        trait: 'Power & Selflessness',
+        description: 'Ghatotkacha possessed terrifying power but used it entirely in service of his people, even sacrificing himself for the greater good. You will become incredibly capable to help others.',
+        aiStyle: 'My TTR AI will teach you to think big and bold, lifting up your entire team with your massive abilities.',
+        qualities: ['🙌 Ultimate loyalty', '💥 Massive impact', '🤝 Selfless application'],
+        quote: '"My strength belongs to those who need it."'
+    },
+    {
+        id: 'hanuman',
+        name: 'Hanuman',
+        emoji: '🐒',
+        title: 'The Devoted Student',
+        color: '#FFA1A1',
+        gradient: 'linear-gradient(135deg, #FF7B54, #E25E3E)',
+        shadow: 'rgba(226, 94, 62, 0.4)',
+        trait: 'Intellect & Humility',
+        description: 'Despite knowing all the Vedas and possessing absolute power, Hanuman remained the most humble servant. You will learn to recognize your limitless potential.',
+        aiStyle: 'My TTR AI will constantly remind you of your hidden strength while keeping you grounded in humility and devotion to your craft.',
+        qualities: ['📚 Infinite knowledge', '🙏 Absolute humility', '🌊 Leaping over doubt'],
+        quote: '"With faith, one can leap across oceans."'
+    }
+];
+
+export const GURUKUL_TEACHER_HEROES = [
+    {
+        id: 'dronacharya',
+        name: 'Dronacharya',
+        emoji: '🎯',
+        title: 'The Ultimate Master',
+        color: '#FF6B35',
+        gradient: 'linear-gradient(135deg, #FF6B35, #F7931E)',
+        shadow: 'rgba(255, 107, 53, 0.4)',
+        trait: 'Discipline & Excellence',
+        description: 'Dronacharya demanded absolute excellence and was capable of turning raw talent into legendary skill. You will expect the best from your students and accept nothing less.',
+        aiStyle: 'My TTR AI will give you advanced pedagogical strategies to push your students beyond their perceived limits.',
+        qualities: ['👁️ Spotting hidden genius', '🔥 Forging excellence', '🏹 Absolute discipline'],
+        quote: '"A teacher provides the arrow, the student must draw the bow."'
+    },
+    {
+        id: 'bhishma',
+        name: 'Bhishma',
+        emoji: '👑',
+        title: 'The Elder Statesman',
+        color: '#6C63FF',
+        gradient: 'linear-gradient(135deg, #6C63FF, #3F3D56)',
+        shadow: 'rgba(108, 99, 255, 0.4)',
+        trait: 'Wisdom & Duty',
+        description: 'Bhishma carried the weight of history and unbreakable vows. You will teach with incredible patience, historical perspective, and a sense of absolute duty.',
+        aiStyle: 'My TTR AI will support you with timeless wisdom and steady guidance, helping you maintain principles across generations of students.',
+        qualities: ['⏳ Timeless patience', '📜 Unbreakable principles', '🏛️ Historical perspective'],
+        quote: '"Duty is the highest calling. Fulfill it with unwavering resolve."'
+    },
+    {
+        id: 'parashurama',
+        name: 'Parashurama',
+        emoji: '🪓',
+        title: 'The Fierce Instructor',
+        color: '#D90429',
+        gradient: 'linear-gradient(135deg, #D90429, #8D0801)',
+        shadow: 'rgba(217, 4, 41, 0.4)',
+        trait: 'Purity & Rigor',
+        description: 'Parashurama hated arrogance and only imparted his ultimate knowledge to those with pure intent. You will run a rigorous classroom where entitlement has no place.',
+        aiStyle: 'My TTR AI will give you sharp, unyielding frameworks to instill true respect and rigor in your students.',
+        qualities: ['🚫 Zero tolerance for arrogance', '⚖️ Absolute intellectual purity', '⚔️ Rigorous standards'],
+        quote: '"Knowledge given to the unworthy destroys them."'
+    },
+    {
+        id: 'chanakya',
+        name: 'Chanakya',
+        emoji: '📜',
+        title: 'The Kingmaker',
+        color: '#2A9D8F',
+        gradient: 'linear-gradient(135deg, #2A9D8F, #264653)',
+        shadow: 'rgba(42, 157, 143, 0.4)',
+        trait: 'Strategy & Pragmatism',
+        description: 'Chanakya built empires by shaping leaders. You do not just teach subjects; you teach strategy, political intelligence, and real-world dominance.',
+        aiStyle: 'My TTR AI will help you craft lessons that tie every academic concept to real-world power and leadership.',
+        qualities: ['🧠 Ruthless logic', '👑 Building leaders', '🏗️ Nation building'],
+        quote: '"Education is the tool with which we build empires."'
     }
 ];
 
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
-export default function GurukullPathSelector({ onClose, onSelect }) {
+export default function GurukullPathSelector({ onClose, onSelect, isTeacher = false }) {
     const { user: authUser } = useUser();
     const [selected, setSelected] = useState(null);
     const [saving, setSaving] = useState(false);
     const [step, setStep] = useState('choose'); // 'choose' | 'confirm'
+
+    const HERO_LIST = isTeacher ? GURUKUL_TEACHER_HEROES : GURUKUL_HEROES;
 
     const handleConfirm = async () => {
         if (!selected || !authUser) return;
@@ -153,9 +271,11 @@ export default function GurukullPathSelector({ onClose, onSelect }) {
                             <h2 style={{
                                 color: '#fff', fontSize: '22px', fontWeight: '900',
                                 margin: '0 0 8px', letterSpacing: '-0.5px'
-                            }}>Choose Your Gurukul Path</h2>
+                            }}>
+                                {isTeacher ? 'Choose Your Teaching Framework' : 'Choose Your Learning Path'}
+                            </h2>
                             <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', margin: 0 }}>
-                                Ancient heroes. Modern learning. Who will you become?
+                                {isTeacher ? 'Ancient masters. Modern teaching. Who will you embody?' : 'Ancient heroes. Modern learning. Who will you become?'}
                             </p>
                         </div>
 
@@ -166,7 +286,7 @@ export default function GurukullPathSelector({ onClose, onSelect }) {
                             gap: '12px',
                             marginBottom: '24px'
                         }}>
-                            {GURUKUL_HEROES.map(hero => (
+                            {HERO_LIST.map(hero => (
                                 <div
                                     key={hero.id}
                                     onClick={() => setSelected(hero)}
@@ -215,7 +335,7 @@ export default function GurukullPathSelector({ onClose, onSelect }) {
                                 boxShadow: selected ? `0 8px 25px ${selected?.shadow}` : 'none'
                             }}
                         >
-                            {selected ? `Become ${selected.name} →` : 'Select Your Path First'}
+                            {selected ? `Select ${selected.name} →` : 'Select Your Path First'}
                         </button>
                     </>
                 )}

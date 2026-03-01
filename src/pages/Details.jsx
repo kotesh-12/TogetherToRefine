@@ -275,7 +275,7 @@ export default function Details() {
         try {
             // Cleanup stale collections if role changed (rare)
             if ((role === 'teacher' || role === 'institution') && initialData && initialData.role !== role) {
-                try { await deleteDoc(doc(db, "users", userId)); } catch (e) { }
+                try { await deleteDoc(doc(db, "users", userId)); } catch (e) { console.error("Failed to cleanup old user doc:", e); }
             }
 
             const collectionName = role === 'institution' ? 'institutions' : (role === 'teacher' ? 'teachers' : 'users');

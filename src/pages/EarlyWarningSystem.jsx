@@ -143,6 +143,9 @@ export default function EarlyWarningSystem() {
                     <p style={{ margin: '5px 0 0 0', color: '#e74c3c', fontSize: '13px' }}>
                         AI Analysis of Attendance & Performance
                     </p>
+                    <div style={{ marginTop: '10px', display: 'inline-block', background: 'rgba(39, 174, 96, 0.1)', color: '#27ae60', padding: '6px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold' }}>
+                        🔐 Anonymizer Protocol Active: Analysis restricted purely to academic & attendance data. Personal AI chat contexts are strictly ignored.
+                    </div>
                 </div>
 
                 {loading ? (
