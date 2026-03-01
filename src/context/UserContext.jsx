@@ -109,12 +109,15 @@ export function UserProvider({ children }) {
                             const data = { ...baseData, uid: currentUser.uid, role: 'admin', approved: true, profileCompleted: true, onboardingCompleted: true };
                             updateUserData(data);
                             setLoading(false);
-                            sessionStorage.setItem('user_collection_cache', 'users');
 
-                            unsubscribeSnapshot = onSnapshot(userRef, (d) => {
-                                if (!d.exists()) { detectFull(); return; }
-                                updateUserData({ ...d.data(), uid: currentUser.uid, role: 'admin' });
-                            });
+                            if (userSnap.exists()) {
+                                sessionStorage.setItem('user_collection_cache', 'users');
+                                unsubscribeSnapshot = onSnapshot(userRef, (d) => {
+                                    if (d.exists()) {
+                                        updateUserData({ ...d.data(), uid: currentUser.uid, role: 'admin' });
+                                    }
+                                });
+                            }
                         } else if (instSnap.exists()) {
                             const data = { ...instSnap.data(), uid: currentUser.uid, role: (instSnap.data().role || 'institution').toLowerCase() };
                             updateUserData(data);
