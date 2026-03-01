@@ -83,7 +83,10 @@ export default function Login() {
             const userSnap = await safeGet("users", uid);
 
             // 1. ADMIN OVERRIDE CHECK
-            if (userSnap && userSnap.data().role === 'admin') {
+            const currentUser = auth.currentUser;
+            const isAdminEmail = currentUser && (currentUser.email === 'koteshbitra789@gmail.com' || currentUser.email === 'admin@ttr.com');
+
+            if (isAdminEmail || (userSnap && userSnap.data()?.role === 'admin')) {
                 return { role: 'admin', isNew: false, approved: true };
             }
 

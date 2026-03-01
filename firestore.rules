@@ -10,7 +10,7 @@ service cloud.firestore {
     function isStudent()     { return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)); }
     function isTeacher()     { return isSignedIn() && exists(/databases/$(database)/documents/teachers/$(request.auth.uid)); }
     function isInstitution() { return isSignedIn() && exists(/databases/$(database)/documents/institutions/$(request.auth.uid)); }
-    function isAdmin()       { return isStudent()  && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'; }
+    function isAdmin()       { return isSignedIn() && (request.auth.token.email in ['koteshbitra789@gmail.com', 'admin@ttr.com'] || (isStudent() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')); }
 
     // Resolve the institution UID for any logged-in user:
     function myInstitutionId() {
