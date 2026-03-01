@@ -10,7 +10,18 @@ export default function PendingApproval() {
     const [loading, setLoading] = useState(false);
     const [statusMsg, setStatusMsg] = useState('');
 
-    const { user, loading: userLoading } = useUser();
+    const { user, loading: userLoading, userData } = useUser();
+
+    // Auto-redirect if context says approved
+    useEffect(() => {
+        if (userData?.approved === true) {
+            let path = '/student';
+            if (userData.role === 'teacher') path = '/teacher';
+            if (userData.role === 'admin') path = '/admin';
+            if (userData.role === 'institution') path = '/institution';
+            navigate(path, { replace: true });
+        }
+    }, [userData, navigate]);
 
     // Auto-check on mount
     useEffect(() => {
@@ -70,7 +81,7 @@ export default function PendingApproval() {
 
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
-                if (data.status === 'allotted') {
+                if (data.status === 'allotted' || data.status === 'approved') {
                     isAllotted = true;
                     admissionData = data;
                 }

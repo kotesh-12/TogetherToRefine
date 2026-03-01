@@ -242,19 +242,10 @@ export default function Details() {
         } else {
             // 2. Existing User -> Check specific fields
             // If Not Approved, allow changes freely (correction mode)
-            // If Approved, changing Institution is Major.
-            const isApproved = initialData.approved === true;
+            // If Approved, changing Institution is Major. Class changes safely update.
+            const isApproved = initialData.approved === true || initialData.isInstitutionCreated === true;
 
-            if (role === 'student') {
-                if (isApproved) {
-                    if (String(formData.institutionId) !== String(initialData.institutionId) ||
-                        String(formData.class) !== String(initialData.class)) {
-                        isMajorUpdate = true;
-                    }
-                } else {
-                    isMajorUpdate = true;
-                }
-            } else if (role === 'teacher') {
+            if (role === 'student' || role === 'teacher') {
                 if (isApproved) {
                     if (String(formData.institutionId) !== String(initialData.institutionId)) {
                         isMajorUpdate = true;
@@ -263,8 +254,8 @@ export default function Details() {
                     isMajorUpdate = true;
                 }
             }
+
             // Note: If ROLE changed, it's major, but role is usually locked or handled by separate flow.
-            // But if user manually unlocked and changed it:
             if (role !== initialData.role && initialData.role) isMajorUpdate = true;
         }
 
