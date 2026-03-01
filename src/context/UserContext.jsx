@@ -101,7 +101,21 @@ export function UserProvider({ children }) {
                         const teachSnap = results[1].status === 'fulfilled' ? results[1].value : { exists: () => false };
                         const userSnap = results[2].status === 'fulfilled' ? results[2].value : { exists: () => false };
 
-                        if (instSnap.exists()) {
+                        const isAdminDoc = userSnap.exists() && userSnap.data().role === 'admin';
+                        const isAdminEmail = currentUser.email === 'koteshbitra789@gmail.com' || currentUser.email === 'admin@ttr.com';
+
+                        if (isAdminEmail || isAdminDoc) {
+                            const baseData = userSnap.exists() ? userSnap.data() : { name: currentUser.displayName || 'Admin', email: currentUser.email };
+                            const data = { ...baseData, uid: currentUser.uid, role: 'admin', approved: true, profileCompleted: true, onboardingCompleted: true };
+                            updateUserData(data);
+                            setLoading(false);
+                            sessionStorage.setItem('user_collection_cache', 'users');
+
+                            unsubscribeSnapshot = onSnapshot(userRef, (d) => {
+                                if (!d.exists()) { detectFull(); return; }
+                                updateUserData({ ...d.data(), uid: currentUser.uid, role: 'admin' });
+                            });
+                        } else if (instSnap.exists()) {
                             const data = { ...instSnap.data(), uid: currentUser.uid, role: (instSnap.data().role || 'institution').toLowerCase() };
                             updateUserData(data);
                             setLoading(false);

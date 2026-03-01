@@ -80,6 +80,14 @@ export default function Login() {
                 }
             };
 
+            const userSnap = await safeGet("users", uid);
+
+            // 1. ADMIN OVERRIDE CHECK
+            if (userSnap && userSnap.data().role === 'admin') {
+                return { role: 'admin', isNew: false, approved: true };
+            }
+
+            // 2. INSTITUTION CHECK
             const instSnap = await safeGet("institutions", uid);
             if (instSnap) {
                 const data = instSnap.data();
@@ -92,11 +100,12 @@ export default function Login() {
                 return { role: (data.role || 'teacher').toLowerCase(), isNew: !data.profileCompleted, approved: data.approved };
             }
 
-            const userSnap = await safeGet("users", uid);
             if (userSnap) {
                 const data = userSnap.data();
-                const normalizedRole = (data.role || 'student').toLowerCase();
-                return { role: normalizedRole, isNew: !data.profileCompleted, approved: data.approved };
+                if (data.role !== 'admin') {
+                    const normalizedRole = (data.role || 'student').toLowerCase();
+                    return { role: normalizedRole, isNew: !data.profileCompleted, approved: data.approved };
+                }
             }
 
             return { role: null, isNew: true };
