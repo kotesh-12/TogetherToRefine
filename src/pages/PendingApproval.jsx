@@ -12,7 +12,7 @@ export default function PendingApproval() {
 
     const { user, loading: userLoading, userData } = useUser();
 
-    // Auto-redirect if context says approved
+    // Auto-redirect if context says approved or institution-created
     useEffect(() => {
         if (userData?.approved === true) {
             let path = '/student';

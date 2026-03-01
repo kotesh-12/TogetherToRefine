@@ -785,37 +785,25 @@ app.post('/api/batch-register', verifyAuth, async (req, res) => {
                 section: student.section || 'N/A',
 
                 // Auto-Approval (Security: ensure strict boolean)
-                approved: student.isInstitutionCreated ? true : false,
+                approved: false, // Force all to go through approval after details
                 isInstitutionCreated: student.isInstitutionCreated || false,
-                role: 'student',
+                role: student.role || 'student', // Support both students and teachers
                 createdAt: admin.firestore.FieldValue.serverTimestamp()
             });
 
-            // C. Create Admission Record & Allotment (for visibility/tracking)
+            // C. Create Admission Record (for visibility/tracking in Waiting List)
             if (student.isInstitutionCreated) {
-                // 1. Admission Record
                 await admin.firestore().collection('admissions').add({
                     name: student.name,
                     role: student.role || 'student',
                     userId: userRecord.uid,
                     institutionId: req.user.uid,
-                    status: 'approved',
+                    status: 'waiting',
                     assignedClass: student.class || 'N/A',
                     assignedSection: student.section || 'N/A',
                     rollNumber: student.rollNumber || null,
+                    [student.role === 'teacher' ? 'subject' : 'age']: student.subject || student.age || 'N/A',
                     joinedAt: admin.firestore.FieldValue.serverTimestamp()
-                });
-
-                // 2. Student Allotment Record (Required for Group Visibility)
-                await admin.firestore().collection('student_allotments').add({
-                    name: student.name,
-                    classAssigned: student.class || 'N/A',
-                    section: student.section || 'A',
-                    age: 'N/A', // Age is default since it's an AI scan
-                    rollNumber: student.rollNumber || null,
-                    createdBy: req.user.uid,
-                    institutionId: req.user.uid,
-                    userId: userRecord.uid
                 });
             }
 

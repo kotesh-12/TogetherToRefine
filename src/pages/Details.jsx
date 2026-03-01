@@ -212,6 +212,8 @@ export default function Details() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (loading) return; // Prevent double submission
+        setLoading(true);
         console.log("Submitting form...", formData);
 
         if (!userId) {
@@ -252,7 +254,7 @@ export default function Details() {
             // 2. Existing User -> Check specific fields
             // If Not Approved, allow changes freely (correction mode)
             // If Approved, changing Institution is Major. Class changes safely update.
-            const isApproved = initialData.approved === true || initialData.isInstitutionCreated === true;
+            const isApproved = initialData.approved === true;
 
             if (role === 'student' || role === 'teacher') {
                 if (isApproved) {
@@ -310,7 +312,10 @@ export default function Details() {
                 setUserData(prev => ({ ...prev, ...formData, name: newDisplayName }));
 
                 alert("Profile Updated Successfully! ✅");
-                navigate(-1); // Go back
+
+                // Explicitly navigate to dashboard based on role to avoid redirect loops
+                const dashboardPath = role === 'student' ? '/student' : (role === 'teacher' ? '/teacher' : (role === 'institution' ? '/institution' : '/'));
+                navigate(dashboardPath, { replace: true });
                 return;
             }
 
@@ -383,6 +388,8 @@ export default function Details() {
         } catch (err) {
             console.error("Submission Error:", err);
             alert("Error saving: " + err.message);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -642,7 +649,9 @@ export default function Details() {
                                 </div>
                             )}
                             <div className="submit-container">
-                                <button type="submit" className="btn submit-button">Submit Details</button>
+                                <button type="submit" className="btn submit-button" disabled={loading}>
+                                    {loading ? 'Processing...' : 'Submit Details'}
+                                </button>
                             </div>
                         </div>
                     )}

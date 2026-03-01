@@ -15,8 +15,17 @@ export function UserProvider({ children }) {
     // Helper to update state and cache consistently
     const updateUserData = React.useCallback((data) => {
         if (!data) return;
-        console.log("Context: Updating User Data", data.role);
-        setUserData(data);
+
+        setUserData(prev => {
+            // Optimization: Only update if data actually changed to prevent flickering
+            try {
+                const s1 = JSON.stringify(prev);
+                const s2 = JSON.stringify(data);
+                if (s1 === s2) return prev;
+            } catch (e) { /* ignore */ }
+            return data;
+        });
+
         try {
             sessionStorage.setItem('user_profile_cache', JSON.stringify(data));
         } catch (e) {

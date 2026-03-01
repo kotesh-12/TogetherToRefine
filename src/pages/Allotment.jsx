@@ -16,14 +16,15 @@ export default function Allotment() {
     const personToAllot = location.state?.personToAllot;
 
     const [role, setRole] = useState(personToAllot ? personToAllot.role : null);
-    const [cls, setCls] = useState('');
-    const [sec, setSec] = useState('');
+    const [cls, setCls] = useState(personToAllot?.assignedClass || '');
+    const [sec, setSec] = useState(personToAllot?.assignedSection || '');
     const [entries, setEntries] = useState([]);
     const [name, setName] = useState(personToAllot ? personToAllot.name : '');
     const [extra, setExtra] = useState(personToAllot ? (personToAllot.subject || personToAllot.age) : '');
     const [currentUser, setCurrentUser] = useState(null);
     const [existingTeachers, setExistingTeachers] = useState([]);
     const [selectedUserId, setSelectedUserId] = useState(null);
+    const [loading, setLoading] = useState(false);
 
     // Transfer Modal State
     const [transferTarget, setTransferTarget] = useState(null); // { id, name, subject, oldClass, oldSection, userId }
@@ -208,6 +209,8 @@ export default function Allotment() {
 
     const handleAdd = async () => {
         if (!name || !extra || !cls || !sec || !role) return alert('Fill all fields');
+        if (loading) return;
+        setLoading(true);
 
         try {
             const finalUserId = personToAllot?.userId || selectedUserId || null;
@@ -238,6 +241,15 @@ export default function Allotment() {
 
                     alert(`Replaced ${existing.name} with ${name} successfully!`);
                     setName(''); setExtra(''); setSelectedUserId(null); fetchEntries();
+                    return;
+                }
+            }
+
+            // CHECK FOR EXISTING STUDENT DUPLICATE IN THIS CLASS
+            if (role === 'student' && finalUserId) {
+                const dupe = entries.find(e => e.userId === finalUserId);
+                if (dupe) {
+                    alert(`${name} is already allotted to ${cls}-${sec}`);
                     return;
                 }
             }
@@ -320,6 +332,8 @@ export default function Allotment() {
         } catch (e) {
             console.error(e);
             alert("Error adding entry");
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -347,6 +361,40 @@ export default function Allotment() {
                             null, // Remove mode
                             instId
                         );
+                    }
+                }
+
+                // SECURE FIX: Reset user approval status when allotment is removed
+                if (entry.userId || entry.teacherId) {
+                    const uid = entry.userId || entry.teacherId;
+                    const userColl = (role === 'teacher') ? 'teachers' : 'users';
+
+                    try {
+                        // 1. Reset Profile Status
+                        await updateDoc(doc(db, userColl, uid), {
+                            approved: false,
+                            assignedClass: '',
+                            assignedSection: '',
+                            class: '',
+                            section: '',
+                            updatedAt: new Date()
+                        }).catch(e => console.log("User profile reset skipped or failed:", e));
+
+                        // 2. Change Admission Record back to 'waiting' if it exists
+                        const qAdmission = query(collection(db, "admissions"), where("userId", "==", uid));
+                        const snapAdmission = await getDocs(qAdmission);
+                        snapAdmission.forEach(async (d) => {
+                            await updateDoc(d.ref, {
+                                status: 'waiting',
+                                assignedClass: '',
+                                assignedSection: '',
+                                removedAt: new Date()
+                            });
+                        });
+
+                        console.log(`✅ User ${uid} reset to pending status after allotment removal.`);
+                    } catch (err) {
+                        console.error("Cleanup Error during deletion:", err);
                     }
                 }
             }
@@ -639,7 +687,9 @@ export default function Allotment() {
                                 )}
                                 <input className="input-field" style={{ flex: 2 }} placeholder="Name" value={name} onChange={e => setName(e.target.value)} disabled={!!selectedUserId} />
                                 <input className="input-field" style={{ flex: 1 }} placeholder={role === 'teacher' ? 'Subject' : 'Age'} value={extra} onChange={e => setExtra(e.target.value)} />
-                                <button className="btn" style={{ flex: 1, backgroundColor: '#2ecc71' }} onClick={handleAdd}>Add</button>
+                                <button className="btn" style={{ flex: 1, backgroundColor: '#2ecc71' }} onClick={handleAdd} disabled={loading}>
+                                    {loading ? '...' : 'Add'}
+                                </button>
                             </div>
                         </div>
                     )}
