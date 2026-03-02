@@ -93,17 +93,21 @@ export default function Institution() {
     const registerStudents = async (students) => {
         if (students.length === 0) return;
 
-        const confirm = window.confirm(`Ready to import ${students.length} students?`);
-        if (!confirm) return;
-
         setLoading(true);
         try {
-            const token = await auth.currentUser.getIdToken();
+            if (!auth.currentUser) {
+                alert("Session expired. Please refresh the page and try again.");
+                setLoading(false);
+                return;
+            }
 
-            // Use Vercel backend for API calls (Firebase Hosting is static-only)
+            const token = await auth.currentUser.getIdToken(true); // force refresh token
+
             const API_BASE = window.location.hostname === 'localhost'
-                ? ''  // dev proxy handles it
+                ? ''
                 : 'https://together-to-refine.vercel.app';
+
+            console.log(`[SmartAdmission] Sending ${students.length} students to batch-register...`);
 
             const res = await fetch(`${API_BASE}/api/batch-register`, {
                 method: 'POST',
@@ -114,27 +118,41 @@ export default function Institution() {
                 body: JSON.stringify({ students })
             });
 
-            const data = await res.json();
+            let data;
+            try {
+                data = await res.json();
+            } catch (parseErr) {
+                console.error("Failed to parse server response:", parseErr);
+                alert(`Server error (HTTP ${res.status}). Please try again or contact support.`);
+                setLoading(false);
+                return;
+            }
+
+            console.log("[SmartAdmission] Server response:", data);
             setLoading(false);
+
+            if (!res.ok) {
+                alert(`❌ Registration failed (${res.status}):\n${data.error || 'Unknown server error'}`);
+                return;
+            }
 
             if (data.results) {
                 const successCount = data.results.success.length;
                 const failedCount = data.results.failed.length;
-
-                alert(`Import Complete!\nSuccess: ${successCount}\nFailed: ${failedCount}\n\nA credentials file will now download.`);
-
+                alert(`✅ Import Complete!\nSuccess: ${successCount}\nFailed: ${failedCount}${failedCount > 0 ? '\n\nFailed entries may have duplicate emails.' : ''}`);
                 if (successCount > 0) {
                     generateReport(data.results.success);
                 }
             } else {
-                alert("Import failed: " + (data.error || "Unknown error"));
+                alert("❌ Import failed: " + (data.error || "Unknown error. Check console for details."));
             }
         } catch (e) {
             console.error("Batch register error:", e);
-            alert("Error sending request: " + e.message);
+            alert("❌ Network error: " + e.message);
             setLoading(false);
         }
     };
+
 
     const generateReport = (successList) => {
         let reportContent = "STUDENT CREDENTIALS REPORT\n" +
