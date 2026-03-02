@@ -184,7 +184,12 @@ export function UserProvider({ children }) {
                     try {
                         const cachedProfile = JSON.parse(cachedProfileJSON);
                         if (cachedProfile && cachedProfile.uid === currentUser.uid) {
-                            setUserData(cachedProfile);
+                            // Normalize approved: undefined → false to prevent wrong redirects
+                            const normalizedCache = {
+                                ...cachedProfile,
+                                approved: cachedProfile.approved === true ? true : false
+                            };
+                            setUserData(normalizedCache);
                             setLoading(false);
                         }
                     } catch (e) {
@@ -198,8 +203,10 @@ export function UserProvider({ children }) {
                     unsubscribeSnapshot = onSnapshot(doc(db, cachedCollection, currentUser.uid), (d) => {
                         if (d.exists()) {
                             const data = d.data();
-                            let role = data.role || (cachedCollection === 'institutions' ? 'institution' : (cachedCollection === 'teachers' ? 'teacher' : 'student'));
-                            updateUserData({ ...data, uid: currentUser.uid, role: role.toLowerCase() });
+                            let role = (data.role || (cachedCollection === 'institutions' ? 'institution' : (cachedCollection === 'teachers' ? 'teacher' : 'student'))).toLowerCase().trim();
+                            // Always normalize approved to a strict boolean — never leave it undefined
+                            const approvedNorm = data.approved === true ? true : false;
+                            updateUserData({ ...data, uid: currentUser.uid, role, approved: approvedNorm });
                             setLoading(false);
                         } else {
                             sessionStorage.removeItem('user_collection_cache');

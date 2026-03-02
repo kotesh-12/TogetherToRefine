@@ -369,9 +369,17 @@ export default function Details() {
                     console.error("Failed to manage admissions:", admissionErr);
                 }
 
-                // 3. Lock UI and redirect — clear session cache to force fresh read
+                // 3. Lock UI and redirect
+                // Update cache with approved:false — do NOT clear all sessionStorage
+                // (clearing removes user_collection_cache, causing detectFull() race on redirect)
+                try {
+                    const existingCache = sessionStorage.getItem('user_profile_cache');
+                    if (existingCache) {
+                        const parsed = JSON.parse(existingCache);
+                        sessionStorage.setItem('user_profile_cache', JSON.stringify({ ...parsed, approved: false, profileCompleted: true }));
+                    }
+                } catch (e) { /* ignore cache errors */ }
                 setUserData(prev => ({ ...prev, approved: false, profileCompleted: true }));
-                sessionStorage.clear();
                 navigate('/pending-approval', { replace: true });
                 return;
             } else if (role === 'institution') {
@@ -386,8 +394,15 @@ export default function Details() {
                     updatedAt: new Date()
                 }, { merge: true });
 
+                // Same targeted cache update
+                try {
+                    const existingCache = sessionStorage.getItem('user_profile_cache');
+                    if (existingCache) {
+                        const parsed = JSON.parse(existingCache);
+                        sessionStorage.setItem('user_profile_cache', JSON.stringify({ ...parsed, approved: false, profileCompleted: true }));
+                    }
+                } catch (e) { /* ignore cache errors */ }
                 setUserData(prev => ({ ...prev, approved: false, profileCompleted: true }));
-                sessionStorage.clear();
                 navigate('/pending-approval', { replace: true });
                 return;
             }
