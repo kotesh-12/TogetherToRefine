@@ -322,28 +322,26 @@ export default function Details() {
             // --- CASE 2: MAJOR UPDATE (Re-Admission Required) ---
             console.log("⚠️ Major Update Detected. Requesting new approval.");
 
-            // 1. Update Core Profile
-            await setDoc(doc(db, collectionName, userId), {
-                ...formData,
-                role: role, // Ensure role is saved
-                name: newDisplayName,
-                pid: finalPid,
-                profileCompleted: true,
-                updatedAt: new Date()
-            }, { merge: true });
-
-            // 2. Handle Re-Admission Logic (Student/Teacher)
             if (role === 'student' || role === 'teacher') {
                 const instRef = doc(db, "institutions", formData.institutionId);
                 const instSnap = await getDoc(instRef);
                 const instName = instSnap.exists() ? (instSnap.data().schoolName || instSnap.data().name) : "Unknown Institution";
 
-                // Set Approved = False, Update linked Institution
+                // 1. ATOMIC Write: profileCompleted + approved:false in ONE call
+                // Splitting this into two writes causes a Firestore snapshot race condition
+                // that makes the router toggle between /onboarding and /pending-approval.
                 await setDoc(doc(db, collectionName, userId), {
+                    ...formData,
+                    role: role,
+                    name: newDisplayName,
+                    pid: finalPid,
+                    profileCompleted: true,
                     institutionName: instName,
-                    approved: false
+                    approved: false, // Must be in same write as profileCompleted
+                    updatedAt: new Date()
                 }, { merge: true });
 
+                // 2. Create Admission Record (no duplicate)
                 try {
                     const qAdmissions = query(
                         collection(db, "admissions"),
@@ -355,7 +353,6 @@ export default function Details() {
                     if (!snapAdmissions.empty) {
                         console.log("Admission request already exists, skipping creation");
                     } else {
-                        // Create Admission Request only if it doesn't exist
                         await addDoc(collection(db, "admissions"), {
                             name: newDisplayName,
                             role: role,
@@ -372,19 +369,28 @@ export default function Details() {
                     console.error("Failed to manage admissions:", admissionErr);
                 }
 
-                setUserData(prev => ({ ...prev, approved: false })); // Lock UI
-                sessionStorage.clear(); // Force fresh detection on redirect
-                navigate('/pending-approval');
+                // 3. Lock UI and redirect — clear session cache to force fresh read
+                setUserData(prev => ({ ...prev, approved: false, profileCompleted: true }));
+                sessionStorage.clear();
+                navigate('/pending-approval', { replace: true });
+                return;
             } else if (role === 'institution') {
-                // New Institution Registration Logic
+                // Institution first-time setup
                 await setDoc(doc(db, "institutions", userId), {
-                    approved: false
+                    ...formData,
+                    role: role,
+                    name: newDisplayName,
+                    pid: finalPid,
+                    profileCompleted: true,
+                    approved: false,
+                    updatedAt: new Date()
                 }, { merge: true });
 
-                setUserData(prev => ({ ...prev, approved: false }));
-                navigate('/pending-approval');
+                setUserData(prev => ({ ...prev, approved: false, profileCompleted: true }));
+                sessionStorage.clear();
+                navigate('/pending-approval', { replace: true });
+                return;
             }
-
 
         } catch (err) {
             console.error("Submission Error:", err);

@@ -140,21 +140,33 @@ export default function Login() {
 
         if (user) {
             if (userData && userData.role) {
-                const isStudentIncomplete = userData.role === 'student' && (!userData.class || !userData.institutionId);
-                const isTeacherIncomplete = userData.role === 'teacher' && (!userData.subject || !userData.institutionId);
-                const isInstitutionIncomplete = userData.role === 'institution' && (!userData.schoolName);
+                const isApproved = userData.approved === true;
 
-                if (!userData.profileCompleted || isStudentIncomplete || isTeacherIncomplete || isInstitutionIncomplete) {
-                    navigate('/details');
-                    return;
+                // Only send to /details if they are APPROVED but have an incomplete profile.
+                // For unapproved users (e.g. Smart Admission), we do NOT bounce them back to details.
+                // They may have just submitted and be sitting on /pending-approval.
+                if (isApproved) {
+                    const isStudentIncomplete = userData.role === 'student' && (!userData.class || !userData.institutionId);
+                    const isTeacherIncomplete = userData.role === 'teacher' && (!userData.subject || !userData.institutionId);
+                    const isInstitutionIncomplete = userData.role === 'institution' && (!userData.schoolName);
+
+                    if (!userData.profileCompleted || isStudentIncomplete || isTeacherIncomplete || isInstitutionIncomplete) {
+                        navigate('/details', { replace: true });
+                        return;
+                    }
                 }
 
-                if (userData.approved !== true) {
-                    navigate('/pending-approval', { replace: true });
+                if (!isApproved) {
+                    // Not approved — either awaiting institution approval, or needs profile first
+                    if (!userData.profileCompleted) {
+                        navigate('/details', { replace: true });
+                    } else {
+                        navigate('/pending-approval', { replace: true });
+                    }
                 } else if (!userData.onboardingCompleted) {
                     navigate('/onboarding', { replace: true });
                 } else {
-                    switch (userData.role) {
+                    switch ((userData.role || '').toLowerCase().trim()) {
                         case 'student': navigate('/student', { replace: true }); break;
                         case 'teacher': navigate('/teacher', { replace: true }); break;
                         case 'institution': navigate('/institution', { replace: true }); break;
