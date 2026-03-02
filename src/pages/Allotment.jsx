@@ -255,6 +255,19 @@ export default function Allotment() {
             }
 
             const colName = role === 'teacher' ? 'teacher_allotments' : 'student_allotments';
+
+            // For students, fetch DOB from their user profile if available
+            let studentDob = null;
+            if (role === 'student' && finalUserId) {
+                try {
+                    const userDocRef = doc(db, 'users', finalUserId);
+                    const userSnap = await getDoc(userDocRef);
+                    if (userSnap.exists()) {
+                        studentDob = userSnap.data().dob || null;
+                    }
+                } catch (e) { /* non-critical */ }
+            }
+
             const docData = {
                 name,
                 classAssigned: cls,
@@ -264,6 +277,7 @@ export default function Allotment() {
                 institutionId: instId || null,
                 userId: finalUserId
             };
+            if (role === 'student' && studentDob) docData.dob = studentDob;
             if (role === 'teacher' && finalUserId) docData.teacherId = finalUserId;
 
             await addDoc(collection(db, colName), docData);
@@ -653,7 +667,7 @@ export default function Allotment() {
                                         entries.map(e => (
                                             <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: '#f4f4f4', marginBottom: '8px', borderRadius: '8px' }}>
                                                 <span style={{ fontWeight: 'bold' }}>{e.name}</span>
-                                                <span style={{ color: '#666' }}>({role === 'teacher' ? e.subject : `${e.age} yrs`})</span>
+                                                <span style={{ color: '#666' }}>({role === 'teacher' ? e.subject : (e.dob ? new Date(e.dob).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : (e.age && e.age !== 'N/A' ? `${e.age} yrs` : 'DOB not set'))})</span>
                                                 <div style={{ display: 'flex', gap: '5px' }}>
                                                     {role === 'teacher' && (
                                                         <button

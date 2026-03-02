@@ -424,6 +424,7 @@ export default function Details() {
                             name: newDisplayName,
                             role: role,
                             [role === 'teacher' ? 'subject' : 'age']: role === 'teacher' ? (formData.subject || 'General') : (formData.dob ? new Date().getFullYear() - new Date(formData.dob).getFullYear() : 'N/A'),
+                            dob: formData.dob || null,
                             class: formData.class || '',
                             institutionId: formData.institutionId,
                             institutionName: instName,
