@@ -785,8 +785,8 @@ app.post('/api/batch-register', verifyAuth, async (req, res) => {
                 section: student.section || 'N/A',
 
                 // Auto-Approval (Security: ensure strict boolean)
-                approved: false, // Force all to go through approval after details
-                isInstitutionCreated: student.isInstitutionCreated || false,
+                approved: false, // Must complete Details first; bypass happens in Details.jsx
+                isInstitutionCreated: true, // Always true for batch-register endpoint (institution-only access)
                 role: student.role || 'student', // Support both students and teachers
                 createdAt: admin.firestore.FieldValue.serverTimestamp()
             });

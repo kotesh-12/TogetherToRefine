@@ -165,7 +165,10 @@ export default function Institution() {
 
     const handleSmartImport = (scannedData) => {
         setShowSmartAdmission(false);
-        registerStudents(scannedData);
+        // Stamp every scanned entry with isInstitutionCreated:true so the
+        // Details page can detect Smart Admission and skip pending-approval.
+        const stamped = scannedData.map(s => ({ ...s, isInstitutionCreated: true }));
+        registerStudents(stamped);
     };
 
     useEffect(() => {
