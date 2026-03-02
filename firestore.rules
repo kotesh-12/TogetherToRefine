@@ -44,12 +44,18 @@ service cloud.firestore {
       allow create: if isSignedIn() && isOwner(userId)
                     && request.resource.data.role in ['student', 'teacher', 'institution'];
 
-      // Update: admin anything; owner cannot change role/approved
+      // Update: admin anything; owner cannot change role
+      // Owner can set approved:true ONLY if isInstitutionCreated (Smart Admission bypass)
+      // Normal students can only set approved:false (cannot self-approve)
       allow update: if isSignedIn() && (
         isAdmin() ||
         (isOwner(userId) &&
          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])) &&
-         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['approved']) || request.resource.data.approved == false)
+         (
+           !request.resource.data.diff(resource.data).affectedKeys().hasAny(['approved']) ||
+           request.resource.data.approved == false ||
+           (request.resource.data.approved == true && resource.data.isInstitutionCreated == true)
+         )
         )
       );
 
@@ -69,7 +75,11 @@ service cloud.firestore {
         isAdmin() ||
         (isOwner(teacherId) &&
          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])) &&
-         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['approved']) || request.resource.data.approved == false)
+         (
+           !request.resource.data.diff(resource.data).affectedKeys().hasAny(['approved']) ||
+           request.resource.data.approved == false ||
+           (request.resource.data.approved == true && resource.data.isInstitutionCreated == true)
+         )
         )
       );
       allow delete: if isSignedIn() && (isOwner(teacherId) || isAdmin());
