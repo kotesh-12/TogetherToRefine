@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { getAuth } from 'firebase/auth';
 import { doc, getDoc, collection, query, where, getDocs, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useUser } from '../context/UserContext';
@@ -12,29 +12,31 @@ export default function PendingApproval() {
 
     const { user, loading: userLoading, userData } = useUser();
 
-    // Auto-redirect if context says approved
+    // hasMounted: skip the first render so stale sessionStorage cache
+    // doesn't fire a redirect before the live Firestore snapshot arrives.
+    const hasMounted = useRef(false);
+
+    // Auto-redirect ONLY after the first render (when data actually CHANGES via snapshot)
     useEffect(() => {
+        if (!hasMounted.current) {
+            hasMounted.current = true;
+            return;
+        }
         if (userData?.approved === true) {
             const role = (userData.role || '').toLowerCase().trim();
-            console.log(`[PendingApproval] User approved with role '${role}'. Redirecting...`);
-
+            console.log(`[PendingApproval] Approved as '${role}'. Redirecting...`);
             let path = '/student';
             if (role === 'teacher') path = '/teacher';
             else if (role === 'institution') path = '/institution';
             else if (role === 'admin') path = '/admin';
             else if (role === 'parent') path = '/parent';
-
             navigate(path, { replace: true });
         }
     }, [userData, navigate]);
 
-    // Auto-check on mount
-    useEffect(() => {
-        if (!userLoading) {
-            checkStatus();
-        }
-    }, [userLoading, user]);
-
+    // NOTE: checkStatus is now triggered ONLY by the button click.
+    // Removed the auto-run on mount — it was racing with UserContext's onSnapshot,
+    // causing flickering between onboarding and pending-approval.
     const checkStatus = async () => {
         if (!user) {
             if (!userLoading) navigate('/');
@@ -42,47 +44,35 @@ export default function PendingApproval() {
         }
 
         setLoading(true);
-        setStatusMsg('Checking logic...');
-        // user is already available from context scope, but for function scope we can use 'user' from closure or context
-
-
-
+        setStatusMsg('Checking status...');
 
         try {
-            console.log("Checking status for:", user.uid);
-
-            // 1. Check User Profile directly first
+            // 1. Read the user doc directly from Firestore
             let role = 'student';
-            let userDoc = await getDoc(doc(db, "users", user.uid));
+            let userDoc = await getDoc(doc(db, 'users', user.uid));
             if (!userDoc.exists()) {
-                userDoc = await getDoc(doc(db, "teachers", user.uid));
-                role = 'teacher';
+                userDoc = await getDoc(doc(db, 'teachers', user.uid));
+                if (userDoc.exists()) role = 'teacher';
             }
             if (!userDoc.exists()) {
-                userDoc = await getDoc(doc(db, "institutions", user.uid));
-                role = 'institution';
+                userDoc = await getDoc(doc(db, 'institutions', user.uid));
+                if (userDoc.exists()) role = 'institution';
             }
 
-            if (userDoc.exists()) {
-                const data = userDoc.data();
-                if (data.approved === true) {
-                    console.log("User is already approved! Status update complete.");
-                    setStatusMsg('Approved! Updating system...');
-                    // The useEffect above will handle redirection cleanly once context updates
-                    return;
-                }
+            if (userDoc.exists() && userDoc.data().approved === true) {
+                setStatusMsg('Approved! The page will redirect shortly...');
+                // The live snapshot in UserContext will detect this and fire the redirect.
+                return;
             }
 
-            // 2. SELF-REPAIR: Check 'admissions' collection
-            // Did the institution approve them in 'admissions' but the 'user' doc update failed?
-            const q = query(collection(db, "admissions"), where("userId", "==", user.uid));
-            const querySnapshot = await getDocs(q);
+            // 2. SELF-REPAIR: Check if allotment was done but user doc wasn't updated
+            const q = query(collection(db, 'admissions'), where('userId', '==', user.uid));
+            const snap = await getDocs(q);
 
             let isAllotted = false;
             let admissionData = null;
-
-            querySnapshot.forEach((doc) => {
-                const data = doc.data();
+            snap.forEach((docSnap) => {
+                const data = docSnap.data();
                 if (data.status === 'allotted' || data.status === 'approved') {
                     isAllotted = true;
                     admissionData = data;
@@ -90,40 +80,30 @@ export default function PendingApproval() {
             });
 
             if (isAllotted && admissionData) {
-                console.log("Found ALLOTTED Admission record! Repairing user profile...");
-                setStatusMsg('Admission found! Finalizing setup...');
-
-                // FORCE UPDATE user profile
-                const collectionName = role === 'teacher' ? 'teachers' : 'users';
-                await setDoc(doc(db, collectionName, user.uid), {
+                setStatusMsg('Admission found! Finalizing...');
+                const colName = role === 'teacher' ? 'teachers' : 'users';
+                await setDoc(doc(db, colName, user.uid), {
                     approved: true,
                     assignedClass: admissionData.assignedClass || '',
                     assignedSection: admissionData.assignedSection || '',
-                    // Ensure class/section are set for students
                     class: admissionData.assignedClass || '',
                     section: admissionData.assignedSection || ''
                 }, { merge: true });
-
-                alert("✅ Approval Confirmed! You are now being redirected.");
-                window.location.reload(); // Reload to refresh context
+                alert('✅ Approval Confirmed! Redirecting...');
+                window.location.reload();
             } else {
-                console.log("Still waiting. Admission status:", isAllotted ? "Allotted" : "Pending/Waiting");
                 setStatusMsg('Still waiting for institution approval.');
             }
-
         } catch (e) {
-            console.error("Error checking status:", e);
-            setStatusMsg('Error checking status. Please try again.');
+            console.error('Error checking status:', e);
+            setStatusMsg('Error. Please try again.');
         } finally {
             setLoading(false);
         }
     };
 
     const handleLogout = () => {
-        const auth = getAuth();
-        auth.signOut().then(() => {
-            navigate('/');
-        });
+        getAuth().signOut().then(() => navigate('/'));
     };
 
     return (
@@ -143,13 +123,11 @@ export default function PendingApproval() {
                     <button className="btn" onClick={checkStatus} disabled={loading} style={{ width: '200px' }}>
                         {loading ? 'Checking...' : 'Check Status ⟳'}
                     </button>
-
                     <button className="btn" onClick={() => navigate('/details')} style={{ backgroundColor: '#6c5ce7', width: '200px' }}>
                         ✏️ Edit Details
                     </button>
                 </div>
 
-                {/* Debug Info */}
                 <div style={{ marginTop: '30px', fontSize: '12px', color: '#aaa' }}>
                     UID: {getAuth().currentUser?.uid || 'Not Logged In'}
                 </div>
