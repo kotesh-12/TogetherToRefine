@@ -319,17 +319,63 @@ export default function Details() {
                 return;
             }
 
-            // --- CASE 2: MAJOR UPDATE (Re-Admission Required) ---
-            console.log("⚠️ Major Update Detected. Requesting new approval.");
+            // --- CASE 2: MAJOR UPDATE (Approval Required) ---
+            console.log("⚠️ Major Update Detected.");
 
             if (role === 'student' || role === 'teacher') {
                 const instRef = doc(db, "institutions", formData.institutionId);
                 const instSnap = await getDoc(instRef);
                 const instName = instSnap.exists() ? (instSnap.data().schoolName || instSnap.data().name) : "Unknown Institution";
 
+                // ── SMART ADMISSION BYPASS ────────────────────────────────────────────
+                // If the account was created by the institution (isInstitutionCreated),
+                // the institution already allotted them. Skip pending-approval entirely.
+                // Flow: Login → Details → Onboarding → Dashboard ✅
+                const isSmartAdmission = initialData?.isInstitutionCreated === true || formData?.isInstitutionCreated === true;
+
+                if (isSmartAdmission) {
+                    console.log("✅ Smart Admission: bypassing pending-approval, setting approved:true");
+                    await setDoc(doc(db, collectionName, userId), {
+                        ...formData,
+                        role: role,
+                        name: newDisplayName,
+                        pid: finalPid,
+                        profileCompleted: true,
+                        institutionName: instName,
+                        approved: true, // Institution created = already approved
+                        updatedAt: new Date()
+                    }, { merge: true });
+
+                    // Update the pre-existing admission record to 'allotted' (created by server.js)
+                    try {
+                        const qAdm = query(
+                            collection(db, "admissions"),
+                            where("userId", "==", userId),
+                            where("status", "==", "waiting")
+                        );
+                        const admSnap = await getDocs(qAdm);
+                        admSnap.forEach(async (admDoc) => {
+                            await updateDoc(admDoc.ref, { status: 'allotted', allottedAt: new Date() });
+                        });
+                    } catch (e) { /* non-critical */ }
+
+                    // Update sessionStorage cache with approved:true
+                    try {
+                        const existingCache = sessionStorage.getItem('user_profile_cache');
+                        if (existingCache) {
+                            const parsed = JSON.parse(existingCache);
+                            sessionStorage.setItem('user_profile_cache', JSON.stringify({ ...parsed, approved: true, profileCompleted: true }));
+                        }
+                    } catch (e) { /* ignore */ }
+
+                    setUserData(prev => ({ ...prev, approved: true, profileCompleted: true }));
+                    navigate('/onboarding', { replace: true });
+                    return;
+                }
+                // ─────────────────────────────────────────────────────────────────────
+
+                // NORMAL flow: self-created student/teacher needs institution approval
                 // 1. ATOMIC Write: profileCompleted + approved:false in ONE call
-                // Splitting this into two writes causes a Firestore snapshot race condition
-                // that makes the router toggle between /onboarding and /pending-approval.
                 await setDoc(doc(db, collectionName, userId), {
                     ...formData,
                     role: role,
@@ -337,7 +383,7 @@ export default function Details() {
                     pid: finalPid,
                     profileCompleted: true,
                     institutionName: instName,
-                    approved: false, // Must be in same write as profileCompleted
+                    approved: false,
                     updatedAt: new Date()
                 }, { merge: true });
 
@@ -369,9 +415,7 @@ export default function Details() {
                     console.error("Failed to manage admissions:", admissionErr);
                 }
 
-                // 3. Lock UI and redirect
-                // Update cache with approved:false — do NOT clear all sessionStorage
-                // (clearing removes user_collection_cache, causing detectFull() race on redirect)
+                // 3. Update cache with approved:false and redirect
                 try {
                     const existingCache = sessionStorage.getItem('user_profile_cache');
                     if (existingCache) {
@@ -394,7 +438,6 @@ export default function Details() {
                     updatedAt: new Date()
                 }, { merge: true });
 
-                // Same targeted cache update
                 try {
                     const existingCache = sessionStorage.getItem('user_profile_cache');
                     if (existingCache) {
