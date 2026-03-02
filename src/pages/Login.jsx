@@ -149,7 +149,7 @@ export default function Login() {
                     return;
                 }
 
-                if (userData.approved === false) {
+                if (userData.approved !== true) {
                     navigate('/pending-approval', { replace: true });
                 } else if (!userData.onboardingCompleted) {
                     navigate('/onboarding', { replace: true });
@@ -160,7 +160,7 @@ export default function Login() {
                         case 'institution': navigate('/institution', { replace: true }); break;
                         case 'admin': navigate('/admin', { replace: true }); break;
                         case 'parent': navigate('/parent', { replace: true }); break;
-                        default: navigate('/admission', { replace: true });
+                        default: navigate('/details', { replace: true });
                     }
                 }
             } else {

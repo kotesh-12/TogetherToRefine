@@ -12,13 +12,18 @@ export default function PendingApproval() {
 
     const { user, loading: userLoading, userData } = useUser();
 
-    // Auto-redirect if context says approved or institution-created
+    // Auto-redirect if context says approved
     useEffect(() => {
         if (userData?.approved === true) {
+            const role = (userData.role || '').toLowerCase().trim();
+            console.log(`[PendingApproval] User approved with role '${role}'. Redirecting...`);
+
             let path = '/student';
-            if (userData.role === 'teacher') path = '/teacher';
-            if (userData.role === 'admin') path = '/admin';
-            if (userData.role === 'institution') path = '/institution';
+            if (role === 'teacher') path = '/teacher';
+            else if (role === 'institution') path = '/institution';
+            else if (role === 'admin') path = '/admin';
+            else if (role === 'parent') path = '/parent';
+
             navigate(path, { replace: true });
         }
     }, [userData, navigate]);

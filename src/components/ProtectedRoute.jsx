@@ -40,39 +40,35 @@ const ProtectedRoute = ({ allowedRoles }) => {
         return <Navigate to="/details" replace />;
     }
 
-    // Role Check (Case Insensitive)
-    // Role Check (Case Insensitive & Trimmed)
-    const userRole = (userData.role || '').toLowerCase().trim();
-    if (!userRole) {
-        console.warn("ProtectedRoute: No role found in userData", userData);
-        return <Navigate to="/details" replace />;
+    // Role normalization
+    const normalizedRole = (userData.role || '').toLowerCase().trim();
+
+    // 1. APPROVAL GATE (Top Priority)
+    // If not approved, must go to pending-approval (unless it's an admin)
+    const isApproved = userData.approved === true;
+    const isSpecialRole = normalizedRole === 'admin'; // Add other bypass roles if needed
+
+    if (!isApproved && !isSpecialRole) {
+        if (location.pathname !== '/pending-approval') {
+            console.log(`[Gatekeeper] Denied access to ${location.pathname} for unapproved ${normalizedRole}. -> /pending-approval`);
+            return <Navigate to="/pending-approval" replace />;
+        }
     }
 
-    const isAuthorized = allowedRoles.some(r => r.toLowerCase().trim() === userRole);
+    // 2. ONBOARDING GATE
+    // Only if approved and role is valid, check onboarding completion.
+    if (isApproved && !userData.onboardingCompleted) {
+        if (location.pathname !== '/onboarding') {
+            console.log(`[Gatekeeper] ${normalizedRole} approved but not onboarded. -> /onboarding`);
+            return <Navigate to="/onboarding" replace />;
+        }
+    }
 
+    // 3. ROLE AUTHORIZATION
+    const isAuthorized = allowedRoles.some(r => r.toLowerCase().trim() === normalizedRole);
     if (allowedRoles && !isAuthorized) {
-        // Unauthorized. 
-        console.warn(`Access Denied: User role '${userRole}' is not authorized. Allowed: [${allowedRoles.join(', ')}]`);
-        console.log("Debug UserData:", userData);
+        console.warn(`[Gatekeeper] Access Denied: '${normalizedRole}' not in allowed: [${allowedRoles.join(', ')}]`);
         return <Navigate to="/access-denied" replace />;
-    }
-
-    // APPROVAL CHECK (Bug Fix)
-    // If they are allowed by role, but NOT approved yet, send to pending.
-    // SECURE FIX: Check explicitly for !== true to catch undefined/null cases
-    // Institutional accounts are pre-approved.
-    if ((userRole === 'student' || userRole === 'teacher') &&
-        userData.approved !== true) {
-        console.log(`ProtectedRoute: User '${userRole}' is not approved. Redirecting to /pending-approval.`);
-        return <Navigate to="/pending-approval" replace />;
-    }
-
-    // ONBOARDING CHECK (Verified via Firestore/Context)
-    // If user is logged in but hasn't done setup, send to Onboarding
-    // ONLY check if they are ALREADY approved.
-    if (userData.approved === true && !userData.onboardingCompleted && location.pathname !== '/onboarding') {
-        console.log(`ProtectedRoute: User '${userRole}' has not completed onboarding. Redirecting to /onboarding.`);
-        return <Navigate to="/onboarding" replace />;
     }
 
     return <Outlet />;

@@ -114,7 +114,7 @@ export function UserProvider({ children }) {
                         const teachSnap = results[1].status === 'fulfilled' ? results[1].value : { exists: () => false };
                         const userSnap = results[2].status === 'fulfilled' ? results[2].value : { exists: () => false };
 
-                        const isAdminDoc = userSnap.exists() && userSnap.data().role === 'admin';
+                        const isAdminDoc = userSnap.exists() && String(userSnap.data().role).toLowerCase() === 'admin';
                         const isAdminEmail = currentUser.email === 'koteshbitra789@gmail.com' || currentUser.email === 'admin@ttr.com';
 
                         if (isAdminEmail || isAdminDoc) {
@@ -132,34 +132,40 @@ export function UserProvider({ children }) {
                                 });
                             }
                         } else if (instSnap.exists()) {
-                            const data = { ...instSnap.data(), uid: currentUser.uid, role: (instSnap.data().role || 'institution').toLowerCase() };
+                            const raw = instSnap.data();
+                            const data = { ...raw, uid: currentUser.uid, role: String(raw.role || 'institution').toLowerCase().trim(), approved: raw.approved ?? false };
                             updateUserData(data);
                             setLoading(false);
                             sessionStorage.setItem('user_collection_cache', 'institutions');
 
                             unsubscribeSnapshot = onSnapshot(instRef, (d) => {
                                 if (!d.exists()) { detectFull(); return; }
-                                updateUserData({ ...d.data(), uid: currentUser.uid, role: (d.data().role || 'institution').toLowerCase() });
+                                const dRaw = d.data();
+                                updateUserData({ ...dRaw, uid: currentUser.uid, role: String(dRaw.role || 'institution').toLowerCase().trim(), approved: dRaw.approved ?? false });
                             });
                         } else if (teachSnap.exists()) {
-                            const data = { ...teachSnap.data(), uid: currentUser.uid, role: (teachSnap.data().role || 'teacher').toLowerCase() };
+                            const raw = teachSnap.data();
+                            const data = { ...raw, uid: currentUser.uid, role: String(raw.role || 'teacher').toLowerCase().trim(), approved: raw.approved ?? false };
                             updateUserData(data);
                             setLoading(false);
                             sessionStorage.setItem('user_collection_cache', 'teachers');
 
                             unsubscribeSnapshot = onSnapshot(teachRef, (d) => {
                                 if (!d.exists()) { detectFull(); return; }
-                                updateUserData({ ...d.data(), uid: currentUser.uid, role: (d.data().role || 'teacher').toLowerCase() });
+                                const dRaw = d.data();
+                                updateUserData({ ...dRaw, uid: currentUser.uid, role: String(dRaw.role || 'teacher').toLowerCase().trim(), approved: dRaw.approved ?? false });
                             });
                         } else if (userSnap.exists()) {
-                            const data = { ...userSnap.data(), uid: currentUser.uid, role: (userSnap.data().role || 'student').toLowerCase() };
+                            const raw = userSnap.data();
+                            const data = { ...raw, uid: currentUser.uid, role: String(raw.role || 'student').toLowerCase().trim(), approved: raw.approved ?? false };
                             updateUserData(data);
                             setLoading(false);
                             sessionStorage.setItem('user_collection_cache', 'users');
 
                             unsubscribeSnapshot = onSnapshot(userRef, (d) => {
                                 if (!d.exists()) { detectFull(); return; }
-                                updateUserData({ ...d.data(), uid: currentUser.uid, role: (d.data().role || 'student').toLowerCase() });
+                                const dRaw = d.data();
+                                updateUserData({ ...dRaw, uid: currentUser.uid, role: String(dRaw.role || 'student').toLowerCase().trim(), approved: dRaw.approved ?? false });
                             });
                         } else {
                             console.log("No profile found.");
