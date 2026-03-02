@@ -76,10 +76,16 @@ export default async function handler(req, res) {
             return res.status(401).json({ error: 'Auth Error: ' + e.message });
         }
 
-        let requesterRole = user.role;
+        // Check if the requester is an institution or admin
+        // Firebase ID tokens don't carry custom role claims by default,
+        // so we look up the institutions collection to verify identity.
+        let requesterRole = user.role; // May be set if custom claims are used
         if (!requesterRole) {
             const institutionDoc = await admin.firestore().collection('institutions').doc(user.uid).get();
-            requesterRole = institutionDoc.data()?.role;
+            if (institutionDoc.exists) {
+                // If the document exists, they ARE an institution regardless of role field presence
+                requesterRole = institutionDoc.data()?.role || 'institution';
+            }
         }
 
         if (requesterRole !== 'institution' && requesterRole !== 'admin') {
@@ -110,7 +116,16 @@ export default async function handler(req, res) {
 
                 // B. Create Standard Profile in Firestore
                 const pid = `ST-${Math.floor(100000 + Math.random() * 900000)}`;
-                await admin.firestore().collection('users').doc(userRecord.uid).set({
+
+                // Parse class/section: vision-admission sends both separate and combined
+                // Fall back to splitting the combined "10-A" string if separate fields missing
+                const combinedClass = student.class || 'N/A';
+                const classOnly = student.classOnly || (combinedClass.includes('-') ? combinedClass.split('-')[0] : combinedClass);
+                const sectionOnly = student.section || (combinedClass.includes('-') ? combinedClass.split('-')[1] : 'A');
+                const studentRole = student.role || 'student';
+                const collectionName = studentRole === 'teacher' ? 'teachers' : 'users';
+
+                await admin.firestore().collection(collectionName).doc(userRecord.uid).set({
                     profileCompleted: false,
                     onboardingCompleted: false,
                     name: student.name,
@@ -120,39 +135,37 @@ export default async function handler(req, res) {
                     rollNumber: student.rollNumber || null,
                     pid: pid,
                     institutionId: user.uid,
-                    class: student.class || 'N/A',
-                    section: student.section || 'N/A',
-                    approved: student.isInstitutionCreated ? true : false,
-                    isInstitutionCreated: student.isInstitutionCreated || false,
-                    role: 'student',
+                    class: classOnly,
+                    section: sectionOnly,
+                    approved: false, // Details page sets approved:true for isInstitutionCreated
+                    isInstitutionCreated: true,
+                    role: studentRole,
                     createdAt: admin.firestore.FieldValue.serverTimestamp()
                 });
 
-                // C. Create Admission Record & Allotment
-                if (student.isInstitutionCreated) {
-                    await admin.firestore().collection('admissions').add({
-                        name: student.name,
-                        role: student.role || 'student',
-                        userId: userRecord.uid,
-                        institutionId: user.uid,
-                        status: 'approved',
-                        assignedClass: student.class || 'N/A',
-                        assignedSection: student.section || 'N/A',
-                        rollNumber: student.rollNumber || null,
-                        joinedAt: admin.firestore.FieldValue.serverTimestamp()
-                    });
+                // C. Create Admission Record & Allotment for all institution-created accounts
+                await admin.firestore().collection('admissions').add({
+                    name: student.name,
+                    role: studentRole,
+                    userId: userRecord.uid,
+                    institutionId: user.uid,
+                    status: 'waiting', // Details.jsx will update to 'allotted' on submit
+                    assignedClass: classOnly,
+                    assignedSection: sectionOnly,
+                    rollNumber: student.rollNumber || null,
+                    joinedAt: admin.firestore.FieldValue.serverTimestamp()
+                });
 
-                    await admin.firestore().collection('student_allotments').add({
-                        name: student.name,
-                        classAssigned: student.class || 'N/A',
-                        section: student.section || 'A',
-                        age: 'N/A',
-                        rollNumber: student.rollNumber || null,
-                        createdBy: user.uid,
-                        institutionId: user.uid,
-                        userId: userRecord.uid
-                    });
-                }
+                await admin.firestore().collection('student_allotments').add({
+                    name: student.name,
+                    classAssigned: classOnly,
+                    section: sectionOnly,
+                    age: 'N/A',
+                    rollNumber: student.rollNumber || null,
+                    createdBy: user.uid,
+                    institutionId: user.uid,
+                    userId: userRecord.uid
+                });
 
                 results.success.push({
                     name: student.name,

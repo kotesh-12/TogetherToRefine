@@ -89,12 +89,17 @@ Example: ["Robert Thompson", "Sarah Jenkins"]`;
 
             return {
                 name: person.originalName,
+                firstName: person.firstName,
+                lastName: person.lastName,
                 email: email, // Acts as Username for sign in
                 password: loginCredentials,
-                role: role || 'student', // Admin's pre-selection
-                class: role === 'student' ? `${dataClass}-${dataSection}` : 'N/A', // e.g. "9-C"
+                role: role || 'student',
+                // Provide BOTH combined (for display) and separate (for Firestore queries)
+                class: role === 'student' ? `${dataClass}-${dataSection}` : 'N/A',
+                classOnly: role === 'student' ? dataClass : 'N/A',
+                section: role === 'student' ? dataSection : 'N/A',
                 rollNumber: rollNumber,
-                isInstitutionCreated: true // Flag to skip manual approval for institution-created accounts
+                isInstitutionCreated: true
             };
         });
 
