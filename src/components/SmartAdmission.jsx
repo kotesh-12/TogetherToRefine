@@ -162,22 +162,21 @@ export default function SmartAdmission({ onClose, onScanComplete }) {
                         </select>
                     </div>
 
-                    {scanRole === 'student' && (
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                            <div style={{ flex: 1 }}>
-                                <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#444' }}>Allot to Class:</label>
-                                <select className="input-field" value={scanClass} onChange={e => setScanClass(e.target.value)} style={{ margin: '5px 0 0 0', width: '100%' }}>
-                                    {['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
-                            </div>
-                            <div style={{ flex: 1 }}>
-                                <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#444' }}>Allot to Section:</label>
-                                <select className="input-field" value={scanSection} onChange={e => setScanSection(e.target.value)} style={{ margin: '5px 0 0 0', width: '100%' }}>
-                                    {['A', 'B', 'C', 'D'].map(s => <option key={s} value={s}>{s}</option>)}
-                                </select>
-                            </div>
+                    {/* Class + Section — shown for students; section also for teachers */}
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <div style={{ flex: 1 }}>
+                            <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#444' }}>Allot to Class:</label>
+                            <select className="input-field" value={scanClass} onChange={e => setScanClass(e.target.value)} style={{ margin: '5px 0 0 0', width: '100%' }}>
+                                {['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
                         </div>
-                    )}
+                        <div style={{ flex: 1 }}>
+                            <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#444' }}>Allot to Section:</label>
+                            <select className="input-field" value={scanSection} onChange={e => setScanSection(e.target.value)} style={{ margin: '5px 0 0 0', width: '100%' }}>
+                                {['A', 'B', 'C', 'D', 'E', 'F'].map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                        </div>
+                    </div>
 
                     <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '15px' }}>
                         <button onClick={onClose} style={{ padding: '10px 20px', border: '1px solid #ccc', background: 'transparent', borderRadius: '8px', cursor: 'pointer' }}>Cancel</button>
