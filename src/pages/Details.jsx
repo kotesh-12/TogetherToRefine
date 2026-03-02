@@ -334,19 +334,22 @@ export default function Details() {
                 const isSmartAdmission = initialData?.isInstitutionCreated === true || formData?.isInstitutionCreated === true;
 
                 if (isSmartAdmission) {
-                    console.log("✅ Smart Admission: bypassing pending-approval, setting approved:true");
+                    console.log("✅ Smart Admission: bypassing pending-approval, going straight to dashboard");
+                    // ATOMIC write: approved + profileCompleted + onboardingCompleted all in one
+                    // This prevents ProtectedRoute from blocking with stale context
                     await setDoc(doc(db, collectionName, userId), {
                         ...formData,
                         role: role,
                         name: newDisplayName,
                         pid: finalPid,
                         profileCompleted: true,
+                        onboardingCompleted: true, // Skip onboarding for Smart Admission
                         institutionName: instName,
                         approved: true, // Institution created = already approved
                         updatedAt: new Date()
                     }, { merge: true });
 
-                    // Update the pre-existing admission record to 'allotted' (created by server.js)
+                    // Update the pre-existing admission record to 'allotted'
                     try {
                         const qAdm = query(
                             collection(db, "admissions"),
@@ -354,22 +357,40 @@ export default function Details() {
                             where("status", "==", "waiting")
                         );
                         const admSnap = await getDocs(qAdm);
-                        admSnap.forEach(async (admDoc) => {
-                            await updateDoc(admDoc.ref, { status: 'allotted', allottedAt: new Date() });
+                        const updatePromises = [];
+                        admSnap.forEach((admDoc) => {
+                            updatePromises.push(updateDoc(admDoc.ref, { status: 'allotted', allottedAt: new Date() }));
                         });
+                        await Promise.all(updatePromises);
                     } catch (e) { /* non-critical */ }
 
-                    // Update sessionStorage cache with approved:true
+                    // Update sessionStorage cache
                     try {
                         const existingCache = sessionStorage.getItem('user_profile_cache');
                         if (existingCache) {
                             const parsed = JSON.parse(existingCache);
-                            sessionStorage.setItem('user_profile_cache', JSON.stringify({ ...parsed, approved: true, profileCompleted: true }));
+                            sessionStorage.setItem('user_profile_cache', JSON.stringify({
+                                ...parsed,
+                                approved: true,
+                                profileCompleted: true,
+                                onboardingCompleted: true
+                            }));
                         }
                     } catch (e) { /* ignore */ }
 
-                    setUserData(prev => ({ ...prev, approved: true, profileCompleted: true }));
-                    navigate('/onboarding', { replace: true });
+                    // Update context AND navigate to dashboard directly
+                    setUserData(prev => ({
+                        ...prev,
+                        approved: true,
+                        profileCompleted: true,
+                        onboardingCompleted: true
+                    }));
+
+                    // Go straight to dashboard — no intermediate pages
+                    const dashboardPath = role === 'student' ? '/student'
+                        : role === 'teacher' ? '/teacher'
+                            : '/student';
+                    navigate(dashboardPath, { replace: true });
                     return;
                 }
                 // ─────────────────────────────────────────────────────────────────────

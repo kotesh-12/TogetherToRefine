@@ -44,11 +44,14 @@ const ProtectedRoute = ({ allowedRoles }) => {
     const normalizedRole = (userData.role || '').toLowerCase().trim();
 
     // 1. APPROVAL GATE (Top Priority)
-    // If not approved, must go to pending-approval (unless it's an admin)
+    // If not approved, must go to pending-approval (unless special case)
     const isApproved = userData.approved === true;
-    const isSpecialRole = normalizedRole === 'admin'; // Add other bypass roles if needed
+    const isSpecialRole = normalizedRole === 'admin';
+    // Smart Admission bypass: institution-created users who completed profile are allowed through
+    // even if the context hasn't updated with approved:true yet (race condition)
+    const isSmartAdmissionBypass = userData.isInstitutionCreated === true && userData.profileCompleted === true;
 
-    if (!isApproved && !isSpecialRole) {
+    if (!isApproved && !isSpecialRole && !isSmartAdmissionBypass) {
         if (location.pathname !== '/pending-approval') {
             console.log(`[Gatekeeper] Denied access to ${location.pathname} for unapproved ${normalizedRole}. -> /pending-approval`);
             return <Navigate to="/pending-approval" replace />;
