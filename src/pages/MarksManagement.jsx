@@ -44,7 +44,7 @@ export default function MarksManagement() {
         if (parsed.section) setSelectedSection(String(parsed.section).toUpperCase());
 
         // Match exam type to available options
-        const validExams = ["Assignment 1", "Assignment 2", "Mid-Term 1", "Mid-Term 2", "Final Exam"];
+        const validExams = ["Assignment 1", "Assignment 2", "Mid-Term 1", "Mid-Term 2", "Final Exam", "Unit Test 1", "Unit Test 2"];
         const matchedExam = validExams.find(ve => parsed.examType?.includes(ve)) || parsed.examType;
         if (matchedExam) setExamType(matchedExam);
 
@@ -359,6 +359,8 @@ export default function MarksManagement() {
                                     <option value="">Select</option>
                                     <option value="Assignment 1">Assignment 1</option>
                                     <option value="Assignment 2">Assignment 2</option>
+                                    <option value="Unit Test 1">Unit Test 1</option>
+                                    <option value="Unit Test 2">Unit Test 2</option>
                                     <option value="Mid-Term 1">Mid-Term 1</option>
                                     <option value="Mid-Term 2">Mid-Term 2</option>
                                     <option value="Final Exam">Final Exam</option>
@@ -437,6 +439,8 @@ export default function MarksManagement() {
                                 <option value="">All Exam Types</option>
                                 <option value="Assignment 1">Assignment 1</option>
                                 <option value="Assignment 2">Assignment 2</option>
+                                <option value="Unit Test 1">Unit Test 1</option>
+                                <option value="Unit Test 2">Unit Test 2</option>
                                 <option value="Mid-Term 1">Mid-Term 1</option>
                                 <option value="Mid-Term 2">Mid-Term 2</option>
                                 <option value="Final Exam">Final Exam</option>

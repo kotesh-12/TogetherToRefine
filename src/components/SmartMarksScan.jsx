@@ -129,6 +129,8 @@ export default function SmartMarksScan({ onClose, onScanComplete }) {
                         <select className="input-field" value={examType} onChange={e => setExamType(e.target.value)} style={{ margin: '5px 0 0', width: '100%' }}>
                             <option value="Assignment 1">Assignment 1</option>
                             <option value="Assignment 2">Assignment 2</option>
+                            <option value="Unit Test 1">Unit Test 1</option>
+                            <option value="Unit Test 2">Unit Test 2</option>
                             <option value="Mid-Term 1">Mid-Term 1</option>
                             <option value="Mid-Term 2">Mid-Term 2</option>
                             <option value="Final Exam">Final Exam</option>
