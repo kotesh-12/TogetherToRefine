@@ -150,23 +150,34 @@ export default function MarksManagement() {
     const fetchAllMarks = async () => {
         setLoading(true);
         try {
-            // Fetch ALL marks and filter client-side for maximum robustness
-            // This bypasses Firestore index requirements and type mismatches (string vs number)
-            const q = query(collection(db, "marks"));
+            let q;
+
+            // SECURITY: Scope marks query to the user's own institution
+            if (userData?.role === 'student') {
+                // Students only see their own marks
+                q = query(
+                    collection(db, "marks"),
+                    where("studentId", "==", userData.uid)
+                );
+            } else {
+                // Teachers & Institutions see marks from their own institution only
+                const instId = userData?.role === 'institution' ? userData?.uid : userData?.institutionId;
+                if (instId) {
+                    q = query(
+                        collection(db, "marks"),
+                        where("institutionId", "==", instId)
+                    );
+                } else {
+                    // Fallback: teacher without institutionId — show only their own submitted marks
+                    q = query(
+                        collection(db, "marks"),
+                        where("teacherId", "==", userData?.uid)
+                    );
+                }
+            }
 
             const snap = await getDocs(q);
             let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-            // ENFORCE STUDENT PRIVACY: If role is student, only show their own marks
-            if (userData?.role === 'student') {
-                const myPid = (userData.pid || userData.rollNo || userData.rollNumber || '').toString().trim();
-                const myUid = userData.uid;
-
-                list = list.filter(m =>
-                    (m.studentId === myUid) ||
-                    (myPid !== '' && m.rollNo?.toString().trim() === myPid)
-                );
-            }
 
             // Filter logic
             if (filterClass) {

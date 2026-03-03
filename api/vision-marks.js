@@ -33,7 +33,7 @@ Your job is to read carefully through the uploaded teacher's grading sheet or st
 CRITICAL INSTRUCTIONS:
 1. Identify the CLASS (e.g. 1 to 12) if visible. (Expected: ${expectedClass || 'Any'})
 2. Identify the SECTION (e.g. A, B, C) if visible. (Expected: ${expectedSection || 'Any'})
-3. Identify the EXAM TYPE from: [Assignment 1, Assignment 2, Mid-Term 1, Mid-Term 2, Final Exam]. (Expected: ${expectedExamType || 'Any'})
+3. Identify the EXAM TYPE from: [Assignment 1, Assignment 2, Unit Test 1, Unit Test 2, Mid-Term 1, Mid-Term 2, Final Exam]. (Expected: ${expectedExamType || 'Any'})
 4. For every student visible, extract their FULL NAME and their MARKS. If absent, marks = 0.
 5. If max marks is mentioned, adjust to standard out of 100 or simply capture what is written. For simplicity, just return the marks number.
 

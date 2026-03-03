@@ -75,13 +75,34 @@ export default function Student() {
         if (userData) {
             const fetchResults = async () => {
                 try {
-                    const snap = await getDocs(collection(db, "results"));
-                    const list = snap.docs.map(d => d.data());
-                    const myName = userData.name ? userData.name.toLowerCase() : '';
-                    if (myName) {
-                        const myRes = list.filter(r => r.studentName && r.studentName.toLowerCase().includes(myName));
-                        setExamResults(myRes);
+                    // First try to fetch results by student ID (fast & scoped)
+                    let myRes = [];
+                    const idQuery = query(
+                        collection(db, "results"),
+                        where("studentId", "==", userData.uid)
+                    );
+                    const idSnap = await getDocs(idQuery);
+                    myRes = idSnap.docs.map(d => d.data());
+
+                    // Fallback: if no results by ID, try name matching within institution
+                    if (myRes.length === 0 && userData.name) {
+                        const instId = userData.institutionId || userData.createdBy;
+                        let fallbackQuery;
+                        if (instId) {
+                            fallbackQuery = query(
+                                collection(db, "results"),
+                                where("institutionId", "==", instId)
+                            );
+                        } else {
+                            fallbackQuery = query(collection(db, "results"));
+                        }
+                        const snap = await getDocs(fallbackQuery);
+                        const myName = userData.name.toLowerCase();
+                        myRes = snap.docs.map(d => d.data())
+                            .filter(r => r.studentName && r.studentName.toLowerCase().includes(myName));
                     }
+
+                    setExamResults(myRes);
                 } catch (e) { console.error("Error loading results", e); }
             };
             fetchResults();

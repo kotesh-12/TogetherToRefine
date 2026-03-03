@@ -32,17 +32,32 @@ export default function PerformanceAnalytics() {
 
     const fetchStudentsList = async () => {
         try {
-            const q = query(
+            const instId = userData.institutionId || userData.uid;
+            // Query both fields to handle inconsistent data
+            const q1 = query(
                 collection(db, "student_allotments"),
-                where("createdBy", "==", userData.institutionId || userData.uid)
+                where("createdBy", "==", instId)
             );
-            const snap = await getDocs(q);
-            const list = snap.docs.map(d => ({
-                id: d.data().studentId || d.id,
-                name: d.data().studentName || d.data().name,
-                class: d.data().classAssigned,
-                section: d.data().section
-            }));
+            const q2 = query(
+                collection(db, "student_allotments"),
+                where("institutionId", "==", instId)
+            );
+            const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+
+            // Merge and deduplicate by document ID
+            const seen = new Set();
+            const list = [];
+            [...snap1.docs, ...snap2.docs].forEach(d => {
+                if (!seen.has(d.id)) {
+                    seen.add(d.id);
+                    list.push({
+                        id: d.data().studentId || d.id,
+                        name: d.data().studentName || d.data().name,
+                        class: d.data().classAssigned,
+                        section: d.data().section
+                    });
+                }
+            });
             setStudentsList(list);
             setLoading(false);
         } catch (e) {

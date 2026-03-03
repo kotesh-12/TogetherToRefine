@@ -124,7 +124,7 @@ function App() {
                       </Route>
 
                       {/* SHARED TEACHER & STUDENT */}
-                      <Route element={<ProtectedRoute allowedRoles={['teacher', 'student']} />}>
+                      <Route element={<ProtectedRoute allowedRoles={['teacher', 'student', 'institution']} />}>
                         <Route path="/marks" element={<MarksManagement />} />
                         <Route path="/homework" element={<HomeworkSystem />} />
                       </Route>

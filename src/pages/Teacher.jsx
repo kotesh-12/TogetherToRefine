@@ -21,6 +21,7 @@ export default function Teacher() {
     const [allotments, setAllotments] = useState([]);
     const [simpleMode, setSimpleMode] = useState(localStorage.getItem('teacher_simple_mode') === 'true');
     const [currentTask, setCurrentTask] = useState(null);
+    const [institutionModules, setInstitutionModules] = useState({});
 
     // Gurukul Path State
     const [showGurukul, setShowGurukul] = useState(false);
