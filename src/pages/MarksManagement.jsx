@@ -50,11 +50,22 @@ export default function MarksManagement() {
 
         // 2. Fetch Students for the detected class/section immediately to sync
         try {
-            const q = query(
-                collection(db, "student_allotments"),
-                where("classAssigned", "==", String(parsed.class)),
-                where("section", "==", String(parsed.section).toUpperCase())
-            );
+            const instId = userData?.role === 'institution' ? userData?.uid : userData?.institutionId;
+            let q;
+            if (instId) {
+                q = query(
+                    collection(db, "student_allotments"),
+                    where("classAssigned", "==", String(parsed.class)),
+                    where("section", "==", String(parsed.section).toUpperCase()),
+                    where("institutionId", "==", instId)
+                );
+            } else {
+                q = query(
+                    collection(db, "student_allotments"),
+                    where("classAssigned", "==", String(parsed.class)),
+                    where("section", "==", String(parsed.section).toUpperCase())
+                );
+            }
             const snap = await getDocs(q);
             const studentList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
@@ -107,11 +118,22 @@ export default function MarksManagement() {
 
     const fetchStudents = async () => {
         try {
-            const q = query(
-                collection(db, "student_allotments"),
-                where("classAssigned", "==", selectedClass),
-                where("section", "==", selectedSection)
-            );
+            const instId = userData?.role === 'institution' ? userData?.uid : userData?.institutionId;
+            let q;
+            if (instId) {
+                q = query(
+                    collection(db, "student_allotments"),
+                    where("classAssigned", "==", selectedClass),
+                    where("section", "==", selectedSection),
+                    where("institutionId", "==", instId)
+                );
+            } else {
+                q = query(
+                    collection(db, "student_allotments"),
+                    where("classAssigned", "==", selectedClass),
+                    where("section", "==", selectedSection)
+                );
+            }
             const snap = await getDocs(q);
             const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             setStudents(list);
