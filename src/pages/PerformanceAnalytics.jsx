@@ -19,6 +19,8 @@ export default function PerformanceAnalytics() {
     // For Teachers: Select student to view
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [studentsList, setStudentsList] = useState([]);
+    const [filterClass, setFilterClass] = useState('');
+    const [filterSection, setFilterSection] = useState('');
 
     useEffect(() => {
         if (userData?.role === 'student') {
@@ -255,31 +257,55 @@ export default function PerformanceAnalytics() {
 
                     <div className="card">
                         <h3>Select a Student</h3>
-                        <p style={{ color: '#636e72', marginBottom: '20px' }}>Choose a student to view their detailed performance report</p>
+                        <p style={{ color: '#636e72', marginBottom: '15px' }}>Filter by class and section, then choose a student</p>
 
-                        <div style={{ display: 'grid', gap: '10px' }}>
-                            {studentsList.map(student => (
-                                <div
-                                    key={student.id}
-                                    onClick={() => {
-                                        setSelectedStudent(student);
-                                        fetchStudentData(student.id);
-                                    }}
-                                    style={{
-                                        padding: '15px', border: '1px solid #eee', borderRadius: '8px',
-                                        cursor: 'pointer', display: 'flex', justifyContent: 'space-between',
-                                        alignItems: 'center', transition: 'all 0.2s'
-                                    }}
-                                    onMouseEnter={e => e.currentTarget.style.background = '#f8f9fa'}
-                                    onMouseLeave={e => e.currentTarget.style.background = 'white'}
-                                >
-                                    <div>
-                                        <div style={{ fontWeight: 'bold' }}>{student.name}</div>
-                                        <div style={{ fontSize: '12px', color: '#999' }}>Class {student.class} - {student.section}</div>
+                        <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', flexWrap: 'wrap' }}>
+                            <select className="input-field" value={filterClass} onChange={(e) => setFilterClass(e.target.value)} style={{ flex: 1, minWidth: '120px' }}>
+                                <option value="">All Classes</option>
+                                {[...new Set(studentsList.map(s => s.class))].sort().map(c => (
+                                    <option key={c} value={c}>Class {c}</option>
+                                ))}
+                            </select>
+                            <select className="input-field" value={filterSection} onChange={(e) => setFilterSection(e.target.value)} style={{ flex: 1, minWidth: '120px' }}>
+                                <option value="">All Sections</option>
+                                {[...new Set(studentsList.map(s => s.section))].sort().map(s => (
+                                    <option key={s} value={s}>Section {s}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div style={{ display: 'grid', gap: '10px', maxHeight: '500px', overflowY: 'auto' }}>
+                            {studentsList
+                                .filter(s => !filterClass || String(s.class) === String(filterClass))
+                                .filter(s => !filterSection || String(s.section).toUpperCase() === String(filterSection).toUpperCase())
+                                .map(student => (
+                                    <div
+                                        key={student.id}
+                                        onClick={() => {
+                                            setSelectedStudent(student);
+                                            fetchStudentData(student.id);
+                                        }}
+                                        style={{
+                                            padding: '15px', border: '1px solid #eee', borderRadius: '8px',
+                                            cursor: 'pointer', display: 'flex', justifyContent: 'space-between',
+                                            alignItems: 'center', transition: 'all 0.2s'
+                                        }}
+                                        onMouseEnter={e => e.currentTarget.style.background = '#f8f9fa'}
+                                        onMouseLeave={e => e.currentTarget.style.background = 'white'}
+                                    >
+                                        <div>
+                                            <div style={{ fontWeight: 'bold' }}>{student.name}</div>
+                                            <div style={{ fontSize: '12px', color: '#999' }}>Class {student.class} - {student.section}</div>
+                                        </div>
+                                        <div style={{ color: '#0984e3' }}>→</div>
                                     </div>
-                                    <div style={{ color: '#0984e3' }}>→</div>
-                                </div>
-                            ))}
+                                ))}
+                            {studentsList
+                                .filter(s => !filterClass || String(s.class) === String(filterClass))
+                                .filter(s => !filterSection || String(s.section).toUpperCase() === String(filterSection).toUpperCase())
+                                .length === 0 && (
+                                    <p style={{ textAlign: 'center', color: '#999', padding: '30px' }}>No students found for this filter.</p>
+                                )}
                         </div>
                     </div>
                 </div>

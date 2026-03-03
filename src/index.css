@@ -507,9 +507,40 @@ input::-webkit-caps-lock-indicator {
     position: fixed;
     bottom: 65px;
     /* Above BottomNav */
-    padding: 12px 0;
+    padding: 8px 0;
     background: var(--bg-body);
     box-shadow: 0 -10px 20px rgba(0, 0, 0, 0.03);
+    left: 0;
+    right: 0;
+    width: 100%;
+  }
+
+  .input-controls {
+    width: 92%;
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .chat-input {
+    font-size: 16px;
+    min-width: 0;
+  }
+
+  .send-button {
+    min-width: 40px;
+    min-height: 40px;
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+  }
+
+  .icon-button,
+  .voice-button {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    flex-shrink: 0;
+    font-size: 16px;
   }
 }
 
@@ -590,6 +621,14 @@ input::-webkit-caps-lock-indicator {
   cursor: not-allowed;
   opacity: 0.6;
   transform: none;
+}
+
+/* Block Google Chrome autofill / autocomplete suggestions */
+input[data-form-type="other"]::-webkit-contacts-auto-fill-button,
+input[data-form-type="other"]::-webkit-credentials-auto-fill-button {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 
 

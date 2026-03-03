@@ -58,6 +58,7 @@ export default function TTRAI() {
     // Permissions
     const [permissionModal, setPermissionModal] = useState(null);
     const fileInputRef = useRef(null);
+    const abortControllerRef = useRef(null);
 
     // Context Loading
     const [userContext, setUserContext] = useState(null);
@@ -245,10 +246,13 @@ export default function TTRAI() {
                     ? 'http://localhost:5000/api/chat'
                     : 'https://together-to-refine.vercel.app/api/chat';
 
+                abortControllerRef.current = new AbortController();
+
                 const res = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify(payload),
+                    signal: abortControllerRef.current.signal
                 });
 
                 if (!res.ok) {
@@ -286,6 +290,7 @@ export default function TTRAI() {
             }]);
         } finally {
             setLoading(false);
+            abortControllerRef.current = null;
         }
     };
 
@@ -426,8 +431,14 @@ export default function TTRAI() {
                         spellCheck="false"
                         autoCorrect="off"
                         autoCapitalize="none"
+                        name="ttr-ai-input"
+                        data-form-type="other"
                     />
-                    <button onClick={handleSend} disabled={loading} className="send-button">➤</button>
+                    {loading ? (
+                        <button onClick={() => { if (abortControllerRef.current) abortControllerRef.current.abort(); setLoading(false); }} className="send-button" style={{ background: '#e74c3c' }} title="Stop generating">⏹</button>
+                    ) : (
+                        <button onClick={handleSend} disabled={!input.trim() && !selectedImage} className="send-button">➤</button>
+                    )}
                 </div>
             </div>
 

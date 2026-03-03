@@ -72,6 +72,7 @@ export default function FourWayLearning() {
     const [showSidebar, setShowSidebar] = useState(false);
 
     const chatContainerRef = useRef(null);
+    const abortControllerRef = useRef(null);
     const userClass = userData?.class || "Grade 10";
 
     const modes = [
@@ -308,10 +309,13 @@ export default function FourWayLearning() {
                 ? 'https://together-to-refine.vercel.app/api/chat'
                 : 'https://together-to-refine.vercel.app/api/chat';
 
+            abortControllerRef.current = new AbortController();
+
             const res = await fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(payload),
+                signal: abortControllerRef.current.signal
             });
 
             if (!res.ok) {
@@ -337,6 +341,7 @@ export default function FourWayLearning() {
             }));
         } finally {
             setLoading(false);
+            abortControllerRef.current = null;
         }
     };
 
@@ -490,9 +495,15 @@ export default function FourWayLearning() {
                         spellCheck="false"
                         autoCorrect="off"
                         autoCapitalize="none"
+                        name="four-way-input"
+                        data-form-type="other"
                     />
 
-                    <button onClick={handleGenerate} disabled={loading || (!inputs[activeTab] && !selectedImage)} className="send-button">➤</button>
+                    {loading ? (
+                        <button onClick={() => { if (abortControllerRef.current) abortControllerRef.current.abort(); setLoading(false); }} className="send-button" style={{ background: '#e74c3c' }} title="Stop generating">⏹</button>
+                    ) : (
+                        <button onClick={handleGenerate} disabled={!inputs[activeTab] && !selectedImage} className="send-button">➤</button>
+                    )}
                 </div>
             </div>
 
