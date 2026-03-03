@@ -336,7 +336,7 @@ export default function Teacher() {
                                     <span className="teacher-vibe-icon">✅</span>
                                     <span className="teacher-vibe-label">{t('mark_attendance')}</span>
                                 </div>
-                                <div className="teacher-vibe-card" style={{ borderColor: '#6c5ce7' }} onClick={() => { vibrate(); handleCardClick('/four-way-learning'); }}>
+                                <div className="teacher-vibe-card" style={{ borderColor: '#6c5ce7' }} onClick={() => { vibrate(); handleCardClick('/4-way-learning'); }}>
                                     <span className="teacher-vibe-icon">🤝</span>
                                     <span className="teacher-vibe-label">{t('four_way')}</span>
                                 </div>
