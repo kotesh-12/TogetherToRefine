@@ -122,7 +122,7 @@ export default function SmartAdmission({ onClose, onScanComplete }) {
                 const studRoll = rKey && row[rKey] ? String(row[rKey]).trim() : String(currentRoll++);
 
                 const cleanName = nameStr.replace(/[^a-zA-Z]/g, '').toLowerCase() || 'student';
-                const email = `${cleanName}${studRoll}@ttr.com`;
+                const email = `${cleanName}${studRoll}@gmail.com`;
                 const pwd = (cleanName.substring(0, 4).toUpperCase() || 'PASS') + '@' + Math.floor(1000 + Math.random() * 9000);
                 const pid = "TTR" + Array.from({ length: 8 }, () => Math.floor(Math.random() * 10)).join('');
 
