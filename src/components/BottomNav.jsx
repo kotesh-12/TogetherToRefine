@@ -1,9 +1,11 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useUser } from '../context/UserContext';
 
 export default function BottomNav() {
     const navigate = useNavigate();
     const location = useLocation();
+    const { userData } = useUser();
 
     // Style for the container
     const navStyle = {
@@ -51,11 +53,18 @@ export default function BottomNav() {
 
     const handleNav = (path) => {
         if (path === '/') {
-            const role = (location.pathname.split('/')[1] || '').toLowerCase();
-            if (role === 'admin' || role === 'institution' || role === 'teacher' || role === 'student' || role === 'parent') {
-                path = `/${role}`;
+            // Use actual user role from Firebase instead of guessing from URL
+            const role = userData?.role?.toLowerCase();
+            if (role === 'admin' || role === 'system admin') {
+                path = '/admin';
+            } else if (role === 'institution') {
+                path = '/institution';
+            } else if (role === 'teacher') {
+                path = '/teacher';
+            } else if (role === 'parent') {
+                path = '/parent';
             } else {
-                path = '/student'; // fallback
+                path = '/student'; // fallback for students or unknown
             }
         }
 
