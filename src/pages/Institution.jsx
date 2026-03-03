@@ -21,6 +21,7 @@ export default function Institution() {
     const [selectedClass, setSelectedClass] = useState('All');
     const [selectedSection, setSelectedSection] = useState('All');
     const [showSmartAdmission, setShowSmartAdmission] = useState(false);
+    const [batchProgress, setBatchProgress] = useState(null);
 
     const isNavigating = useRef(false);
 
@@ -107,49 +108,62 @@ export default function Institution() {
                 ? ''
                 : 'https://together-to-refine.vercel.app';
 
-            console.log(`[SmartAdmission] Sending ${students.length} students to batch-register...`);
+            console.log(`[SmartAdmission] Total ${students.length} students. Starting batch process...`);
 
-            const res = await fetch(`${API_BASE}/api/batch-register`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ students })
-            });
+            const BATCH_SIZE = 50;
+            let successList = [];
+            let failedList = [];
 
-            let data;
-            try {
-                data = await res.json();
-            } catch (parseErr) {
-                console.error("Failed to parse server response:", parseErr);
-                alert(`Server error (HTTP ${res.status}). Please try again or contact support.`);
-                setLoading(false);
-                return;
-            }
+            for (let i = 0; i < students.length; i += BATCH_SIZE) {
+                const chunk = students.slice(i, i + BATCH_SIZE);
+                setBatchProgress({ current: Math.min(i + BATCH_SIZE, students.length), total: students.length });
+                console.log(`[SmartAdmission] Sending chunk ${i + 1} to ${i + chunk.length}...`);
 
-            console.log("[SmartAdmission] Server response:", data);
-            setLoading(false);
+                const res = await fetch(`${API_BASE}/api/batch-register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ students: chunk })
+                });
 
-            if (!res.ok) {
-                alert(`❌ Registration failed (${res.status}):\n${data.error || 'Unknown server error'}`);
-                return;
-            }
-
-            if (data.results) {
-                const successCount = data.results.success.length;
-                const failedCount = data.results.failed.length;
-                alert(`✅ Import Complete!\nSuccess: ${successCount}\nFailed: ${failedCount}${failedCount > 0 ? '\n\nFailed entries may have duplicate emails.' : ''}`);
-                if (successCount > 0) {
-                    generateReport(data.results.success);
+                let data;
+                try {
+                    data = await res.json();
+                } catch (parseErr) {
+                    console.error("Failed to parse server response:", parseErr);
+                    throw new Error(`Server error (HTTP ${res.status}). Upload aborted at chunk ${i}.`);
                 }
-            } else {
-                alert("❌ Import failed: " + (data.error || "Unknown error. Check console for details."));
+
+                if (!res.ok) {
+                    throw new Error(`Registration failed (${res.status}):\n${data.error || 'Unknown server error'}`);
+                }
+
+                if (data.results) {
+                    successList = [...successList, ...data.results.success];
+                    failedList = [...failedList, ...data.results.failed];
+                } else {
+                    throw new Error("Import failed: " + (data.error || "Unknown error. Check console."));
+                }
             }
+
+            console.log("[SmartAdmission] Batch processing complete.");
+            setLoading(false);
+            setBatchProgress(null);
+
+            const successCount = successList.length;
+            const failedCount = failedList.length;
+            alert(`✅ Import Complete!\nSuccess: ${successCount}\nFailed: ${failedCount}${failedCount > 0 ? '\n\nFailed entries may have duplicate emails.' : ''}`);
+            if (successCount > 0) {
+                generateReport(successList);
+            }
+
         } catch (e) {
             console.error("Batch register error:", e);
-            alert("❌ Network error: " + e.message);
+            alert("❌ Network/Process error: " + e.message);
             setLoading(false);
+            setBatchProgress(null);
         }
     };
 
@@ -226,7 +240,29 @@ export default function Institution() {
         return () => unsubscribe();
     }, []);
 
-    if (loading) return <div className="container">Loading...</div>;
+    if (loading) {
+        return (
+            <div className="container" style={{ textAlign: 'center', marginTop: '50px' }}>
+                {batchProgress ? (
+                    <div style={{ background: 'var(--bg-card)', padding: '30px', borderRadius: '15px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', maxWidth: '400px', margin: '0 auto' }}>
+                        <h2 style={{ color: 'var(--primary)', margin: '0 0 10px 0' }}>Creating Accounts...</h2>
+                        <div style={{ background: 'var(--bg-surface)', height: '20px', borderRadius: '10px', overflow: 'hidden', marginBottom: '10px' }}>
+                            <div style={{
+                                width: `${(batchProgress.current / batchProgress.total) * 100}%`,
+                                height: '100%',
+                                background: 'linear-gradient(90deg, #0984e3, #6c5ce7)',
+                                transition: 'width 0.3s ease'
+                            }}></div>
+                        </div>
+                        <p style={{ fontWeight: 'bold' }}>{batchProgress.current} / {batchProgress.total}</p>
+                        <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Please do not close this page.</p>
+                    </div>
+                ) : (
+                    <div>Loading...</div>
+                )}
+            </div>
+        );
+    }
 
     if (error) return (
         <div style={{ padding: '20px', color: 'red', textAlign: 'center' }}>

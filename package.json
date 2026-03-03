@@ -37,7 +37,8 @@
     "react-qr-code": "^2.0.18",
     "react-router-dom": "^7.11.0",
     "tesseract.js": "^7.0.0",
-    "ua-parser-js": "^2.0.9"
+    "ua-parser-js": "^2.0.9",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

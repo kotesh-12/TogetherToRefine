@@ -2,11 +2,13 @@ import React, { useRef, useState, useEffect } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useUser } from '../context/UserContext';
+import * as XLSX from 'xlsx';
 
 export default function SmartAdmission({ onClose, onScanComplete }) {
     const { userData } = useUser();
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
+    const fileInputRef = useRef(null);
     const [status, setStatus] = useState('setup'); // Flow: setup -> camera -> processing -> review
     const [parsedData, setParsedData] = useState([]);
 
@@ -59,6 +61,99 @@ export default function SmartAdmission({ onClose, onScanComplete }) {
 
         setStatus('processing');
         processImage(canvas.toDataURL('image/jpeg', 0.8));
+    };
+
+    const handleFileUpload = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        setStatus('processing');
+
+        try {
+            const data = await file.arrayBuffer();
+            const workbook = XLSX.read(data);
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+            let startRollNumber = 1;
+
+            if (scanRole === 'student') {
+                const instId = userData?.role === 'institution' ? userData?.uid : userData?.institutionId;
+                if (instId) {
+                    const q = query(
+                        collection(db, 'users'),
+                        where('institutionId', '==', instId),
+                        where('role', '==', 'student')
+                    );
+                    const snap = await getDocs(q);
+
+                    let maxRoll = 0;
+                    const targetClass = `${scanClass}-${scanSection}`;
+
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        if (d.class === targetClass || (d.class === scanClass && d.section === scanSection)) {
+                            const r = parseInt(d.rollNumber);
+                            if (!isNaN(r) && r > maxRoll) {
+                                maxRoll = r;
+                            }
+                        }
+                    });
+
+                    startRollNumber = maxRoll + 1;
+                }
+            }
+
+            let generatedData = [];
+            let currentRoll = startRollNumber;
+
+            for (let row of jsonData) {
+                const nameKey = Object.keys(row).find(k => k.toLowerCase().includes('name'));
+                const nameStr = nameKey ? String(row[nameKey]).trim() : '';
+
+                if (!nameStr) continue;
+
+                const cKey = Object.keys(row).find(k => k.toLowerCase().includes('class'));
+                const sKey = Object.keys(row).find(k => k.toLowerCase().includes('section'));
+                const rKey = Object.keys(row).find(k => k.toLowerCase().includes('roll'));
+
+                const studClass = cKey && row[cKey] ? String(row[cKey]).trim() : scanClass;
+                const studSection = sKey && row[sKey] ? String(row[sKey]).trim() : scanSection;
+                const studRoll = rKey && row[rKey] ? String(row[rKey]).trim() : String(currentRoll++);
+
+                const cleanName = nameStr.replace(/[^a-zA-Z]/g, '').toLowerCase() || 'student';
+                const email = `${cleanName}${studRoll}@ttr.com`;
+                const pwd = (cleanName.substring(0, 4).toUpperCase() || 'PASS') + '@' + Math.floor(1000 + Math.random() * 9000);
+                const pid = "TTR" + Array.from({ length: 8 }, () => Math.floor(Math.random() * 10)).join('');
+
+                generatedData.push({
+                    name: nameStr,
+                    class: studClass,
+                    section: studSection,
+                    rollNumber: studRoll,
+                    email: email,
+                    password: pwd,
+                    role: scanRole,
+                    pid: pid,
+                    isInstitutionCreated: true
+                });
+            }
+
+            if (generatedData.length > 0) {
+                setParsedData(generatedData);
+                setStatus('review');
+            } else {
+                alert("No valid rows found. Please ensure your Excel/CSV has a 'Name' column.");
+                setStatus('setup');
+            }
+
+        } catch (e) {
+            console.error("File Parse Error:", e);
+            alert("Failed to parse file. Ensure it is a valid Excel (.xlsx) or CSV file.");
+            setStatus('setup');
+        }
+
+        if (fileInputRef.current) fileInputRef.current.value = "";
     };
 
     const processImage = async (imageDataUrl) => {
@@ -178,9 +273,32 @@ export default function SmartAdmission({ onClose, onScanComplete }) {
                         </div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '15px' }}>
-                        <button onClick={onClose} style={{ padding: '10px 20px', border: '1px solid #ccc', background: 'transparent', borderRadius: '8px', cursor: 'pointer' }}>Cancel</button>
-                        <button onClick={handleStartScan} style={{ padding: '10px 24px', background: '#e056fd', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Start AI Scan 📸</button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
+
+                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                            <span style={{ fontSize: '12px', color: '#999', flex: 1 }}>Bulk upload roster up to 5,000 students via Excel/CSV:</span>
+                            <input
+                                type="file"
+                                accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+                                ref={fileInputRef}
+                                onChange={handleFileUpload}
+                                style={{ display: 'none' }}
+                            />
+                            <button onClick={() => fileInputRef.current?.click()} style={{ padding: '10px 15px', background: '#0984e3', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                📄 Upload File
+                            </button>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', margin: '5px 0' }}>
+                            <div style={{ flex: 1, height: '1px', background: '#ddd' }}></div>
+                            <span style={{ fontSize: '11px', color: '#aaa', margin: '0 10px', fontWeight: 'bold' }}>OR</span>
+                            <div style={{ flex: 1, height: '1px', background: '#ddd' }}></div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                            <button onClick={onClose} style={{ padding: '10px 20px', border: '1px solid #ccc', background: 'transparent', borderRadius: '8px', cursor: 'pointer' }}>Cancel</button>
+                            <button onClick={handleStartScan} style={{ padding: '10px 24px', background: '#e056fd', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Start AI Scan 📸</button>
+                        </div>
                     </div>
                 </div>
             )}
