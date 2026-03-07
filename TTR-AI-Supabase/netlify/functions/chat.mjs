@@ -43,10 +43,10 @@ const SECURE_HEROES = {
 };
 
 const FOUR_WAY_HEROES = {
-    arjuna: { name: 'The Practical Builder', emoji: '🔨', title: 'Hands-on Application', trait: 'Practical Execution', aiStyle: 'Focus entirely on how to build, use, or apply the concept in the real world. Give concrete examples, code snippets, or step-by-step instructions. Ignore excessive theory.', quote: '"Knowledge is useless until it is applied."' },
-    ekalavya: { name: 'The Deep Researcher', emoji: '🔬', title: 'Root Cause Analysis', trait: 'Analytical Thinking', aiStyle: 'Break the concept down to its absolute core fundamentals. Explain the "Why" and the history behind it. Dive deep into the underlying mechanics.', quote: '"To understand the branch, you must first understand the root."' },
-    krishna: { name: 'The Strategic Planner', emoji: '🗺️', title: 'Big Picture Strategy', trait: 'Strategic Overview', aiStyle: 'Zoom out. Explain how this concept connects to other concepts. Focus on the architecture, the trade-offs, and the long-term impact of using it.', quote: '"See the entire battlefield before making a single move."' },
-    rama: { name: 'The Ethical Guide', emoji: '🕊️', title: 'Moral and Ethical Approach', trait: 'Harmonious Design', aiStyle: 'Focus on the ethical implications, accessibility, sustainability, and human impact of the concept. Make sure the solution serves the greater good.', quote: '"True intelligence builds harmony, not just efficiency."' }
+    conceptual: { name: 'Conceptual Mode', emoji: '🧠', title: 'Deep Logic & Why', trait: 'Understand Core Fundamentals', aiStyle: 'Explain the concept in depth. Focus on core principles, definitions, and underlying logic. Use simple digestible parts. Conclude with why this knowledge is important.', quote: '"To understand the branch, you must first understand the root."' },
+    fictional: { name: 'Fictional Mode', emoji: '🚀', title: 'Analogies & Sci-Fi', trait: 'Mythology & Analogies', aiStyle: 'Explain by creating a fictional story using characters. The story MUST use the concept as a key mechanism and teach ethics/moral values alongside the concept.', quote: '"Stories are the vehicles for truth."' },
+    storytelling: { name: 'Story Mode', emoji: '📖', title: 'Narrative Driven', trait: 'Narrative Storytelling', aiStyle: 'Tell a compelling story revolving around the topic. Ensure the narrative naturally explains the topic while carrying a strong moral lesson.', quote: '"Every concept has a narrative waiting to be told."' },
+    teaching: { name: 'Teaching Mode', emoji: '👩‍🏫', title: 'Interactive Dialogue', trait: 'Socratic Dialogue', aiStyle: 'Act as a wise, encouraging Teacher. Step 1: Write a formal academic paragraph explaining the concept. Step 2: Explain it simply to a student casually. Break it down and make it easy. End with a moral advice.', quote: '"A true teacher builds both intellect and character."' }
 };
 
 function getSystemPrompt(userContext) {

@@ -72,10 +72,10 @@ const SECURE_HEROES = {
 
 /* ──────────────── 4-Way Learning Heroes Data ──────────────── */
 const FOUR_WAY_HEROES = {
-    arjuna: { id: 'arjuna', name: 'The Practical Builder', emoji: '🔨', title: 'Hands-on Application', trait: 'Practical Execution' },
-    ekalavya: { id: 'ekalavya', name: 'The Deep Researcher', emoji: '🔬', title: 'Root Cause Analysis', trait: 'Analytical Thinking' },
-    krishna: { id: 'krishna', name: 'The Strategic Planner', emoji: '🗺️', title: 'Big Picture Strategy', trait: 'Strategic Overview' },
-    rama: { id: 'rama', name: 'The Ethical Guide', emoji: '🕊️', title: 'Moral and Ethical Approach', trait: 'Harmonious Design' }
+    conceptual: { id: 'conceptual', name: '🧠 Conceptual Mode', emoji: '🧠', title: 'Deep Logic & Why', trait: 'Understand Core Fundamentals' },
+    fictional: { id: 'fictional', name: '🚀 Fictional Mode', emoji: '🚀', title: 'Analogies & Sci-Fi', trait: 'Indian Mythology & Analogies' },
+    storytelling: { id: 'storytelling', name: '📖 Story Mode', emoji: '📖', title: 'Narrative Driven', trait: 'Narrative Storytelling' },
+    teaching: { id: 'teaching', name: '👩‍🏫 Teaching Mode', emoji: '👩‍🏫', title: 'Interactive Dialogue', trait: 'Socratic Dialogue' }
 };
 
 /* ──────────────── Main Chat Page ──────────────── */
