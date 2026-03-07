@@ -997,3 +997,77 @@ a:hover {
     padding: 8px 10px 12px;
   }
 }
+
+/* ═══════════════════════════════════════════════════
+   GUEST MODE STYLES
+   ═══════════════════════════════════════════════════ */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.signin-header-btn {
+  padding: 6px 16px;
+  background: linear-gradient(135deg, var(--accent), var(--purple));
+  border: none;
+  border-radius: 20px;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.signin-header-btn:hover {
+  filter: brightness(1.15);
+  transform: scale(1.03);
+  box-shadow: 0 2px 12px rgba(108, 99, 255, 0.4);
+}
+
+.guest-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 32px 20px;
+  gap: 12px;
+}
+
+.guest-icon {
+  font-size: 32px;
+  opacity: 0.7;
+}
+
+.guest-notice p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.signin-prompt-btn {
+  width: 100%;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, var(--accent), var(--purple));
+  border: none;
+  border-radius: var(--radius-sm);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition);
+  margin-top: 4px;
+}
+
+.signin-prompt-btn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(108, 99, 255, 0.4);
+}
+
+.user-avatar.guest {
+  background: linear-gradient(135deg, var(--text-muted), #555);
+}

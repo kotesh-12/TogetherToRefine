@@ -39,7 +39,7 @@ export default function Login() {
                 }
                 await signUp(email, password, name);
             }
-            navigate('/ttr-ai');
+            navigate('/');
         } catch (err) {
             setError(err.message || 'Authentication failed.');
         } finally {

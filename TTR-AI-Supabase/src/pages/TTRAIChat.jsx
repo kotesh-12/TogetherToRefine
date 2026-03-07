@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import ReactMarkdown from 'react-markdown';
@@ -32,6 +33,7 @@ const TypewriterMessage = ({ text, onComplete }) => {
 /* ──────────────── Main Chat Page ──────────────── */
 export default function TTRAIChat() {
     const { user, signOut } = useAuth();
+    const navigate = useNavigate();
 
     // Chat state
     const [messages, setMessages] = useState([]);
@@ -40,7 +42,7 @@ export default function TTRAIChat() {
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
 
-    // Session state
+    // Session state (only for logged-in users)
     const [sessions, setSessions] = useState([]);
     const [currentSessionId, setCurrentSessionId] = useState(null);
     const [showSidebar, setShowSidebar] = useState(false);
@@ -53,13 +55,19 @@ export default function TTRAIChat() {
     // Welcome message
     const WELCOME_MSG = { text: "Hello! I'm **TTR AI** 🧠 — your intelligent learning companion.\n\nAsk me anything about academics, coding, science, math, or just have a conversation!", sender: 'ai' };
 
-    /* ── Load sessions ── */
+    // Set welcome message on mount
+    useEffect(() => {
+        setMessages([WELCOME_MSG]);
+    }, []);
+
+    /* ── Load sessions (only if logged in) ── */
     useEffect(() => {
         if (!user) return;
         loadSessions();
     }, [user]);
 
     const loadSessions = async () => {
+        if (!user) return;
         const { data, error } = await supabase
             .from('chat_sessions')
             .select('*')
@@ -69,7 +77,7 @@ export default function TTRAIChat() {
         if (!error && data) setSessions(data);
     };
 
-    /* ── Load messages when session changes ── */
+    /* ── Load messages when session changes (only if logged in) ── */
     useEffect(() => {
         if (!user) return;
         if (!currentSessionId) {
@@ -94,8 +102,9 @@ export default function TTRAIChat() {
     const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     useEffect(() => scrollToBottom(), [messages]);
 
-    /* ── Save message to DB ── */
+    /* ── Save message to DB (only if logged in) ── */
     const saveMessage = async (content, role, sessionId, imageUrl = null) => {
+        if (!user) return;
         await supabase.from('chat_messages').insert({
             session_id: sessionId,
             user_id: user.id,
@@ -153,9 +162,9 @@ export default function TTRAIChat() {
         setMessages(prev => [...prev, userMsg]);
 
         try {
-            // Create session if needed
+            // Create session if logged in and needed
             let sessionId = currentSessionId;
-            if (!sessionId) {
+            if (user && !sessionId) {
                 const { data: newSession, error } = await supabase
                     .from('chat_sessions')
                     .insert({ user_id: user.id, title: text.substring(0, 40) || 'New Chat' })
@@ -166,7 +175,10 @@ export default function TTRAIChat() {
                 setCurrentSessionId(sessionId);
             }
 
-            await saveMessage(text || 'Image uploaded', 'user', sessionId, imgData);
+            // Save user message (only if logged in)
+            if (user && sessionId) {
+                await saveMessage(text || 'Image uploaded', 'user', sessionId, imgData);
+            }
 
             // Build history
             let historyForApi = messages.slice(-10).map(m => ({
@@ -175,12 +187,14 @@ export default function TTRAIChat() {
             }));
             while (historyForApi.length > 0 && historyForApi[0].role !== 'user') historyForApi.shift();
 
+            const displayName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Guest';
+
             const payload = {
                 history: historyForApi,
                 message: text,
                 userContext: {
                     role: 'User',
-                    name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+                    name: displayName,
                 },
                 image: imgData ? imgData.split(',')[1] : null,
                 mimeType: imgData ? imgData.match(/:(.*?);/)?.[1] : null,
@@ -205,8 +219,12 @@ export default function TTRAIChat() {
 
             const aiMsg = { text: responseText, sender: 'ai', isNew: true };
             setMessages(prev => [...prev, aiMsg]);
-            await saveMessage(responseText, 'assistant', sessionId);
-            loadSessions();
+
+            // Save AI response (only if logged in)
+            if (user && sessionId) {
+                await saveMessage(responseText, 'assistant', sessionId);
+                loadSessions();
+            }
 
         } catch (err) {
             if (err.name !== 'AbortError') {
@@ -232,7 +250,7 @@ export default function TTRAIChat() {
         }
     };
 
-    const displayName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
+    const displayName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Guest';
 
     return (
         <div className="chat-page">
@@ -247,27 +265,49 @@ export default function TTRAIChat() {
                     <span>+</span> New Chat
                 </button>
 
-                <div className="sessions-list">
-                    {sessions.map(s => (
-                        <div
-                            key={s.id}
-                            className={`session-item ${currentSessionId === s.id ? 'active' : ''}`}
-                            onClick={() => loadSession(s)}
-                        >
-                            <span className="session-title">{s.title || 'Untitled'}</span>
-                            <button className="delete-btn" onClick={(e) => deleteSession(e, s.id)}>🗑</button>
+                {user ? (
+                    <>
+                        <div className="sessions-list">
+                            {sessions.map(s => (
+                                <div
+                                    key={s.id}
+                                    className={`session-item ${currentSessionId === s.id ? 'active' : ''}`}
+                                    onClick={() => loadSession(s)}
+                                >
+                                    <span className="session-title">{s.title || 'Untitled'}</span>
+                                    <button className="delete-btn" onClick={(e) => deleteSession(e, s.id)}>🗑</button>
+                                </div>
+                            ))}
+                            {sessions.length === 0 && <p className="no-sessions">No conversations yet</p>}
                         </div>
-                    ))}
-                    {sessions.length === 0 && <p className="no-sessions">No conversations yet</p>}
-                </div>
 
-                <div className="sidebar-footer">
-                    <div className="user-info">
-                        <div className="user-avatar">{displayName.charAt(0).toUpperCase()}</div>
-                        <span className="user-name">{displayName}</span>
-                    </div>
-                    <button className="logout-btn" onClick={signOut}>Sign Out</button>
-                </div>
+                        <div className="sidebar-footer">
+                            <div className="user-info">
+                                <div className="user-avatar">{displayName.charAt(0).toUpperCase()}</div>
+                                <span className="user-name">{displayName}</span>
+                            </div>
+                            <button className="logout-btn" onClick={signOut}>Sign Out</button>
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        <div className="sessions-list">
+                            <div className="guest-notice">
+                                <div className="guest-icon">🔒</div>
+                                <p>Sign in to save your chat history and access it from any device.</p>
+                                <button className="signin-prompt-btn" onClick={() => navigate('/login')}>
+                                    Sign In / Sign Up
+                                </button>
+                            </div>
+                        </div>
+                        <div className="sidebar-footer">
+                            <div className="user-info">
+                                <div className="user-avatar guest">G</div>
+                                <span className="user-name">Guest</span>
+                            </div>
+                        </div>
+                    </>
+                )}
             </div>
 
             {/* ── Sidebar Overlay ── */}
@@ -294,11 +334,18 @@ export default function TTRAIChat() {
                         </div>
                         <span>TTR AI</span>
                     </div>
-                    <button className="new-chat-header-btn" onClick={startNewChat} title="New Chat">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M12 5v14M5 12h14" />
-                        </svg>
-                    </button>
+                    <div className="header-actions">
+                        {!user && (
+                            <button className="signin-header-btn" onClick={() => navigate('/login')}>
+                                Sign In
+                            </button>
+                        )}
+                        <button className="new-chat-header-btn" onClick={startNewChat} title="New Chat">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M12 5v14M5 12h14" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 {/* Messages */}
