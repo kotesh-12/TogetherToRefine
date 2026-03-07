@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import anime from 'animejs';
 import logo from '../assets/logo.png';
 
 export default function Login() {
@@ -13,6 +14,36 @@ export default function Login() {
 
     const { signIn, signUp, signInWithGoogle } = useAuth();
     const navigate = useNavigate();
+
+    // Setup Anime.js animation for the logo
+    useEffect(() => {
+        anime({
+            targets: '.login-brand .brand-icon img',
+            translateY: [-20, 0],
+            opacity: [0, 1],
+            scale: [0.8, 1],
+            duration: 1500,
+            easing: 'easeOutElastic(1, .5)',
+            delay: 200
+        });
+
+        anime({
+            targets: '.login-brand .brand-title',
+            translateY: [20, 0],
+            opacity: [0, 1],
+            duration: 1200,
+            easing: 'easeOutExpo',
+            delay: 400
+        });
+
+        anime({
+            targets: '.login-brand .brand-subtitle',
+            opacity: [0, 1],
+            duration: 1000,
+            easing: 'linear',
+            delay: 800
+        });
+    }, []);
 
     const handleAuth = async (e) => {
         e.preventDefault();
