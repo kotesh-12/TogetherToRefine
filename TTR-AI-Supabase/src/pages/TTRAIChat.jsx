@@ -70,6 +70,14 @@ const SECURE_HEROES = {
     chanakya: { id: 'chanakya', name: 'Thomas Shelby', emoji: '🚬', title: 'The Strategic Kingmaker', trait: 'Strategy & Pragmatism' },
 };
 
+/* ──────────────── 4-Way Learning Heroes Data ──────────────── */
+const FOUR_WAY_HEROES = {
+    arjuna: { id: 'arjuna', name: 'The Practical Builder', emoji: '🔨', title: 'Hands-on Application', trait: 'Practical Execution' },
+    ekalavya: { id: 'ekalavya', name: 'The Deep Researcher', emoji: '🔬', title: 'Root Cause Analysis', trait: 'Analytical Thinking' },
+    krishna: { id: 'krishna', name: 'The Strategic Planner', emoji: '🗺️', title: 'Big Picture Strategy', trait: 'Strategic Overview' },
+    rama: { id: 'rama', name: 'The Ethical Guide', emoji: '🕊️', title: 'Moral and Ethical Approach', trait: 'Harmonious Design' }
+};
+
 /* ──────────────── Main Chat Page ──────────────── */
 export default function TTRAIChat() {
     const { user, signOut } = useAuth();
@@ -106,7 +114,7 @@ export default function TTRAIChat() {
         }
     }, [currentPath, currentDomain]);
 
-    const activeHeroes = currentDomain === 'secure' ? SECURE_HEROES : GURUKUL_HEROES;
+    const activeHeroes = currentDomain === 'secure' ? SECURE_HEROES : currentDomain === '4way' ? FOUR_WAY_HEROES : GURUKUL_HEROES;
 
     // Image upload
     const [selectedImage, setSelectedImage] = useState(null);
@@ -530,7 +538,7 @@ export default function TTRAIChat() {
                                 <div className="domain-selector">
                                     <h3>Select your AI Experience Domain</h3>
                                     <p style={{ marginBottom: 20 }}>Some users prefer modern pop-culture equivalents over traditional mythological references.</p>
-                                    <div className="domain-cards" style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}>
+                                    <div className="domain-cards" style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
                                         <div
                                             className="domain-card"
                                             onClick={() => setCurrentDomain('gurukul')}
@@ -549,6 +557,15 @@ export default function TTRAIChat() {
                                             <h4>Secure Context</h4>
                                             <small style={{ color: 'var(--text-secondary)' }}>Pop-culture, cinematic heroes</small>
                                         </div>
+                                        <div
+                                            className="domain-card"
+                                            onClick={() => setCurrentDomain('4way')}
+                                            style={{ cursor: 'pointer', padding: '20px', border: '1px solid var(--border)', borderRadius: '10px', textAlign: 'center', width: '200px' }}
+                                        >
+                                            <div style={{ fontSize: 40 }}>🧭</div>
+                                            <h4>4-Way Learning</h4>
+                                            <small style={{ color: 'var(--text-secondary)' }}>Core methodologies, 4 perspectives</small>
+                                        </div>
                                     </div>
                                 </div>
                             ) : (
@@ -558,7 +575,7 @@ export default function TTRAIChat() {
                                         onClick={() => setCurrentDomain(null)}
                                         style={{ margin: '-10px auto 15px', display: 'block', background: 'none', border: '1px solid var(--border)', color: 'var(--text-secondary)', padding: '5px 15px', borderRadius: 20, cursor: 'pointer' }}
                                     >
-                                        Switch Domain (Currently {currentDomain === 'secure' ? 'Secure' : 'Gurukul'})
+                                        Switch Domain (Currently {currentDomain === 'secure' ? 'Secure' : currentDomain === '4way' ? '4-Way Learning' : 'Gurukul'})
                                     </button>
                                     <div className="path-list">
                                         <div
@@ -566,7 +583,7 @@ export default function TTRAIChat() {
                                             onClick={() => { setCurrentPath(''); setShowPathModal(false); }}
                                         >
                                             <div className="path-emoji">🧠</div>
-                                            <h3>{currentDomain === 'secure' ? 'Universal AI' : 'Universal TTR AI'}</h3>
+                                            <h3>{currentDomain === 'secure' ? 'Universal AI' : currentDomain === '4way' ? 'Unified Learner' : 'Universal TTR AI'}</h3>
                                             <p>Standard intelligent learning companion.</p>
                                         </div>
                                         {Object.values(activeHeroes).map(hero => (

@@ -42,6 +42,13 @@ const SECURE_HEROES = {
     chanakya: { name: 'Thomas Shelby', emoji: '🚬', title: 'The Strategic Kingmaker', trait: 'Strategy & Pragmatism', aiStyle: 'Craft lessons that tie every academic concept to real-world power and leadership. Think pragmatically and strategically.', quote: '"I have no limitations."' },
 };
 
+const FOUR_WAY_HEROES = {
+    arjuna: { name: 'The Practical Builder', emoji: '🔨', title: 'Hands-on Application', trait: 'Practical Execution', aiStyle: 'Focus entirely on how to build, use, or apply the concept in the real world. Give concrete examples, code snippets, or step-by-step instructions. Ignore excessive theory.', quote: '"Knowledge is useless until it is applied."' },
+    ekalavya: { name: 'The Deep Researcher', emoji: '🔬', title: 'Root Cause Analysis', trait: 'Analytical Thinking', aiStyle: 'Break the concept down to its absolute core fundamentals. Explain the "Why" and the history behind it. Dive deep into the underlying mechanics.', quote: '"To understand the branch, you must first understand the root."' },
+    krishna: { name: 'The Strategic Planner', emoji: '🗺️', title: 'Big Picture Strategy', trait: 'Strategic Overview', aiStyle: 'Zoom out. Explain how this concept connects to other concepts. Focus on the architecture, the trade-offs, and the long-term impact of using it.', quote: '"See the entire battlefield before making a single move."' },
+    rama: { name: 'The Ethical Guide', emoji: '🕊️', title: 'Moral and Ethical Approach', trait: 'Harmonious Design', aiStyle: 'Focus on the ethical implications, accessibility, sustainability, and human impact of the concept. Make sure the solution serves the greater good.', quote: '"True intelligence builds harmony, not just efficiency."' }
+};
+
 function getSystemPrompt(userContext) {
     let systemInstruction = `You are TTR AI, an incredibly advanced universal learning and guidance companion.
 There are no age limits, no class limits, and no strict student/teacher barriers. You respond to everyone dynamically based EXCLUSIVELY on their chosen Gurukul Path personality.
@@ -57,7 +64,7 @@ CRITICAL DIRECTIVES:
 
         // ─── GURUKUL PATH PERSONALITY INJECTION ──────────────────────────────────
         if (userContext.gurukul_path) {
-            const domainData = userContext.domain === 'secure' ? SECURE_HEROES : GURUKUL_HEROES;
+            const domainData = userContext.domain === 'secure' ? SECURE_HEROES : userContext.domain === '4way' ? FOUR_WAY_HEROES : GURUKUL_HEROES;
             const hero = domainData[userContext.gurukul_path];
 
             if (hero) {
