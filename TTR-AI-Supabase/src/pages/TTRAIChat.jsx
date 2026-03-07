@@ -30,6 +30,26 @@ const TypewriterMessage = ({ text, onComplete }) => {
     return <ReactMarkdown>{displayed}</ReactMarkdown>;
 };
 
+/* ──────────────── Gurukul Heroes Data ──────────────── */
+const GURUKUL_HEROES = {
+    arjuna: { id: 'arjuna', name: 'Arjuna', emoji: '🏹', title: 'The Focused Warrior', trait: 'Laser Focus & Mastery' },
+    ekalavya: { id: 'ekalavya', name: 'Ekalavya', emoji: '🙏', title: 'The Self-Made Scholar', trait: 'Self-Learning & Devotion' },
+    krishna: { id: 'krishna', name: 'Krishna', emoji: '🪈', title: 'The Strategic Thinker', trait: 'Wisdom & Emotional Intelligence' },
+    rama: { id: 'rama', name: 'Rama', emoji: '⚡', title: 'The Dharma Keeper', trait: 'Righteousness & Duty' },
+    karna: { id: 'karna', name: 'Karna', emoji: '☀️', title: 'The Resilient Fighter', trait: 'Resilience & Generosity' },
+    dharmaraj: { id: 'dharmaraj', name: 'Dharmaraj', emoji: '⚖️', title: 'The Truth Seeker', trait: 'Truth & Justice Always' },
+    abhimanyu: { id: 'abhimanyu', name: 'Abhimanyu', emoji: '🛡️', title: 'The Fearless Explorer', trait: 'Courage & Action' },
+    bheema: { id: 'bheema', name: 'Bheema', emoji: '💪', title: 'The Unstoppable Force', trait: 'Raw Strength & Endurance' },
+    nakula: { id: 'nakula', name: 'Nakula', emoji: '🐎', title: 'The Observant Explorer', trait: 'Perception & Agility' },
+    sahadeva: { id: 'sahadeva', name: 'Sahadeva', emoji: '🔭', title: 'The Visionary Scholar', trait: 'Foresight & Intellect' },
+    ghatotkacha: { id: 'ghatotkacha', name: 'Ghatotkacha', emoji: '⛰️', title: 'The Loyal Giant', trait: 'Power & Selflessness' },
+    hanuman: { id: 'hanuman', name: 'Hanuman', emoji: '🐒', title: 'The Devoted Student', trait: 'Intellect & Humility' },
+    dronacharya: { id: 'dronacharya', name: 'Dronacharya', emoji: '🎯', title: 'The Ultimate Master', trait: 'Discipline & Excellence' },
+    bhishma: { id: 'bhishma', name: 'Bhishma', emoji: '👑', title: 'The Elder Statesman', trait: 'Wisdom & Duty' },
+    parashurama: { id: 'parashurama', name: 'Parashurama', emoji: '🪓', title: 'The Fierce Instructor', trait: 'Purity & Rigor' },
+    chanakya: { id: 'chanakya', name: 'Chanakya', emoji: '📜', title: 'The Kingmaker', trait: 'Strategy & Pragmatism' },
+};
+
 /* ──────────────── Main Chat Page ──────────────── */
 export default function TTRAIChat() {
     const { user, signOut } = useAuth();
@@ -46,6 +66,20 @@ export default function TTRAIChat() {
     const [sessions, setSessions] = useState([]);
     const [currentSessionId, setCurrentSessionId] = useState(null);
     const [showSidebar, setShowSidebar] = useState(false);
+
+    // Gurukul Path State
+    const [currentPath, setCurrentPath] = useState(localStorage.getItem('ttr_guest_path') || '');
+    const [showPathModal, setShowPathModal] = useState(false);
+
+    // Save path to local storage so guests don't lose it
+    useEffect(() => {
+        if (currentPath) {
+            localStorage.setItem('ttr_guest_path', currentPath);
+            // If logged in, you could also save it to their profile here if desired
+        } else {
+            localStorage.removeItem('ttr_guest_path');
+        }
+    }, [currentPath]);
 
     // Image upload
     const [selectedImage, setSelectedImage] = useState(null);
@@ -193,8 +227,8 @@ export default function TTRAIChat() {
                 history: historyForApi,
                 message: text,
                 userContext: {
-                    role: 'User',
                     name: displayName,
+                    gurukul_path: currentPath,
                 },
                 image: imgData ? imgData.split(',')[1] : null,
                 mimeType: imgData ? imgData.match(/:(.*?);/)?.[1] : null,
@@ -335,6 +369,13 @@ export default function TTRAIChat() {
                         <span>TTR AI</span>
                     </div>
                     <div className="header-actions">
+                        <button
+                            className="path-header-btn"
+                            onClick={() => setShowPathModal(true)}
+                            title="Choose Gurukul Path"
+                        >
+                            {currentPath && GURUKUL_HEROES[currentPath] ? GURUKUL_HEROES[currentPath].emoji : '🕉️'}
+                        </button>
                         {!user && (
                             <button className="signin-header-btn" onClick={() => navigate('/login')}>
                                 Sign In
@@ -446,6 +487,41 @@ export default function TTRAIChat() {
                     <p className="input-hint">TTR AI can make mistakes. Verify important information.</p>
                 </div>
             </div>
+
+            {/* ── Gurukul Path Modal ── */}
+            {showPathModal && (
+                <div className="path-modal-overlay" onClick={() => setShowPathModal(false)}>
+                    <div className="path-modal" onClick={e => e.stopPropagation()}>
+                        <div className="path-modal-header">
+                            <h2>Choose Your Gurukul Path</h2>
+                            <p>Select an ancient personality to guide your learning.</p>
+                            <button className="close-modal" onClick={() => setShowPathModal(false)}>✕</button>
+                        </div>
+                        <div className="path-list">
+                            <div
+                                className={`path-card ${currentPath === '' ? 'active' : ''}`}
+                                onClick={() => { setCurrentPath(''); setShowPathModal(false); }}
+                            >
+                                <div className="path-emoji">🧠</div>
+                                <h3>Universal TTR AI</h3>
+                                <p>Standard intelligent learning companion.</p>
+                            </div>
+                            {Object.values(GURUKUL_HEROES).map(hero => (
+                                <div
+                                    key={hero.id}
+                                    className={`path-card ${currentPath === hero.id ? 'active' : ''}`}
+                                    onClick={() => { setCurrentPath(hero.id); setShowPathModal(false); }}
+                                >
+                                    <div className="path-emoji">{hero.emoji}</div>
+                                    <h3>{hero.name}</h3>
+                                    <p className="path-title">{hero.title}</p>
+                                    <p className="path-trait">{hero.trait}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
