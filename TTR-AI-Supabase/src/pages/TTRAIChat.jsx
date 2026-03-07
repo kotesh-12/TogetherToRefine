@@ -50,6 +50,26 @@ const GURUKUL_HEROES = {
     chanakya: { id: 'chanakya', name: 'Chanakya', emoji: '📜', title: 'The Kingmaker', trait: 'Strategy & Pragmatism' },
 };
 
+/* ──────────────── Secure Context Heroes Data (Pop-Culture) ──────────────── */
+const SECURE_HEROES = {
+    arjuna: { id: 'arjuna', name: 'Baahubali', emoji: '🏹', title: 'The Focused Warrior', trait: 'Laser Focus & Mastery' },
+    ekalavya: { id: 'ekalavya', name: 'Rocky', emoji: '⛏️', title: 'The Self-Made Survivor', trait: 'Self-Learning & Devotion' },
+    krishna: { id: 'krishna', name: 'The Professor', emoji: '🧠', title: 'The Mastermind', trait: 'Strategy & Emotional Intelligence' },
+    rama: { id: 'rama', name: 'Captain America', emoji: '🛡️', title: 'The Righteous Leader', trait: 'Righteousness & Duty' },
+    karna: { id: 'karna', name: 'Pushpa', emoji: '🪓', title: 'The Resilient Underdog', trait: 'Resilience & Generosity' },
+    dharmaraj: { id: 'dharmaraj', name: 'Batman', emoji: '🦇', title: 'The Justice Seeker', trait: 'Truth & Justice Always' },
+    abhimanyu: { id: 'abhimanyu', name: 'Spider-Man', emoji: '🕸️', title: 'The Fearless Challenger', trait: 'Courage & Action' },
+    bheema: { id: 'bheema', name: 'The Hulk', emoji: '💪', title: 'The Unstoppable Force', trait: 'Raw Strength & Endurance' },
+    nakula: { id: 'nakula', name: 'Sherlock Holmes', emoji: '🔍', title: 'The Observant Detective', trait: 'Perception & Agility' },
+    sahadeva: { id: 'sahadeva', name: 'Iron Man', emoji: '🤖', title: 'The Visionary Inventor', trait: 'Foresight & Intellect' },
+    ghatotkacha: { id: 'ghatotkacha', name: 'Optimus Prime', emoji: '🚛', title: 'The Loyal Protector', trait: 'Power & Selflessness' },
+    hanuman: { id: 'hanuman', name: 'Kattappa', emoji: '🗡️', title: 'The Devoted Warrior', trait: 'Loyalty & Humility' },
+    dronacharya: { id: 'dronacharya', name: 'Master Shifu', emoji: '🥋', title: 'The Ultimate Master', trait: 'Discipline & Excellence' },
+    bhishma: { id: 'bhishma', name: 'Albus Dumbledore', emoji: '🧙‍♂️', title: 'The Elder Guide', trait: 'Wisdom & Duty' },
+    parashurama: { id: 'parashurama', name: 'John Wick', emoji: '🔫', title: 'The Fierce Instructor', trait: 'Purity & Rigor' },
+    chanakya: { id: 'chanakya', name: 'Thomas Shelby', emoji: '🚬', title: 'The Strategic Kingmaker', trait: 'Strategy & Pragmatism' },
+};
+
 /* ──────────────── Main Chat Page ──────────────── */
 export default function TTRAIChat() {
     const { user, signOut } = useAuth();
@@ -69,17 +89,24 @@ export default function TTRAIChat() {
 
     // Gurukul Path State
     const [currentPath, setCurrentPath] = useState(localStorage.getItem('ttr_guest_path') || '');
+    const [currentDomain, setCurrentDomain] = useState(localStorage.getItem('ttr_guest_domain') || null);
     const [showPathModal, setShowPathModal] = useState(false);
 
     // Save path to local storage so guests don't lose it
     useEffect(() => {
         if (currentPath) {
             localStorage.setItem('ttr_guest_path', currentPath);
-            // If logged in, you could also save it to their profile here if desired
         } else {
             localStorage.removeItem('ttr_guest_path');
         }
-    }, [currentPath]);
+        if (currentDomain) {
+            localStorage.setItem('ttr_guest_domain', currentDomain);
+        } else {
+            localStorage.removeItem('ttr_guest_domain');
+        }
+    }, [currentPath, currentDomain]);
+
+    const activeHeroes = currentDomain === 'secure' ? SECURE_HEROES : GURUKUL_HEROES;
 
     // Image upload
     const [selectedImage, setSelectedImage] = useState(null);
@@ -229,6 +256,7 @@ export default function TTRAIChat() {
                 userContext: {
                     name: displayName,
                     gurukul_path: currentPath,
+                    domain: currentDomain || 'gurukul'
                 },
                 image: imgData ? imgData.split(',')[1] : null,
                 mimeType: imgData ? imgData.match(/:(.*?);/)?.[1] : null,
@@ -372,9 +400,9 @@ export default function TTRAIChat() {
                         <button
                             className="path-header-btn"
                             onClick={() => setShowPathModal(true)}
-                            title="Choose Gurukul Path"
+                            title="Choose AI Experience Path"
                         >
-                            {currentPath && GURUKUL_HEROES[currentPath] ? GURUKUL_HEROES[currentPath].emoji : '🕉️'}
+                            {currentPath && activeHeroes[currentPath] ? activeHeroes[currentPath].emoji : '🕉️'}
                         </button>
                         {!user && (
                             <button className="signin-header-btn" onClick={() => navigate('/login')}>
@@ -498,34 +526,70 @@ export default function TTRAIChat() {
                             <button className="close-modal" onClick={() => setShowPathModal(false)}>✕</button>
                         </div>
                         {user ? (
-                            <div className="path-list">
-                                <div
-                                    className={`path-card ${currentPath === '' ? 'active' : ''}`}
-                                    onClick={() => { setCurrentPath(''); setShowPathModal(false); }}
-                                >
-                                    <div className="path-emoji">🧠</div>
-                                    <h3>Universal TTR AI</h3>
-                                    <p>Standard intelligent learning companion.</p>
-                                </div>
-                                {Object.values(GURUKUL_HEROES).map(hero => (
-                                    <div
-                                        key={hero.id}
-                                        className={`path-card ${currentPath === hero.id ? 'active' : ''}`}
-                                        onClick={() => { setCurrentPath(hero.id); setShowPathModal(false); }}
-                                    >
-                                        <div className="path-emoji">{hero.emoji}</div>
-                                        <h3>{hero.name}</h3>
-                                        <p className="path-title">{hero.title}</p>
-                                        <p className="path-trait">{hero.trait}</p>
+                            !currentDomain ? (
+                                <div className="domain-selector">
+                                    <h3>Select your AI Experience Domain</h3>
+                                    <p style={{ marginBottom: 20 }}>Some users prefer modern pop-culture equivalents over traditional mythological references.</p>
+                                    <div className="domain-cards" style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}>
+                                        <div
+                                            className="domain-card"
+                                            onClick={() => setCurrentDomain('gurukul')}
+                                            style={{ cursor: 'pointer', padding: '20px', border: '1px solid var(--border)', borderRadius: '10px', textAlign: 'center', width: '200px' }}
+                                        >
+                                            <div style={{ fontSize: 40 }}>🏛️</div>
+                                            <h4>Gurukul Context</h4>
+                                            <small style={{ color: 'var(--text-secondary)' }}>Ancient wisdom, mythological names</small>
+                                        </div>
+                                        <div
+                                            className="domain-card"
+                                            onClick={() => setCurrentDomain('secure')}
+                                            style={{ cursor: 'pointer', padding: '20px', border: '1px solid var(--border)', borderRadius: '10px', textAlign: 'center', width: '200px' }}
+                                        >
+                                            <div style={{ fontSize: 40 }}>🎬</div>
+                                            <h4>Secure Context</h4>
+                                            <small style={{ color: 'var(--text-secondary)' }}>Pop-culture, cinematic heroes</small>
+                                        </div>
                                     </div>
-                                ))}
-                            </div>
+                                </div>
+                            ) : (
+                                <>
+                                    <button
+                                        className="change-domain-btn"
+                                        onClick={() => setCurrentDomain(null)}
+                                        style={{ margin: '-10px auto 15px', display: 'block', background: 'none', border: '1px solid var(--border)', color: 'var(--text-secondary)', padding: '5px 15px', borderRadius: 20, cursor: 'pointer' }}
+                                    >
+                                        Switch Domain (Currently {currentDomain === 'secure' ? 'Secure' : 'Gurukul'})
+                                    </button>
+                                    <div className="path-list">
+                                        <div
+                                            className={`path-card ${currentPath === '' ? 'active' : ''}`}
+                                            onClick={() => { setCurrentPath(''); setShowPathModal(false); }}
+                                        >
+                                            <div className="path-emoji">🧠</div>
+                                            <h3>{currentDomain === 'secure' ? 'Universal AI' : 'Universal TTR AI'}</h3>
+                                            <p>Standard intelligent learning companion.</p>
+                                        </div>
+                                        {Object.values(activeHeroes).map(hero => (
+                                            <div
+                                                key={hero.id}
+                                                className={`path-card ${currentPath === hero.id ? 'active' : ''}`}
+                                                onClick={() => { setCurrentPath(hero.id); setShowPathModal(false); }}
+                                            >
+                                                <div className="path-emoji">{hero.emoji}</div>
+                                                <h3>{hero.name}</h3>
+                                                <p className="path-title">{hero.title}</p>
+                                                <p className="path-trait">{hero.trait}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )
                         ) : (
                             <div className="path-modal-locked">
                                 <div className="locked-content">
                                     <div className="locked-icon">🔒</div>
-                                    <h3>Unlock Gurukul Paths</h3>
-                                    <p>Sign up to choose from 16 ancient personalities, save your chat history, and get the full TTR AI experience!</p>
+                                    <h3>Unlock Learning Paths</h3>
+                                    <p>Sign up to choose from 16 ancient personalities or pop-culture heroes, save your chat history, and get the full TTR AI experience!</p>
                                     <button className="signin-prompt-btn" onClick={() => navigate('/login')}>
                                         Create Free Account
                                     </button>
@@ -533,18 +597,18 @@ export default function TTRAIChat() {
                                 <div className="path-list preview">
                                     <div className="path-card locked">
                                         <div className="path-emoji">🏹</div>
-                                        <h3>Arjuna</h3>
+                                        <h3>Arjuna / Baahubali</h3>
                                         <p className="path-title">The Focused Warrior</p>
                                     </div>
                                     <div className="path-card locked">
                                         <div className="path-emoji">🪈</div>
-                                        <h3>Krishna</h3>
-                                        <p className="path-title">The Strategic Thinker</p>
+                                        <h3>Krishna / The Professor</h3>
+                                        <p className="path-title">The Mastermind & Strategist</p>
                                     </div>
                                     <div className="path-card locked">
                                         <div className="path-emoji">🔭</div>
-                                        <h3>Sahadeva</h3>
-                                        <p className="path-title">The Visionary Scholar</p>
+                                        <h3>Sahadeva / Iron Man</h3>
+                                        <p className="path-title">The Visionary</p>
                                     </div>
                                 </div>
                             </div>
