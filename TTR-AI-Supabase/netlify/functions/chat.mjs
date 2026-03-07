@@ -64,7 +64,7 @@ CRITICAL DIRECTIVES:
 
         // ─── GURUKUL PATH PERSONALITY INJECTION ──────────────────────────────────
         if (userContext.gurukul_path) {
-            const domainData = userContext.domain === 'secure' ? SECURE_HEROES : userContext.domain === '4way' ? FOUR_WAY_HEROES : GURUKUL_HEROES;
+            const domainData = userContext.domain === 'secure' ? SECURE_HEROES : GURUKUL_HEROES;
             const hero = domainData[userContext.gurukul_path];
 
             if (hero) {
@@ -82,6 +82,20 @@ CRITICAL PERSONALITY DIRECTIVES:
             }
         } else {
             systemInstruction += `\n\nAI EXPERIENCE INFO: The user can choose between Ancient Gurukul or Modern Pop-Culture heroes to guide their learning journey. If they ask about personalities, explain they can pick one of 16 avatars to customize their experience.`;
+        }
+
+        // ─── 4-WAY LEARNING INJECTION ──────────────────────────────────
+        if (userContext.fourWayMode && FOUR_WAY_HEROES[userContext.fourWayMode]) {
+            const modeInfo = FOUR_WAY_HEROES[userContext.fourWayMode];
+            systemInstruction += `\n\n🧭 4-WAY LEARNING MODE ACTIVE:
+Mode: ${modeInfo.name} (${modeInfo.title})
+Objective: ${modeInfo.trait}
+YOUR MANDATORY TEACHING STYLE: ${modeInfo.aiStyle}
+Mode Quote: ${modeInfo.quote}
+
+CRITICAL RULES FOR THIS RESPONSE:
+1. You MUST format your explanation to strictly follow the ${modeInfo.name} style described above.
+2. Structure your entire response through the lens of ${modeInfo.title}.`;
         }
     }
 

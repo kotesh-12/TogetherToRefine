@@ -100,6 +100,9 @@ export default function TTRAIChat() {
     const [currentDomain, setCurrentDomain] = useState(localStorage.getItem('ttr_guest_domain') || null);
     const [showPathModal, setShowPathModal] = useState(false);
 
+    const [fourWayMode, setFourWayMode] = useState(null);
+    const [showFourWayMenu, setShowFourWayMenu] = useState(false);
+
     // Save path to local storage so guests don't lose it
     useEffect(() => {
         if (currentPath) {
@@ -114,7 +117,7 @@ export default function TTRAIChat() {
         }
     }, [currentPath, currentDomain]);
 
-    const activeHeroes = currentDomain === 'secure' ? SECURE_HEROES : currentDomain === '4way' ? FOUR_WAY_HEROES : GURUKUL_HEROES;
+    const activeHeroes = currentDomain === 'secure' ? SECURE_HEROES : GURUKUL_HEROES;
 
     // Image upload
     const [selectedImage, setSelectedImage] = useState(null);
@@ -142,9 +145,17 @@ export default function TTRAIChat() {
             .select('*')
             .eq('user_id', user.id)
             .order('updated_at', { ascending: false })
-            .limit(30);
+            .limit(100);
         if (!error && data) setSessions(data);
     };
+
+    const filteredSessions = sessions.filter(s => {
+        if (fourWayMode) {
+            return s.title.startsWith(`[${fourWayMode}] `);
+        } else {
+            return !s.title.startsWith(`[conceptual] `) && !s.title.startsWith(`[fictional] `) && !s.title.startsWith(`[storytelling] `) && !s.title.startsWith(`[teaching] `);
+        }
+    });
 
     /* ── Load messages when session changes (only if logged in) ── */
     useEffect(() => {
@@ -234,14 +245,17 @@ export default function TTRAIChat() {
             // Create session if logged in and needed
             let sessionId = currentSessionId;
             if (user && !sessionId) {
+                const sessionPrefix = fourWayMode ? `[${fourWayMode}] ` : '';
+                const baseTitle = text.substring(0, 40) || 'New Chat';
                 const { data: newSession, error } = await supabase
                     .from('chat_sessions')
-                    .insert({ user_id: user.id, title: text.substring(0, 40) || 'New Chat' })
+                    .insert({ user_id: user.id, title: sessionPrefix + baseTitle })
                     .select()
                     .single();
                 if (error) throw error;
                 sessionId = newSession.id;
                 setCurrentSessionId(sessionId);
+                loadSessions(); // update list
             }
 
             // Save user message (only if logged in)
@@ -264,7 +278,8 @@ export default function TTRAIChat() {
                 userContext: {
                     name: displayName,
                     gurukul_path: currentPath,
-                    domain: currentDomain || 'gurukul'
+                    domain: currentDomain || 'gurukul',
+                    fourWayMode: fourWayMode
                 },
                 image: imgData ? imgData.split(',')[1] : null,
                 mimeType: imgData ? imgData.match(/:(.*?);/)?.[1] : null,
@@ -338,7 +353,7 @@ export default function TTRAIChat() {
                 {user ? (
                     <>
                         <div className="sessions-list">
-                            {sessions.map(s => (
+                            {filteredSessions.map(s => (
                                 <div
                                     key={s.id}
                                     className={`session-item ${currentSessionId === s.id ? 'active' : ''}`}
@@ -348,7 +363,7 @@ export default function TTRAIChat() {
                                     <button className="delete-btn" onClick={(e) => deleteSession(e, s.id)}>🗑</button>
                                 </div>
                             ))}
-                            {sessions.length === 0 && <p className="no-sessions">No conversations yet</p>}
+                            {filteredSessions.length === 0 && <p className="no-sessions">No conversations yet</p>}
                         </div>
 
                         <div className="sidebar-footer">
@@ -484,7 +499,46 @@ export default function TTRAIChat() {
                             <button onClick={() => setSelectedImage(null)}>✕</button>
                         </div>
                     )}
-                    <div className="input-bar">
+                    <div className="input-bar" style={{ position: 'relative' }}>
+                        {/* 4-Way Learning Menu Toggler */}
+                        <div style={{ position: 'relative' }}>
+                            <button
+                                className="attach-btn"
+                                onClick={() => setShowFourWayMenu(!showFourWayMenu)}
+                                title="4-Way Learning Modes"
+                                style={{ color: fourWayMode ? 'var(--accent)' : 'inherit' }}
+                            >
+                                {fourWayMode ? Object.values(FOUR_WAY_HEROES).find(h => h.id === fourWayMode)?.emoji : '🧭'}
+                            </button>
+                            {showFourWayMenu && (
+                                <div style={{
+                                    position: 'absolute', bottom: '100%', left: '0', marginBottom: '10px',
+                                    background: 'var(--surface)', border: '1px solid var(--border)',
+                                    borderRadius: '10px', padding: '10px', display: 'flex', flexDirection: 'column',
+                                    gap: '5px', boxShadow: '0 5px 20px rgba(0,0,0,0.3)', zIndex: 100,
+                                    width: '200px'
+                                }}>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', padding: '5px' }}>4-Way Learning</div>
+                                    <button
+                                        onClick={() => { setFourWayMode(null); setShowFourWayMenu(false); setCurrentSessionId(null); setMessages([WELCOME_MSG]); setInput(''); }}
+                                        style={{ textAlign: 'left', padding: '10px', background: !fourWayMode ? 'rgba(108, 99, 255, 0.1)' : 'transparent', border: 'none', borderRadius: '5px', color: 'white', cursor: 'pointer' }}
+                                    >
+                                        🧠 Standard TTR AI
+                                    </button>
+                                    {Object.values(FOUR_WAY_HEROES).map(mode => (
+                                        <button
+                                            key={mode.id}
+                                            onClick={() => { setFourWayMode(mode.id); setShowFourWayMenu(false); setCurrentSessionId(null); setMessages([WELCOME_MSG]); setInput(''); }}
+                                            style={{ textAlign: 'left', padding: '10px', background: fourWayMode === mode.id ? 'rgba(108, 99, 255, 0.1)' : 'transparent', border: 'none', borderRadius: '5px', color: 'white', cursor: 'pointer' }}
+                                            title={mode.title}
+                                        >
+                                            {mode.emoji} {mode.name.replace(mode.emoji, '').trim()}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
                         <button className="attach-btn" onClick={() => fileInputRef.current?.click()} title="Attach Image">
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
