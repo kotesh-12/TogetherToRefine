@@ -426,9 +426,7 @@ export default function TTRAIChat() {
                         </svg>
                     </button>
                     <div className="header-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div className="header-logo">
-                            <img src={logo} alt="TTR" style={{ height: '32px', width: 'auto', display: 'block' }} />
-                        </div>
+                        <img src={logo} alt="TTR" style={{ height: '32px', width: 'auto', display: 'block', marginRight: '6px' }} />
                         <span style={{ fontSize: '18px', fontWeight: 'bold' }}>TTR AI</span>
                     </div>
                     <div className="header-actions">
