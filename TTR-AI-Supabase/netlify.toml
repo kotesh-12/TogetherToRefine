@@ -8,7 +8,10 @@
 
 [functions]
   node_bundler = "esbuild"
-  included_files = ["netlify/functions/**"]
+
+# Extend timeout for AI API calls (default is 10s, max 26s on free tier)
+[functions."chat"]
+  timeout = 26
 
 # SPA — send all non-file routes to index.html
 [[redirects]]
