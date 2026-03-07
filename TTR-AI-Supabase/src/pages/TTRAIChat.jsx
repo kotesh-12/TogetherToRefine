@@ -497,28 +497,58 @@ export default function TTRAIChat() {
                             <p>Select an ancient personality to guide your learning.</p>
                             <button className="close-modal" onClick={() => setShowPathModal(false)}>✕</button>
                         </div>
-                        <div className="path-list">
-                            <div
-                                className={`path-card ${currentPath === '' ? 'active' : ''}`}
-                                onClick={() => { setCurrentPath(''); setShowPathModal(false); }}
-                            >
-                                <div className="path-emoji">🧠</div>
-                                <h3>Universal TTR AI</h3>
-                                <p>Standard intelligent learning companion.</p>
-                            </div>
-                            {Object.values(GURUKUL_HEROES).map(hero => (
+                        {user ? (
+                            <div className="path-list">
                                 <div
-                                    key={hero.id}
-                                    className={`path-card ${currentPath === hero.id ? 'active' : ''}`}
-                                    onClick={() => { setCurrentPath(hero.id); setShowPathModal(false); }}
+                                    className={`path-card ${currentPath === '' ? 'active' : ''}`}
+                                    onClick={() => { setCurrentPath(''); setShowPathModal(false); }}
                                 >
-                                    <div className="path-emoji">{hero.emoji}</div>
-                                    <h3>{hero.name}</h3>
-                                    <p className="path-title">{hero.title}</p>
-                                    <p className="path-trait">{hero.trait}</p>
+                                    <div className="path-emoji">🧠</div>
+                                    <h3>Universal TTR AI</h3>
+                                    <p>Standard intelligent learning companion.</p>
                                 </div>
-                            ))}
-                        </div>
+                                {Object.values(GURUKUL_HEROES).map(hero => (
+                                    <div
+                                        key={hero.id}
+                                        className={`path-card ${currentPath === hero.id ? 'active' : ''}`}
+                                        onClick={() => { setCurrentPath(hero.id); setShowPathModal(false); }}
+                                    >
+                                        <div className="path-emoji">{hero.emoji}</div>
+                                        <h3>{hero.name}</h3>
+                                        <p className="path-title">{hero.title}</p>
+                                        <p className="path-trait">{hero.trait}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="path-modal-locked">
+                                <div className="locked-content">
+                                    <div className="locked-icon">🔒</div>
+                                    <h3>Unlock Gurukul Paths</h3>
+                                    <p>Sign up to choose from 16 ancient personalities, save your chat history, and get the full TTR AI experience!</p>
+                                    <button className="signin-prompt-btn" onClick={() => navigate('/login')}>
+                                        Create Free Account
+                                    </button>
+                                </div>
+                                <div className="path-list preview">
+                                    <div className="path-card locked">
+                                        <div className="path-emoji">🏹</div>
+                                        <h3>Arjuna</h3>
+                                        <p className="path-title">The Focused Warrior</p>
+                                    </div>
+                                    <div className="path-card locked">
+                                        <div className="path-emoji">🪈</div>
+                                        <h3>Krishna</h3>
+                                        <p className="path-title">The Strategic Thinker</p>
+                                    </div>
+                                    <div className="path-card locked">
+                                        <div className="path-emoji">🔭</div>
+                                        <h3>Sahadeva</h3>
+                                        <p className="path-title">The Visionary Scholar</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

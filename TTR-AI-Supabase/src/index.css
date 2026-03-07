@@ -1230,3 +1230,52 @@ a:hover {
   margin: 0;
   line-height: 1.4;
 }
+
+.path-modal-locked {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+}
+
+.locked-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 40px;
+  border-radius: var(--radius-lg);
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  width: 90%;
+  max-width: 400px;
+}
+
+.locked-content h3 {
+  margin: 16px 0 8px;
+  font-size: 20px;
+}
+
+.locked-content p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.path-list.preview {
+  opacity: 0.3;
+  filter: blur(4px);
+  pointer-events: none;
+  user-select: none;
+  padding-bottom: 60px;
+  /* space for the absolute box */
+}
+
+.path-card.locked {
+  cursor: default;
+}
