@@ -425,11 +425,11 @@ export default function TTRAIChat() {
                             <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
                         </svg>
                     </button>
-                    <div className="header-title">
+                    <div className="header-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <div className="header-logo">
-                            <img src={logo} alt="TTR" style={{ height: '28px', width: 'auto' }} />
+                            <img src={logo} alt="TTR" style={{ height: '32px', width: 'auto', display: 'block' }} />
                         </div>
-                        <span>TTR AI</span>
+                        <span style={{ fontSize: '18px', fontWeight: 'bold' }}>TTR AI</span>
                     </div>
                     <div className="header-actions">
                         <button
