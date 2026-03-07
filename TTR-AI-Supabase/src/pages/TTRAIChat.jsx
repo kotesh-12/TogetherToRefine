@@ -437,6 +437,9 @@ export default function TTRAIChat() {
                         >
                             {currentPath && activeHeroes[currentPath] ? activeHeroes[currentPath].emoji : '🕉️'}
                         </button>
+                        <button className="path-header-btn" onClick={() => navigate('/download-app')} title="Download App">
+                            📲
+                        </button>
                         {!user && (
                             <button className="signin-header-btn" onClick={() => navigate('/login')}>
                                 Sign In
