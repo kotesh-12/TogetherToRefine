@@ -151,12 +151,6 @@ a:hover {
   width: 56px;
   height: 56px;
   margin: 0 auto 14px;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--accent-glow);
-  box-shadow: 0 0 30px rgba(108, 99, 255, 0.2);
 }
 
 .brand-title {
