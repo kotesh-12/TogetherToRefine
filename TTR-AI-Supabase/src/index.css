@@ -1279,3 +1279,66 @@ a:hover {
 .path-card.locked {
   cursor: default;
 }
+
+/* ═══════════════════════════════════════════════════
+   VOICE & FILE ATTACHMENT STYLES
+   ═══════════════════════════════════════════════════ */
+.voice-button.listening {
+  animation: pulse-red 1.5s infinite;
+  background: rgba(239, 68, 68, 0.1) !important;
+  border-color: var(--danger) !important;
+}
+
+@keyframes pulse-red {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+
+  70% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+.speak-button:hover {
+  opacity: 1 !important;
+  transform: scale(1.2);
+  transition: transform 0.2s ease;
+}
+
+.msg-audio {
+  display: block;
+  height: 36px;
+  filter: invert(1) hue-rotate(180deg);
+  opacity: 0.8;
+}
+
+.msg-file-icon {
+  background: var(--bg-tertiary);
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.chat-img-attachment {
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+  margin-bottom: 12px;
+  display: block;
+  border: 1px solid var(--border);
+}
+
+.voice-button circle {
+  transition: fill 0.3s ease;
+}

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import ReactMarkdown from 'react-markdown';
+import { useSpeech } from '../hooks/useSpeech';
+import logo from '../assets/logo.png';
 
 /* ──────────────── Typewriter Effect ──────────────── */
 const TypewriterMessage = ({ text, onComplete }) => {
@@ -123,6 +125,20 @@ export default function TTRAIChat() {
     const [selectedImage, setSelectedImage] = useState(null);
     const fileInputRef = useRef(null);
     const abortControllerRef = useRef(null);
+    const [motherTongue, setMotherTongue] = useState('Hindi');
+
+    const { speak, listen, isListening, speakingText } = useSpeech();
+
+    const handleMicClick = () => {
+        let lang = 'en-US';
+        if (fourWayMode === 'teaching') {
+            const map = { 'Hindi': 'hi-IN', 'Telugu': 'te-IN', 'Tamil': 'ta-IN', 'Spanish': 'es-ES', 'French': 'fr-FR' };
+            lang = map[motherTongue] || 'en-US';
+        }
+        listen((text) => {
+            setInput(prev => (prev + ' ' + text).trim());
+        }, lang);
+    };
 
     // Welcome message
     const WELCOME_MSG = { text: "Hello! I'm **TTR AI** 🧠 — your intelligent learning companion.\n\nAsk me anything about academics, coding, science, math, or just have a conversation!", sender: 'ai' };
@@ -238,7 +254,8 @@ export default function TTRAIChat() {
         setSelectedImage(null);
         setLoading(true);
 
-        const userMsg = { text: text || 'Image uploaded', image: imgData, sender: 'user' };
+        const isImage = imgData?.startsWith('data:image/');
+        const userMsg = { text: text || (isImage ? 'Image uploaded' : 'File uploaded'), image: imgData, sender: 'user' };
         setMessages(prev => [...prev, userMsg]);
 
         try {
@@ -279,7 +296,8 @@ export default function TTRAIChat() {
                     name: displayName,
                     gurukul_path: currentPath,
                     domain: currentDomain || 'gurukul',
-                    fourWayMode: fourWayMode
+                    fourWayMode: fourWayMode,
+                    motherTongue: fourWayMode === 'teaching' ? motherTongue : null
                 },
                 image: imgData ? imgData.split(',')[1] : null,
                 mimeType: imgData ? imgData.match(/:(.*?);/)?.[1] : null,
@@ -409,13 +427,7 @@ export default function TTRAIChat() {
                     </button>
                     <div className="header-title">
                         <div className="header-logo">
-                            <svg width="28" height="28" viewBox="0 0 40 40" fill="none">
-                                <rect width="40" height="40" rx="10" fill="url(#hg)" />
-                                <path d="M12 20L18 14L24 20L18 26L12 20Z" fill="white" opacity="0.9" />
-                                <path d="M18 14L24 20L30 14L24 8L18 14Z" fill="white" opacity="0.6" />
-                                <path d="M18 26L24 20L30 26L24 32L18 26Z" fill="white" opacity="0.6" />
-                                <defs><linearGradient id="hg" x1="0" y1="0" x2="40" y2="40"><stop offset="0%" stopColor="#6C63FF" /><stop offset="100%" stopColor="#AB47BC" /></linearGradient></defs>
-                            </svg>
+                            <img src={logo} alt="TTR" style={{ height: '28px', width: 'auto' }} />
                         </div>
                         <span>TTR AI</span>
                     </div>
@@ -446,15 +458,19 @@ export default function TTRAIChat() {
                         <div key={i} className={`message ${msg.sender}`}>
                             {msg.sender === 'ai' && (
                                 <div className="msg-avatar ai-avatar">
-                                    <svg width="20" height="20" viewBox="0 0 40 40" fill="none">
-                                        <rect width="40" height="40" rx="10" fill="url(#mg)" />
-                                        <path d="M12 20L18 14L24 20L18 26L12 20Z" fill="white" opacity="0.9" />
-                                        <defs><linearGradient id="mg" x1="0" y1="0" x2="40" y2="40"><stop offset="0%" stopColor="#6C63FF" /><stop offset="100%" stopColor="#AB47BC" /></linearGradient></defs>
-                                    </svg>
+                                    <img src={logo} alt="TTR AI" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
                                 </div>
                             )}
                             <div className="msg-content">
-                                {msg.image && <img src={msg.image} alt="upload" className="msg-image" />}
+                                {msg.image && (
+                                    msg.image.startsWith('data:image/') ? (
+                                        <img src={msg.image} alt="upload" className="msg-image" />
+                                    ) : msg.image.startsWith('data:audio/') ? (
+                                        <audio controls src={msg.image} className="msg-audio" style={{ maxWidth: '100%', marginBottom: '10px' }} />
+                                    ) : (
+                                        <div className="msg-file-icon" style={{ fontSize: '30px', marginBottom: '10px' }}>📄 PDF/Doc</div>
+                                    )
+                                )}
                                 {msg.isNew && msg.sender === 'ai' ? (
                                     <TypewriterMessage text={msg.text} onComplete={() => {
                                         setMessages(prev => prev.map((m, idx) => idx === i ? { ...m, isNew: false } : m));
@@ -463,6 +479,17 @@ export default function TTRAIChat() {
                                     <ReactMarkdown>{msg.text}</ReactMarkdown>
                                 )}
                             </div>
+
+                            {msg.sender === 'ai' && (
+                                <button onClick={() => {
+                                    const langMap = { 'Hindi': 'hi-IN', 'Telugu': 'te-IN', 'Tamil': 'ta-IN', 'Spanish': 'es-ES', 'French': 'fr-FR' };
+                                    const lang = fourWayMode === 'teaching' ? (langMap[motherTongue] || 'en-US') : 'en-US';
+                                    speak(msg.text, lang);
+                                }} className="speak-button" style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, marginLeft: '10px', fontSize: '18px' }} title="Read Aloud">
+                                    {speakingText === msg.text ? '🔇' : '🔊'}
+                                </button>
+                            )}
+
                             {msg.sender === 'user' && (
                                 <div className="msg-avatar user-avatar">
                                     {displayName.charAt(0).toUpperCase()}
@@ -474,11 +501,7 @@ export default function TTRAIChat() {
                     {loading && (
                         <div className="message ai">
                             <div className="msg-avatar ai-avatar">
-                                <svg width="20" height="20" viewBox="0 0 40 40" fill="none">
-                                    <rect width="40" height="40" rx="10" fill="url(#lg)" />
-                                    <path d="M12 20L18 14L24 20L18 26L12 20Z" fill="white" opacity="0.9" />
-                                    <defs><linearGradient id="lg" x1="0" y1="0" x2="40" y2="40"><stop offset="0%" stopColor="#6C63FF" /><stop offset="100%" stopColor="#AB47BC" /></linearGradient></defs>
-                                </svg>
+                                <img src={logo} alt="TTR AI" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
                             </div>
                             <div className="msg-content thinking">
                                 <div className="thinking-dots">
@@ -539,7 +562,18 @@ export default function TTRAIChat() {
                             )}
                         </div>
 
-                        <button className="attach-btn" onClick={() => fileInputRef.current?.click()} title="Attach Image">
+                        <button
+                            onClick={handleMicClick}
+                            className={`attach-btn voice-button ${isListening ? 'listening' : ''}`}
+                            title="Click to Speak"
+                            style={{ color: isListening ? '#ff4757' : 'inherit' }}
+                        >
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line>
+                            </svg>
+                        </button>
+
+                        <button className="attach-btn" onClick={() => fileInputRef.current?.click()} title="Attach Document/Image">
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
                             </svg>
@@ -547,10 +581,24 @@ export default function TTRAIChat() {
                         <input
                             type="file"
                             ref={fileInputRef}
-                            accept="image/*"
+                            accept="image/*,application/pdf,audio/*"
                             onChange={handleImageChange}
                             style={{ display: 'none' }}
                         />
+
+                        {fourWayMode === 'teaching' && (
+                            <select
+                                value={motherTongue}
+                                onChange={(e) => setMotherTongue(e.target.value)}
+                                style={{ padding: '0 8px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: '12px', height: '36px' }}
+                            >
+                                <option value="Hindi">HI</option>
+                                <option value="Telugu">TE</option>
+                                <option value="Tamil">TA</option>
+                                <option value="Spanish">ES</option>
+                                <option value="French">FR</option>
+                            </select>
+                        )}
                         <textarea
                             ref={inputRef}
                             value={input}
@@ -579,114 +627,116 @@ export default function TTRAIChat() {
             </div>
 
             {/* ── Gurukul Path Modal ── */}
-            {showPathModal && (
-                <div className="path-modal-overlay" onClick={() => setShowPathModal(false)}>
-                    <div className="path-modal" onClick={e => e.stopPropagation()}>
-                        <div className="path-modal-header">
-                            <h2>Choose Your Gurukul Path</h2>
-                            <p>Select an ancient personality to guide your learning.</p>
-                            <button className="close-modal" onClick={() => setShowPathModal(false)}>✕</button>
-                        </div>
-                        {user ? (
-                            !currentDomain ? (
-                                <div className="domain-selector">
-                                    <h3>Select your AI Experience Domain</h3>
-                                    <p style={{ marginBottom: 20 }}>Some users prefer modern pop-culture equivalents over traditional mythological references.</p>
-                                    <div className="domain-cards" style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                                        <div
-                                            className="domain-card"
-                                            onClick={() => setCurrentDomain('gurukul')}
-                                            style={{ cursor: 'pointer', padding: '20px', border: '1px solid var(--border)', borderRadius: '10px', textAlign: 'center', width: '200px' }}
-                                        >
-                                            <div style={{ fontSize: 40 }}>🏛️</div>
-                                            <h4>Gurukul Context</h4>
-                                            <small style={{ color: 'var(--text-secondary)' }}>Ancient wisdom, mythological names</small>
-                                        </div>
-                                        <div
-                                            className="domain-card"
-                                            onClick={() => setCurrentDomain('secure')}
-                                            style={{ cursor: 'pointer', padding: '20px', border: '1px solid var(--border)', borderRadius: '10px', textAlign: 'center', width: '200px' }}
-                                        >
-                                            <div style={{ fontSize: 40 }}>🎬</div>
-                                            <h4>Secure Context</h4>
-                                            <small style={{ color: 'var(--text-secondary)' }}>Pop-culture, cinematic heroes</small>
-                                        </div>
-                                        <div
-                                            className="domain-card"
-                                            onClick={() => setCurrentDomain('4way')}
-                                            style={{ cursor: 'pointer', padding: '20px', border: '1px solid var(--border)', borderRadius: '10px', textAlign: 'center', width: '200px' }}
-                                        >
-                                            <div style={{ fontSize: 40 }}>🧭</div>
-                                            <h4>4-Way Learning</h4>
-                                            <small style={{ color: 'var(--text-secondary)' }}>Core methodologies, 4 perspectives</small>
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <>
-                                    <button
-                                        className="change-domain-btn"
-                                        onClick={() => setCurrentDomain(null)}
-                                        style={{ margin: '-10px auto 15px', display: 'block', background: 'none', border: '1px solid var(--border)', color: 'var(--text-secondary)', padding: '5px 15px', borderRadius: 20, cursor: 'pointer' }}
-                                    >
-                                        Switch Domain (Currently {currentDomain === 'secure' ? 'Secure' : currentDomain === '4way' ? '4-Way Learning' : 'Gurukul'})
-                                    </button>
-                                    <div className="path-list">
-                                        <div
-                                            className={`path-card ${currentPath === '' ? 'active' : ''}`}
-                                            onClick={() => { setCurrentPath(''); setShowPathModal(false); }}
-                                        >
-                                            <div className="path-emoji">🧠</div>
-                                            <h3>{currentDomain === 'secure' ? 'Universal AI' : currentDomain === '4way' ? 'Unified Learner' : 'Universal TTR AI'}</h3>
-                                            <p>Standard intelligent learning companion.</p>
-                                        </div>
-                                        {Object.values(activeHeroes).map(hero => (
-                                            <div
-                                                key={hero.id}
-                                                className={`path-card ${currentPath === hero.id ? 'active' : ''}`}
-                                                onClick={() => { setCurrentPath(hero.id); setShowPathModal(false); }}
-                                            >
-                                                <div className="path-emoji">{hero.emoji}</div>
-                                                <h3>{hero.name}</h3>
-                                                <p className="path-title">{hero.title}</p>
-                                                <p className="path-trait">{hero.trait}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </>
-                            )
-                        ) : (
-                            <div className="path-modal-locked">
-                                <div className="locked-content">
-                                    <div className="locked-icon">🔒</div>
-                                    <h3>Unlock Learning Paths</h3>
-                                    <p>Sign up to choose from 16 ancient personalities or pop-culture heroes, save your chat history, and get the full TTR AI experience!</p>
-                                    <button className="signin-prompt-btn" onClick={() => navigate('/login')}>
-                                        Create Free Account
-                                    </button>
-                                </div>
-                                <div className="path-list preview">
-                                    <div className="path-card locked">
-                                        <div className="path-emoji">🏹</div>
-                                        <h3>Arjuna / Baahubali</h3>
-                                        <p className="path-title">The Focused Warrior</p>
-                                    </div>
-                                    <div className="path-card locked">
-                                        <div className="path-emoji">🪈</div>
-                                        <h3>Krishna / The Professor</h3>
-                                        <p className="path-title">The Mastermind & Strategist</p>
-                                    </div>
-                                    <div className="path-card locked">
-                                        <div className="path-emoji">🔭</div>
-                                        <h3>Sahadeva / Iron Man</h3>
-                                        <p className="path-title">The Visionary</p>
-                                    </div>
-                                </div>
+            {
+                showPathModal && (
+                    <div className="path-modal-overlay" onClick={() => setShowPathModal(false)}>
+                        <div className="path-modal" onClick={e => e.stopPropagation()}>
+                            <div className="path-modal-header">
+                                <h2>Choose Your Gurukul Path</h2>
+                                <p>Select an ancient personality to guide your learning.</p>
+                                <button className="close-modal" onClick={() => setShowPathModal(false)}>✕</button>
                             </div>
-                        )}
+                            {user ? (
+                                !currentDomain ? (
+                                    <div className="domain-selector">
+                                        <h3>Select your AI Experience Domain</h3>
+                                        <p style={{ marginBottom: 20 }}>Some users prefer modern pop-culture equivalents over traditional mythological references.</p>
+                                        <div className="domain-cards" style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                            <div
+                                                className="domain-card"
+                                                onClick={() => setCurrentDomain('gurukul')}
+                                                style={{ cursor: 'pointer', padding: '20px', border: '1px solid var(--border)', borderRadius: '10px', textAlign: 'center', width: '200px' }}
+                                            >
+                                                <div style={{ fontSize: 40 }}>🏛️</div>
+                                                <h4>Gurukul Context</h4>
+                                                <small style={{ color: 'var(--text-secondary)' }}>Ancient wisdom, mythological names</small>
+                                            </div>
+                                            <div
+                                                className="domain-card"
+                                                onClick={() => setCurrentDomain('secure')}
+                                                style={{ cursor: 'pointer', padding: '20px', border: '1px solid var(--border)', borderRadius: '10px', textAlign: 'center', width: '200px' }}
+                                            >
+                                                <div style={{ fontSize: 40 }}>🎬</div>
+                                                <h4>Secure Context</h4>
+                                                <small style={{ color: 'var(--text-secondary)' }}>Pop-culture, cinematic heroes</small>
+                                            </div>
+                                            <div
+                                                className="domain-card"
+                                                onClick={() => setCurrentDomain('4way')}
+                                                style={{ cursor: 'pointer', padding: '20px', border: '1px solid var(--border)', borderRadius: '10px', textAlign: 'center', width: '200px' }}
+                                            >
+                                                <div style={{ fontSize: 40 }}>🧭</div>
+                                                <h4>4-Way Learning</h4>
+                                                <small style={{ color: 'var(--text-secondary)' }}>Core methodologies, 4 perspectives</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <button
+                                            className="change-domain-btn"
+                                            onClick={() => setCurrentDomain(null)}
+                                            style={{ margin: '-10px auto 15px', display: 'block', background: 'none', border: '1px solid var(--border)', color: 'var(--text-secondary)', padding: '5px 15px', borderRadius: 20, cursor: 'pointer' }}
+                                        >
+                                            Switch Domain (Currently {currentDomain === 'secure' ? 'Secure' : currentDomain === '4way' ? '4-Way Learning' : 'Gurukul'})
+                                        </button>
+                                        <div className="path-list">
+                                            <div
+                                                className={`path-card ${currentPath === '' ? 'active' : ''}`}
+                                                onClick={() => { setCurrentPath(''); setShowPathModal(false); }}
+                                            >
+                                                <div className="path-emoji">🧠</div>
+                                                <h3>{currentDomain === 'secure' ? 'Universal AI' : currentDomain === '4way' ? 'Unified Learner' : 'Universal TTR AI'}</h3>
+                                                <p>Standard intelligent learning companion.</p>
+                                            </div>
+                                            {Object.values(activeHeroes).map(hero => (
+                                                <div
+                                                    key={hero.id}
+                                                    className={`path-card ${currentPath === hero.id ? 'active' : ''}`}
+                                                    onClick={() => { setCurrentPath(hero.id); setShowPathModal(false); }}
+                                                >
+                                                    <div className="path-emoji">{hero.emoji}</div>
+                                                    <h3>{hero.name}</h3>
+                                                    <p className="path-title">{hero.title}</p>
+                                                    <p className="path-trait">{hero.trait}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
+                                )
+                            ) : (
+                                <div className="path-modal-locked">
+                                    <div className="locked-content">
+                                        <div className="locked-icon">🔒</div>
+                                        <h3>Unlock Learning Paths</h3>
+                                        <p>Sign up to choose from 16 ancient personalities or pop-culture heroes, save your chat history, and get the full TTR AI experience!</p>
+                                        <button className="signin-prompt-btn" onClick={() => navigate('/login')}>
+                                            Create Free Account
+                                        </button>
+                                    </div>
+                                    <div className="path-list preview">
+                                        <div className="path-card locked">
+                                            <div className="path-emoji">🏹</div>
+                                            <h3>Arjuna / Baahubali</h3>
+                                            <p className="path-title">The Focused Warrior</p>
+                                        </div>
+                                        <div className="path-card locked">
+                                            <div className="path-emoji">🪈</div>
+                                            <h3>Krishna / The Professor</h3>
+                                            <p className="path-title">The Mastermind & Strategist</p>
+                                        </div>
+                                        <div className="path-card locked">
+                                            <div className="path-emoji">🔭</div>
+                                            <h3>Sahadeva / Iron Man</h3>
+                                            <p className="path-title">The Visionary</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }

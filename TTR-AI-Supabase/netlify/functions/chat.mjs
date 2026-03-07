@@ -8,7 +8,7 @@ const GURUKUL_HEROES = {
     ekalavya: { name: 'Ekalavya', emoji: '🙏', title: 'The Self-Made Scholar', trait: 'Self-Learning & Devotion', aiStyle: 'Be like a clay Dronacharya — always present, guiding when no physical teacher is there. Encourage self-reliance and independent discovery.', quote: '"A student who wants to learn will always find a way."' },
     krishna: { name: 'Krishna', emoji: '🪈', title: 'The Strategic Thinker', trait: 'Wisdom & Emotional Intelligence', aiStyle: 'Think WITH the user like Krishna on the battlefield — give strategy, not just answers. Emphasize emotional intelligence and seeing the bigger picture.', quote: '"You have the right to perform your actions, not to the fruits." — Bhagavad Gita' },
     rama: { name: 'Rama', emoji: '⚡', title: 'The Dharma Keeper', trait: 'Righteousness & Duty', aiStyle: 'Always remind the user of the ethical choice — because Dharma is the highest intelligence. Focus on doing the right thing even when hard.', quote: '"Dharmo rakshati rakshitah — Dharma protects those who protect Dharma."' },
-    karna: { name: 'Karna', emoji: '☀️', title: 'The Resilient Fighter', trait: 'Resilience & Generosity', aiStyle: 'Never judge starting points — only direction. Like the sun, encourage rising every day regardless of setbacks. Celebrate persistence.', quote: '"I was born in the dark, but I chose to live in the light." — Karna' },
+    karna: { name: 'Karna', emoji: '☀️', title: 'The Resilient Fighter', trait: 'Resilience & Generosity', aiStyle: 'Never judge starting points — only direction. Like the sun, encourage rising every day regardless of setbacks. Celebrate persistence.', quote: '"I was born in the dark, but I chose to live in the light." — Arjuna' },
     dharmaraj: { name: 'Dharmaraj', emoji: '⚖️', title: 'The Truth Seeker', trait: 'Truth & Justice Always', aiStyle: 'Always present the full truth — multiple perspectives, no bias. Encourage intellectual honesty above all.', quote: '"Satya (Truth) is the highest Dharma." — Yudhishthira' },
     abhimanyu: { name: 'Abhimanyu', emoji: '🛡️', title: 'The Fearless Explorer', trait: 'Courage & Action', aiStyle: 'Push the user to start exploring even without all the answers. Courage first, knowledge follows. Celebrate bold attempts.', quote: '"I know only how to enter the formation; let the future lie in the hands of action."' },
     bheema: { name: 'Bheema', emoji: '💪', title: 'The Unstoppable Force', trait: 'Raw Strength & Endurance', aiStyle: 'Focus on foundational strength and repetition. Master the core basics until the user is unshakeable. Celebrate hard work over talent.', quote: '"True strength is born of pure effort, not privilege."' },
@@ -46,7 +46,7 @@ const FOUR_WAY_HEROES = {
     conceptual: { name: 'Conceptual Mode', emoji: '🧠', title: 'Deep Logic & Why', trait: 'Understand Core Fundamentals', aiStyle: 'Explain the concept in depth. Focus on core principles, definitions, and underlying logic. Use simple digestible parts. Conclude with why this knowledge is important.', quote: '"To understand the branch, you must first understand the root."' },
     fictional: { name: 'Fictional Mode', emoji: '🚀', title: 'Analogies & Sci-Fi', trait: 'Mythology & Analogies', aiStyle: 'Explain by creating a fictional story using characters. The story MUST use the concept as a key mechanism and teach ethics/moral values alongside the concept.', quote: '"Stories are the vehicles for truth."' },
     storytelling: { name: 'Story Mode', emoji: '📖', title: 'Narrative Driven', trait: 'Narrative Storytelling', aiStyle: 'Tell a compelling story revolving around the topic. Ensure the narrative naturally explains the topic while carrying a strong moral lesson.', quote: '"Every concept has a narrative waiting to be told."' },
-    teaching: { name: 'Teaching Mode', emoji: '👩‍🏫', title: 'Interactive Dialogue', trait: 'Socratic Dialogue', aiStyle: 'Act as a wise, encouraging Teacher. Step 1: Write a formal academic paragraph explaining the concept. Step 2: Explain it simply to a student casually. Break it down and make it easy. End with a moral advice.', quote: '"A true teacher builds both intellect and character."' }
+    teaching: { name: 'Teaching Mode', emoji: '👩‍🏫', title: 'Interactive Dialogue', trait: 'Socratic Dialogue', aiStyle: 'Act as a wise, encouraging Teacher. Step 1: Write a formal academic paragraph explaining the concept in English. Step 2: Explain it simply in English to a student casually. Step 3 (MANDATORY): Provide a clear, detailed explanation in the specific Mother Tongue selected by the user (if any). Break it down and make it easy. End with a moral advice.', quote: '"A true teacher builds both intellect and character."' }
 };
 
 function getSystemPrompt(userContext) {
@@ -60,7 +60,7 @@ CRITICAL DIRECTIVES:
 3. FORMATTING RULE: ALWAYS use numbered lists (1., 2., 3.) instead of bullet points (*, •, -). This allows users to easily reference specific points. Never use unnumbered bullet points.`;
 
     if (userContext) {
-        systemInstruction += `\n\nCURRENT USER CONTEXT:\n- Name: ${userContext.name || 'Seeker'}`;
+        systemInstruction += `\n\nCURRENT USER CONTEXT:\n- Name: ${userContext.name || 'Seeker'}\n- Language Setting: ${userContext.motherTongue || 'English'}`;
 
         // ─── GURUKUL PATH PERSONALITY INJECTION ──────────────────────────────────
         if (userContext.gurukul_path) {
@@ -95,7 +95,8 @@ Mode Quote: ${modeInfo.quote}
 
 CRITICAL RULES FOR THIS RESPONSE:
 1. You MUST format your explanation to strictly follow the ${modeInfo.name} style described above.
-2. Structure your entire response through the lens of ${modeInfo.title}.`;
+2. Structure your entire response through the lens of ${modeInfo.title}.
+3. If MOTHER TONGUE is specified as ${userContext.motherTongue} and NOT 'English', you MUST include a substantial explanation in ${userContext.motherTongue} at the end of your response, after the English part.`;
         }
     }
 
@@ -183,7 +184,7 @@ export const handler = async (event) => {
                 body: JSON.stringify({ text: response.text() }),
             };
         } catch (error) {
-            console.error(`Model ${modelName} failed:`, error.message);
+            console.error(`Model ${modelName} failed: `, error.message);
             continue;
         }
     }

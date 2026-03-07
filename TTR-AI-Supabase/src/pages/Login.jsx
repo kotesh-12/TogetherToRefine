@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import logo from '../assets/logo.png';
 
 export default function Login() {
     const [isLogin, setIsLogin] = useState(true);
@@ -77,18 +78,7 @@ export default function Login() {
                 {/* Logo / Brand */}
                 <div className="login-brand">
                     <div className="brand-icon">
-                        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                            <rect width="40" height="40" rx="12" fill="url(#grad1)" />
-                            <path d="M12 20L18 14L24 20L18 26L12 20Z" fill="white" opacity="0.9" />
-                            <path d="M18 14L24 20L30 14L24 8L18 14Z" fill="white" opacity="0.6" />
-                            <path d="M18 26L24 20L30 26L24 32L18 26Z" fill="white" opacity="0.6" />
-                            <defs>
-                                <linearGradient id="grad1" x1="0" y1="0" x2="40" y2="40">
-                                    <stop offset="0%" stopColor="#6C63FF" />
-                                    <stop offset="100%" stopColor="#AB47BC" />
-                                </linearGradient>
-                            </defs>
-                        </svg>
+                        <img src={logo} alt="TTR" className="logo" style={{ height: '40px', width: 'auto', objectFit: 'contain' }} />
                     </div>
                     <h1 className="brand-title">TTR AI</h1>
                     <p className="brand-subtitle">Your Intelligent Learning Companion</p>
