@@ -4,7 +4,66 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import ReactMarkdown from 'react-markdown';
 import { useSpeech } from '../hooks/useSpeech';
+import anime from 'animejs';
 import logo from '../assets/logo.png';
+
+/* ──────────────── Breathing AI Animation ──────────────── */
+const BreathingOrb = () => {
+    const orbRef = useRef(null);
+
+    useEffect(() => {
+        anime({
+            targets: orbRef.current,
+            scale: [0.85, 1.05],
+            opacity: [0.6, 1],
+            filter: [
+                'drop-shadow(0 0 4px rgba(46, 204, 113, 0.3))',
+                'drop-shadow(0 0 15px rgba(46, 204, 113, 0.9))'
+            ],
+            duration: 1200,
+            direction: 'alternate',
+            easing: 'easeInOutSine',
+            loop: true
+        });
+    }, []);
+
+    return (
+        <div className="msg-content" style={{ background: 'transparent', border: 'none', padding: '10px 5px', boxShadow: 'none' }}>
+            <img
+                ref={orbRef}
+                src={logo}
+                alt="Thinking"
+                style={{ width: '30px', height: '30px', objectFit: 'contain', borderRadius: '50%' }}
+            />
+        </div>
+    );
+};
+
+/* ──────────────── Fluid Message Animation ──────────────── */
+const AnimatedMessage = ({ msg, children }) => {
+    const msgRef = useRef(null);
+
+    useEffect(() => {
+        // Only animate brand new messages
+        if (msg.isNew) {
+            anime({
+                targets: msgRef.current,
+                translateY: [30, 0],
+                scale: [0.95, 1],
+                opacity: [0, 1],
+                duration: 900,
+                easing: 'easeOutElastic(1, .8)',
+                delay: msg.sender === 'ai' ? 100 : 0
+            });
+        }
+    }, [msg.isNew, msg.sender]);
+
+    return (
+        <div ref={msgRef} className={`message ${msg.sender}`} style={{ opacity: msg.isNew ? 0 : 1 }}>
+            {children}
+        </div>
+    );
+};
 
 /* ──────────────── Typewriter Effect ──────────────── */
 const TypewriterMessage = ({ text, onComplete }) => {
@@ -456,7 +515,7 @@ export default function TTRAIChat() {
                 {/* Messages */}
                 <div className="messages-container">
                     {messages.map((msg, i) => (
-                        <div key={i} className={`message ${msg.sender}`}>
+                        <AnimatedMessage key={i} msg={msg}>
                             {msg.sender === 'ai' && (
                                 <div className="msg-avatar ai-avatar">
                                     <img src={logo} alt="TTR AI" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
@@ -496,7 +555,7 @@ export default function TTRAIChat() {
                                     {displayName.charAt(0).toUpperCase()}
                                 </div>
                             )}
-                        </div>
+                        </AnimatedMessage>
                     ))}
 
                     {loading && (
@@ -504,11 +563,7 @@ export default function TTRAIChat() {
                             <div className="msg-avatar ai-avatar">
                                 <img src={logo} alt="TTR AI" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
                             </div>
-                            <div className="msg-content thinking">
-                                <div className="thinking-dots">
-                                    <span></span><span></span><span></span>
-                                </div>
-                            </div>
+                            <BreathingOrb />
                         </div>
                     )}
 
