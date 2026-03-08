@@ -65,6 +65,50 @@ const AnimatedMessage = ({ msg, children }) => {
     );
 };
 
+/* ──────────────── Magnetic & Tactile Button ──────────────── */
+const MagneticSubmitButton = ({ onClick, disabled, loading, onStop }) => {
+    const btnRef = useRef(null);
+
+    const handlePress = () => {
+        anime({
+            targets: btnRef.current,
+            scale: [1, 0.8, 1.1, 1],
+            duration: 600,
+            easing: 'easeOutElastic(1, .5)'
+        });
+        if (loading) {
+            onStop();
+        } else {
+            onClick();
+        }
+    };
+
+    return loading ? (
+        <button
+            ref={btnRef}
+            className="send-btn stop"
+            onClick={handlePress}
+            title="Stop"
+        >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="6" width="12" height="12" rx="2" />
+            </svg>
+        </button>
+    ) : (
+        <button
+            ref={btnRef}
+            className="send-btn"
+            onClick={handlePress}
+            disabled={disabled}
+            title="Send"
+        >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
+            </svg>
+        </button>
+    );
+};
+
 /* ──────────────── Typewriter Effect ──────────────── */
 const TypewriterMessage = ({ text, onComplete }) => {
     const [displayed, setDisplayed] = useState('');
@@ -284,15 +328,6 @@ export default function TTRAIChat() {
         setShowSidebar(false);
     };
 
-    /* ── Delete a session ── */
-    const deleteSession = async (e, sessionId) => {
-        e.stopPropagation();
-        await supabase.from('chat_messages').delete().eq('session_id', sessionId);
-        await supabase.from('chat_sessions').delete().eq('id', sessionId);
-        if (currentSessionId === sessionId) startNewChat();
-        loadSessions();
-    };
-
     /* ── Image handling ── */
     const handleImageChange = (e) => {
         const file = e.target.files[0];
@@ -314,7 +349,7 @@ export default function TTRAIChat() {
         setLoading(true);
 
         const isImage = imgData?.startsWith('data:image/');
-        const userMsg = { text: text || (isImage ? 'Image uploaded' : 'File uploaded'), image: imgData, sender: 'user' };
+        const userMsg = { text: text || (isImage ? 'Image uploaded' : 'File uploaded'), image: imgData, sender: 'user', isNew: true };
         setMessages(prev => [...prev, userMsg]);
 
         try {
@@ -437,7 +472,6 @@ export default function TTRAIChat() {
                                     onClick={() => loadSession(s)}
                                 >
                                     <span className="session-title">{s.title || 'Untitled'}</span>
-                                    <button className="delete-btn" onClick={(e) => deleteSession(e, s.id)}>🗑</button>
                                 </div>
                             ))}
                             {filteredSessions.length === 0 && <p className="no-sessions">No conversations yet</p>}
@@ -664,19 +698,12 @@ export default function TTRAIChat() {
                             rows="1"
                             disabled={loading}
                         />
-                        {loading ? (
-                            <button className="send-btn stop" onClick={handleStop} title="Stop">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                                    <rect x="6" y="6" width="12" height="12" rx="2" />
-                                </svg>
-                            </button>
-                        ) : (
-                            <button className="send-btn" onClick={handleSend} disabled={!input.trim() && !selectedImage} title="Send">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
-                                </svg>
-                            </button>
-                        )}
+                        <MagneticSubmitButton
+                            loading={loading}
+                            disabled={!input.trim() && !selectedImage}
+                            onClick={handleSend}
+                            onStop={handleStop}
+                        />
                     </div>
                     <p className="input-hint">TTR AI can make mistakes. Verify important information.</p>
                 </div>

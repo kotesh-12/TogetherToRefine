@@ -493,26 +493,6 @@ a:hover {
   flex: 1;
 }
 
-.delete-btn {
-  background: none;
-  border: none;
-  font-size: 13px;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.2s;
-  padding: 2px 4px;
-  border-radius: 4px;
-}
-
-.session-item:hover .delete-btn {
-  opacity: 0.6;
-}
-
-.delete-btn:hover {
-  opacity: 1 !important;
-  background: rgba(239, 68, 68, 0.1);
-}
-
 .no-sessions {
   text-align: center;
   padding: 24px;
