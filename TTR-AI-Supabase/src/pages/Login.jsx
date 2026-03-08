@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import anime from 'animejs/lib/anime.es.js';
+import anime from 'animejs';
 import logo from '../assets/logo.png';
 
 export default function Login() {
