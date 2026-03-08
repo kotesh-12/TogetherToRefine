@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
@@ -6,183 +6,25 @@ import ReactMarkdown from 'react-markdown';
 import { useSpeech } from '../hooks/useSpeech';
 import anime from 'animejs';
 import logo from '../assets/logo.png';
+import { THEMES, THEME_CATEGORIES } from '../themeData';
 
-/* ──────────────── Breathing AI Animation ──────────────── */
-const BreathingOrb = () => {
-    const orbRef = useRef(null);
+// Optimized UI Components
+import {
+    BreathingOrb,
+    AnimatedMessage,
+    MagneticSubmitButton,
+    TypewriterMessage
+} from '../components/ChatComponents';
 
-    useEffect(() => {
-        anime({
-            targets: orbRef.current,
-            scale: [0.85, 1.05],
-            opacity: [0.6, 1],
-            filter: [
-                'drop-shadow(0 0 4px rgba(46, 204, 113, 0.3))',
-                'drop-shadow(0 0 15px rgba(46, 204, 113, 0.9))'
-            ],
-            duration: 1200,
-            direction: 'alternate',
-            easing: 'easeInOutSine',
-            loop: true
-        });
-    }, []);
+// Constants & Data
+import {
+    GURUKUL_HEROES,
+    SECURE_HEROES,
+    FOUR_WAY_HEROES,
+    WELCOME_MSG
+} from '../constants/chatData';
 
-    return (
-        <div className="msg-content" style={{ background: 'transparent', border: 'none', padding: '10px 5px', boxShadow: 'none' }}>
-            <img
-                ref={orbRef}
-                src={logo}
-                alt="Thinking"
-                style={{ width: '30px', height: '30px', objectFit: 'contain', borderRadius: '50%' }}
-            />
-        </div>
-    );
-};
-
-/* ──────────────── Fluid Message Animation ──────────────── */
-const AnimatedMessage = ({ msg, children }) => {
-    const msgRef = useRef(null);
-
-    useEffect(() => {
-        // Only animate brand new messages
-        if (msg.isNew) {
-            anime({
-                targets: msgRef.current,
-                translateY: [30, 0],
-                scale: [0.95, 1],
-                opacity: [0, 1],
-                duration: 900,
-                easing: 'easeOutElastic(1, .8)',
-                delay: msg.sender === 'ai' ? 100 : 0
-            });
-        }
-    }, [msg.isNew, msg.sender]);
-
-    return (
-        <div ref={msgRef} className={`message ${msg.sender}`} style={{ opacity: msg.isNew ? 0 : 1 }}>
-            {children}
-        </div>
-    );
-};
-
-/* ──────────────── Magnetic & Tactile Button ──────────────── */
-const MagneticSubmitButton = ({ onClick, disabled, loading, onStop }) => {
-    const btnRef = useRef(null);
-
-    const handlePress = () => {
-        anime({
-            targets: btnRef.current,
-            scale: [1, 0.8, 1.1, 1],
-            duration: 600,
-            easing: 'easeOutElastic(1, .5)'
-        });
-        if (loading) {
-            onStop();
-        } else {
-            onClick();
-        }
-    };
-
-    return loading ? (
-        <button
-            ref={btnRef}
-            className="send-btn stop"
-            onClick={handlePress}
-            title="Stop"
-        >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="6" y="6" width="12" height="12" rx="2" />
-            </svg>
-        </button>
-    ) : (
-        <button
-            ref={btnRef}
-            className="send-btn"
-            onClick={handlePress}
-            disabled={disabled}
-            title="Send"
-        >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
-            </svg>
-        </button>
-    );
-};
-
-/* ──────────────── Typewriter Effect ──────────────── */
-const TypewriterMessage = ({ text, onComplete }) => {
-    const [displayed, setDisplayed] = useState('');
-    const idx = useRef(0);
-
-    useEffect(() => {
-        idx.current = 0;
-        setDisplayed('');
-        const iv = setInterval(() => {
-            setDisplayed(prev => {
-                if (idx.current < text.length) {
-                    const ch = text.charAt(idx.current);
-                    idx.current++;
-                    return prev + ch;
-                }
-                clearInterval(iv);
-                if (onComplete) onComplete();
-                return prev;
-            });
-        }, 5);
-        return () => clearInterval(iv);
-    }, [text]);
-
-    return <ReactMarkdown>{displayed}</ReactMarkdown>;
-};
-
-/* ──────────────── Gurukul Heroes Data ──────────────── */
-const GURUKUL_HEROES = {
-    arjuna: { id: 'arjuna', name: 'Arjuna', emoji: '🏹', title: 'The Focused Warrior', trait: 'Laser Focus & Mastery' },
-    ekalavya: { id: 'ekalavya', name: 'Ekalavya', emoji: '🙏', title: 'The Self-Made Scholar', trait: 'Self-Learning & Devotion' },
-    krishna: { id: 'krishna', name: 'Krishna', emoji: '🪈', title: 'The Strategic Thinker', trait: 'Wisdom & Emotional Intelligence' },
-    rama: { id: 'rama', name: 'Rama', emoji: '⚡', title: 'The Dharma Keeper', trait: 'Righteousness & Duty' },
-    karna: { id: 'karna', name: 'Karna', emoji: '☀️', title: 'The Resilient Fighter', trait: 'Resilience & Generosity' },
-    dharmaraj: { id: 'dharmaraj', name: 'Dharmaraj', emoji: '⚖️', title: 'The Truth Seeker', trait: 'Truth & Justice Always' },
-    abhimanyu: { id: 'abhimanyu', name: 'Abhimanyu', emoji: '🛡️', title: 'The Fearless Explorer', trait: 'Courage & Action' },
-    bheema: { id: 'bheema', name: 'Bheema', emoji: '💪', title: 'The Unstoppable Force', trait: 'Raw Strength & Endurance' },
-    nakula: { id: 'nakula', name: 'Nakula', emoji: '🐎', title: 'The Observant Explorer', trait: 'Perception & Agility' },
-    sahadeva: { id: 'sahadeva', name: 'Sahadeva', emoji: '🔭', title: 'The Visionary Scholar', trait: 'Foresight & Intellect' },
-    ghatotkacha: { id: 'ghatotkacha', name: 'Ghatotkacha', emoji: '⛰️', title: 'The Loyal Giant', trait: 'Power & Selflessness' },
-    hanuman: { id: 'hanuman', name: 'Hanuman', emoji: '🐒', title: 'The Devoted Student', trait: 'Intellect & Humility' },
-    dronacharya: { id: 'dronacharya', name: 'Dronacharya', emoji: '🎯', title: 'The Ultimate Master', trait: 'Discipline & Excellence' },
-    bhishma: { id: 'bhishma', name: 'Bhishma', emoji: '👑', title: 'The Elder Statesman', trait: 'Wisdom & Duty' },
-    parashurama: { id: 'parashurama', name: 'Parashurama', emoji: '🪓', title: 'The Fierce Instructor', trait: 'Purity & Rigor' },
-    chanakya: { id: 'chanakya', name: 'Chanakya', emoji: '📜', title: 'The Kingmaker', trait: 'Strategy & Pragmatism' },
-};
-
-/* ──────────────── Secure Context Heroes Data (Pop-Culture) ──────────────── */
-const SECURE_HEROES = {
-    arjuna: { id: 'arjuna', name: 'Baahubali', emoji: '🏹', title: 'The Focused Warrior', trait: 'Laser Focus & Mastery' },
-    ekalavya: { id: 'ekalavya', name: 'Rocky', emoji: '⛏️', title: 'The Self-Made Survivor', trait: 'Self-Learning & Devotion' },
-    krishna: { id: 'krishna', name: 'The Professor', emoji: '🧠', title: 'The Mastermind', trait: 'Strategy & Emotional Intelligence' },
-    rama: { id: 'rama', name: 'Captain America', emoji: '🛡️', title: 'The Righteous Leader', trait: 'Righteousness & Duty' },
-    karna: { id: 'karna', name: 'Pushpa', emoji: '🪓', title: 'The Resilient Underdog', trait: 'Resilience & Generosity' },
-    dharmaraj: { id: 'dharmaraj', name: 'Batman', emoji: '🦇', title: 'The Justice Seeker', trait: 'Truth & Justice Always' },
-    abhimanyu: { id: 'abhimanyu', name: 'Spider-Man', emoji: '🕸️', title: 'The Fearless Challenger', trait: 'Courage & Action' },
-    bheema: { id: 'bheema', name: 'The Hulk', emoji: '💪', title: 'The Unstoppable Force', trait: 'Raw Strength & Endurance' },
-    nakula: { id: 'nakula', name: 'Sherlock Holmes', emoji: '🔍', title: 'The Observant Detective', trait: 'Perception & Agility' },
-    sahadeva: { id: 'sahadeva', name: 'Iron Man', emoji: '🤖', title: 'The Visionary Inventor', trait: 'Foresight & Intellect' },
-    ghatotkacha: { id: 'ghatotkacha', name: 'Optimus Prime', emoji: '🚛', title: 'The Loyal Protector', trait: 'Power & Selflessness' },
-    hanuman: { id: 'hanuman', name: 'Kattappa', emoji: '🗡️', title: 'The Devoted Warrior', trait: 'Loyalty & Humility' },
-    dronacharya: { id: 'dronacharya', name: 'Master Shifu', emoji: '🥋', title: 'The Ultimate Master', trait: 'Discipline & Excellence' },
-    bhishma: { id: 'bhishma', name: 'Albus Dumbledore', emoji: '🧙‍♂️', title: 'The Elder Guide', trait: 'Wisdom & Duty' },
-    parashurama: { id: 'parashurama', name: 'John Wick', emoji: '🔫', title: 'The Fierce Instructor', trait: 'Purity & Rigor' },
-    chanakya: { id: 'chanakya', name: 'Thomas Shelby', emoji: '🚬', title: 'The Strategic Kingmaker', trait: 'Strategy & Pragmatism' },
-};
-
-/* ──────────────── 4-Way Learning Heroes Data ──────────────── */
-const FOUR_WAY_HEROES = {
-    conceptual: { id: 'conceptual', name: '🧠 Conceptual Mode', emoji: '🧠', title: 'Deep Logic & Why', trait: 'Understand Core Fundamentals' },
-    fictional: { id: 'fictional', name: '🚀 Fictional Mode', emoji: '🚀', title: 'Analogies & Sci-Fi', trait: 'Indian Mythology & Analogies' },
-    storytelling: { id: 'storytelling', name: '📖 Story Mode', emoji: '📖', title: 'Narrative Driven', trait: 'Narrative Storytelling' },
-    teaching: { id: 'teaching', name: '👩‍🏫 Teaching Mode', emoji: '👩‍🏫', title: 'Interactive Dialogue', trait: 'Socratic Dialogue' }
-};
-
+// The main view exported for the application
 /* ──────────────── Main Chat Page ──────────────── */
 export default function TTRAIChat() {
     const { user, signOut } = useAuth();
@@ -208,7 +50,85 @@ export default function TTRAIChat() {
     const [fourWayMode, setFourWayMode] = useState(null);
     const [showFourWayMenu, setShowFourWayMenu] = useState(false);
 
-    // Save path to local storage so guests don't lose it
+    // Theme State
+    const [theme, setTheme] = useState(localStorage.getItem('ttr_theme') || 'dark');
+    const [showThemeGallery, setShowThemeGallery] = useState(false);
+    const curtainRef = useRef(null);
+    const fourWayMenuRef = useRef(null);
+    const langMenuRef = useRef(null);
+
+    // Apply theme properties to the document
+    const applyTheme = useCallback((themeId) => {
+        const selectedTheme = THEMES.find(t => t.id === themeId) || THEMES[0];
+        const root = document.documentElement;
+
+        // Transition animation with curtain
+        anime({
+            targets: curtainRef.current,
+            scaleY: [0, 1],
+            duration: 400,
+            easing: 'easeInOutQuad',
+            complete: () => {
+                // Set theme-specific colors
+                const c = selectedTheme.colors;
+                const isLight = selectedTheme.mode === 'light';
+
+                root.style.setProperty('--bg-primary', c.primary);
+                root.style.setProperty('--bg-secondary', isLight ? '#f8fafc' : '#16161e');
+                root.style.setProperty('--bg-tertiary', isLight ? '#f1f5f9' : '#1e1e2a');
+                root.style.setProperty('--bg-card', isLight ? '#ffffff' : '#1c1c28');
+                root.style.setProperty('--bg-hover', isLight ? '#e2e8f0' : '#252535');
+                root.style.setProperty('--text-primary', isLight ? '#0f172a' : '#e8e8f0');
+                root.style.setProperty('--text-secondary', isLight ? '#475569' : '#9898b0');
+                root.style.setProperty('--text-muted', isLight ? '#94a3b8' : '#6a6a85');
+                root.style.setProperty('--accent', c.accent);
+                root.style.setProperty('--accent-glow', isLight ? 'rgba(37, 99, 235, 0.1)' : 'rgba(108, 99, 255, 0.15)');
+                root.style.setProperty('--border', isLight ? '#e2e8f0' : '#2a2a3d');
+                root.style.colorScheme = isLight ? 'light' : 'dark';
+
+                setTheme(themeId);
+
+                anime({
+                    targets: curtainRef.current,
+                    scaleY: [1, 0],
+                    delay: 200,
+                    duration: 400,
+                    easing: 'easeInOutQuad'
+                });
+            }
+        });
+    }, []);
+
+    // aggresively set theme variables on the first render to avoid flash
+    const initTheme = () => {
+        const savedTheme = localStorage.getItem('ttr_theme') || 'dark';
+        const current = THEMES.find(t => t.id === savedTheme) || THEMES[0];
+        const root = document.documentElement;
+        const isLight = current.mode === 'light';
+        const c = current.colors;
+
+        root.style.setProperty('--bg-primary', c.primary);
+        root.style.setProperty('--bg-secondary', isLight ? '#f8fafc' : '#16161e');
+        root.style.setProperty('--bg-tertiary', isLight ? '#f1f5f9' : '#1e1e2a');
+        root.style.setProperty('--bg-card', isLight ? '#ffffff' : '#1c1c28');
+        root.style.setProperty('--bg-hover', isLight ? '#e2e8f0' : '#252535');
+        root.style.setProperty('--text-primary', isLight ? '#0f172a' : '#e8e8f0');
+        root.style.setProperty('--text-secondary', isLight ? '#475569' : '#9898b0');
+        root.style.setProperty('--text-muted', isLight ? '#94a3b8' : '#6a6a85');
+        root.style.setProperty('--accent', c.accent);
+        root.style.setProperty('--accent-glow', isLight ? 'rgba(37, 99, 235, 0.1)' : 'rgba(108, 99, 255, 0.15)');
+        root.style.setProperty('--border', isLight ? '#e2e8f0' : '#2a2a3d');
+        root.style.colorScheme = isLight ? 'light' : 'dark';
+    };
+
+    // run immediately
+    const once = useRef(false);
+    if (!once.current) {
+        initTheme();
+        once.current = true;
+    }
+
+    // Persist path, domain, and theme
     useEffect(() => {
         if (currentPath) {
             localStorage.setItem('ttr_guest_path', currentPath);
@@ -220,9 +140,29 @@ export default function TTRAIChat() {
         } else {
             localStorage.removeItem('ttr_guest_domain');
         }
-    }, [currentPath, currentDomain]);
+        localStorage.setItem('ttr_theme', theme);
+    }, [currentPath, currentDomain, theme]);
 
-    const activeHeroes = currentDomain === 'secure' ? SECURE_HEROES : GURUKUL_HEROES;
+    // Handle clicks outside dropdowns to close them
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (fourWayMenuRef.current && !fourWayMenuRef.current.contains(event.target)) {
+                setShowFourWayMenu(false);
+            }
+            if (langMenuRef.current && !langMenuRef.current.contains(event.target)) {
+                setShowLangMenu(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
+    const activeHeroes = useMemo(() =>
+        currentDomain === 'secure' ? SECURE_HEROES : GURUKUL_HEROES
+        , [currentDomain]);
 
     // Image upload
     const [selectedImage, setSelectedImage] = useState(null);
@@ -230,9 +170,10 @@ export default function TTRAIChat() {
     const abortControllerRef = useRef(null);
     const [motherTongue, setMotherTongue] = useState('Hindi');
 
+    const [showLangMenu, setShowLangMenu] = useState(false);
     const { speak, listen, isListening, speakingText } = useSpeech();
 
-    const handleMicClick = () => {
+    const handleMicClick = useCallback(() => {
         let lang = 'en-US';
         if (fourWayMode === 'teaching') {
             const map = { 'Hindi': 'hi-IN', 'Telugu': 'te-IN', 'Tamil': 'ta-IN', 'Spanish': 'es-ES', 'French': 'fr-FR' };
@@ -241,7 +182,7 @@ export default function TTRAIChat() {
         listen((text) => {
             setInput(prev => (prev + ' ' + text).trim());
         }, lang);
-    };
+    }, [fourWayMode, motherTongue, listen]);
 
     // Welcome message
     const WELCOME_MSG = { text: "Hello! I'm **TTR AI** 🧠 — your intelligent learning companion.\n\nAsk me anything about academics, coding, science, math, or just have a conversation!", sender: 'ai' };
@@ -251,13 +192,8 @@ export default function TTRAIChat() {
         setMessages([WELCOME_MSG]);
     }, []);
 
-    /* ── Load sessions (only if logged in) ── */
-    useEffect(() => {
-        if (!user) return;
-        loadSessions();
-    }, [user]);
-
-    const loadSessions = async () => {
+    /* ── Load all sessions ── */
+    const loadSessions = useCallback(async () => {
         if (!user) return;
         const { data, error } = await supabase
             .from('chat_sessions')
@@ -266,27 +202,22 @@ export default function TTRAIChat() {
             .order('updated_at', { ascending: false })
             .limit(100);
         if (!error && data) setSessions(data);
-    };
+    }, [user]);
 
-    const filteredSessions = sessions.filter(s => {
-        if (fourWayMode) {
-            return s.title.startsWith(`[${fourWayMode}] `);
-        } else {
-            return !s.title.startsWith(`[conceptual] `) && !s.title.startsWith(`[fictional] `) && !s.title.startsWith(`[storytelling] `) && !s.title.startsWith(`[teaching] `);
-        }
-    });
-
-    /* ── Load messages when session changes (only if logged in) ── */
     useEffect(() => {
-        if (!user) return;
-        if (!currentSessionId) {
-            setMessages([WELCOME_MSG]);
-            return;
-        }
-        loadMessages(currentSessionId);
-    }, [currentSessionId, user]);
+        loadSessions();
+    }, [loadSessions]);
 
-    const loadMessages = async (sessionId) => {
+    // Derived list of sessions (Sorted & Filtered)
+    const filteredSessions = useMemo(() => {
+        return sessions.filter(s => {
+            if (fourWayMode) return s.title?.startsWith(`[${fourWayMode}] `);
+            return !['[conceptual]', '[fictional]', '[storytelling]', '[teaching]'].some(pref => s.title?.includes(pref));
+        }).sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+    }, [sessions, fourWayMode]);
+
+    /* ── Load messages when session changes ── */
+    const loadMessages = useCallback(async (sessionId) => {
         const { data, error } = await supabase
             .from('chat_messages')
             .select('*')
@@ -295,14 +226,18 @@ export default function TTRAIChat() {
         if (!error && data && data.length > 0) {
             setMessages(data.map(m => ({ text: m.content, sender: m.role === 'user' ? 'user' : 'ai', image: m.image_url })));
         }
-    };
+    }, []);
 
-    /* ── Auto scroll ── */
-    const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    useEffect(() => scrollToBottom(), [messages]);
+    useEffect(() => {
+        if (!currentSessionId) {
+            setMessages([WELCOME_MSG]);
+            return;
+        }
+        loadMessages(currentSessionId);
+    }, [currentSessionId, user, loadMessages]);
 
-    /* ── Save message to DB (only if logged in) ── */
-    const saveMessage = async (content, role, sessionId, imageUrl = null) => {
+    /* ── Save message to DB ── */
+    const saveMessage = useCallback(async (content, role, sessionId, imageUrl = null) => {
         if (!user) return;
         await supabase.from('chat_messages').insert({
             session_id: sessionId,
@@ -312,34 +247,64 @@ export default function TTRAIChat() {
             image_url: imageUrl,
         });
         await supabase.from('chat_sessions').update({ updated_at: new Date().toISOString() }).eq('id', sessionId);
-    };
+        loadSessions(); // Refresh list to update 'updated_at'
+    }, [user, loadSessions]);
 
-    /* ── New Chat ── */
-    const startNewChat = () => {
+    /* ── Auto scroll ── */
+    const scrollToBottom = useCallback(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), []);
+    useEffect(() => scrollToBottom(), [messages, scrollToBottom]);
+
+    /* ── Animation: Modal Spring-In ── */
+    useEffect(() => {
+        if (showPathModal) {
+            anime({
+                targets: '.path-modal',
+                scale: [0.9, 1],
+                opacity: [0, 1],
+                duration: 800,
+                easing: 'easeOutElastic(1, .8)'
+            });
+        }
+    }, [showPathModal]);
+
+    useEffect(() => {
+        if (showThemeGallery) {
+            anime({
+                targets: '.gallery-container',
+                scale: [0.9, 1],
+                opacity: [0, 1],
+                duration: 800,
+                easing: 'easeOutElastic(1, .8)'
+            });
+        }
+    }, [showThemeGallery]);
+
+    /* ── Sidebar Actions ── */
+    const startNewChat = useCallback(() => {
         setCurrentSessionId(null);
         setMessages([WELCOME_MSG]);
         setInput('');
         setShowSidebar(false);
-    };
+    }, []);
 
     /* ── Load a session ── */
-    const loadSession = (session) => {
+    const loadSession = useCallback((session) => {
         setCurrentSessionId(session.id);
         setShowSidebar(false);
-    };
+    }, []);
 
     /* ── Image handling ── */
-    const handleImageChange = (e) => {
+    const handleImageChange = useCallback((e) => {
         const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
             reader.onloadend = () => setSelectedImage(reader.result);
             reader.readAsDataURL(file);
         }
-    };
+    }, []);
 
     /* ── Send Message ── */
-    const handleSend = async () => {
+    const handleSend = useCallback(async () => {
         const text = input.trim();
         if (!text && !selectedImage) return;
 
@@ -397,9 +362,12 @@ export default function TTRAIChat() {
                 mimeType: imgData ? imgData.match(/:(.*?);/)?.[1] : null,
             };
 
-            const API_URL = window.location.hostname === 'localhost'
+            // Use your professional custom domain for production (ttrai.in)
+            const PROD_API_URL = 'https://ttrai.in/.netlify/functions/chat';
+
+            const API_URL = (window.location.hostname === 'localhost' && !window.location.port.includes('517'))
                 ? 'http://localhost:5000/api/chat'
-                : '/.netlify/functions/chat';
+                : PROD_API_URL;
 
             abortControllerRef.current = new AbortController();
 
@@ -431,26 +399,29 @@ export default function TTRAIChat() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [input, selectedImage, user, currentSessionId, messages, currentPath, currentDomain, fourWayMode, motherTongue, loadSessions, saveMessage]);
 
-    const handleKeyDown = (e) => {
+    const handleKeyDown = useCallback((e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             handleSend();
         }
-    };
+    }, [handleSend]);
 
-    const handleStop = () => {
+    const handleStop = useCallback(() => {
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
             setLoading(false);
         }
-    };
+    }, []);
 
     const displayName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Guest';
 
+    const currentThemeData = THEMES.find(t => t.id === theme) || THEMES[0];
+
     return (
-        <div className="chat-page">
+        <div className={`chat-page theme-${theme} ux-${currentThemeData.ux || 'standard'}`}>
+            <div ref={curtainRef} className="theme-transition-curtain" />
             {/* ── Sidebar ── */}
             <div className={`sidebar ${showSidebar ? 'open' : ''}`}>
                 <div className="sidebar-header">
@@ -465,11 +436,12 @@ export default function TTRAIChat() {
                 {user ? (
                     <>
                         <div className="sessions-list">
-                            {filteredSessions.map(s => (
+                            {filteredSessions.map((s, idx) => (
                                 <div
                                     key={s.id}
-                                    className={`session-item ${currentSessionId === s.id ? 'active' : ''}`}
+                                    className={`session-item animate-in ${currentSessionId === s.id ? 'active' : ''}`}
                                     onClick={() => loadSession(s)}
+                                    style={{ animationDelay: `${idx * 0.05}s` }}
                                 >
                                     <span className="session-title">{s.title || 'Untitled'}</span>
                                 </div>
@@ -478,6 +450,13 @@ export default function TTRAIChat() {
                         </div>
 
                         <div className="sidebar-footer">
+                            <small style={{ color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px', display: 'block', textAlign: 'center' }}>Theme Gallery</small>
+                            <div className="theme-selector-mini" onClick={() => setShowThemeGallery(true)}>
+                                <div className="theme-dot dark"></div>
+                                <div className="theme-dot white"></div>
+                                <div className="theme-dot purple"></div>
+                                <div className="gallery-btn"><span>✨</span></div>
+                            </div>
                             <div className="user-info">
                                 <div className="user-avatar">{displayName.charAt(0).toUpperCase()}</div>
                                 <span className="user-name">{displayName}</span>
@@ -497,6 +476,13 @@ export default function TTRAIChat() {
                             </div>
                         </div>
                         <div className="sidebar-footer">
+                            <small style={{ color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px', display: 'block', textAlign: 'center' }}>Theme Gallery</small>
+                            <div className="theme-selector-mini" onClick={() => setShowThemeGallery(true)}>
+                                <div className="theme-dot dark"></div>
+                                <div className="theme-dot white"></div>
+                                <div className="theme-dot purple"></div>
+                                <div className="gallery-btn"><span>✨</span></div>
+                            </div>
                             <div className="user-info">
                                 <div className="user-avatar guest">G</div>
                                 <span className="user-name">Guest</span>
@@ -565,13 +551,7 @@ export default function TTRAIChat() {
                                         <div className="msg-file-icon" style={{ fontSize: '30px', marginBottom: '10px' }}>📄 PDF/Doc</div>
                                     )
                                 )}
-                                {msg.isNew && msg.sender === 'ai' ? (
-                                    <TypewriterMessage text={msg.text} onComplete={() => {
-                                        setMessages(prev => prev.map((m, idx) => idx === i ? { ...m, isNew: false } : m));
-                                    }} />
-                                ) : (
-                                    <ReactMarkdown>{msg.text}</ReactMarkdown>
-                                )}
+                                <ReactMarkdown>{msg.text}</ReactMarkdown>
                             </div>
 
                             {msg.sender === 'ai' && (
@@ -612,11 +592,11 @@ export default function TTRAIChat() {
                             <button onClick={() => setSelectedImage(null)}>✕</button>
                         </div>
                     )}
-                    <div className="input-bar" style={{ position: 'relative' }}>
+                    <div className={`input-bar ${loading ? 'thinking' : ''}`} style={{ position: 'relative' }}>
                         {/* 4-Way Learning Menu Toggler */}
-                        <div style={{ position: 'relative' }}>
+                        <div style={{ position: 'relative' }} ref={fourWayMenuRef}>
                             <button
-                                className="attach-btn"
+                                className={`attach-btn ${fourWayMode ? 'active-hero' : ''}`}
                                 onClick={() => setShowFourWayMenu(!showFourWayMenu)}
                                 title="4-Way Learning Modes"
                                 style={{ color: fourWayMode ? 'var(--accent)' : 'inherit' }}
@@ -626,15 +606,17 @@ export default function TTRAIChat() {
                             {showFourWayMenu && (
                                 <div style={{
                                     position: 'absolute', bottom: '100%', left: '0', marginBottom: '10px',
-                                    background: 'var(--surface)', border: '1px solid var(--border)',
-                                    borderRadius: '10px', padding: '10px', display: 'flex', flexDirection: 'column',
-                                    gap: '5px', boxShadow: '0 5px 20px rgba(0,0,0,0.3)', zIndex: 100,
-                                    width: '200px'
+                                    background: 'var(--bg-card)', border: '1px solid var(--accent)',
+                                    borderRadius: '12px', padding: '12px', display: 'flex', flexDirection: 'column',
+                                    gap: '6px', boxShadow: '0 10px 30px rgba(0,0,0,0.4)', zIndex: 100,
+                                    width: '220px', animation: 'fadeIn 0.2s ease'
                                 }}>
-                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', padding: '5px' }}>4-Way Learning</div>
+                                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--accent)', padding: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>4-Way Learning</div>
                                     <button
                                         onClick={() => { setFourWayMode(null); setShowFourWayMenu(false); setCurrentSessionId(null); setMessages([WELCOME_MSG]); setInput(''); }}
-                                        style={{ textAlign: 'left', padding: '10px', background: !fourWayMode ? 'rgba(108, 99, 255, 0.1)' : 'transparent', border: 'none', borderRadius: '5px', color: 'white', cursor: 'pointer' }}
+                                        style={{ textAlign: 'left', padding: '10px', background: !fourWayMode ? 'var(--accent-glow)' : 'transparent', border: 'none', borderRadius: '8px', color: 'var(--text-primary)', cursor: 'pointer', transition: '0.2s', fontSize: '14px' }}
+                                        onMouseEnter={(e) => e.target.style.background = 'var(--bg-hover)'}
+                                        onMouseLeave={(e) => e.target.style.background = !fourWayMode ? 'var(--accent-glow)' : 'transparent'}
                                     >
                                         🧠 Standard TTR AI
                                     </button>
@@ -642,10 +624,13 @@ export default function TTRAIChat() {
                                         <button
                                             key={mode.id}
                                             onClick={() => { setFourWayMode(mode.id); setShowFourWayMenu(false); setCurrentSessionId(null); setMessages([WELCOME_MSG]); setInput(''); }}
-                                            style={{ textAlign: 'left', padding: '10px', background: fourWayMode === mode.id ? 'rgba(108, 99, 255, 0.1)' : 'transparent', border: 'none', borderRadius: '5px', color: 'white', cursor: 'pointer' }}
+                                            style={{ textAlign: 'left', padding: '10px', background: fourWayMode === mode.id ? 'var(--accent-glow)' : 'transparent', border: 'none', borderRadius: '8px', color: 'var(--text-primary)', cursor: 'pointer', transition: '0.2s', fontSize: '14px' }}
+                                            onMouseEnter={(e) => e.target.style.background = 'var(--bg-hover)'}
+                                            onMouseLeave={(e) => e.target.style.background = fourWayMode === mode.id ? 'var(--accent-glow)' : 'transparent'}
                                             title={mode.title}
                                         >
-                                            {mode.emoji} {mode.name.replace(mode.emoji, '').trim()}
+                                            <span style={{ marginRight: '8px' }}>{mode.emoji}</span>
+                                            {mode.name.replace(mode.emoji, '').trim()}
                                         </button>
                                     ))}
                                 </div>
@@ -676,19 +661,45 @@ export default function TTRAIChat() {
                             style={{ display: 'none' }}
                         />
 
-                        {fourWayMode === 'teaching' && (
-                            <select
-                                value={motherTongue}
-                                onChange={(e) => setMotherTongue(e.target.value)}
-                                style={{ padding: '0 8px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: '12px', height: '36px' }}
-                            >
-                                <option value="Hindi">HI</option>
-                                <option value="Telugu">TE</option>
-                                <option value="Tamil">TA</option>
-                                <option value="Spanish">ES</option>
-                                <option value="French">FR</option>
-                            </select>
-                        )}
+                        <div style={{ position: 'relative' }} ref={langMenuRef}>
+                            {fourWayMode === 'teaching' && (
+                                <>
+                                    <button
+                                        className="attach-btn"
+                                        onClick={() => setShowLangMenu(!showLangMenu)}
+                                        style={{
+                                            height: '38px', minWidth: '40px', background: 'var(--bg-tertiary)',
+                                            color: 'var(--accent)', borderRadius: '8px', border: '1px solid var(--border)',
+                                            fontSize: '11px', fontWeight: 'bold'
+                                        }}
+                                    >
+                                        {{ 'Hindi': 'HI', 'Telugu': 'TE', 'Tamil': 'TA', 'Spanish': 'ES', 'French': 'FR' }[motherTongue] || 'EN'}
+                                    </button>
+                                    {showLangMenu && (
+                                        <div style={{
+                                            position: 'absolute', bottom: '100%', right: '0', marginBottom: '10px',
+                                            background: 'var(--bg-card)', border: '1px solid var(--accent)',
+                                            borderRadius: '12px', padding: '10px', display: 'flex', flexDirection: 'column',
+                                            gap: '5px', boxShadow: '0 10px 30px rgba(0,0,0,0.4)', zIndex: 110, width: '120px'
+                                        }}>
+                                            <div style={{ fontSize: '10px', color: 'var(--accent)', padding: '5px', fontWeight: 'bold' }}>Languages</div>
+                                            {['Hindi', 'Telugu', 'Tamil', 'Spanish', 'French'].map(lang => (
+                                                <button
+                                                    key={lang}
+                                                    onClick={() => { setMotherTongue(lang); setShowLangMenu(false); }}
+                                                    style={{
+                                                        textAlign: 'left', padding: '10px', background: motherTongue === lang ? 'var(--accent-glow)' : 'transparent',
+                                                        border: 'none', borderRadius: '8px', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '13px'
+                                                    }}
+                                                >
+                                                    {lang}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
                         <textarea
                             ref={inputRef}
                             value={input}
@@ -820,6 +831,49 @@ export default function TTRAIChat() {
                     </div>
                 )
             }
+
+            {/* ── Theme Gallery Modal ── */}
+            {showThemeGallery && (
+                <div className="theme-gallery-overlay" onClick={() => setShowThemeGallery(false)}>
+                    <div className="theme-gallery" onClick={e => e.stopPropagation()}>
+                        <div className="gallery-header">
+                            <h2>Visual Universe</h2>
+                            <p>Select from 50+ custom aesthetics to transform your AI.</p>
+                            <button className="sidebar-close" onClick={() => setShowThemeGallery(false)}>✕</button>
+                        </div>
+                        <div className="gallery-content">
+                            {Object.entries(THEME_CATEGORIES).map(([slug, catName]) => (
+                                <div key={slug} className="category-section">
+                                    <h3 className="category-title">{catName}</h3>
+                                    <div className="theme-grid">
+                                        {THEMES.filter(t => t.category === slug).map(t => (
+                                            <div
+                                                key={t.id}
+                                                className={`theme-card ${theme === t.id ? 'active' : ''}`}
+                                                onClick={() => {
+                                                    applyTheme(t.id);
+                                                    setShowThemeGallery(false);
+                                                }}
+                                            >
+                                                <div
+                                                    className="theme-preview"
+                                                    style={{
+                                                        backgroundColor: t.colors.primary,
+                                                        border: `2px solid ${t.colors.accent}`
+                                                    }}
+                                                >
+                                                    <span style={{ color: t.colors.accent }}>A</span>
+                                                </div>
+                                                <span>{t.name}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 }

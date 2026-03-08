@@ -1,5 +1,6 @@
 {
   "appId": "com.togethertorefine.app",
   "appName": "TTR AI",
-  "webDir": "dist"
+  "webDir": "dist",
+  "bundledWebRuntime": false
 }

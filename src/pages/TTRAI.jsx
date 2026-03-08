@@ -7,6 +7,101 @@ import { useSpeech } from '../hooks/useSpeech';
 import { useUser } from '../context/UserContext';
 import ReactMarkdown from 'react-markdown';
 import BottomNav from '../components/BottomNav';
+import anime from 'animejs';
+import logo from '../assets/logo.png';
+
+/* ──────────────── Fluid Message Animation ──────────────── */
+const AnimatedMessage = ({ msg, children }) => {
+    const msgRef = useRef(null);
+
+    useEffect(() => {
+        if (msg.isNew) {
+            anime({
+                targets: msgRef.current,
+                translateY: [30, 0],
+                scale: [0.95, 1],
+                opacity: [0, 1],
+                duration: 900,
+                easing: 'easeOutElastic(1, .8)',
+                delay: msg.sender === 'ai' ? 100 : 0
+            });
+        }
+    }, [msg.isNew, msg.sender]);
+
+    return (
+        <div ref={msgRef} className={`message-bubble ${msg.sender === 'user' ? 'message-user' : 'message-ai'}`} style={{ opacity: msg.isNew ? 0 : 1 }}>
+            {children}
+        </div>
+    );
+};
+
+/* ──────────────── Breathing AI Animation ──────────────── */
+const BreathingOrb = () => {
+    const orbRef = useRef(null);
+
+    useEffect(() => {
+        anime({
+            targets: orbRef.current,
+            scale: [0.85, 1.05],
+            opacity: [0.6, 1],
+            filter: [
+                'drop-shadow(0 0 4px rgba(46, 204, 113, 0.3))',
+                'drop-shadow(0 0 15px rgba(46, 204, 113, 0.9))'
+            ],
+            duration: 1200,
+            direction: 'alternate',
+            easing: 'easeInOutSine',
+            loop: true
+        });
+    }, []);
+
+    return (
+        <div style={{ alignSelf: 'flex-start', background: 'transparent', padding: '10px' }}>
+            <img
+                ref={orbRef}
+                src={logo}
+                alt="Thinking"
+                style={{ width: '30px', height: '30px', objectFit: 'contain', borderRadius: '50%' }}
+            />
+        </div>
+    );
+};
+
+/* ──────────────── Magnetic & Tactile Button ──────────────── */
+const MagneticSubmitButton = ({ onClick, disabled, loading, onStop }) => {
+    const btnRef = useRef(null);
+
+    const handlePress = () => {
+        anime({
+            targets: btnRef.current,
+            scale: [1, 0.8, 1.1, 1],
+            duration: 600,
+            easing: 'easeOutElastic(1, .5)'
+        });
+        if (loading) {
+            onStop();
+        } else {
+            onClick();
+        }
+    };
+
+    return loading ? (
+        <button
+            ref={btnRef}
+            onClick={handlePress}
+            className="send-button"
+            style={{ background: '#e74c3c' }}
+            title="Stop generating"
+        >⏹</button>
+    ) : (
+        <button
+            ref={btnRef}
+            onClick={handlePress}
+            disabled={disabled}
+            className="send-button"
+        >➤</button>
+    );
+};
 
 // Helper Component for Typewriter Effect
 const TypewriterMessage = ({ text, onComplete }) => {
@@ -204,7 +299,7 @@ export default function TTRAI() {
         setLoading(true);
         setStatusLog("Processing...");
 
-        const userMsg = { text: text || "Image Uploaded", image: selectedImage, sender: 'user', createdAt: new Date() };
+        const userMsg = { text: text || "Image Uploaded", image: selectedImage, sender: 'user', createdAt: new Date(), isNew: true };
         setMessages(prev => [...prev, userMsg]);
 
         try {
@@ -268,7 +363,7 @@ export default function TTRAI() {
                 throw e;
             }
 
-            const aiMsg = { text: responseText, sender: 'ai', createdAt: new Date() };
+            const aiMsg = { text: responseText, sender: 'ai', createdAt: new Date(), isNew: true };
             if (!currentSessionId) {
                 setMessages(prev => [...prev, aiMsg]);
             }
@@ -363,11 +458,13 @@ export default function TTRAI() {
                 )}
 
                 {messages.map((msg, idx) => (
-                    <div key={idx} className={`message-bubble ${msg.sender === 'user' ? 'message-user' : 'message-ai'}`}>
+                    <AnimatedMessage key={idx} msg={msg}>
                         {msg.image && <img src={msg.image} alt="User Upload" style={{ maxWidth: '100%', borderRadius: '8px', marginBottom: '10px' }} />}
                         <div className="markdown-content">
                             {msg.sender === 'ai' && idx === messages.length - 1 && !msg.isError ? (
-                                <TypewriterMessage text={msg.text} />
+                                <TypewriterMessage text={msg.text} onComplete={() => {
+                                    setMessages(prev => prev.map((m, idx2) => idx2 === idx ? { ...m, isNew: false } : m));
+                                }} />
                             ) : (
                                 <ReactMarkdown>{msg.text}</ReactMarkdown>
                             )}
@@ -392,9 +489,9 @@ export default function TTRAI() {
                                 </div>
                             </div>
                         )}
-                    </div>
+                    </AnimatedMessage>
                 ))}
-                {loading && <div style={{ alignSelf: 'flex-start', background: 'var(--bg-surface)', padding: '10px 20px', borderRadius: '20px', color: 'var(--text-muted)' }}>AI is thinking...</div>}
+                {loading && <BreathingOrb />}
                 <div ref={messagesEndRef} />
             </div>
 
@@ -434,11 +531,12 @@ export default function TTRAI() {
                         name="ttr-ai-input"
                         data-form-type="other"
                     />
-                    {loading ? (
-                        <button onClick={() => { if (abortControllerRef.current) abortControllerRef.current.abort(); setLoading(false); }} className="send-button" style={{ background: '#e74c3c' }} title="Stop generating">⏹</button>
-                    ) : (
-                        <button onClick={handleSend} disabled={!input.trim() && !selectedImage} className="send-button">➤</button>
-                    )}
+                    <MagneticSubmitButton
+                        loading={loading}
+                        disabled={!input.trim() && !selectedImage}
+                        onClick={handleSend}
+                        onStop={() => { if (abortControllerRef.current) abortControllerRef.current.abort(); setLoading(false); }}
+                    />
                 </div>
             </div>
 
