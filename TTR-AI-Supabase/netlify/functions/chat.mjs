@@ -175,13 +175,19 @@ export const handler = async (event) => {
                 parts.push({ inlineData: { mimeType, data: image } });
             }
 
-            const result = await chat.sendMessage(parts);
-            const response = await result.response;
+            // Using Stream for high capacity and reliability
+            const result = await chat.sendMessageStream(parts);
+            let fullText = '';
+
+            for await (const chunk of result.stream) {
+                const chunkText = chunk.text();
+                fullText += chunkText;
+            }
 
             return {
                 statusCode: 200,
                 headers,
-                body: JSON.stringify({ text: response.text() }),
+                body: JSON.stringify({ text: fullText }),
             };
         } catch (error) {
             console.error(`Model ${modelName} failed: `, error.message);
