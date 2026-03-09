@@ -362,19 +362,19 @@ export default function TTRAIChat() {
                 mimeType: imgData ? imgData.match(/:(.*?);/)?.[1] : null,
             };
 
-            // Determine the correct API endpoint based on the environment
-            let API_URL = 'https://ttrai.in/.netlify/functions/chat'; // Default for App/Mobile
+            // Determine the correct API endpoint
+            let API_URL = '/api/chat';
 
-            if (window.location.protocol.startsWith('http')) {
+            // If running in Native App (Capacitor) or different protocol, use absolute URL
+            if (!window.location.protocol.startsWith('http')) {
+                API_URL = 'https://ttrai.in/api/chat';
+            } else {
                 const host = window.location.hostname;
                 const port = window.location.port;
 
                 if (host === 'localhost' || host === '127.0.0.1') {
-                    // If using Vite dev port (517x), hit the cloud. If using regular port, hit local server.
-                    API_URL = port.includes('517') ? 'https://ttrai.in/.netlify/functions/chat' : 'http://localhost:5000/api/chat';
-                } else {
-                    // On live web (ttrai.in or netlify.app) - use relative path to avoid CORS/SSL issues
-                    API_URL = '/.netlify/functions/chat';
+                    // Local dev (Vite) uses full URL to hit production or local server
+                    API_URL = port.includes('517') ? 'https://ttrai.in/api/chat' : 'http://localhost:5000/api/chat';
                 }
             }
 
@@ -470,6 +470,20 @@ export default function TTRAIChat() {
                                 <div className="user-avatar">{displayName.charAt(0).toUpperCase()}</div>
                                 <span className="user-name">{displayName}</span>
                             </div>
+                            <button
+                                className="download-sidebar-btn"
+                                onClick={() => navigate('/download-app')}
+                                style={{
+                                    width: '100%', padding: '10px', borderRadius: '10px',
+                                    background: 'rgba(255,255,255,0.05)', color: '#fff',
+                                    border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer',
+                                    marginBottom: '10px', fontSize: '13px', display: 'flex',
+                                    alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                <span>📲</span> Download App
+                            </button>
                             <button className="logout-btn" onClick={signOut}>Sign Out</button>
                         </div>
                     </>
