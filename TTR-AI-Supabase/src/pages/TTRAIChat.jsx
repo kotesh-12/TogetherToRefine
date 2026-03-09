@@ -362,12 +362,21 @@ export default function TTRAIChat() {
                 mimeType: imgData ? imgData.match(/:(.*?);/)?.[1] : null,
             };
 
-            // Use your professional custom domain for production (ttrai.in)
-            const PROD_API_URL = 'https://ttrai.in/.netlify/functions/chat';
+            // Determine the correct API endpoint based on the environment
+            let API_URL = 'https://ttrai.in/.netlify/functions/chat'; // Default for App/Mobile
 
-            const API_URL = (window.location.hostname === 'localhost' && !window.location.port.includes('517'))
-                ? 'http://localhost:5000/api/chat'
-                : PROD_API_URL;
+            if (window.location.protocol.startsWith('http')) {
+                const host = window.location.hostname;
+                const port = window.location.port;
+
+                if (host === 'localhost' || host === '127.0.0.1') {
+                    // If using Vite dev port (517x), hit the cloud. If using regular port, hit local server.
+                    API_URL = port.includes('517') ? 'https://ttrai.in/.netlify/functions/chat' : 'http://localhost:5000/api/chat';
+                } else {
+                    // On live web (ttrai.in or netlify.app) - use relative path to avoid CORS/SSL issues
+                    API_URL = '/.netlify/functions/chat';
+                }
+            }
 
             abortControllerRef.current = new AbortController();
 
