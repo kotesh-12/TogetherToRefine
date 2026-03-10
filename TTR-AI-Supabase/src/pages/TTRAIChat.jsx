@@ -829,9 +829,6 @@ export default function TTRAIChat() {
                         >
                             {currentPath && activeHeroes[currentPath] ? activeHeroes[currentPath].emoji : '🎗️'}
                         </button>
-                        <button className="path-header-btn" onClick={() => navigate('/download-app')} title="Download App">
-                            📴
-                        </button>
                         <button
                             className={`path-header-btn incognito-btn ${incognitoMode ? 'active' : ''}`}
                             onClick={toggleIncognito}
@@ -844,11 +841,6 @@ export default function TTRAIChat() {
                                 Sign In
                             </button>
                         )}
-                        <button className="new-chat-header-btn" onClick={startNewChat} title="New Chat">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M12 5v14M5 12h14" />
-                            </svg>
-                        </button>
                     </div>
                 </div>
 
