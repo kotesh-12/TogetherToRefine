@@ -184,6 +184,7 @@ export default function TTRAIChat() {
     // File upload
     const [selectedImage, setSelectedImage] = useState(null);
     const [selectedDoc, setSelectedDoc] = useState(null); // { file, text, pages, type, fileName, processing }
+    const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef(null);
     const abortControllerRef = useRef(null);
     const [motherTongue, setMotherTongue] = useState('Hindi');
@@ -520,6 +521,29 @@ export default function TTRAIChat() {
         });
     }, []);
 
+    /* ── Drag and Drop Handlers ── */
+    const handleDragOver = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!isDragging) setIsDragging(true);
+    }, [isDragging]);
+
+    const handleDragLeave = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+    }, []);
+
+    const handleDrop = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+        const file = e.dataTransfer.files[0];
+        if (file) {
+            handleFileChange({ target: { files: [file] } });
+        }
+    }, [handleFileChange]);
+
     const handleKeyDown = useCallback((e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -539,8 +563,24 @@ export default function TTRAIChat() {
     const currentThemeData = THEMES.find(t => t.id === theme) || THEMES[0];
 
     return (
-        <div className={`chat-page theme-${theme} ux-${currentThemeData.ux || 'standard'}`}>
+        <div
+            className={`chat-page theme-${theme} ux-${currentThemeData.ux || 'standard'}`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+        >
             <div ref={curtainRef} className="theme-transition-curtain" />
+
+            {isDragging && (
+                <div className="drop-zone-overlay">
+                    <div className="drop-zone-content">
+                        <div className="drop-icon-pulse">📤</div>
+                        <h2>Drop to analyze</h2>
+                        <p>PDF, PPTX, DOCX, or Images</p>
+                    </div>
+                </div>
+            )}
+
             {/* ── Sidebar ── */}
             <div className={`sidebar ${showSidebar ? 'open' : ''}`}>
                 <div className="sidebar-header">

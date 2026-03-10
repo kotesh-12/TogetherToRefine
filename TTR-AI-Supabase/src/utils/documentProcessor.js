@@ -203,10 +203,17 @@ export async function processDocument(file) {
             throw new Error(`Unsupported file type: .${ext}`);
     }
 
+    // Clean up text (remove excessive whitespace to save tokens)
+    result.text = result.text.replace(/\s+/g, ' ').trim();
+
     // Truncate very long documents (Gemini has token limits)
-    const MAX_CHARS = 30000;
+    // Pillar 3: Smart Truncation (Keep Intro + Outro)
+    const MAX_CHARS = 40000;
     if (result.text.length > MAX_CHARS) {
-        result.text = result.text.substring(0, MAX_CHARS) + `\n\n[... Document truncated. Showing first ${MAX_CHARS} characters of ${result.text.length} total ...]`;
+        const startPart = result.text.substring(0, MAX_CHARS / 2);
+        const endPart = result.text.substring(result.text.length - (MAX_CHARS / 2));
+        result.text = `${startPart}\n\n[... ${result.text.length - MAX_CHARS} characters omitted from middle for context optimization ...]\n\n${endPart}`;
+        console.log(`Smart-truncated document from ${result.text.length} to ${MAX_CHARS} chars.`);
     }
 
     return {

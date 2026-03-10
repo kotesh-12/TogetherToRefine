@@ -93,11 +93,21 @@ app.post('/api/chat', async (req, res) => {
             return res.status(400).json({ error: 'No message or image provided' });
         }
 
-        const systemPrompt = getSystemPrompt(userContext);
+        // Handle document context (Pillar 3: Model Awareness)
+        const hasDoc = message?.includes('--- DOCUMENT CONTENT ---');
+        let sessionPrompt = getSystemPrompt(userContext);
+        if (hasDoc) {
+            sessionPrompt += `\n\nCORE MODE: DOCUMENT ANALYSIS. 
+The user has uploaded a document. 
+1. Use the provided "DOCUMENT CONTENT" as your primary source of truth.
+2. If the user asks for a summary, be concise but cover key points.
+3. If they ask a specific question, cite which part of the document you found the answer in.
+4. If the info isn't in the document, say so politely.`;
+        }
 
         const chat = model.startChat({
             history: history || [],
-            systemInstruction: { parts: [{ text: systemPrompt }] },
+            systemInstruction: { parts: [{ text: sessionPrompt }] },
         });
 
         // Build message parts
