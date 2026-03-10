@@ -6,10 +6,7 @@ export default function Pricing() {
     const currentPlan = localStorage.getItem('ttr_subscription_plan') || 'free';
 
     const handleSubscribe = (planId) => {
-        // Simple mock logic for now. Real implementation needs Stripe/Razorpay.
-        localStorage.setItem('ttr_subscription_plan', planId);
-        alert(`Successfully upgraded to the ${planId.toUpperCase()} plan!`);
-        navigate('/');
+        alert('Upgrades are coming soon! Until then, please use your current plan.');
     };
 
     const plans = [
