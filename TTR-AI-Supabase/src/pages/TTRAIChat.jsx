@@ -661,6 +661,22 @@ export default function TTRAIChat() {
                             >
                                 <span>📲</span> Download App
                             </button>
+
+                            {/* Admin Dashboard Access */}
+                            <button
+                                onClick={() => navigate('/admin-ttrai-hq')}
+                                style={{
+                                    width: '100%', padding: '10px', borderRadius: '10px',
+                                    background: 'rgba(139, 92, 246, 0.1)', color: '#a78bfa',
+                                    border: '1px dashed rgba(139, 92, 246, 0.3)', cursor: 'pointer',
+                                    marginBottom: '10px', fontSize: '13px', display: 'flex',
+                                    alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                <span>🛡️</span> Data Exporter
+                            </button>
+
                             <button className="logout-btn" onClick={signOut}>Sign Out</button>
                         </div>
                     </>
