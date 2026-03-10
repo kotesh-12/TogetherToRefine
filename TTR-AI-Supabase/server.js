@@ -98,11 +98,11 @@ app.post('/api/chat', async (req, res) => {
         let sessionPrompt = getSystemPrompt(userContext);
         if (hasDoc) {
             sessionPrompt += `\n\nCORE MODE: DOCUMENT ANALYSIS. 
-The user has uploaded a document. 
-1. Use the provided "DOCUMENT CONTENT" as your primary source of truth.
-2. If the user asks for a summary, be concise but cover key points.
-3. If they ask a specific question, cite which part of the document you found the answer in.
-4. If the info isn't in the document, say so politely.`;
+The user has uploaded document(s). 
+1. Use the provided "DOCUMENT CONTENT" blocks as your primary source of truth.
+2. If the user asks for a summary, synthesize information across the document(s).
+3. If they ask a specific question, cite which document and part you found the answer in.
+4. If the info isn't in the provided document(s), say so politely.`;
         }
 
         const chat = model.startChat({

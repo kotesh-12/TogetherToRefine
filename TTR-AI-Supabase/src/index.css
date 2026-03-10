@@ -2208,6 +2208,19 @@ a:hover {
   box-shadow: 0 4px 12px rgba(167, 139, 250, 0.3);
 }
 
+.study-tool-tag.pro {
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #38bdf8;
+}
+
+.study-tool-tag.pro:hover {
+  background: #0ea5e9;
+  color: white;
+  border-color: #0ea5e9;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+}
+
 .study-toolbox {
   display: flex;
   gap: 8px;

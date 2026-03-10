@@ -183,7 +183,7 @@ export default function TTRAIChat() {
 
     // File upload
     const [selectedImage, setSelectedImage] = useState(null);
-    const [selectedDoc, setSelectedDoc] = useState(null); // { file, text, pages, type, fileName, processing }
+    const [selectedDocs, setSelectedDocs] = useState([]); // array: { id, file, text, pages, type, fileName, processing, error, color, icon }
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef(null);
     const abortControllerRef = useRef(null);
@@ -314,54 +314,54 @@ export default function TTRAIChat() {
 
     /* ── File handling (images + documents) ── */
     const handleFileChange = useCallback(async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
         // Reset input so same file can be re-selected
         e.target.value = '';
 
-        if (isImageFile(file)) {
-            // Handle as image (existing behavior)
-            const reader = new FileReader();
-            reader.onloadend = () => setSelectedImage(reader.result);
-            reader.readAsDataURL(file);
-            setSelectedDoc(null);
-        } else if (isDocumentFile(file)) {
-            // Handle as document
-            setSelectedImage(null);
-            setSelectedDoc({ file, fileName: file.name, processing: true, ...getFileTypeInfo(file) });
-            try {
-                const result = await processDocument(file);
-                setSelectedDoc(prev => ({ ...prev, ...result, processing: false }));
-            } catch (err) {
-                setSelectedDoc(prev => ({ ...prev, processing: false, error: err.message }));
+        for (const file of files) {
+            if (isImageFile(file)) {
+                // Handle as image (Gemini vision usually best with 1 image at a time right now)
+                const reader = new FileReader();
+                reader.onloadend = () => setSelectedImage(reader.result);
+                reader.readAsDataURL(file);
+            } else if (isDocumentFile(file) || true) {
+                // Handle as document
+                setSelectedImage(null);
+                const docId = Date.now() + Math.random();
+                const newDoc = { id: docId, file, fileName: file.name, processing: true, ...getFileTypeInfo(file) };
+                setSelectedDocs(prev => [...prev, newDoc]);
+
+                try {
+                    const result = await processDocument(file);
+                    setSelectedDocs(prev => prev.map(d => d.id === docId ? { ...d, ...result, processing: false } : d));
+                } catch (err) {
+                    setSelectedDocs(prev => prev.map(d => d.id === docId ? { ...d, processing: false, error: err.message } : d));
+                }
             }
-        } else {
-            // Unsupported — try as image anyway
-            const reader = new FileReader();
-            reader.onloadend = () => setSelectedImage(reader.result);
-            reader.readAsDataURL(file);
         }
     }, []);
 
     /* ── Send Message ── */
     const handleSend = useCallback(async (e, overrideText = null) => {
         const text = (overrideText || input).trim();
-        if (!text && !selectedImage && !selectedDoc) return;
+        if (!text && !selectedImage && selectedDocs.length === 0) return;
 
         setInput('');
         const imgData = selectedImage;
-        const docData = selectedDoc;
+        const docsData = [...selectedDocs];
         setSelectedImage(null);
-        setSelectedDoc(null);
+        setSelectedDocs([]);
         setLoading(true);
 
         const isImage = imgData?.startsWith('data:image/');
-        const hasDoc = docData?.text;
+        const hasDocs = docsData.length > 0;
 
         // Build user message display
         let userMsgText = text;
-        if (hasDoc) {
-            userMsgText = text || `Analyze this ${docData.type} document`;
+        if (hasDocs) {
+            const names = docsData.map(d => d.fileName).join(', ');
+            userMsgText = text || `Analyze document${docsData.length > 1 ? 's' : ''}: ${names}`;
         } else if (!text) {
             userMsgText = isImage ? 'Image uploaded' : 'File uploaded';
         }
@@ -371,7 +371,7 @@ export default function TTRAIChat() {
             image: imgData,
             sender: 'user',
             isNew: true,
-            docInfo: hasDoc ? { fileName: docData.fileName, type: docData.type, pages: docData.pages, icon: docData.icon } : null,
+            docInfo: hasDocs ? docsData.map(d => ({ fileName: d.fileName, type: d.type, pages: d.pages, icon: d.icon })) : null,
         };
         setMessages(prev => [...prev, userMsg]);
 
@@ -380,7 +380,7 @@ export default function TTRAIChat() {
             let sessionId = currentSessionId;
             if (user && !sessionId && !incognitoMode) {
                 const sessionPrefix = fourWayMode ? `[${fourWayMode}] ` : '';
-                const baseTitle = text ? text.substring(0, 40) : (docData ? `Note: ${docData.fileName}` : 'New Chat');
+                const baseTitle = text ? text.substring(0, 40) : (hasDocs ? `Docs: ${docsData.map(d => d.fileName).join(', ')}`.substring(0, 40) : 'New Chat');
                 const { data: newSession, error } = await supabase
                     .from('chat_sessions')
                     .insert({ user_id: user.id, title: sessionPrefix + baseTitle })
@@ -411,10 +411,15 @@ export default function TTRAIChat() {
             const containsError = errorKeywords.some(k => text.toLowerCase().includes(k));
             const shouldDebug = isDebugMode || containsError;
 
+            let docContentText = '';
+            if (hasDocs) {
+                docContentText = docsData.map((d, i) => `\n\n📄 DOCUMENT ${i + 1}: "${d.fileName}" (${d.type}, ${d.pages || '?'} pages)\n--- DOCUMENT CONTENT ---\n${d.text}\n--- END OF DOCUMENT ${i + 1} ---`).join('');
+            }
+
             const payload = {
                 history: historyForApi,
-                message: hasDoc
-                    ? `${text || 'Analyze this document'}\n\n📄 DOCUMENT: "${docData.fileName}" (${docData.type}, ${docData.pages} page${docData.pages !== 1 ? 's' : ''})\n\n--- DOCUMENT CONTENT ---\n${docData.text}\n--- END OF DOCUMENT ---`
+                message: hasDocs
+                    ? `${text || 'Analyze these documents'}${docContentText}`
                     : text,
                 userContext: {
                     name: displayName,
@@ -424,8 +429,8 @@ export default function TTRAIChat() {
                     motherTongue: fourWayMode === 'teaching' ? motherTongue : null,
                     isDebugMode: shouldDebug, // Signal to AI to focus on debugging
                 },
-                image: (imgData && !hasDoc) ? imgData.split(',')[1] : null,
-                mimeType: (imgData && !hasDoc) ? imgData.match(/:(.*?);/)?.[1] : null,
+                image: (imgData && !hasDocs) ? imgData.split(',')[1] : null,
+                mimeType: (imgData && !hasDocs) ? imgData.match(/:(.*?);/)?.[1] : null,
             };
 
             // Reset debug mode after sending if it was manual
@@ -538,28 +543,33 @@ export default function TTRAIChat() {
         e.preventDefault();
         e.stopPropagation();
         setIsDragging(false);
-        const file = e.dataTransfer.files[0];
-        if (file) {
-            handleFileChange({ target: { files: [file] } });
+        const files = Array.from(e.dataTransfer.files);
+        if (files.length > 0) {
+            handleFileChange({ target: { files } });
         }
     }, [handleFileChange]);
 
-    /* ── UG Study Suite Actions ── */
+    /* ── UG & Professional Toolkits ── */
     const handleStudyAction = useCallback((actionType) => {
-        if (!selectedDoc || selectedDoc.processing) return;
+        if (selectedDocs.length === 0 || selectedDocs.some(d => d.processing)) return;
 
         const actionPrompts = {
+            // UG Suite
             quiz: "Based on the uploaded document, please generate a Practice Quiz with Multiple Choice Questions (MCQs). The number of questions should dynamically depend on the depth and number of concepts provided in the document. Format the quiz clearly and provide the correct answers at the end so I can check my knowledge.",
             summary: "Please provide a 'Flash Summary' of this document. The length and detail of this summary should dynamically depend on the document's concepts and importance (e.g. if it is a 50-page PDF with many key concepts, provide a multi-page detailed summary). Use bullet points and focus on the most important concepts a student needs to know for an upcoming exam.",
-            questions: "Analyze this document and identify the top 5 'Most Likely Exam Questions' that a professor would ask. Provide a clear, detailed answer for each question to help me prepare."
+            questions: "Analyze this document and identify the top 5 'Most Likely Exam Questions' that a professor would ask. Provide a clear, detailed answer for each question to help me prepare.",
+
+            // Professional Suite
+            email: "Draft a highly professional business email based on the contents and findings of this document. It should be ready to send to a client or executive team.",
+            report: "Extract the core business value, logic, and key data points from this document. Format this into a sharp, professional Executive Summary/Report.",
+            simplify: "Rewrite the key concepts of this document so they can be easily understood by a non-technical stakeholder or client. Use simple analogies and remove jargon."
         };
 
         const prompt = actionPrompts[actionType];
 
-        // Auto-send the study request
-        const currentRef = { value: prompt };
+        // Auto-send the request
         handleSend(null, prompt);
-    }, [selectedDoc, handleSend]);
+    }, [selectedDocs, handleSend]);
 
     const handleKeyDown = useCallback((e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -759,15 +769,15 @@ export default function TTRAIChat() {
                                         <div className="msg-file-icon" style={{ fontSize: '30px', marginBottom: '10px' }}>📄 PDF/Doc</div>
                                     )
                                 )}
-                                {msg.docInfo && (
-                                    <div className="msg-doc-badge">
-                                        <span>{msg.docInfo.icon}</span>
+                                {msg.docInfo && (Array.isArray(msg.docInfo) ? msg.docInfo : [msg.docInfo]).map((doc, idx) => (
+                                    <div key={idx} className="msg-doc-badge" style={{ marginBottom: '8px' }}>
+                                        <span>{doc.icon}</span>
                                         <div>
-                                            <strong>{msg.docInfo.fileName}</strong>
-                                            <small>{msg.docInfo.type} • {msg.docInfo.pages} page{msg.docInfo.pages !== 1 ? 's' : ''}</small>
+                                            <strong>{doc.fileName}</strong>
+                                            <small>{doc.type} • {doc.pages} page{doc.pages !== 1 ? 's' : ''}</small>
                                         </div>
                                     </div>
-                                )}
+                                ))}
                                 <ReactMarkdown components={markdownCodeRenderers}>{msg.text}</ReactMarkdown>
                             </div>
 
@@ -831,26 +841,47 @@ export default function TTRAIChat() {
                             <button onClick={() => setSelectedImage(null)}>✕</button>
                         </div>
                     )}
-                    {selectedDoc && (
-                        <div className="doc-preview">
-                            <div className="doc-preview-info">
-                                <span className="doc-preview-icon" style={{ color: selectedDoc.color }}>{selectedDoc.icon}</span>
-                                <div>
-                                    <strong>{selectedDoc.fileName}</strong>
-                                    {selectedDoc.processing ? (
-                                        <small className="doc-processing">Processing document...</small>
-                                    ) : selectedDoc.error ? (
-                                        <small className="doc-error">⚠️ {selectedDoc.error}</small>
+                    {selectedDocs.length > 0 && (
+                        <div className="docs-preview-container" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '10px', width: '100%' }}>
+                            <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '4px', maxWidth: '100%' }}>
+                                {selectedDocs.map(doc => (
+                                    <div key={doc.id} className="doc-preview" style={{ flex: '0 0 auto', minWidth: '200px', maxWidth: '250px', marginBottom: 0 }}>
+                                        <div className="doc-preview-info">
+                                            <span className="doc-preview-icon" style={{ color: doc.color }}>{doc.icon}</span>
+                                            <div style={{ overflow: 'hidden' }}>
+                                                <strong style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>{doc.fileName}</strong>
+                                                {doc.processing ? (
+                                                    <small className="doc-processing">Processing...</small>
+                                                ) : doc.error ? (
+                                                    <small className="doc-error">⚠️ {doc.error}</small>
+                                                ) : (
+                                                    <small>{doc.type} • {doc.pages} page{doc.pages !== 1 ? 's' : ''}</small>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <button className="doc-preview-close" onClick={() => setSelectedDocs(prev => prev.filter(d => d.id !== doc.id))}>✕</button>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Wait until all docs process before showing study buttons */}
+                            {!selectedDocs.some(d => d.processing) && !selectedDocs.some(d => d.error) && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '4px', paddingLeft: '4px' }}>
+                                    {currentPath === 'professional' ? (
+                                        <>
+                                            <button className="study-tool-tag pro" onClick={() => handleStudyAction('email')}>📧 Draft Email</button>
+                                            <button className="study-tool-tag pro" onClick={() => handleStudyAction('report')}>📊 Exec Report</button>
+                                            <button className="study-tool-tag pro" onClick={() => handleStudyAction('simplify')}>🛠️ Simplify</button>
+                                        </>
                                     ) : (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
+                                        <>
                                             <button className="study-tool-tag" onClick={() => handleStudyAction('quiz')}>📝 Practice Quiz</button>
                                             <button className="study-tool-tag" onClick={() => handleStudyAction('summary')}>📑 Quick Summary</button>
                                             <button className="study-tool-tag" onClick={() => handleStudyAction('questions')}>🧠 Exam Questions</button>
-                                        </div>
+                                        </>
                                     )}
                                 </div>
-                            </div>
-                            <button className="doc-preview-close" onClick={() => setSelectedDoc(null)}>✕</button>
+                            )}
                         </div>
                     )}
                     <div className={`input-bar ${loading ? 'thinking' : ''}`} style={{ position: 'relative' }}>
@@ -916,6 +947,7 @@ export default function TTRAIChat() {
                         </button>
                         <input
                             type="file"
+                            multiple
                             ref={fileInputRef}
                             accept="image/*,application/pdf,.pdf,.pptx,.docx,.txt,.csv,.md,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/csv"
                             onChange={handleFileChange}
