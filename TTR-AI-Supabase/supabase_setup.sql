@@ -88,10 +88,17 @@ CREATE POLICY "Anyone can insert training data"
   ON training_data FOR INSERT
   WITH CHECK (true);
 
--- Only authenticated users can view their own submissions
+-- Only authenticated users can view their own submissions (normal users)
 CREATE POLICY "Users can view own training data"
   ON training_data FOR SELECT
   USING (auth.uid() = user_id);
+
+-- 🚨 ADMIN ACCESS POLICY 🚨
+-- Allows specific admin email to read ALL training data for export.
+-- Replace 'admin@ttrai.com' with your actual Supabase login email before running this in Supabase!
+CREATE POLICY "Admin can view all training data"
+  ON training_data FOR SELECT
+  USING ( auth.jwt() ->> 'email' = 'admin@ttrai.com' );
 
 -- Indexes for training data
 CREATE INDEX IF NOT EXISTS idx_training_created ON training_data(created_at DESC);
