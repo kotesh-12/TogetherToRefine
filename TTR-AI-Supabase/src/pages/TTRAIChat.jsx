@@ -482,7 +482,7 @@ export default function TTRAIChat() {
         } finally {
             setLoading(false);
         }
-    }, [input, selectedImage, selectedDoc, user, currentSessionId, messages, currentPath, currentDomain, fourWayMode, motherTongue, loadSessions, saveMessage, incognitoMode]);
+    }, [input, selectedImage, selectedDocs, user, currentSessionId, messages, currentPath, currentDomain, fourWayMode, motherTongue, loadSessions, saveMessage, incognitoMode]);
 
     /* ── Save training data (liked Q&A) ── */
     const saveTrainingData = useCallback(async (question, answer) => {
@@ -1032,7 +1032,7 @@ export default function TTRAIChat() {
                         </button>
                         <MagneticSubmitButton
                             loading={loading}
-                            disabled={!input.trim() && !selectedImage && !selectedDoc}
+                            disabled={!input.trim() && !selectedImage && selectedDocs.length === 0}
                             onClick={handleSend}
                             onStop={handleStop}
                         />
