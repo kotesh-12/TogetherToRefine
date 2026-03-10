@@ -9,6 +9,7 @@ export default function AdminDashboard() {
     const [password, setPassword] = useState('');
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [data, setData] = useState([]);
+    const [stats, setStats] = useState({ users: 0, sessions: 0, messages: 0 });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -35,6 +36,22 @@ export default function AdminDashboard() {
 
             if (fetchError) throw fetchError;
             setData(trainingData || []);
+
+            // Dashboard Stats Fetching
+            try {
+                const { data: usersData } = await supabase.from('chat_sessions').select('user_id');
+                const uniqueUsers = new Set((usersData || []).map(row => row.user_id).filter(id => id)).size;
+
+                const { count: sessionsCount } = await supabase.from('chat_sessions').select('*', { count: 'exact', head: true });
+                const { count: messagesCount } = await supabase.from('chat_messages').select('*', { count: 'exact', head: true });
+
+                setStats({
+                    users: uniqueUsers,
+                    sessions: sessionsCount || 0,
+                    messages: messagesCount || 0,
+                });
+            } catch (e) { console.error("Could not fetch aggregate statistics", e); }
+
         } catch (err) {
             setError('Failed to fetch data. Make sure you updated the RLS SQL policy in Supabase: ' + err.message);
         } finally {
@@ -142,6 +159,30 @@ export default function AdminDashboard() {
                     </div>
                 ) : (
                     <div>
+                        {/* Massive Dashboard Stats Grid */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '40px' }}>
+                            <div style={{ background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(139, 92, 246, 0.05))', border: '1px solid rgba(139, 92, 246, 0.3)', padding: '20px', borderRadius: '12px', textAlign: 'center' }}>
+                                <div style={{ fontSize: '30px', marginBottom: '10px' }}>👥</div>
+                                <div style={{ fontSize: '14px', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '1px' }}>Total Active Users</div>
+                                <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#fff', marginTop: '10px' }}>{stats.users}</div>
+                            </div>
+                            <div style={{ background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05))', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '20px', borderRadius: '12px', textAlign: 'center' }}>
+                                <div style={{ fontSize: '30px', marginBottom: '10px' }}>💬</div>
+                                <div style={{ fontSize: '14px', color: '#10b981', textTransform: 'uppercase', letterSpacing: '1px' }}>Total Messages</div>
+                                <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#fff', marginTop: '10px' }}>{stats.messages}</div>
+                            </div>
+                            <div style={{ background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05))', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '20px', borderRadius: '12px', textAlign: 'center' }}>
+                                <div style={{ fontSize: '30px', marginBottom: '10px' }}>⚡</div>
+                                <div style={{ fontSize: '14px', color: '#fcd34d', textTransform: 'uppercase', letterSpacing: '1px' }}>Total Sessions</div>
+                                <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#fff', marginTop: '10px' }}>{stats.sessions}</div>
+                            </div>
+                            <div style={{ background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.1), rgba(236, 72, 153, 0.05))', border: '1px solid rgba(236, 72, 153, 0.3)', padding: '20px', borderRadius: '12px', textAlign: 'center' }}>
+                                <div style={{ fontSize: '30px', marginBottom: '10px' }}>🧠</div>
+                                <div style={{ fontSize: '14px', color: '#f472b6', textTransform: 'uppercase', letterSpacing: '1px' }}>Training Items</div>
+                                <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#fff', marginTop: '10px' }}>{data.length}</div>
+                            </div>
+                        </div>
+
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                             <h2>Q&A Training Pairs</h2>
                             <span style={{ background: '#333', padding: '4px 10px', borderRadius: '12px', fontSize: '12px', color: '#a78bfa' }}>{data.length} Records</span>

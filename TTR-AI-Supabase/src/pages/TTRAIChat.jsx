@@ -10,6 +10,9 @@ import { useSpeech } from '../hooks/useSpeech';
 import anime from 'animejs';
 import logo from '../assets/logo.png';
 import { THEMES, THEME_CATEGORIES } from '../themeData';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
+import * as XLSX from 'xlsx';
 
 // Optimized UI Components
 import {
@@ -603,6 +606,55 @@ export default function TTRAIChat() {
         });
     }, []);
 
+    /* ── Export Functions ── */
+    const exportChatAsPDF = async () => {
+        const chatElement = document.querySelector('.messages-container');
+        if (!chatElement || messages.length <= 1) {
+            alert('No chat history to export.');
+            return;
+        }
+        setLoading(true);
+        try {
+            const canvas = await html2canvas(chatElement, {
+                scale: 1.5,
+                useCORS: true,
+                backgroundColor: theme === 'dark' ? '#0f0f14' : '#ffffff'
+            });
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            pdf.save(`TTR_AI_Chat_${new Date().toLocaleDateString().replace(/\//g, '-')}.pdf`);
+        } catch (error) {
+            console.error('Failed to export PDF:', error);
+            alert('Failed to export chat as PDF.');
+        } finally { setLoading(false); }
+    };
+
+    const exportChatAsExcel = () => {
+        if (messages.length <= 1) {
+            alert('No chat history to export.');
+            return;
+        }
+        try {
+            const exportData = messages.filter(m => m.text).map(msg => ({
+                Sender: msg.sender === 'ai' ? 'TTR AI' : 'You',
+                Message: msg.text,
+                Time: new Date().toLocaleString()
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Chat History");
+            XLSX.writeFile(workbook, `TTR_AI_Chat_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`);
+        } catch (err) {
+            console.error(err);
+            alert('Failed to export Excel.');
+        }
+    };
+
     /* ── Drag and Drop Handlers ── */
     const handleDragOver = useCallback((e) => {
         e.preventDefault();
@@ -695,6 +747,15 @@ export default function TTRAIChat() {
                 <button className="new-chat-btn" onClick={startNewChat}>
                     <span>+</span> New Chat
                 </button>
+
+                <div style={{ display: 'flex', gap: '8px', padding: '0 20px', marginBottom: '15px' }}>
+                    <button onClick={exportChatAsPDF} style={{ flex: 1, padding: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px dashed rgba(239, 68, 68, 0.3)', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+                        📄 PDF
+                    </button>
+                    <button onClick={exportChatAsExcel} style={{ flex: 1, padding: '8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px dashed rgba(16, 185, 129, 0.3)', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+                        📊 Excel
+                    </button>
+                </div>
 
                 {user ? (
                     <>
