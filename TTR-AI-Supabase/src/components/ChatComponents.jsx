@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, memo } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { markdownCodeRenderers } from './CodeBlock';
 import anime from 'animejs';
 import logo from '../assets/logo.png';
@@ -136,5 +137,5 @@ export const TypewriterMessage = memo(({ text, onComplete }) => {
         return () => clearInterval(iv);
     }, [text, onComplete]);
 
-    return <ReactMarkdown components={markdownCodeRenderers}>{displayed}</ReactMarkdown>;
+    return <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownCodeRenderers}>{displayed}</ReactMarkdown>;
 });

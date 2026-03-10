@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { markdownCodeRenderers } from '../components/CodeBlock';
 import { isDocumentFile, isImageFile, getFileTypeInfo, processDocument } from '../utils/documentProcessor';
 import { useSpeech } from '../hooks/useSpeech';
@@ -883,7 +884,7 @@ export default function TTRAIChat() {
                                         </div>
                                     </div>
                                 ))}
-                                <ReactMarkdown components={markdownCodeRenderers}>{msg.text}</ReactMarkdown>
+                                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownCodeRenderers}>{msg.text}</ReactMarkdown>
 
                                 {msg.sender === 'ai' && (
                                     <div className="ai-msg-actions">
