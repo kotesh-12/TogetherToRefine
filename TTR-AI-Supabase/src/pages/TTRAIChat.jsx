@@ -44,6 +44,9 @@ export default function TTRAIChat() {
     const [currentSessionId, setCurrentSessionId] = useState(null);
     const [showSidebar, setShowSidebar] = useState(false);
 
+    // Debug Mode
+    const [isDebugMode, setIsDebugMode] = useState(false);
+
     // Incognito Mode
     const [incognitoMode, setIncognitoMode] = useState(() => sessionStorage.getItem('ttr_incognito') === 'true');
 
@@ -402,6 +405,11 @@ export default function TTRAIChat() {
 
             const displayName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Guest';
 
+            // Auto-detect if the user is pasting an error/code to debug
+            const errorKeywords = ['error', 'exception', 'stack trace', 'traceback', 'failed', 'unexpected', 'not defined', 'null pointer', 'segmentation fault'];
+            const containsError = errorKeywords.some(k => text.toLowerCase().includes(k));
+            const shouldDebug = isDebugMode || containsError;
+
             const payload = {
                 history: historyForApi,
                 message: hasDoc
@@ -412,11 +420,15 @@ export default function TTRAIChat() {
                     gurukul_path: currentPath,
                     domain: currentDomain || 'gurukul',
                     fourWayMode: fourWayMode,
-                    motherTongue: fourWayMode === 'teaching' ? motherTongue : null
+                    motherTongue: fourWayMode === 'teaching' ? motherTongue : null,
+                    isDebugMode: shouldDebug, // Signal to AI to focus on debugging
                 },
                 image: (imgData && !hasDoc) ? imgData.split(',')[1] : null,
                 mimeType: (imgData && !hasDoc) ? imgData.match(/:(.*?);/)?.[1] : null,
             };
+
+            // Reset debug mode after sending if it was manual
+            if (isDebugMode) setIsDebugMode(false);
 
             // Determine the correct API endpoint
             let API_URL = '/api/chat';
@@ -897,6 +909,18 @@ export default function TTRAIChat() {
                             rows="1"
                             disabled={loading}
                         />
+                        <button
+                            className={`attach-btn ${isDebugMode ? 'active-hero' : ''}`}
+                            onClick={() => setIsDebugMode(!isDebugMode)}
+                            title="Debug Mode: Focus AI on fixing code errors"
+                            style={{
+                                color: isDebugMode ? '#ef4444' : 'inherit',
+                                background: isDebugMode ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
+                                borderRadius: '8px'
+                            }}
+                        >
+                            🐞
+                        </button>
                         <MagneticSubmitButton
                             loading={loading}
                             disabled={!input.trim() && !selectedImage && !selectedDoc}

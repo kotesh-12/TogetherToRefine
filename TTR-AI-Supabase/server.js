@@ -28,6 +28,7 @@ function getSystemPrompt(context) {
     const name = context?.name || 'User';
     const fourWayMode = context?.fourWayMode;
     const motherTongue = context?.motherTongue;
+    const isDebugMode = context?.isDebugMode;
 
     let basePrompt = `You are TTR AI, an intelligent, friendly, and knowledgeable learning companion.
 Your core traits:
@@ -46,6 +47,18 @@ Rules:
 - Use code blocks with language tags for code
 - Use bullet points and numbered lists for clarity
 - Be encouraging and positive`;
+
+    // ── Debug Mode (Technical Deep-Dive) ──
+    if (isDebugMode) {
+        basePrompt += `\n\nCORE MODE: DEEP DEBUGGING & TECHNICAL ANALYSIS. 
+You are now acting as a Senior Software Architect and Debugger. 
+1. Focus on finding the ROOT CAUSE of the issue.
+2. If there is an error message, explain exactly what it means.
+3. Identify the specific line or logic block that is failing.
+4. Provide the FIXED CODE inside a syntax-highlighted code block.
+5. Use a formal, technical, yet helpful tone.
+6. Explain the fix step-by-step so the user learns how to avoid it.`;
+    }
 
     // ── 4-Way Mode Enhancements ──
     if (fourWayMode === 'conceptual') {
