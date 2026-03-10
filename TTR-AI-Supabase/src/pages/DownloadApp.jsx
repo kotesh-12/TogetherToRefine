@@ -80,8 +80,59 @@ export default function DownloadApp() {
                 </p>
 
                 {/* INSTALL ACTION AREA */}
-                {installPrompt ? (
-                    // 1. NATIVE PROMPT AVAILABLE (Android/Chrome/Edge)
+                {isAndroid ? (
+                    // 1. NATIVE ANDROID APK OPTION (Primary for Android)
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', width: '100%' }}>
+                        <div style={{
+                            background: '#e3f2fd', padding: '15px', borderRadius: '16px',
+                            textAlign: 'left', border: '1px solid #bbdefb', position: 'relative'
+                        }}>
+                            <span style={{
+                                position: 'absolute', top: '10px', right: '10px',
+                                background: '#1976d2', color: 'white', fontSize: '10px',
+                                padding: '3px 8px', borderRadius: '20px', fontWeight: 'bold'
+                            }}>RECOMMENDED</span>
+                            <p style={{ margin: '0 0 5px 0', fontSize: '15px', fontWeight: 'bold', color: '#0d47a1' }}>
+                                Native Android App
+                            </p>
+                            <p style={{ fontSize: '13px', color: '#1565c0', margin: '0 0 12px 0' }}>
+                                Get the full experience with a real Android app.
+                            </p>
+                            <a
+                                href="/TTR-AI.apk"
+                                download="TTR-AI.apk"
+                                style={{
+                                    display: 'block', textAlign: 'center',
+                                    background: '#1976d2', color: 'white',
+                                    textDecoration: 'none', padding: '12px', borderRadius: '12px',
+                                    fontSize: '15px', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(25, 118, 210, 0.3)'
+                                }}
+                            >
+                                Download APK
+                            </a>
+                        </div>
+
+                        <div style={{ textAlign: 'center' }}>
+                            <span style={{ fontSize: '12px', color: '#999' }}>— OR —</span>
+                        </div>
+
+                        <button
+                            onClick={handleInstallClick}
+                            style={{
+                                background: '#f1f2f6', color: '#2d3436',
+                                border: '1px solid #dfe6e9', padding: '14px', borderRadius: '12px',
+                                fontSize: '14px', fontWeight: '600', cursor: 'pointer'
+                            }}
+                        >
+                            Quick Install (PWA)
+                        </button>
+
+                        <p style={{ fontSize: '11px', color: '#999', marginTop: '5px' }}>
+                            *To install APK: Open the file and allow "Install from Unknown Sources" if asked.
+                        </p>
+                    </div>
+                ) : installPrompt ? (
+                    // 2. NATIVE PWA PROMPT (Chrome Desktop/Edge)
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         <button
                             onClick={handleInstallClick}
@@ -109,7 +160,7 @@ export default function DownloadApp() {
                         </button>
                     </div>
                 ) : isIOS ? (
-                    // 2. iOS INSTRUCTIONS (Animated)
+                    // 3. iOS INSTRUCTIONS
                     <div style={{ background: '#f8f9fa', padding: '20px', borderRadius: '16px', textAlign: 'left', border: '1px solid #e9ecef' }}>
                         <p style={{ margin: '0 0 15px 0', fontSize: '15px', fontWeight: '600', color: '#2d3436', lineHeight: '1.5' }}>
                             To install on iPhone/iPad:
@@ -123,34 +174,18 @@ export default function DownloadApp() {
                         </div>
                     </div>
                 ) : (
-                    // 3. NO PROMPT DETECTED (Manual Instructions or Desktop)
+                    // 4. DESKTOP / OTHERS
                     <div style={{ textAlign: 'left', width: '100%' }}>
-                        {isAndroid ? (
-                            <div style={{ background: '#e3f2fd', padding: '20px', borderRadius: '16px', border: '1px solid #bbdefb' }}>
-                                <p style={{ margin: '0 0 10px 0', fontSize: '15px', fontWeight: 'bold', color: '#0d47a1' }}>
-                                    Automatic install not ready.
-                                </p>
-                                <p style={{ fontSize: '14px', color: '#1565c0', marginBottom: '10px' }}>
-                                    Please install manually:
-                                </p>
-                                <ol style={{ paddingLeft: '20px', margin: '0', fontSize: '14px', color: '#0d47a1', lineHeight: '1.6' }}>
-                                    <li>Tap the <b>three dots</b> (⋮) in the browser menu.</li>
-                                    <li>Select <b>"Install App"</b> or <b>"Add to Home Screen"</b>.</li>
-                                </ol>
-                            </div>
-                        ) : (
-                            <div style={{ background: '#f5f6fa', color: '#2d3436', padding: '15px', borderRadius: '12px', fontSize: '14px', marginBottom: '20px', lineHeight: '1.5' }}>
-                                ✅ <b>To Install:</b><br />
-                                Check your browser's menu for an <b>"Install App"</b> option.
-                                <br /><br />
-                                <span style={{ fontSize: '12px', color: '#636e72' }}>If exploring on PC, you can continue to the website.</span>
-                            </div>
-                        )}
+                        <div style={{ background: '#f5f6fa', color: '#2d3436', padding: '15px', borderRadius: '12px', fontSize: '14px', marginBottom: '20px', lineHeight: '1.5' }}>
+                            ✅ <b>To Install:</b><br />
+                            Check your browser's menu for an <b>"Install App"</b> option.
+                            <br /><br />
+                            <span style={{ fontSize: '12px', color: '#636e72' }}>If exploring on PC, you can continue to the website.</span>
+                        </div>
 
                         <button
                             onClick={() => navigate('/')}
                             style={{
-                                marginTop: '20px',
                                 background: '#1a1a1a', color: 'white',
                                 border: 'none', padding: '16px', borderRadius: '14px',
                                 fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', width: '100%'
@@ -160,6 +195,7 @@ export default function DownloadApp() {
                         </button>
                     </div>
                 )}
+
             </div>
 
             {/* STYLE FOR ANIMATION */}
