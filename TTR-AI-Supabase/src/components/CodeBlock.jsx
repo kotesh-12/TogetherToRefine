@@ -157,4 +157,11 @@ export const markdownCodeRenderers = {
         // Otherwise render as inline code
         return <InlineCode {...props}>{children}</InlineCode>;
     },
+    table({ node, ...props }) {
+        return (
+            <div className="custom-table-wrapper">
+                <table {...props} />
+            </div>
+        );
+    }
 };
