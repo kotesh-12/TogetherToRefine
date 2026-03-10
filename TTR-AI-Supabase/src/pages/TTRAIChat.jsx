@@ -781,17 +781,17 @@ export default function TTRAIChat() {
                             onClick={() => setShowPathModal(true)}
                             title="Choose AI Experience Path"
                         >
-                            {currentPath && activeHeroes[currentPath] ? activeHeroes[currentPath].emoji : '🕉️'}
+                            {currentPath && activeHeroes[currentPath] ? activeHeroes[currentPath].emoji : '🎗️'}
                         </button>
                         <button className="path-header-btn" onClick={() => navigate('/download-app')} title="Download App">
-                            📲
+                            📴
                         </button>
                         <button
                             className={`path-header-btn incognito-btn ${incognitoMode ? 'active' : ''}`}
                             onClick={toggleIncognito}
                             title={incognitoMode ? 'Incognito Mode ON — Nothing is saved' : 'Enable Incognito Mode'}
                         >
-                            {incognitoMode ? '🕶️' : '👁️'}
+                            {incognitoMode ? '🕶️' : '🥷'}
                         </button>
                         {!user && (
                             <button className="signin-header-btn" onClick={() => navigate('/login')}>
