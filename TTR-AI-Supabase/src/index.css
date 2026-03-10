@@ -2431,3 +2431,81 @@ a:hover {
     transform: translateY(0);
   }
 }
+
+/* Premium Features: Highlight Popup */
+.highlight-popup {
+  position: fixed;
+  z-index: 9999;
+  background: rgba(30, 30, 42, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  padding: 8px;
+  border-radius: 12px;
+  display: flex;
+  gap: 6px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.highlight-popup button {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+  gap: 6px;
+}
+
+.highlight-popup button:hover {
+  background: rgba(139, 92, 246, 0.2);
+  color: #a78bfa;
+}
+
+@keyframes popIn {
+  0% {
+    transform: translate(-50%, -80%) scale(0.9);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translate(-50%, -100%) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Premium Features: Focus Mode */
+.focus-mode-active .sidebar,
+.focus-mode-active .input-area,
+.focus-mode-active .chat-header>*:not(.header-actions) {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(20px);
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.focus-mode-active .chat-header .header-actions button:not(.active) {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.focus-mode-active .messages-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding-top: 60px;
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.focus-mode-active .chat-main {
+  width: 100vw !important;
+  flex: 1;
+  background: #000 !important;
+  /* Total dark zen mode */
+}

@@ -100,6 +100,10 @@ export default function TTRAIChat() {
     // Incognito Mode
     const [incognitoMode, setIncognitoMode] = useState(() => sessionStorage.getItem('ttr_incognito') === 'true');
 
+    // Premium Features State
+    const [isFocusMode, setIsFocusMode] = useState(false);
+    const [highlightPopup, setHighlightPopup] = useState({ text: '', x: 0, y: 0, show: false });
+
     // Like/Dislike feedback tracking { [messageIndex]: 'liked' | 'disliked' }
     const [feedback, setFeedback] = useState({});
 
@@ -224,6 +228,46 @@ export default function TTRAIChat() {
         document.addEventListener('mousedown', handleClickOutside);
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
+    // Handle Text Highlighting for "Act & Explain" feature
+    useEffect(() => {
+        const handleMouseUp = (e) => {
+            const selection = window.getSelection();
+            if (selection && selection.toString().trim() !== '') {
+                // Ensure selection is inside a message content
+                let node = selection.anchorNode;
+                while (node && node !== document.body) {
+                    if (node?.classList?.contains('msg-content') || node?.classList?.contains('ai-message-body')) {
+                        const range = selection.getRangeAt(0);
+                        const rect = range.getBoundingClientRect();
+                        setHighlightPopup({
+                            text: selection.toString().trim(),
+                            x: rect.left + rect.width / 2,
+                            y: rect.top - 10,
+                            show: true
+                        });
+                        return;
+                    }
+                    node = node.parentNode;
+                }
+            }
+        };
+
+        const hidePopup = (e) => {
+            if (e.target.closest('.highlight-popup')) return; // Allow clicking buttons
+            const selection = window.getSelection();
+            if (!selection || selection.toString().trim() === '') {
+                setHighlightPopup(p => ({ ...p, show: false }));
+            }
+        };
+
+        document.addEventListener('mouseup', handleMouseUp);
+        document.addEventListener('mousedown', hidePopup);
+        return () => {
+            document.removeEventListener('mouseup', handleMouseUp);
+            document.removeEventListener('mousedown', hidePopup);
         };
     }, []);
 
@@ -700,6 +744,26 @@ export default function TTRAIChat() {
         handleSend(null, prompt);
     }, [selectedDocs, handleSend]);
 
+    /* ── Highlight Menu Handlers ── */
+    const handleHighlightAction = useCallback((action) => {
+        const text = highlightPopup.text;
+        setHighlightPopup(prev => ({ ...prev, show: false }));
+
+        let prompt = "";
+        if (action === 'explain') prompt = `Please explain the following concept much simpler, like I'm a beginner: "${text}"`;
+        if (action === 'summarize') prompt = `Please summarize the following text in a few short bullet points: "${text}"`;
+        if (action === 'code') prompt = `Please write the corresponding code for the following logic/concept: "${text}"`;
+
+        if (action === 'read') {
+            const langMap = { 'Hindi': 'hi-IN', 'Telugu': 'te-IN', 'Tamil': 'ta-IN', 'Spanish': 'es-ES', 'French': 'fr-FR' };
+            const lang = fourWayMode === 'teaching' ? (langMap[motherTongue] || 'en-US') : 'en-US';
+            speak(text, lang);
+            return;
+        }
+
+        handleSend(null, prompt);
+    }, [highlightPopup.text, handleSend, speak, fourWayMode, motherTongue]);
+
     const handleKeyDown = useCallback((e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -720,7 +784,7 @@ export default function TTRAIChat() {
 
     return (
         <div
-            className={`chat-page theme-${theme} ux-${currentThemeData.ux || 'standard'}`}
+            className={`chat-page theme-${theme} ux-${currentThemeData.ux || 'standard'} ${isFocusMode ? 'focus-mode-active' : ''}`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
@@ -885,6 +949,13 @@ export default function TTRAIChat() {
                     </div>
                     <div className="header-actions">
                         <button
+                            className={`path-header-btn ${isFocusMode ? 'active' : ''}`}
+                            onClick={() => setIsFocusMode(!isFocusMode)}
+                            title={isFocusMode ? 'Exit Focus Mode' : 'Enter Focus Mode (Zen UI)'}
+                        >
+                            {isFocusMode ? '🔍' : '🧘‍♂️'}
+                        </button>
+                        <button
                             className="path-header-btn"
                             onClick={() => setShowPathModal(true)}
                             title="Choose AI Experience Path"
@@ -1002,6 +1073,23 @@ export default function TTRAIChat() {
 
                 {/* Input Area */}
                 <div className="input-area">
+                    {/* Highlight Popup Menu */}
+                    {highlightPopup.show && (
+                        <div
+                            className="highlight-popup"
+                            style={{
+                                left: `${highlightPopup.x}px`,
+                                top: `${highlightPopup.y}px`,
+                                transform: 'translate(-50%, -100%)'
+                            }}
+                        >
+                            <button onClick={() => handleHighlightAction('explain')}>✨ Explain</button>
+                            <button onClick={() => handleHighlightAction('summarize')}>📝 Summarize</button>
+                            <button onClick={() => handleHighlightAction('code')}>💻 Code</button>
+                            <button onClick={() => handleHighlightAction('read')}>🔊 Read</button>
+                        </div>
+                    )}
+
                     {selectedImage && (
                         <div className="image-preview">
                             <img src={selectedImage} alt="preview" />
