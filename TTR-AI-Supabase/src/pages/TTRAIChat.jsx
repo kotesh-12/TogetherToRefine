@@ -884,39 +884,39 @@ export default function TTRAIChat() {
                                     </div>
                                 ))}
                                 <ReactMarkdown components={markdownCodeRenderers}>{msg.text}</ReactMarkdown>
-                            </div>
 
-                            {msg.sender === 'ai' && (
-                                <div className="ai-msg-actions">
-                                    <button onClick={() => {
-                                        const langMap = { 'Hindi': 'hi-IN', 'Telugu': 'te-IN', 'Tamil': 'ta-IN', 'Spanish': 'es-ES', 'French': 'fr-FR' };
-                                        const lang = fourWayMode === 'teaching' ? (langMap[motherTongue] || 'en-US') : 'en-US';
-                                        speak(msg.text, lang);
-                                    }} className="msg-action-btn" title="Read Aloud">
-                                        {speakingText === msg.text ? '🔇' : '🔊'}
-                                    </button>
-                                    {!incognitoMode && i > 0 && (
-                                        <>
-                                            <button
-                                                className={`msg-action-btn ${feedback[i] === 'liked' ? 'liked' : ''}`}
-                                                onClick={() => handleFeedback(i, 'liked', msg)}
-                                                title="Good response — save for training"
-                                                disabled={!!feedback[i]}
-                                            >
-                                                {feedback[i] === 'liked' ? '👍' : '👍🏻'}
-                                            </button>
-                                            <button
-                                                className={`msg-action-btn ${feedback[i] === 'disliked' ? 'disliked' : ''}`}
-                                                onClick={() => handleFeedback(i, 'disliked', msg)}
-                                                title="Bad response — won't save"
-                                                disabled={!!feedback[i]}
-                                            >
-                                                {feedback[i] === 'disliked' ? '�' : '�🏻'}
-                                            </button>
-                                        </>
-                                    )}
-                                </div>
-                            )}
+                                {msg.sender === 'ai' && (
+                                    <div className="ai-msg-actions">
+                                        <button onClick={() => {
+                                            const langMap = { 'Hindi': 'hi-IN', 'Telugu': 'te-IN', 'Tamil': 'ta-IN', 'Spanish': 'es-ES', 'French': 'fr-FR' };
+                                            const lang = fourWayMode === 'teaching' ? (langMap[motherTongue] || 'en-US') : 'en-US';
+                                            speak(msg.text, lang);
+                                        }} className="msg-action-btn" title="Read Aloud">
+                                            {speakingText === msg.text ? '🔇' : '🔊'}
+                                        </button>
+                                        {!incognitoMode && i > 0 && (
+                                            <>
+                                                <button
+                                                    className={`msg-action-btn ${feedback[i] === 'liked' ? 'liked' : ''}`}
+                                                    onClick={() => handleFeedback(i, 'liked', msg)}
+                                                    title="Good response — save for training"
+                                                    disabled={!!feedback[i]}
+                                                >
+                                                    {feedback[i] === 'liked' ? '👍' : '👍🏻'}
+                                                </button>
+                                                <button
+                                                    className={`msg-action-btn ${feedback[i] === 'disliked' ? 'disliked' : ''}`}
+                                                    onClick={() => handleFeedback(i, 'disliked', msg)}
+                                                    title="Bad response — won't save"
+                                                    disabled={!!feedback[i]}
+                                                >
+                                                    {feedback[i] === 'disliked' ? '👎' : '👎🏻'}
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
 
                             {msg.sender === 'user' && (
                                 <div className="msg-avatar user-avatar">
