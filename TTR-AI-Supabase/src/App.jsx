@@ -5,6 +5,7 @@ import { PWAProvider } from './context/PWAContext';
 import Login from './pages/Login';
 import TTRAIChat from './pages/TTRAIChat';
 import DownloadApp from './pages/DownloadApp';
+import Pricing from './pages/Pricing';
 import './index.css';
 
 // Lazy load for high security - stops Admin code from bundling with user code
@@ -18,6 +19,7 @@ function AppRoutes() {
       <Route path="/ttr-ai" element={<TTRAIChat />} />
       <Route path="/login" element={<Login />} />
       <Route path="/download-app" element={<DownloadApp />} />
+      <Route path="/pricing" element={<Pricing />} />
 
       {/* 🚨 Hidden Admin Route 🚨 */}
       <Route

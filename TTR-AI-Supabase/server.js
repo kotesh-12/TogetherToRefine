@@ -84,10 +84,56 @@ TEACHING STYLE:
     return basePrompt;
 }
 
+// ── In-Memory Rate Limiting Setup ──
+// NOTE: For a serverless environment (Vercel) true daily limits require a Database.
+// This in-memory limiter protects against sudden burst abuse and handles basic limits per instance.
+const requestCounts = { minute: new Map(), hour: new Map(), day: new Map() };
+
+function resetCounts() {
+    const now = Date.now();
+    // Clear old entries periodically (very basic garbage collection)
+    if (now % 60000 < 5000) requestCounts.minute.clear();
+    if (now % 3600000 < 5000) requestCounts.hour.clear();
+    if (now % 86400000 < 5000) requestCounts.day.clear();
+}
+setInterval(resetCounts, 5000);
+
+// Default Tiers Data
+const TIERS = {
+    free: { hourly: 75, daily: 549 },
+    basic: { hourly: 250, daily: 4500 },
+    bright: { hourly: Infinity, daily: Infinity },
+    premium: { hourly: Infinity, daily: Infinity }
+};
+
 // ── Chat Endpoint ──
 app.post('/api/chat', async (req, res) => {
     try {
-        const { history, message, image, mimeType, userContext } = req.body;
+        const { history, message, image, mimeType, userContext, userId, plan = 'free' } = req.body;
+
+        // --- Rate Limiting Check ---
+        const identifier = userId || req.ip || 'anonymous';
+
+        // 1. Anti-Bot / Anti-DDoS Limit (100 per minute)
+        const minuteCount = (requestCounts.minute.get(identifier) || 0) + 1;
+        requestCounts.minute.set(identifier, minuteCount);
+        if (minuteCount > 100) return res.status(429).json({ error: 'Too many requests in a minute. Please slow down.' });
+
+        // 2. Plan-based Limits
+        const userTier = TIERS[plan] || TIERS.free;
+
+        const hourCount = (requestCounts.hour.get(identifier) || 0) + 1;
+        requestCounts.hour.set(identifier, hourCount);
+        if (hourCount > userTier.hourly) {
+            return res.status(429).json({ error: `You have hit your ${plan.toUpperCase()} plan hourly limit (${userTier.hourly} msgs). Please upgrade your plan or try again later.` });
+        }
+
+        const dayCount = (requestCounts.day.get(identifier) || 0) + 1;
+        requestCounts.day.set(identifier, dayCount);
+        if (dayCount > userTier.daily) {
+            return res.status(429).json({ error: `You have hit your ${plan.toUpperCase()} plan daily limit (${userTier.daily} msgs). Please upgrade your plan or try again tomorrow.` });
+        }
+        // --- End Rate Limiting ---
 
         if (!message && !image) {
             return res.status(400).json({ error: 'No message or image provided' });

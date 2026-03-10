@@ -362,8 +362,23 @@ export default function TTRAIChat() {
     const handleFileChange = useCallback(async (e) => {
         const files = Array.from(e.target.files);
         if (!files.length) return;
-        // Reset input so same file can be re-selected
         e.target.value = '';
+
+        // TTR Tier Verification
+        const currentPlan = localStorage.getItem('ttr_subscription_plan') || 'free';
+        const LIMITS = {
+            free: { docs: 1, pgs: 10 },
+            basic: { docs: 3, pgs: 15 },
+            bright: { docs: 10, pgs: 30 },
+            premium: { docs: 999, pgs: 9999 }
+        };
+        const maxDocs = LIMITS[currentPlan].docs;
+        const maxPgs = LIMITS[currentPlan].pgs;
+
+        if (selectedDocs.length + files.length > maxDocs) {
+            alert(`Your ${currentPlan.toUpperCase()} plan only allows up to ${maxDocs} document(s). Please upgrade your plan to attach more files.`);
+            return;
+        }
 
         for (const file of files) {
             if (isImageFile(file)) {
@@ -380,13 +395,20 @@ export default function TTRAIChat() {
 
                 try {
                     const result = await processDocument(file);
+
+                    if (result.pages && result.pages > maxPgs) {
+                        setSelectedDocs(prev => prev.filter(d => d.id !== docId));
+                        alert(`File "${file.name}" has ${result.pages} pages. Your ${currentPlan.toUpperCase()} plan is limited to ${maxPgs} pages per document. Upgrade your plan to unlock larger documents.`);
+                        continue;
+                    }
+
                     setSelectedDocs(prev => prev.map(d => d.id === docId ? { ...d, ...result, processing: false } : d));
                 } catch (err) {
                     setSelectedDocs(prev => prev.map(d => d.id === docId ? { ...d, processing: false, error: err.message } : d));
                 }
             }
         }
-    }, []);
+    }, [selectedDocs]);
 
     /* ── Send Message ── */
     const handleSend = useCallback(async (e, overrideText = null) => {
@@ -477,6 +499,8 @@ export default function TTRAIChat() {
                 },
                 image: (imgData && !hasDocs) ? imgData.split(',')[1] : null,
                 mimeType: (imgData && !hasDocs) ? imgData.match(/:(.*?);/)?.[1] : null,
+                userId: user?.id || null, // For rate limiting track
+                plan: localStorage.getItem('ttr_subscription_plan') || 'free', // Current tier for backend logic
             };
 
             // Reset debug mode after sending if it was manual
@@ -507,7 +531,13 @@ export default function TTRAIChat() {
                 signal: abortControllerRef.current.signal,
             });
 
-            if (!response.ok) throw new Error(`Server error: ${response.status}`);
+            if (!response.ok) {
+                if (response.status === 429) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.error || 'Rate limit or plan limit exceeded. Please wait or upgrade your plan.');
+                }
+                throw new Error(`Server error: ${response.status}`);
+            }
             const result = await response.json();
             const responseText = result.response || result.text || 'No response received.';
 
@@ -693,6 +723,22 @@ export default function TTRAIChat() {
                                 <div className="user-avatar">{displayName.charAt(0).toUpperCase()}</div>
                                 <span className="user-name">{displayName}</span>
                             </div>
+
+                            <button
+                                onClick={() => navigate('/pricing')}
+                                style={{
+                                    width: '100%', padding: '10px', borderRadius: '10px',
+                                    background: 'linear-gradient(90deg, #bb86fc, #8b5cf6)', color: '#fff',
+                                    border: 'none', cursor: 'pointer',
+                                    marginBottom: '10px', fontSize: '13px', display: 'flex',
+                                    alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                    fontWeight: 'bold', boxShadow: '0 4px 10px rgba(139, 92, 246, 0.3)',
+                                    transition: 'transform 0.2s',
+                                }}
+                            >
+                                <span>💎</span> Upgrade Plan ({localStorage.getItem('ttr_subscription_plan')?.toUpperCase() || 'FREE'})
+                            </button>
+
                             <button
                                 className="download-sidebar-btn"
                                 onClick={() => navigate('/download-app')}
