@@ -2066,3 +2066,143 @@ a:hover {
     font-size: 10px;
   }
 }
+
+/* ═══════════════════════════════════════════════════
+   DOCUMENT UPLOAD PREVIEW & MESSAGE BADGE
+   ═══════════════════════════════════════════════════ */
+
+/* Preview bar above input when document is selected */
+.doc-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  animation: fadeIn 0.3s ease;
+}
+
+.doc-preview-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.doc-preview-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.doc-preview-info strong {
+  display: block;
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px;
+}
+
+.doc-preview-info small {
+  display: block;
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.doc-processing {
+  color: var(--accent) !important;
+  animation: docPulse 1.5s ease-in-out infinite;
+}
+
+.doc-error {
+  color: var(--danger) !important;
+}
+
+@keyframes docPulse {
+
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+.doc-preview-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.doc-preview-close:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* Document badge in chat messages */
+.msg-doc-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  background: rgba(108, 99, 255, 0.08);
+  border: 1px solid rgba(108, 99, 255, 0.15);
+  border-radius: 8px;
+  max-width: fit-content;
+}
+
+.msg-doc-badge span {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.msg-doc-badge strong {
+  display: block;
+  font-size: 12px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.msg-doc-badge small {
+  display: block;
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-top: 1px;
+}
+
+/* Mobile adjustments for doc */
+@media (max-width: 768px) {
+  .doc-preview {
+    padding: 8px 10px;
+  }
+
+  .doc-preview-icon {
+    font-size: 22px;
+  }
+
+  .doc-preview-info strong {
+    font-size: 12px;
+    max-width: 180px;
+  }
+
+  .msg-doc-badge strong {
+    max-width: 150px;
+  }
+}

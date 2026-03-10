@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import ReactMarkdown from 'react-markdown';
 import { markdownCodeRenderers } from '../components/CodeBlock';
+import { isDocumentFile, isImageFile, getFileTypeInfo, processDocument } from '../utils/documentProcessor';
 import { useSpeech } from '../hooks/useSpeech';
 import anime from 'animejs';
 import logo from '../assets/logo.png';
@@ -177,8 +178,9 @@ export default function TTRAIChat() {
         currentDomain === 'secure' ? SECURE_HEROES : GURUKUL_HEROES
         , [currentDomain]);
 
-    // Image upload
+    // File upload
     const [selectedImage, setSelectedImage] = useState(null);
+    const [selectedDoc, setSelectedDoc] = useState(null); // { file, text, pages, type, fileName, processing }
     const fileInputRef = useRef(null);
     const abortControllerRef = useRef(null);
     const [motherTongue, setMotherTongue] = useState('Hindi');
@@ -306,10 +308,31 @@ export default function TTRAIChat() {
         setShowSidebar(false);
     }, []);
 
-    /* ── Image handling ── */
-    const handleImageChange = useCallback((e) => {
+    /* ── File handling (images + documents) ── */
+    const handleFileChange = useCallback(async (e) => {
         const file = e.target.files[0];
-        if (file) {
+        if (!file) return;
+        // Reset input so same file can be re-selected
+        e.target.value = '';
+
+        if (isImageFile(file)) {
+            // Handle as image (existing behavior)
+            const reader = new FileReader();
+            reader.onloadend = () => setSelectedImage(reader.result);
+            reader.readAsDataURL(file);
+            setSelectedDoc(null);
+        } else if (isDocumentFile(file)) {
+            // Handle as document
+            setSelectedImage(null);
+            setSelectedDoc({ file, fileName: file.name, processing: true, ...getFileTypeInfo(file) });
+            try {
+                const result = await processDocument(file);
+                setSelectedDoc(prev => ({ ...prev, ...result, processing: false }));
+            } catch (err) {
+                setSelectedDoc(prev => ({ ...prev, processing: false, error: err.message }));
+            }
+        } else {
+            // Unsupported — try as image anyway
             const reader = new FileReader();
             reader.onloadend = () => setSelectedImage(reader.result);
             reader.readAsDataURL(file);
@@ -319,15 +342,33 @@ export default function TTRAIChat() {
     /* ── Send Message ── */
     const handleSend = useCallback(async () => {
         const text = input.trim();
-        if (!text && !selectedImage) return;
+        if (!text && !selectedImage && !selectedDoc) return;
 
         setInput('');
         const imgData = selectedImage;
+        const docData = selectedDoc;
         setSelectedImage(null);
+        setSelectedDoc(null);
         setLoading(true);
 
         const isImage = imgData?.startsWith('data:image/');
-        const userMsg = { text: text || (isImage ? 'Image uploaded' : 'File uploaded'), image: imgData, sender: 'user', isNew: true };
+        const hasDoc = docData?.text;
+
+        // Build user message display
+        let userMsgText = text;
+        if (hasDoc) {
+            userMsgText = text || `Analyze this ${docData.type} document`;
+        } else if (!text) {
+            userMsgText = isImage ? 'Image uploaded' : 'File uploaded';
+        }
+
+        const userMsg = {
+            text: userMsgText,
+            image: imgData,
+            sender: 'user',
+            isNew: true,
+            docInfo: hasDoc ? { fileName: docData.fileName, type: docData.type, pages: docData.pages, icon: docData.icon } : null,
+        };
         setMessages(prev => [...prev, userMsg]);
 
         try {
@@ -363,7 +404,9 @@ export default function TTRAIChat() {
 
             const payload = {
                 history: historyForApi,
-                message: text,
+                message: hasDoc
+                    ? `${text || 'Analyze this document'}\n\n📄 DOCUMENT: "${docData.fileName}" (${docData.type}, ${docData.pages} page${docData.pages !== 1 ? 's' : ''})\n\n--- DOCUMENT CONTENT ---\n${docData.text}\n--- END OF DOCUMENT ---`
+                    : text,
                 userContext: {
                     name: displayName,
                     gurukul_path: currentPath,
@@ -371,8 +414,8 @@ export default function TTRAIChat() {
                     fourWayMode: fourWayMode,
                     motherTongue: fourWayMode === 'teaching' ? motherTongue : null
                 },
-                image: imgData ? imgData.split(',')[1] : null,
-                mimeType: imgData ? imgData.match(/:(.*?);/)?.[1] : null,
+                image: (imgData && !hasDoc) ? imgData.split(',')[1] : null,
+                mimeType: (imgData && !hasDoc) ? imgData.match(/:(.*?);/)?.[1] : null,
             };
 
             // Determine the correct API endpoint
@@ -421,7 +464,7 @@ export default function TTRAIChat() {
         } finally {
             setLoading(false);
         }
-    }, [input, selectedImage, user, currentSessionId, messages, currentPath, currentDomain, fourWayMode, motherTongue, loadSessions, saveMessage, incognitoMode]);
+    }, [input, selectedImage, selectedDoc, user, currentSessionId, messages, currentPath, currentDomain, fourWayMode, motherTongue, loadSessions, saveMessage, incognitoMode]);
 
     /* ── Save training data (liked Q&A) ── */
     const saveTrainingData = useCallback(async (question, answer) => {
@@ -647,6 +690,15 @@ export default function TTRAIChat() {
                                         <div className="msg-file-icon" style={{ fontSize: '30px', marginBottom: '10px' }}>📄 PDF/Doc</div>
                                     )
                                 )}
+                                {msg.docInfo && (
+                                    <div className="msg-doc-badge">
+                                        <span>{msg.docInfo.icon}</span>
+                                        <div>
+                                            <strong>{msg.docInfo.fileName}</strong>
+                                            <small>{msg.docInfo.type} • {msg.docInfo.pages} page{msg.docInfo.pages !== 1 ? 's' : ''}</small>
+                                        </div>
+                                    </div>
+                                )}
                                 <ReactMarkdown components={markdownCodeRenderers}>{msg.text}</ReactMarkdown>
                             </div>
 
@@ -708,6 +760,24 @@ export default function TTRAIChat() {
                         <div className="image-preview">
                             <img src={selectedImage} alt="preview" />
                             <button onClick={() => setSelectedImage(null)}>✕</button>
+                        </div>
+                    )}
+                    {selectedDoc && (
+                        <div className="doc-preview">
+                            <div className="doc-preview-info">
+                                <span className="doc-preview-icon" style={{ color: selectedDoc.color }}>{selectedDoc.icon}</span>
+                                <div>
+                                    <strong>{selectedDoc.fileName}</strong>
+                                    {selectedDoc.processing ? (
+                                        <small className="doc-processing">Processing document...</small>
+                                    ) : selectedDoc.error ? (
+                                        <small className="doc-error">⚠️ {selectedDoc.error}</small>
+                                    ) : (
+                                        <small>{selectedDoc.type} • {selectedDoc.pages} page{selectedDoc.pages !== 1 ? 's' : ''} • {selectedDoc.text?.length?.toLocaleString()} chars extracted</small>
+                                    )}
+                                </div>
+                            </div>
+                            <button className="doc-preview-close" onClick={() => setSelectedDoc(null)}>✕</button>
                         </div>
                     )}
                     <div className={`input-bar ${loading ? 'thinking' : ''}`} style={{ position: 'relative' }}>
@@ -774,8 +844,8 @@ export default function TTRAIChat() {
                         <input
                             type="file"
                             ref={fileInputRef}
-                            accept="image/*,application/pdf,audio/*"
-                            onChange={handleImageChange}
+                            accept="image/*,application/pdf,.pdf,.pptx,.docx,.txt,.csv,.md,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/csv"
+                            onChange={handleFileChange}
                             style={{ display: 'none' }}
                         />
 
@@ -829,7 +899,7 @@ export default function TTRAIChat() {
                         />
                         <MagneticSubmitButton
                             loading={loading}
-                            disabled={!input.trim() && !selectedImage}
+                            disabled={!input.trim() && !selectedImage && !selectedDoc}
                             onClick={handleSend}
                             onStop={handleStop}
                         />

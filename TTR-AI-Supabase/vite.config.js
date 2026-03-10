@@ -9,6 +9,9 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['logo.png', 'favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      workbox: {
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB limit for PWA precache
+      },
       manifest: {
         name: 'TTR AI',
         short_name: 'TTR AI',
@@ -35,4 +38,17 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    chunkSizeWarningLimit: 2500, // Raise warning threshold (pdfjs is large)
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Split heavy document processing libs into separate chunks
+          'pdf-worker': ['pdfjs-dist'],
+          'doc-parsers': ['mammoth', 'jszip'],
+          'syntax-highlight': ['react-syntax-highlighter'],
+        }
+      }
+    }
+  }
 })
