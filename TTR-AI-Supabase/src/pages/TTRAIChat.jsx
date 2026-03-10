@@ -344,8 +344,8 @@ export default function TTRAIChat() {
     }, []);
 
     /* ── Send Message ── */
-    const handleSend = useCallback(async () => {
-        const text = input.trim();
+    const handleSend = useCallback(async (e, overrideText = null) => {
+        const text = (overrideText || input).trim();
         if (!text && !selectedImage && !selectedDoc) return;
 
         setInput('');
@@ -380,7 +380,7 @@ export default function TTRAIChat() {
             let sessionId = currentSessionId;
             if (user && !sessionId && !incognitoMode) {
                 const sessionPrefix = fourWayMode ? `[${fourWayMode}] ` : '';
-                const baseTitle = text.substring(0, 40) || 'New Chat';
+                const baseTitle = text ? text.substring(0, 40) : (docData ? `Note: ${docData.fileName}` : 'New Chat');
                 const { data: newSession, error } = await supabase
                     .from('chat_sessions')
                     .insert({ user_id: user.id, title: sessionPrefix + baseTitle })
@@ -543,6 +543,23 @@ export default function TTRAIChat() {
             handleFileChange({ target: { files: [file] } });
         }
     }, [handleFileChange]);
+
+    /* ── UG Study Suite Actions ── */
+    const handleStudyAction = useCallback((actionType) => {
+        if (!selectedDoc || selectedDoc.processing) return;
+
+        const actionPrompts = {
+            quiz: "Based on the uploaded document, please generate a Practice Quiz with 5 Multiple Choice Questions (MCQs). Format the quiz clearly and provide the correct answers at the end so I can check my knowledge.",
+            summary: "Please provide a 'Flash Summary' of this document. Use bullet points and focus on the most important concepts a student needs to know for an upcoming exam. Keep it concise and high-impact.",
+            questions: "Analyze this document and identify the top 5 'Most Likely Exam Questions' that a professor would ask. Provide a clear, detailed answer for each question to help me prepare."
+        };
+
+        const prompt = actionPrompts[actionType];
+
+        // Auto-send the study request
+        const currentRef = { value: prompt };
+        handleSend(null, prompt);
+    }, [selectedDoc, handleSend]);
 
     const handleKeyDown = useCallback((e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -825,7 +842,11 @@ export default function TTRAIChat() {
                                     ) : selectedDoc.error ? (
                                         <small className="doc-error">⚠️ {selectedDoc.error}</small>
                                     ) : (
-                                        <small>{selectedDoc.type} • {selectedDoc.pages} page{selectedDoc.pages !== 1 ? 's' : ''} • {selectedDoc.text?.length?.toLocaleString()} chars extracted</small>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
+                                            <button className="study-tool-tag" onClick={() => handleStudyAction('quiz')}>📝 Practice Quiz</button>
+                                            <button className="study-tool-tag" onClick={() => handleStudyAction('summary')}>📑 Quick Summary</button>
+                                            <button className="study-tool-tag" onClick={() => handleStudyAction('questions')}>🧠 Exam Questions</button>
+                                        </div>
                                     )}
                                 </div>
                             </div>

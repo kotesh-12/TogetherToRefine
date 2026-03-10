@@ -2187,23 +2187,39 @@ a:hover {
   margin-top: 1px;
 }
 
-/* Mobile adjustments for doc */
+/* Study Tool Tags in Preview */
+.study-tool-tag {
+  background: rgba(167, 139, 250, 0.1);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  color: var(--accent);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.study-tool-tag:hover {
+  background: var(--accent);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(167, 139, 250, 0.3);
+}
+
+.study-toolbox {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  background: rgba(15, 15, 20, 0.5);
+  border-top: 1px solid var(--border);
+}
+
 @media (max-width: 768px) {
-  .doc-preview {
-    padding: 8px 10px;
-  }
-
-  .doc-preview-icon {
-    font-size: 22px;
-  }
-
-  .doc-preview-info strong {
-    font-size: 12px;
-    max-width: 180px;
-  }
-
-  .msg-doc-badge strong {
-    max-width: 150px;
+  .study-tool-tag {
+    font-size: 10px;
+    padding: 3px 8px;
   }
 }
 
