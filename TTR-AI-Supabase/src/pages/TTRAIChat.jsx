@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import ReactMarkdown from 'react-markdown';
+import { markdownCodeRenderers } from '../components/CodeBlock';
 import { useSpeech } from '../hooks/useSpeech';
 import anime from 'animejs';
 import logo from '../assets/logo.png';
@@ -574,7 +575,7 @@ export default function TTRAIChat() {
                                         <div className="msg-file-icon" style={{ fontSize: '30px', marginBottom: '10px' }}>📄 PDF/Doc</div>
                                     )
                                 )}
-                                <ReactMarkdown>{msg.text}</ReactMarkdown>
+                                <ReactMarkdown components={markdownCodeRenderers}>{msg.text}</ReactMarkdown>
                             </div>
 
                             {msg.sender === 'ai' && (

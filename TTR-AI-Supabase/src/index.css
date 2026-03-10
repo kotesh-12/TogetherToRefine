@@ -1746,3 +1746,185 @@ a:hover {
   border-bottom: 2px solid var(--accent-glow);
   display: inline-block;
 }
+
+/* ═══════════════════════════════════════════════════
+   CODE BLOCKS — Syntax Highlighting & Copy Button
+   ═══════════════════════════════════════════════════ */
+.code-block-wrapper {
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 12px 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #1a1b26;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.code-block-wrapper:hover {
+  border-color: rgba(108, 99, 255, 0.3);
+  box-shadow: 0 4px 20px rgba(108, 99, 255, 0.08);
+}
+
+.code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.code-block-lang {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Copy Button */
+.code-copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 11.5px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.code-copy-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.code-copy-btn.copied {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.code-copy-btn svg {
+  flex-shrink: 0;
+}
+
+/* Code Body */
+.code-block-body {
+  overflow-x: auto;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.code-block-body::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.code-block-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.code-block-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.code-block-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Inline Code */
+.inline-code {
+  background: rgba(108, 99, 255, 0.12);
+  color: #c4b5fd;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 0.88em;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  border: 1px solid rgba(108, 99, 255, 0.15);
+  white-space: nowrap;
+}
+
+/* Light theme overrides */
+[style*="color-scheme: light"] .code-block-wrapper,
+.theme-white .code-block-wrapper {
+  background: #f8f9fc;
+  border-color: #e2e8f0;
+}
+
+[style*="color-scheme: light"] .code-block-header,
+.theme-white .code-block-header {
+  background: #f1f3f8;
+  border-bottom-color: #e2e8f0;
+}
+
+[style*="color-scheme: light"] .code-block-lang,
+.theme-white .code-block-lang {
+  color: #64748b;
+}
+
+[style*="color-scheme: light"] .code-copy-btn,
+.theme-white .code-copy-btn {
+  color: #64748b;
+  border-color: #cbd5e1;
+}
+
+[style*="color-scheme: light"] .code-copy-btn:hover,
+.theme-white .code-copy-btn:hover {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+[style*="color-scheme: light"] .inline-code,
+.theme-white .inline-code {
+  background: rgba(108, 99, 255, 0.08);
+  color: #6C63FF;
+  border-color: rgba(108, 99, 255, 0.12);
+}
+
+/* Override ReactMarkdown default code/pre styles */
+.msg-content pre {
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  overflow: visible !important;
+}
+
+.msg-content code {
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+/* Mobile responsiveness for code blocks */
+@media (max-width: 768px) {
+  .code-block-wrapper {
+    border-radius: 8px;
+    margin: 8px -4px;
+  }
+
+  .code-block-header {
+    padding: 6px 10px;
+  }
+
+  .code-block-lang {
+    font-size: 10.5px;
+  }
+
+  .code-copy-btn {
+    padding: 3px 8px;
+    font-size: 10.5px;
+  }
+
+  .code-block-body {
+    max-height: 350px;
+  }
+}
