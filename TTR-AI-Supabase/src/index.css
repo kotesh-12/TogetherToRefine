@@ -2509,3 +2509,73 @@ a:hover {
   background: #000 !important;
   /* Total dark zen mode */
 }
+
+/* Premium Features: Slash Menu */
+.slash-command-menu {
+  position: absolute;
+  bottom: calc(100% + 15px);
+  left: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 300px;
+  box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  z-index: 100;
+  animation: slideUpFade 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+.slash-menu-header {
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-primary);
+}
+
+.slash-command-menu button {
+  background: transparent;
+  border: none;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  text-align: left;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.05);
+  transition: all 0.2s;
+  color: var(--text-primary);
+}
+
+.slash-command-menu button span {
+  font-size: 20px;
+}
+
+.slash-command-menu button div {
+  display: flex;
+  flex-direction: column;
+}
+
+.slash-command-menu button div strong {
+  font-size: 14px;
+  color: var(--accent);
+  margin-bottom: 2px;
+}
+
+.slash-command-menu button div small {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.slash-command-menu button:hover {
+  background: var(--bg-hover);
+}
+
+.slash-command-menu button:last-child {
+  border-bottom: none;
+}

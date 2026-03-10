@@ -103,6 +103,7 @@ export default function TTRAIChat() {
     // Premium Features State
     const [isFocusMode, setIsFocusMode] = useState(false);
     const [highlightPopup, setHighlightPopup] = useState({ text: '', x: 0, y: 0, show: false });
+    const [showSlashMenu, setShowSlashMenu] = useState(false);
 
     // Like/Dislike feedback tracking { [messageIndex]: 'liked' | 'disliked' }
     const [feedback, setFeedback] = useState({});
@@ -764,6 +765,25 @@ export default function TTRAIChat() {
         handleSend(null, prompt);
     }, [highlightPopup.text, handleSend, speak, fourWayMode, motherTongue]);
 
+    /* ── Slash Menu Handlers ── */
+    const handleSlashCommand = useCallback((command) => {
+        setShowSlashMenu(false);
+        setInput('');
+
+        if (command === 'clear') {
+            setMessages([WELCOME_MSG]);
+            setCurrentSessionId(null);
+            return;
+        }
+
+        let prompt = "";
+        if (command === 'quiz') prompt = "Generate a multiple-choice quiz with 3 questions based on our most recent topic. Do not provide the answers until I respond.";
+        if (command === 'table') prompt = "Please take all the key information from your last response and format it into a comprehensive, easy-to-read comparison table.";
+        if (command === 'interview') prompt = "I want you to act like a strict job interviewer for my field. Ask me one technical interview question right now, and wait for my answer before grading it and asking the next one.";
+
+        handleSend(null, prompt);
+    }, [handleSend]);
+
     const handleKeyDown = useCallback((e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -1248,10 +1268,27 @@ export default function TTRAIChat() {
                                 </>
                             )}
                         </div>
+
+                        {/* Interactive Slash Menu */}
+                        {showSlashMenu && (
+                            <div className="slash-command-menu">
+                                <div className="slash-menu-header">Quick Commands</div>
+                                <button onClick={() => handleSlashCommand('quiz')}><span>📝</span> <div><strong>/quiz</strong><small>Test my knowledge</small></div></button>
+                                <button onClick={() => handleSlashCommand('table')}><span>📊</span> <div><strong>/table</strong><small>Format last answer as table</small></div></button>
+                                <button onClick={() => handleSlashCommand('interview')}><span>🎤</span> <div><strong>/interview</strong><small>Start mock interview</small></div></button>
+                                <button onClick={() => handleSlashCommand('clear')}><span>🧹</span> <div><strong>/clear</strong><small>Wipe conversation</small></div></button>
+                            </div>
+                        )}
+
                         <textarea
                             ref={inputRef}
                             value={input}
-                            onChange={(e) => setInput(e.target.value)}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                setInput(val);
+                                if (val === '/') setShowSlashMenu(true);
+                                else if (showSlashMenu && val !== '/') setShowSlashMenu(false);
+                            }}
                             onKeyDown={handleKeyDown}
                             placeholder="Ask TTR AI anything..."
                             rows="1"
