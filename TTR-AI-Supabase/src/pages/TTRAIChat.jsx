@@ -26,6 +26,52 @@ import {
     WELCOME_MSG
 } from '../constants/chatData';
 
+
+// Admin-only stats badge (only rendered for admin email)
+function AdminStatsBadge() {
+    const [stats, setStats] = useState({ users: '...', sessions: '...' });
+
+    useEffect(() => {
+        async function fetchStats() {
+            try {
+                // Count total chat sessions (proxy for active users)
+                const { count: sessionCount } = await supabase
+                    .from('chat_sessions')
+                    .select('*', { count: 'exact', head: true });
+
+                // Count distinct users from sessions
+                const { data: userData } = await supabase
+                    .from('chat_sessions')
+                    .select('user_id');
+
+                const uniqueUsers = new Set(userData?.map(s => s.user_id)).size;
+
+                setStats({ users: uniqueUsers || 0, sessions: sessionCount || 0 });
+            } catch {
+                setStats({ users: '?', sessions: '?' });
+            }
+        }
+        fetchStats();
+    }, []);
+
+    return (
+        <div style={{
+            width: '100%', padding: '12px', borderRadius: '10px',
+            background: 'rgba(139, 92, 246, 0.08)', border: '1px solid rgba(139, 92, 246, 0.15)',
+            marginBottom: '10px', display: 'flex', justifyContent: 'space-around', textAlign: 'center'
+        }}>
+            <div>
+                <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#a78bfa' }}>{stats.users}</div>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Users</div>
+            </div>
+            <div style={{ borderLeft: '1px solid rgba(139,92,246,0.2)', paddingLeft: '15px' }}>
+                <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#a78bfa' }}>{stats.sessions}</div>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Chats</div>
+            </div>
+        </div>
+    );
+}
+
 // The main view exported for the application
 /* ──────────────── Main Chat Page ──────────────── */
 export default function TTRAIChat() {
@@ -662,20 +708,25 @@ export default function TTRAIChat() {
                                 <span>📲</span> Download App
                             </button>
 
-                            {/* Admin Dashboard Access */}
-                            <button
-                                onClick={() => navigate('/admin-ttrai-hq')}
-                                style={{
-                                    width: '100%', padding: '10px', borderRadius: '10px',
-                                    background: 'rgba(139, 92, 246, 0.1)', color: '#a78bfa',
-                                    border: '1px dashed rgba(139, 92, 246, 0.3)', cursor: 'pointer',
-                                    marginBottom: '10px', fontSize: '13px', display: 'flex',
-                                    alignItems: 'center', justifyContent: 'center', gap: '8px',
-                                    transition: 'all 0.2s ease'
-                                }}
-                            >
-                                <span>🛡️</span> Data Exporter
-                            </button>
+                            {/* Admin-Only Section — visible only to koteshbitra789@gmail.com */}
+                            {user?.email === 'koteshbitra789@gmail.com' && (
+                                <>
+                                    <AdminStatsBadge />
+                                    <button
+                                        onClick={() => navigate('/admin-ttrai-hq')}
+                                        style={{
+                                            width: '100%', padding: '10px', borderRadius: '10px',
+                                            background: 'rgba(139, 92, 246, 0.1)', color: '#a78bfa',
+                                            border: '1px dashed rgba(139, 92, 246, 0.3)', cursor: 'pointer',
+                                            marginBottom: '10px', fontSize: '13px', display: 'flex',
+                                            alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                    >
+                                        <span>🛡️</span> Data Exporter
+                                    </button>
+                                </>
+                            )}
 
                             <button className="logout-btn" onClick={signOut}>Sign Out</button>
                         </div>
