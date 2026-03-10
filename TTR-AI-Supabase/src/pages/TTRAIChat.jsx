@@ -549,8 +549,8 @@ export default function TTRAIChat() {
         if (!selectedDoc || selectedDoc.processing) return;
 
         const actionPrompts = {
-            quiz: "Based on the uploaded document, please generate a Practice Quiz with 5 Multiple Choice Questions (MCQs). Format the quiz clearly and provide the correct answers at the end so I can check my knowledge.",
-            summary: "Please provide a 'Flash Summary' of this document. Use bullet points and focus on the most important concepts a student needs to know for an upcoming exam. Keep it concise and high-impact.",
+            quiz: "Based on the uploaded document, please generate a Practice Quiz with Multiple Choice Questions (MCQs). The number of questions should dynamically depend on the depth and number of concepts provided in the document. Format the quiz clearly and provide the correct answers at the end so I can check my knowledge.",
+            summary: "Please provide a 'Flash Summary' of this document. The length and detail of this summary should dynamically depend on the document's concepts and importance (e.g. if it is a 50-page PDF with many key concepts, provide a multi-page detailed summary). Use bullet points and focus on the most important concepts a student needs to know for an upcoming exam.",
             questions: "Analyze this document and identify the top 5 'Most Likely Exam Questions' that a professor would ask. Provide a clear, detailed answer for each question to help me prepare."
         };
 
