@@ -62,3 +62,38 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON chat_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_updated ON chat_sessions(updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_messages_session ON chat_messages(session_id);
 CREATE INDEX IF NOT EXISTS idx_messages_created ON chat_messages(created_at ASC);
+
+-- ═══════════════════════════════════════════════════
+-- 6. Training Data Table (for LLM fine-tuning)
+-- Stores liked Q&A pairs from users
+-- ═══════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS training_data (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  question TEXT NOT NULL,
+  answer TEXT NOT NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  category TEXT DEFAULT 'general',
+  language TEXT DEFAULT 'en',
+  gurukul_path TEXT,
+  four_way_mode TEXT,
+  quality_score INTEGER DEFAULT 1,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Enable RLS on training_data
+ALTER TABLE training_data ENABLE ROW LEVEL SECURITY;
+
+-- Anyone (including guests via anon key) can INSERT training data
+CREATE POLICY "Anyone can insert training data"
+  ON training_data FOR INSERT
+  WITH CHECK (true);
+
+-- Only authenticated users can view their own submissions
+CREATE POLICY "Users can view own training data"
+  ON training_data FOR SELECT
+  USING (auth.uid() = user_id);
+
+-- Indexes for training data
+CREATE INDEX IF NOT EXISTS idx_training_created ON training_data(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_training_category ON training_data(category);
+CREATE INDEX IF NOT EXISTS idx_training_quality ON training_data(quality_score DESC);

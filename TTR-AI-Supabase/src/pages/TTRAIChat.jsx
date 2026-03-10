@@ -43,6 +43,12 @@ export default function TTRAIChat() {
     const [currentSessionId, setCurrentSessionId] = useState(null);
     const [showSidebar, setShowSidebar] = useState(false);
 
+    // Incognito Mode
+    const [incognitoMode, setIncognitoMode] = useState(() => sessionStorage.getItem('ttr_incognito') === 'true');
+
+    // Like/Dislike feedback tracking { [messageIndex]: 'liked' | 'disliked' }
+    const [feedback, setFeedback] = useState({});
+
     // Gurukul Path State
     const [currentPath, setCurrentPath] = useState(localStorage.getItem('ttr_guest_path') || '');
     const [currentDomain, setCurrentDomain] = useState(localStorage.getItem('ttr_guest_domain') || null);
@@ -129,7 +135,7 @@ export default function TTRAIChat() {
         once.current = true;
     }
 
-    // Persist path, domain, and theme
+    // Persist path, domain, theme, and incognito
     useEffect(() => {
         if (currentPath) {
             localStorage.setItem('ttr_guest_path', currentPath);
@@ -142,7 +148,13 @@ export default function TTRAIChat() {
             localStorage.removeItem('ttr_guest_domain');
         }
         localStorage.setItem('ttr_theme', theme);
-    }, [currentPath, currentDomain, theme]);
+        // Incognito uses sessionStorage (clears when tab closes, like real incognito)
+        if (incognitoMode) {
+            sessionStorage.setItem('ttr_incognito', 'true');
+        } else {
+            sessionStorage.removeItem('ttr_incognito');
+        }
+    }, [currentPath, currentDomain, theme, incognitoMode]);
 
     // Handle clicks outside dropdowns to close them
     useEffect(() => {
@@ -319,9 +331,9 @@ export default function TTRAIChat() {
         setMessages(prev => [...prev, userMsg]);
 
         try {
-            // Create session if logged in and needed
+            // Create session if logged in and needed (skip in incognito)
             let sessionId = currentSessionId;
-            if (user && !sessionId) {
+            if (user && !sessionId && !incognitoMode) {
                 const sessionPrefix = fourWayMode ? `[${fourWayMode}] ` : '';
                 const baseTitle = text.substring(0, 40) || 'New Chat';
                 const { data: newSession, error } = await supabase
@@ -335,8 +347,8 @@ export default function TTRAIChat() {
                 loadSessions(); // update list
             }
 
-            // Save user message (only if logged in)
-            if (user && sessionId) {
+            // Save user message (only if logged in and NOT incognito)
+            if (user && sessionId && !incognitoMode) {
                 await saveMessage(text || 'Image uploaded', 'user', sessionId, imgData);
             }
 
@@ -392,11 +404,11 @@ export default function TTRAIChat() {
             const result = await response.json();
             const responseText = result.response || result.text || 'No response received.';
 
-            const aiMsg = { text: responseText, sender: 'ai', isNew: true };
+            const aiMsg = { text: responseText, sender: 'ai', isNew: true, question: text };
             setMessages(prev => [...prev, aiMsg]);
 
-            // Save AI response (only if logged in)
-            if (user && sessionId) {
+            // Save AI response (only if logged in and NOT incognito)
+            if (user && sessionId && !incognitoMode) {
                 await saveMessage(responseText, 'assistant', sessionId);
                 loadSessions();
             }
@@ -409,7 +421,49 @@ export default function TTRAIChat() {
         } finally {
             setLoading(false);
         }
-    }, [input, selectedImage, user, currentSessionId, messages, currentPath, currentDomain, fourWayMode, motherTongue, loadSessions, saveMessage]);
+    }, [input, selectedImage, user, currentSessionId, messages, currentPath, currentDomain, fourWayMode, motherTongue, loadSessions, saveMessage, incognitoMode]);
+
+    /* ── Save training data (liked Q&A) ── */
+    const saveTrainingData = useCallback(async (question, answer) => {
+        if (incognitoMode) return; // Never save in incognito
+        try {
+            await supabase.from('training_data').insert({
+                question,
+                answer,
+                user_id: user?.id || null,
+                category: fourWayMode || 'general',
+                language: fourWayMode === 'teaching' ? motherTongue : 'en',
+                gurukul_path: currentPath || null,
+                four_way_mode: fourWayMode || null,
+                quality_score: 1,
+            });
+        } catch (err) {
+            console.error('Failed to save training data:', err);
+        }
+    }, [user, fourWayMode, motherTongue, currentPath, incognitoMode]);
+
+    /* ── Handle Like/Dislike ── */
+    const handleFeedback = useCallback((msgIndex, type, msg) => {
+        setFeedback(prev => ({ ...prev, [msgIndex]: type }));
+        if (type === 'liked' && msg.question) {
+            saveTrainingData(msg.question, msg.text);
+        }
+    }, [saveTrainingData]);
+
+    /* ── Toggle Incognito ── */
+    const toggleIncognito = useCallback(() => {
+        setIncognitoMode(prev => {
+            const next = !prev;
+            if (next) {
+                // Entering incognito — start fresh
+                setCurrentSessionId(null);
+                setMessages([WELCOME_MSG]);
+                setInput('');
+                setFeedback({});
+            }
+            return next;
+        });
+    }, []);
 
     const handleKeyDown = useCallback((e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -543,6 +597,13 @@ export default function TTRAIChat() {
                         <button className="path-header-btn" onClick={() => navigate('/download-app')} title="Download App">
                             📲
                         </button>
+                        <button
+                            className={`path-header-btn incognito-btn ${incognitoMode ? 'active' : ''}`}
+                            onClick={toggleIncognito}
+                            title={incognitoMode ? 'Incognito Mode ON — Nothing is saved' : 'Enable Incognito Mode'}
+                        >
+                            {incognitoMode ? '🕶️' : '👁️'}
+                        </button>
                         {!user && (
                             <button className="signin-header-btn" onClick={() => navigate('/login')}>
                                 Sign In
@@ -555,6 +616,17 @@ export default function TTRAIChat() {
                         </button>
                     </div>
                 </div>
+
+                {/* Incognito Banner */}
+                {incognitoMode && (
+                    <div className="incognito-banner">
+                        <span>🕶️</span>
+                        <div>
+                            <strong>Incognito Mode</strong>
+                            <small>Chat won't be saved. No training data collected.</small>
+                        </div>
+                    </div>
+                )}
 
                 {/* Messages */}
                 <div className="messages-container">
@@ -579,13 +651,35 @@ export default function TTRAIChat() {
                             </div>
 
                             {msg.sender === 'ai' && (
-                                <button onClick={() => {
-                                    const langMap = { 'Hindi': 'hi-IN', 'Telugu': 'te-IN', 'Tamil': 'ta-IN', 'Spanish': 'es-ES', 'French': 'fr-FR' };
-                                    const lang = fourWayMode === 'teaching' ? (langMap[motherTongue] || 'en-US') : 'en-US';
-                                    speak(msg.text, lang);
-                                }} className="speak-button" style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, marginLeft: '10px', fontSize: '18px' }} title="Read Aloud">
-                                    {speakingText === msg.text ? '🔇' : '🔊'}
-                                </button>
+                                <div className="ai-msg-actions">
+                                    <button onClick={() => {
+                                        const langMap = { 'Hindi': 'hi-IN', 'Telugu': 'te-IN', 'Tamil': 'ta-IN', 'Spanish': 'es-ES', 'French': 'fr-FR' };
+                                        const lang = fourWayMode === 'teaching' ? (langMap[motherTongue] || 'en-US') : 'en-US';
+                                        speak(msg.text, lang);
+                                    }} className="msg-action-btn" title="Read Aloud">
+                                        {speakingText === msg.text ? '🔇' : '🔊'}
+                                    </button>
+                                    {!incognitoMode && i > 0 && (
+                                        <>
+                                            <button
+                                                className={`msg-action-btn ${feedback[i] === 'liked' ? 'liked' : ''}`}
+                                                onClick={() => handleFeedback(i, 'liked', msg)}
+                                                title="Good response — save for training"
+                                                disabled={!!feedback[i]}
+                                            >
+                                                {feedback[i] === 'liked' ? '👍' : '👍🏻'}
+                                            </button>
+                                            <button
+                                                className={`msg-action-btn ${feedback[i] === 'disliked' ? 'disliked' : ''}`}
+                                                onClick={() => handleFeedback(i, 'disliked', msg)}
+                                                title="Bad response — won't save"
+                                                disabled={!!feedback[i]}
+                                            >
+                                                {feedback[i] === 'disliked' ? '�' : '�🏻'}
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
                             )}
 
                             {msg.sender === 'user' && (

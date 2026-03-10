@@ -1928,3 +1928,141 @@ a:hover {
     max-height: 350px;
   }
 }
+
+/* ═══════════════════════════════════════════════════
+   INCOGNITO MODE
+   ═══════════════════════════════════════════════════ */
+.incognito-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, rgba(30, 30, 40, 0.95), rgba(20, 20, 30, 0.95));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  animation: fadeIn 0.3s ease;
+}
+
+.incognito-banner span {
+  font-size: 20px;
+}
+
+.incognito-banner strong {
+  display: block;
+  font-size: 12px;
+  color: #a78bfa;
+  letter-spacing: 0.5px;
+}
+
+.incognito-banner small {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+/* Incognito button glow when active */
+.incognito-btn.active {
+  background: rgba(167, 139, 250, 0.15) !important;
+  border: 1px solid rgba(167, 139, 250, 0.4) !important;
+  border-radius: 8px;
+  animation: incognitoPulse 2s ease-in-out infinite;
+}
+
+@keyframes incognitoPulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 4px rgba(167, 139, 250, 0.2);
+  }
+
+  50% {
+    box-shadow: 0 0 12px rgba(167, 139, 250, 0.5);
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   LIKE / DISLIKE & AI MESSAGE ACTIONS
+   ═══════════════════════════════════════════════════ */
+.ai-msg-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  opacity: 0.4;
+  transition: opacity 0.2s ease;
+}
+
+.message.ai:hover .ai-msg-actions {
+  opacity: 1;
+}
+
+.msg-action-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  padding: 3px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.msg-action-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  transform: scale(1.15);
+}
+
+.msg-action-btn:disabled {
+  cursor: default;
+}
+
+.msg-action-btn.liked {
+  opacity: 1 !important;
+  animation: likePopIn 0.4s ease;
+}
+
+.msg-action-btn.disliked {
+  opacity: 0.6;
+  animation: likePopIn 0.4s ease;
+}
+
+@keyframes likePopIn {
+  0% {
+    transform: scale(1);
+  }
+
+  40% {
+    transform: scale(1.4);
+  }
+
+  70% {
+    transform: scale(0.9);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .ai-msg-actions {
+    flex-direction: row;
+    margin-left: 0;
+    margin-top: 4px;
+    opacity: 0.7;
+  }
+
+  .incognito-banner {
+    padding: 6px 12px;
+  }
+
+  .incognito-banner strong {
+    font-size: 11px;
+  }
+
+  .incognito-banner small {
+    font-size: 10px;
+  }
+}
