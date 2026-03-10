@@ -202,7 +202,7 @@ export default function Login() {
                     </div>
                 </div>
 
-                <p className="login-footer">Powered by Supabase & Gemini AI</p>
+                <p className="login-footer">Powered by Together To Refine</p>
             </div>
         </div>
     );

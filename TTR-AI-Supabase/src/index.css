@@ -1908,7 +1908,10 @@ a:hover {
 @media (max-width: 768px) {
   .code-block-wrapper {
     border-radius: 8px;
-    margin: 8px -4px;
+    margin: 8px 0;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
   }
 
   .code-block-header {
