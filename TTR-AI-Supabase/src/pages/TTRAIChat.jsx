@@ -777,7 +777,10 @@ export default function TTRAIChat() {
                             reader.onloadend = () => resolve(reader.result);
                             reader.readAsDataURL(blob);
                         });
-                        slide.addImage({ data: base64data, x: 5.5, y: 1.0, w: 4, h: 4, sizing: { type: 'contain' } });
+
+                        // pptxgenjs expects "image/png;base64,..." NOT "data:image/png;base64,..."
+                        const formattedBase64 = base64data.replace(/^data:/, '');
+                        slide.addImage({ data: formattedBase64, x: 5.5, y: 1.0, w: 4, h: 4, sizing: { type: 'contain' } });
                     }
                 } catch (e) { console.error("Image gen failed for slide", e); }
 
