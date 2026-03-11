@@ -765,48 +765,8 @@ export default function TTRAIChat() {
 
                 slide.addText(title, { x: 0.5, y: 0.5, w: '8.5', h: 1, fontSize: 26, bold: true, color: activeTheme.textDark });
 
-                try {
-                    const safeQuery = encodeURIComponent(title + " minimal vector art");
-                    const rawImageUrl = `https://image.pollinations.ai/prompt/${safeQuery}?width=800&height=600&nologo=true`;
-
-                    // Route via allorigins public proxy to explicitly bypass strict Cloudflare 403 Forbidden Origin checks
-                    // that Pollinations.ai natively triggers when accessed via Canvas/Client-side fetch across Local/Vercel
-                    const imageUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(rawImageUrl)}`;
-
-                    // Fetch as Blob first to bypass strict Canvas CORS tracking rules
-                    const response = await fetch(imageUrl);
-                    if (response.ok) {
-                        const blob = await response.blob();
-                        const blobUrl = URL.createObjectURL(blob);
-
-                        // Generate image and force JPEG conversion using Canvas
-                        const base64data = await new Promise((resolve, reject) => {
-                            const img = new Image();
-                            img.crossOrigin = 'Anonymous';
-                            img.onload = () => {
-                                const canvas = document.createElement('canvas');
-                                canvas.width = img.width;
-                                canvas.height = img.height;
-                                const ctx = canvas.getContext('2d');
-                                ctx.drawImage(img, 0, 0);
-                                resolve(canvas.toDataURL('image/jpeg', 0.9));
-                                URL.revokeObjectURL(blobUrl); // Clean up memory
-                            };
-                            img.onerror = () => {
-                                URL.revokeObjectURL(blobUrl);
-                                reject(new Error('Failed to load image into canvas'));
-                            };
-                            img.src = blobUrl;
-                        });
-
-                        // pptxgenjs strictly requires the 'data:' prefix to correctly split the mime type from the base64 payload.
-                        slide.addImage({ data: base64data, x: 5.5, y: 1.0, w: 4, h: 4, sizing: { type: 'contain' } });
-                    } else {
-                        throw new Error(`Failed to fetch image: ${response.status}`);
-                    }
-                } catch (e) {
-                    console.warn(`Image generation failed for slide "${title}":`, e);
-                }
+                // Image generation has been temporarily disabled due to extreme CORS/CDN blocking
+                // and native PowerPoint XML incompatibility issues from frontend browser fetching.
 
                 if (content) {
                     const bulletLines = content.split('\n')
