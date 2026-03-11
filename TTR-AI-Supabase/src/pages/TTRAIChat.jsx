@@ -725,18 +725,17 @@ export default function TTRAIChat() {
             // Clean up the entire text before splitting to avoid markdown artifacts breaking the parser
             let cleanMsg = msgText.replace(/\*\*/g, '').replace(/__/g, '').replace(/###/g, '').replace(/##/g, '');
 
-            // Heuristic Splitting: Split by 'Slide X:' OR 'Slide :'.
-            // The AI sometimes outputs "Slide 1:" or just "Slide:"
-            // We use a regex that matches the START of a slide to separate them.
-            // Split by matching "Slide" following by optional numbers and a colon/newline
-            const slideRegex = /Slide\s*\d*[:\n]/gi;
+            // STRICT SPLITTING: Split only when "Slide [Number]:" appears, usually at the start of a block
+            // We use a regex that looks for "Slide" at the start of the string or after a newline
+            const slideRegex = /(?:^|\n)Slide\s*\d*[:\n]/gi;
             
             // Get all slide content blocks by splitting
-            let rawBlocks = cleanMsg.split(slideRegex).map(b => b.trim()).filter(b => b.length > 20);
+            // Using filter(b => b.length > 30) to ignore tiny fragments
+            let rawBlocks = cleanMsg.split(slideRegex).map(b => b.trim()).filter(b => b.length > 30);
 
-            // Fallback: If no "Slide:" markers found, split by double newlines (at least 300 chars apart)
+            // Fallback: If no "Slide:" markers found, split by double newlines but insist on large blocks
             if (rawBlocks.length <= 1) {
-                rawBlocks = cleanMsg.split(/\n\n(?=.*?\n\n)/g).map(b => b.trim()).filter(b => b.length > 20);
+                rawBlocks = cleanMsg.split(/\n\n+/g).map(b => b.trim()).filter(b => b.length > 50);
             }
 
             const limit = pLimit(2); // Only allow 2 simultaneous requests
