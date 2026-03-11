@@ -767,9 +767,13 @@ export default function TTRAIChat() {
 
                 try {
                     const safeQuery = encodeURIComponent(title + " minimal vector art");
-                    const imageUrl = `https://image.pollinations.ai/prompt/${safeQuery}?width=800&height=600&nologo=true`;
+                    const rawImageUrl = `https://image.pollinations.ai/prompt/${safeQuery}?width=800&height=600&nologo=true`;
 
-                    // Fetch as Blob first to bypass strict Canvas CORS tracking rules that trigger 403 Forbidden on pollinations
+                    // Route via allorigins public proxy to explicitly bypass strict Cloudflare 403 Forbidden Origin checks
+                    // that Pollinations.ai natively triggers when accessed via Canvas/Client-side fetch across Local/Vercel
+                    const imageUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(rawImageUrl)}`;
+
+                    // Fetch as Blob first to bypass strict Canvas CORS tracking rules
                     const response = await fetch(imageUrl);
                     if (response.ok) {
                         const blob = await response.blob();
