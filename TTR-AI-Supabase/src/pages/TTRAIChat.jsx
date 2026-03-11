@@ -109,6 +109,7 @@ export default function TTRAIChat() {
 
     // Like/Dislike feedback tracking { [messageIndex]: 'liked' | 'disliked' }
     const [feedback, setFeedback] = useState({});
+    const [copiedIndex, setCopiedIndex] = useState(null);
 
     // Gurukul Path State
     const [currentPath, setCurrentPath] = useState(localStorage.getItem('ttr_guest_path') || '');
@@ -646,6 +647,13 @@ export default function TTRAIChat() {
         }
     }, [saveTrainingData]);
 
+    const handleCopy = useCallback((text, index) => {
+        navigator.clipboard.writeText(text).then(() => {
+            setCopiedIndex(index);
+            setTimeout(() => setCopiedIndex(null), 2000);
+        });
+    }, []);
+
     /* ── Toggle Incognito ── */
     const toggleIncognito = useCallback(() => {
         setIncognitoMode(prev => {
@@ -1175,6 +1183,13 @@ export default function TTRAIChat() {
                                             speak(msg.text, lang);
                                         }} className="msg-action-btn" title="Read Aloud">
                                             {speakingText === msg.text ? '🔇' : '🔊'}
+                                        </button>
+                                        <button 
+                                            onClick={() => handleCopy(msg.text, i)} 
+                                            className="msg-action-btn" 
+                                            title="Copy to Clipboard"
+                                        >
+                                            {copiedIndex === i ? '✅' : '📋'}
                                         </button>
                                         {!incognitoMode && i > 0 && (
                                             <>
