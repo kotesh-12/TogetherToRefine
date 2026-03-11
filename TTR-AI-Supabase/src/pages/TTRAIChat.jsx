@@ -14,6 +14,7 @@ import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
 import pptxgen from 'pptxgenjs';
+import pLimit from 'p-limit';
 
 // Optimized UI Components
 import {
@@ -732,7 +733,9 @@ export default function TTRAIChat() {
                 rawBlocks = cleanMsg.split(/\n\n+/).map(b => b.trim()).filter(b => b.length > 10);
             }
 
-            rawBlocks.forEach((block, index) => {
+            const limit = pLimit(2); // Only allow 2 simultaneous image generation requests to prevent pollinations 429
+
+            const slidePromises = rawBlocks.map((block, index) => limit(async () => {
                 let slide = pres.addSlide();
                 slide.background = { color: activeTheme.bgAlt };
 
@@ -740,7 +743,6 @@ export default function TTRAIChat() {
                 let content = '';
                 let notes = '';
 
-                // Try to parse 'Content:' and 'Notes:' markers
                 let blockText = block;
                 if (blockText.toLowerCase().includes('notes:')) {
                     const parts = blockText.split(/Notes:/i);
@@ -753,30 +755,35 @@ export default function TTRAIChat() {
                     title = parts[0].trim();
                     content = parts[1].trim();
                 } else {
-                    // Just take the first line as Title
                     const lines = blockText.split('\n');
                     title = lines[0].trim();
                     content = lines.slice(1).join('\n').trim();
                 }
 
-                // Sanitize title (remove weird leading dashes or numbers)
                 title = title.replace(/^[\d\.\-\:]+\s*/, '').substring(0, 60);
                 if (!title) title = "Key Concept";
 
-                // Add Title to Slide
                 slide.addText(title, { x: 0.5, y: 0.5, w: '8.5', h: 1, fontSize: 26, bold: true, color: activeTheme.textDark });
 
-                // Generate AI Image dynamically based on the slide title
                 try {
-                    const safeQuery = encodeURIComponent(title + " minimalist vector art");
+                    const safeQuery = encodeURIComponent(title + " minimal vector art");
                     const imageUrl = `https://image.pollinations.ai/prompt/${safeQuery}?width=800&height=600&nologo=true`;
-                    slide.addImage({ path: imageUrl, x: 5.5, y: 1.0, w: 4, h: 4, sizing: { type: 'contain' } });
+
+                    const response = await fetch(imageUrl);
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const base64data = await new Promise((resolve) => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => resolve(reader.result);
+                            reader.readAsDataURL(blob);
+                        });
+                        slide.addImage({ data: base64data, x: 5.5, y: 1.0, w: 4, h: 4, sizing: { type: 'contain' } });
+                    }
                 } catch (e) { console.error("Image gen failed for slide", e); }
 
-                // Add Content Body
                 if (content) {
                     const bulletLines = content.split('\n')
-                        .map(line => line.replace(/^[\-\*\•]\s*/, '').trim()) // Strip markdown bullet chars
+                        .map(line => line.replace(/^[\-\*\•]\s*/, '').trim())
                         .filter(line => line.length > 0);
 
                     const bulletObjects = bulletLines.map(line => {
@@ -788,11 +795,13 @@ export default function TTRAIChat() {
                     }
                 }
 
-                // Add Speaker Notes
                 if (notes) {
                     slide.addNotes(notes);
                 }
-            });
+            }));
+
+            // Wait until ALL slides have resolved their base64 image fetches and generated before saving
+            await Promise.all(slidePromises);
 
             await pres.writeFile({ fileName: `TTR_AI_Enterprise_PPT_${Date.now()}.pptx` });
         } catch (error) {
