@@ -737,7 +737,7 @@ export default function TTRAIChat() {
 
             const slidePromises = rawBlocks.map((block, index) => limit(async () => {
                 let slide = pres.addSlide();
-                slide.background = { color: activeTheme.bgAlt };
+                slide.background = { color: 'FFFFFF' };
 
                 let title = `Topic ${index + 1}`;
                 let content = '';
@@ -763,7 +763,7 @@ export default function TTRAIChat() {
                 title = title.replace(/^[\d\.\-\:]+\s*/, '').substring(0, 60);
                 if (!title) title = "Key Concept";
 
-                slide.addText(title, { x: 0.5, y: 0.5, w: '8.5', h: 1, fontSize: 26, bold: true, color: activeTheme.textDark });
+                slide.addText(title, { x: 0.5, y: 0.5, w: '8.5', h: 1, fontSize: 26, bold: true, color: '000000' });
 
                 // Image generation has been temporarily disabled due to extreme CORS/CDN blocking
                 // and native PowerPoint XML incompatibility issues from frontend browser fetching.
@@ -774,7 +774,7 @@ export default function TTRAIChat() {
                         .filter(line => line.length > 0);
 
                     const bulletObjects = bulletLines.map(line => {
-                        return { text: line, options: { bullet: true, color: activeTheme.textBody, paraSpaceAfter: 12 } };
+                        return { text: line, options: { bullet: true, color: '000000', paraSpaceAfter: 12 } };
                     });
 
                     if (bulletObjects.length > 0) {
