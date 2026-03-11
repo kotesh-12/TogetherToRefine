@@ -769,25 +769,37 @@ export default function TTRAIChat() {
                     const safeQuery = encodeURIComponent(title + " minimal vector art");
                     const imageUrl = `https://image.pollinations.ai/prompt/${safeQuery}?width=800&height=600&nologo=true`;
 
-                    // Generate image and force JPEG conversion using Canvas (prevents PowerPoint from rejecting WebP/AVIF)
-                    const base64data = await new Promise((resolve, reject) => {
-                        const img = new Image();
-                        img.crossOrigin = 'Anonymous';
-                        img.onload = () => {
-                            const canvas = document.createElement('canvas');
-                            canvas.width = img.width;
-                            canvas.height = img.height;
-                            const ctx = canvas.getContext('2d');
-                            ctx.drawImage(img, 0, 0);
-                            resolve(canvas.toDataURL('image/jpeg', 0.9));
-                        };
-                        img.onerror = () => reject(new Error('Failed to load image into canvas'));
-                        img.src = imageUrl;
-                    });
+                    // Fetch as Blob first to bypass strict Canvas CORS tracking rules that trigger 403 Forbidden on pollinations
+                    const response = await fetch(imageUrl);
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const blobUrl = URL.createObjectURL(blob);
 
-                    // pptxgenjs strictly requires the 'data:' prefix to correctly split the mime type from the base64 payload. 
-                    // Stripping it causes pptxgenjs to decode the mime-type string itself as raw corrupt binary headers.
-                    slide.addImage({ data: base64data, x: 5.5, y: 1.0, w: 4, h: 4, sizing: { type: 'contain' } });
+                        // Generate image and force JPEG conversion using Canvas
+                        const base64data = await new Promise((resolve, reject) => {
+                            const img = new Image();
+                            img.crossOrigin = 'Anonymous';
+                            img.onload = () => {
+                                const canvas = document.createElement('canvas');
+                                canvas.width = img.width;
+                                canvas.height = img.height;
+                                const ctx = canvas.getContext('2d');
+                                ctx.drawImage(img, 0, 0);
+                                resolve(canvas.toDataURL('image/jpeg', 0.9));
+                                URL.revokeObjectURL(blobUrl); // Clean up memory
+                            };
+                            img.onerror = () => {
+                                URL.revokeObjectURL(blobUrl);
+                                reject(new Error('Failed to load image into canvas'));
+                            };
+                            img.src = blobUrl;
+                        });
+
+                        // pptxgenjs strictly requires the 'data:' prefix to correctly split the mime type from the base64 payload.
+                        slide.addImage({ data: base64data, x: 5.5, y: 1.0, w: 4, h: 4, sizing: { type: 'contain' } });
+                    } else {
+                        throw new Error(`Failed to fetch image: ${response.status}`);
+                    }
                 } catch (e) {
                     console.warn(`Image generation failed for slide "${title}":`, e);
                 }
