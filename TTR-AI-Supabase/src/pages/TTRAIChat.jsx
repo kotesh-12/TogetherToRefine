@@ -769,20 +769,28 @@ export default function TTRAIChat() {
                     const safeQuery = encodeURIComponent(title + " minimal vector art");
                     const imageUrl = `https://image.pollinations.ai/prompt/${safeQuery}?width=800&height=600&nologo=true`;
 
-                    const response = await fetch(imageUrl);
-                    if (response.ok) {
-                        const blob = await response.blob();
-                        const base64data = await new Promise((resolve) => {
-                            const reader = new FileReader();
-                            reader.onloadend = () => resolve(reader.result);
-                            reader.readAsDataURL(blob);
-                        });
+                    // Generate image and force JPEG conversion using Canvas (prevents PowerPoint from rejecting WebP/AVIF)
+                    const base64data = await new Promise((resolve, reject) => {
+                        const img = new Image();
+                        img.crossOrigin = 'Anonymous';
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0);
+                            resolve(canvas.toDataURL('image/jpeg', 0.9));
+                        };
+                        img.onerror = () => reject(new Error('Failed to load image into canvas'));
+                        img.src = imageUrl;
+                    });
 
-                        // pptxgenjs expects "image/png;base64,..." NOT "data:image/png;base64,..."
-                        const formattedBase64 = base64data.replace(/^data:/, '');
-                        slide.addImage({ data: formattedBase64, x: 5.5, y: 1.0, w: 4, h: 4, sizing: { type: 'contain' } });
-                    }
-                } catch (e) { console.error("Image gen failed for slide", e); }
+                    // pptxgenjs expects the base64 string to be formatted strictly without the "data:" protocol tag
+                    const formattedBase64 = base64data.replace(/^data:/, '');
+                    slide.addImage({ data: formattedBase64, x: 5.5, y: 1.0, w: 4, h: 4, sizing: { type: 'contain' } });
+                } catch (e) {
+                    console.warn(`Image generation failed for slide "${title}":`, e);
+                }
 
                 if (content) {
                     const bulletLines = content.split('\n')
