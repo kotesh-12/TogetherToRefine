@@ -718,30 +718,28 @@ export default function TTRAIChat() {
             pres.layout = 'LAYOUT_16x9';
             pres.author = 'TTR AI';
 
-            const pptThemes = [
-                { bg: '1A1A2E', bgAlt: 'F8FAFC', textTitle: 'FFFFFF', textBody: '475569', textDark: '1E1E2A', accent: 'A78BFA' },
-                { bg: '0B132B', bgAlt: 'F3F4F6', textTitle: 'FFFFFF', textBody: '374151', textDark: '111827', accent: '3B82F6' },
-                { bg: '064E3B', bgAlt: 'ECFDF5', textTitle: 'FFFFFF', textBody: '065F46', textDark: '064E3B', accent: '10B981' },
-                { bg: '450A0A', bgAlt: 'FEF2F2', textTitle: 'FFFFFF', textBody: '7F1D1D', textDark: '450A0A', accent: 'EF4444' },
-            ];
-            const activeTheme = pptThemes[Math.floor(Math.random() * pptThemes.length)];
-
             let slide1 = pres.addSlide();
-            slide1.background = { color: activeTheme.bg };
-            slide1.addText('TTR AI Presentation', { x: 1, y: 1.5, w: '100%', h: 1.5, fontSize: 44, color: activeTheme.textTitle, align: 'center', bold: true });
+            slide1.background = { color: 'FFFFFF' };
+            slide1.addText('TTR AI Presentation', { x: 1, y: 1.5, w: '100%', h: 1.5, fontSize: 44, color: '000000', align: 'center', bold: true });
 
             // Clean up the entire text before splitting to avoid markdown artifacts breaking the parser
             let cleanMsg = msgText.replace(/\*\*/g, '').replace(/__/g, '').replace(/###/g, '').replace(/##/g, '');
 
-            // Heuristic Splitting: Split by 'Slide X:' or just double line breaks if the AI didn't use the word 'Slide'
-            let rawBlocks = cleanMsg.split(/Slide(?:\s*\d*)?:/gi).map(b => b.trim()).filter(b => b.length > 10);
+            // Heuristic Splitting: Split by 'Slide X:' OR 'Slide :'.
+            // The AI sometimes outputs "Slide 1:" or just "Slide:"
+            // We use a regex that matches the START of a slide to separate them.
+            // Split by matching "Slide" following by optional numbers and a colon/newline
+            const slideRegex = /Slide\s*\d*[:\n]/gi;
+            
+            // Get all slide content blocks by splitting
+            let rawBlocks = cleanMsg.split(slideRegex).map(b => b.trim()).filter(b => b.length > 20);
 
-            // Fallback if AI didn't use "Slide X:" format at all
-            if (rawBlocks.length === 0 || (rawBlocks.length === 1 && rawBlocks[0].length > 500)) {
-                rawBlocks = cleanMsg.split(/\n\n+/).map(b => b.trim()).filter(b => b.length > 10);
+            // Fallback: If no "Slide:" markers found, split by double newlines (at least 300 chars apart)
+            if (rawBlocks.length <= 1) {
+                rawBlocks = cleanMsg.split(/\n\n(?=.*?\n\n)/g).map(b => b.trim()).filter(b => b.length > 20);
             }
 
-            const limit = pLimit(2); // Only allow 2 simultaneous image generation requests to prevent pollinations 429
+            const limit = pLimit(2); // Only allow 2 simultaneous requests
 
             const slidePromises = rawBlocks.map((block, index) => limit(async () => {
                 let slide = pres.addSlide();
@@ -752,29 +750,30 @@ export default function TTRAIChat() {
                 let notes = '';
 
                 let blockText = block;
+                
+                // Extract Notes first (usually at the end of the block)
                 if (blockText.toLowerCase().includes('notes:')) {
-                    const parts = blockText.split(/Notes:/i);
-                    notes = parts[1].trim();
-                    blockText = parts[0];
+                    const notesIndex = blockText.toLowerCase().lastIndexOf('notes:');
+                    notes = blockText.substring(notesIndex + 6).trim();
+                    blockText = blockText.substring(0, notesIndex).trim();
                 }
 
+                // Extract Content (if the AI used specific "Content:" labels)
                 if (blockText.toLowerCase().includes('content:')) {
-                    const parts = blockText.split(/Content:/i);
-                    title = parts[0].trim();
-                    content = parts[1].trim();
+                    const contentIndex = blockText.toLowerCase().indexOf('content:');
+                    title = blockText.substring(0, contentIndex).trim();
+                    content = blockText.substring(contentIndex + 8).trim();
                 } else {
+                    // Title is the first line, content is the rest
                     const lines = blockText.split('\n');
                     title = lines[0].trim();
                     content = lines.slice(1).join('\n').trim();
                 }
 
-                title = title.replace(/^[\d\.\-\:]+\s*/, '').substring(0, 60);
+                title = title.replace(/^[\d\.\-\:]+\s*/, '').substring(0, 100);
                 if (!title) title = "Key Concept";
 
-                slide.addText(title, { x: 0.5, y: 0.5, w: '8.5', h: 1, fontSize: 26, bold: true, color: '000000' });
-
-                // Image generation has been temporarily disabled due to extreme CORS/CDN blocking
-                // and native PowerPoint XML incompatibility issues from frontend browser fetching.
+                slide.addText(title, { x: 0.5, y: 0.5, w: 9.0, h: 1, fontSize: 26, bold: true, color: '000000' });
 
                 if (content) {
                     const bulletLines = content.split('\n')
@@ -786,7 +785,7 @@ export default function TTRAIChat() {
                     });
 
                     if (bulletObjects.length > 0) {
-                        slide.addText(bulletObjects, { x: 0.5, y: 1.6, w: '4.8', h: 4.5, fontSize: 16, valign: 'top' });
+                        slide.addText(bulletObjects, { x: 0.5, y: 1.6, w: 9.0, h: 4.5, fontSize: 16, valign: 'top' });
                     }
                 }
 
@@ -795,7 +794,7 @@ export default function TTRAIChat() {
                 }
             }));
 
-            // Wait until ALL slides have resolved their base64 image fetches and generated before saving
+            // Wait until ALL slides have resolved
             await Promise.all(slidePromises);
 
             await pres.writeFile({ fileName: `TTR_AI_Enterprise_PPT_${Date.now()}.pptx` });
