@@ -785,9 +785,9 @@ export default function TTRAIChat() {
                         img.src = imageUrl;
                     });
 
-                    // pptxgenjs expects the base64 string to be formatted strictly without the "data:" protocol tag
-                    const formattedBase64 = base64data.replace(/^data:/, '');
-                    slide.addImage({ data: formattedBase64, x: 5.5, y: 1.0, w: 4, h: 4, sizing: { type: 'contain' } });
+                    // pptxgenjs strictly requires the 'data:' prefix to correctly split the mime type from the base64 payload. 
+                    // Stripping it causes pptxgenjs to decode the mime-type string itself as raw corrupt binary headers.
+                    slide.addImage({ data: base64data, x: 5.5, y: 1.0, w: 4, h: 4, sizing: { type: 'contain' } });
                 } catch (e) {
                     console.warn(`Image generation failed for slide "${title}":`, e);
                 }
