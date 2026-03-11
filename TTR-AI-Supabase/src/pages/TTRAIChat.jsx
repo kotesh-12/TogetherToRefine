@@ -535,11 +535,19 @@ export default function TTRAIChat() {
                 docContentText = docsData.map((d, i) => `\n\n📄 DOCUMENT ${i + 1}: "${d.fileName}" (${d.type}, ${d.pages || '?'} pages)\n--- DOCUMENT CONTENT ---\n${d.text}\n--- END OF DOCUMENT ${i + 1} ---`).join('');
             }
 
+            let apiMessageContent = hasDocs
+                ? `${text || 'Analyze these documents'}${docContentText}`
+                : text;
+
+            // Auto-detect intent to build a PPT natively and enforce formatting dynamically
+            const lowerText = text.toLowerCase();
+            if (lowerText.includes('generate ppt') || lowerText.includes('create ppt') || lowerText.includes('make ppt') || lowerText.includes('generate presentation') || lowerText.includes('create presentation')) {
+                apiMessageContent += "\n\nCRITICAL SYSTEM TRIGGER: The user heavily implies they want a PowerPoint. Please generate a highly professional, slide-by-slide presentation about this topic. Format it STRICTLY as follows for each slide:\n\nSlide: [Slide Title]\nContent:\n- [Bullet Point 1]\n- [Bullet Point 2]\nNotes: [What the speaker should say out loud regarding this slide]\n\nDo not add extra text outside this format.";
+            }
+
             const payload = {
                 history: historyForApi,
-                message: hasDocs
-                    ? `${text || 'Analyze these documents'}${docContentText}`
-                    : text,
+                message: apiMessageContent,
                 userContext: {
                     name: displayName,
                     gurukul_path: currentPath,
