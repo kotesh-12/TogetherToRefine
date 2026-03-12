@@ -127,9 +127,51 @@ export default async function handler(req, res) {
     const genAI = new GoogleGenerativeAI(API_KEY);
     const systemPrompt = getSystemPrompt(userContext);
 
+    // ─── SEARCH TOOL DEFINITION ─────────────
+    const tools = [
+        {
+            functionDeclarations: [
+                {
+                    name: "tavilySearch",
+                    description: "Search the live web for real-time information, news, articles, and current events.",
+                    parameters: {
+                        type: "OBJECT",
+                        properties: {
+                            query: { type: "STRING", description: "The search query for the internet" }
+                        },
+                        required: ["query"]
+                    }
+                }
+            ]
+        }
+    ];
+
+    async function executeSearch(query) {
+        const TAVILY_KEY = process.env.TAVILY_API_KEY;
+        if (!TAVILY_KEY) return "Search is currently unavailable (API Key missing).";
+
+        try {
+            const response = await fetch('https://api.tavily.com/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    api_key: TAVILY_KEY,
+                    query: query,
+                    search_depth: "advanced",
+                    max_results: 5
+                })
+            });
+            const data = await response.json();
+            return JSON.stringify(data.results.map(r => ({ title: r.title, content: r.content, url: r.url })));
+        } catch (error) {
+            console.error("Tavily Search Error:", error);
+            return "Failed to fetch search results.";
+        }
+    }
+
     for (const modelName of MODELS) {
         try {
-            const model = genAI.getGenerativeModel({ model: modelName });
+            const model = genAI.getGenerativeModel({ model: modelName, tools });
             const chat = model.startChat({
                 history: history || [],
                 systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -141,15 +183,31 @@ export default async function handler(req, res) {
                 parts.push({ inlineData: { mimeType, data: image } });
             }
 
-            const result = await chat.sendMessageStream(parts);
-            let fullText = '';
+            // Step 1: Initial message
+            let result = await chat.sendMessage(parts);
+            let response = result.response;
+            let firstCall = response.candidates[0].content.parts.find(p => p.functionCall);
 
-            for await (const chunk of result.stream) {
-                const chunkText = chunk.text();
-                fullText += chunkText;
+            // Step 2: Handle Tool Call (if AI decides it needs to search)
+            if (firstCall) {
+                const { name, args } = firstCall.functionCall;
+                if (name === "tavilySearch") {
+                    const searchData = await executeSearch(args.query);
+                    
+                    // Send tool response back to AI
+                    const toolResult = {
+                        functionResponse: {
+                            name: "tavilySearch",
+                            response: { content: searchData }
+                        }
+                    };
+                    
+                    const finalResult = await chat.sendMessage([toolResult]);
+                    return res.status(200).json({ text: finalResult.response.text() });
+                }
             }
 
-            return res.status(200).json({ text: fullText });
+            return res.status(200).json({ text: response.text() });
         } catch (error) {
             console.error(`Model ${modelName} failed: `, error.message);
             continue;
