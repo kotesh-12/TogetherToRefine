@@ -91,6 +91,19 @@ export default function TTRAIChat() {
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
 
+    // Auto-adjust textarea height
+    const adjustHeight = useCallback(() => {
+        const textarea = inputRef.current;
+        if (textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = `${textarea.scrollHeight}px`;
+        }
+    }, []);
+
+    useEffect(() => {
+        adjustHeight();
+    }, [input, adjustHeight]);
+
     // Session state (only for logged-in users)
     const [sessions, setSessions] = useState([]);
     const [currentSessionId, setCurrentSessionId] = useState(null);
@@ -468,6 +481,7 @@ export default function TTRAIChat() {
         if (!text && !selectedImage && selectedDocs.length === 0) return;
 
         setInput('');
+        if (inputRef.current) inputRef.current.style.height = 'auto';
         const imgData = selectedImage;
         const docsData = [...selectedDocs];
         setSelectedImage(null);
@@ -1444,6 +1458,7 @@ export default function TTRAIChat() {
                                 setInput(val);
                                 if (val === '/') setShowSlashMenu(true);
                                 else if (showSlashMenu && val !== '/') setShowSlashMenu(false);
+                                adjustHeight();
                             }}
                             onKeyDown={handleKeyDown}
                             placeholder="Ask TTR AI anything..."

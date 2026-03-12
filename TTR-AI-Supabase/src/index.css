@@ -1195,7 +1195,6 @@ a:hover {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-glow);
 }
-
 .input-bar textarea {
   flex: 1;
   background: none;
@@ -1205,9 +1204,22 @@ a:hover {
   font-family: inherit;
   resize: none;
   outline: none;
-  max-height: 120px;
-  padding: 6px 0;
+  min-height: 24px;
+  max-height: 200px;
+  padding: 8px 0;
   line-height: 1.5;
+  overflow-y: auto;
+  word-wrap: break-word;
+  scrollbar-width: thin;
+}
+
+.input-bar textarea::-webkit-scrollbar {
+  width: 4px;
+}
+
+.input-bar textarea::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 10px;
 }
 
 .input-bar textarea::placeholder {
