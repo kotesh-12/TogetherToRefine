@@ -135,9 +135,48 @@ export default function TTRAIChat() {
     // Theme State
     const [theme, setTheme] = useState(localStorage.getItem('ttr_theme') || 'dark');
     const [showThemeGallery, setShowThemeGallery] = useState(false);
-    const curtainRef = useRef(null);
-    const fourWayMenuRef = useRef(null);
     const langMenuRef = useRef(null);
+
+    // Sandbox State
+    const [sandboxData, setSandboxData] = useState({ open: false, code: '', lang: '' });
+    const sandboxIframeRef = useRef(null);
+
+    const handleRunCode = useCallback((code, lang) => {
+        setSandboxData({ open: true, code, lang });
+    }, []);
+
+    const customMarkdownComponents = useMemo(() => ({
+        ...markdownCodeRenderers,
+        code: (props) => {
+            // Re-use the existing complex logic but inject onRun
+            return markdownCodeRenderers.code({ ...props, onRun: handleRunCode });
+        }
+    }), [handleRunCode]);
+
+    // Handle Sandbox Iframe Injection
+    useEffect(() => {
+        if (sandboxData.open && sandboxIframeRef.current) {
+            const doc = sandboxIframeRef.current.contentDocument;
+            let html = '';
+            const code = sandboxData.code;
+            const lang = sandboxData.lang.toLowerCase();
+
+            if (lang === 'html') html = code;
+            else if (lang === 'css') html = `<style>${code}</style><div style="padding:20px; font-family:sans-serif;"><h1>CSS Preview</h1><p>Your styles are applied here.</p></div>`;
+            else html = `<!DOCTYPE html><html><body><div id="output"></div><script>
+                const log = console.log;
+                console.log = (...args) => {
+                    document.getElementById('output').innerHTML += args.join(' ') + '<br/>';
+                    log(...args);
+                };
+                try { ${code} } catch(e) { document.getElementById('output').innerHTML += '<span style="color:red">'+e.message+'</span>'; }
+            </script></body></html>`;
+
+            doc.open();
+            doc.write(html);
+            doc.close();
+        }
+    }, [sandboxData]);
 
     // Apply theme properties to the document
     const applyTheme = useCallback((themeId) => {
@@ -608,8 +647,17 @@ export default function TTRAIChat() {
             }
             const result = await response.json();
             const responseText = result.response || result.text || 'No response received.';
+            const sources = result.sources || null;
+            const toolCalled = result.toolCalled || null;
 
-            const aiMsg = { text: responseText, sender: 'ai', isNew: true, question: text };
+            const aiMsg = { 
+                text: responseText, 
+                sender: 'ai', 
+                isNew: true, 
+                question: text,
+                sources: sources,
+                toolCalled: toolCalled
+            };
             setMessages(prev => [...prev, aiMsg]);
 
             // Save AI response (only if logged in and NOT incognito)
@@ -1181,7 +1229,7 @@ export default function TTRAIChat() {
                                         </div>
                                     </div>
                                 ))}
-                                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownCodeRenderers}>{msg.text}</ReactMarkdown>
+                                <ReactMarkdown remarkPlugins={[remarkGfm]} components={customMarkdownComponents}>{msg.text}</ReactMarkdown>
 
                                 {msg.sender === 'ai' && (
                                     <div className="ai-msg-actions">
@@ -1235,6 +1283,26 @@ export default function TTRAIChat() {
                                                 </button>
                                             </>
                                         )}
+                                    </div>
+                                )}
+
+                                {/* ─── RESEARCH SOURCE CARDS ───────────── */}
+                                {msg.sources && msg.sources.length > 0 && (
+                                    <div className="research-sources">
+                                        <div className="sources-header">
+                                            <i className={msg.toolCalled === 'youtubeSearch' ? 'fab fa-youtube' : msg.toolCalled === 'academicSearch' ? 'fas fa-graduation-cap' : 'fas fa-globe'}></i>
+                                            Sources Found:
+                                        </div>
+                                        <div className="sources-grid">
+                                            {msg.sources.map((src, sIdx) => (
+                                                <a key={sIdx} href={src.url} target="_blank" rel="noopener noreferrer" className="source-card">
+                                                    <div className="source-title">{src.title}</div>
+                                                    <div className="source-meta">
+                                                        {src.channel ? <span>{src.channel}</span> : <span>{new URL(src.url).hostname}</span>}
+                                                    </div>
+                                                </a>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -1638,6 +1706,31 @@ export default function TTRAIChat() {
                                     </div>
                                 </div>
                             ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ─── CODE SANDBOX OVERLAY ───────────── */}
+            {sandboxData.open && (
+                <div className="sandbox-overlay" onClick={() => setSandboxData({ ...sandboxData, open: false })}>
+                    <div className="sandbox-window" onClick={e => e.stopPropagation()}>
+                        <div className="sandbox-header">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <span style={{ fontSize: '18px' }}>🚀</span>
+                                <div>
+                                    <strong style={{ fontSize: '14px', display: 'block' }}>TTR CODE RUNNER</strong>
+                                    <small style={{ color: 'var(--text-muted)', fontSize: '10px' }}>Language: {sandboxData.lang.toUpperCase()}</small>
+                                </div>
+                            </div>
+                            <button className="close-modal" onClick={() => setSandboxData({ ...sandboxData, open: false })}>&times;</button>
+                        </div>
+                        <div className="sandbox-body">
+                            <iframe 
+                                ref={sandboxIframeRef} 
+                                title="Code Preview" 
+                                style={{ width: '100%', height: '100%', border: 'none', background: 'white' }} 
+                            />
                         </div>
                     </div>
                 </div>

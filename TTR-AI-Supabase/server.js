@@ -121,20 +121,31 @@ const tools = [
                     required: ["query"]
                 }
             },
-            {
-                name: "youtubeSearch",
-                description: "Search YouTube for educational, technical, or informative videos on a specific topic.",
-                parameters: {
-                    type: "OBJECT",
-                    properties: {
-                        query: { type: "STRING", description: "The topic or keywords to search on YouTube" }
-                    },
-                    required: ["query"]
+                {
+                    name: "youtubeSearch",
+                    description: "Search YouTube for educational, technical, or informative videos on a specific topic.",
+                    parameters: {
+                        type: "OBJECT",
+                        properties: {
+                            query: { type: "STRING", description: "The topic or keywords to search on YouTube" }
+                        },
+                        required: ["query"]
+                    }
+                },
+                {
+                    name: "academicSearch",
+                    description: "Search for academic papers, peer-reviewed research, and scholarly articles on platforms like ArXiv, JSTOR, or Google Scholar.",
+                    parameters: {
+                        type: "OBJECT",
+                        properties: {
+                            query: { type: "STRING", description: "The scientific or academic research topic" }
+                        },
+                        required: ["query"]
+                    }
                 }
-            }
-        ]
-    }
-];
+            ]
+        }
+    ];
 
 async function executeSearch(query) {
     const TAVILY_KEY = process.env.TAVILY_API_KEY;
@@ -168,11 +179,28 @@ async function executeYoutubeSearch(query) {
             channel: v.snippet.channelTitle
         }));
         return JSON.stringify(videos);
-    } catch (error) {
-        console.error("YouTube Search Error:", error);
-        return "Failed to fetch YouTube results.";
+        } catch (error) {
+            console.error("YouTube Search Error:", error);
+            return "Failed to fetch YouTube results.";
+        }
     }
-}
+
+    async function executeAcademicSearch(query) {
+        const TAVILY_KEY = process.env.TAVILY_API_KEY;
+        if (!TAVILY_KEY) return "Academic search is unavailable.";
+        try {
+            const response = await fetch('https://api.tavily.com/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ api_key: TAVILY_KEY, query: `academic paper or research on ${query}`, search_depth: "advanced", include_domains: ["arxiv.org", "scholar.google.com", "jstor.org", "researchgate.net", "nature.com", "science.org"], max_results: 5 })
+            });
+            const data = await response.json();
+            return JSON.stringify(data.results.map(r => ({ title: r.title, content: r.content, url: r.url, type: 'academic' })));
+        } catch (error) {
+            console.error("Academic Search Error:", error);
+            return "Failed to fetch academic results.";
+        }
+    }
 
 // ── Chat Endpoint ──
 app.post('/api/chat', async (req, res) => {
@@ -211,11 +239,21 @@ app.post('/api/chat', async (req, res) => {
             let toolData = null;
             if (name === "tavilySearch") toolData = await executeSearch(args.query);
             else if (name === "youtubeSearch") toolData = await executeYoutubeSearch(args.query);
+            else if (name === "academicSearch") toolData = await executeAcademicSearch(args.query);
 
             if (toolData) {
                 const toolResult = { functionResponse: { name, response: { content: toolData } } };
                 const finalResult = await chat.sendMessage([toolResult]);
-                return res.json({ text: finalResult.response.text() });
+                try {
+                    const parsedSources = JSON.parse(toolData);
+                    return res.json({ 
+                        text: finalResult.response.text(),
+                        sources: parsedSources,
+                        toolCalled: name
+                    });
+                } catch (e) {
+                    return res.json({ text: finalResult.response.text() });
+                }
             }
         }
 

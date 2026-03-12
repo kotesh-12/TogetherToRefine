@@ -92,16 +92,32 @@ const CopyButton = memo(({ text }) => {
 /**
  * CodeBlock - Syntax highlighted code block with language label and copy button
  */
-export const CodeBlock = memo(({ language, children }) => {
+export const CodeBlock = memo(({ language, children, onRun }) => {
     const code = String(children).replace(/\n$/, '');
     const lang = language || 'text';
     const displayLang = LANGUAGE_DISPLAY_NAMES[lang.toLowerCase()] || lang.toUpperCase();
+
+    const isRunnable = ['js', 'javascript', 'html', 'css'].includes(lang.toLowerCase());
 
     return (
         <div className="code-block-wrapper">
             <div className="code-block-header">
                 <span className="code-block-lang">{displayLang}</span>
-                <CopyButton text={code} />
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    {isRunnable && onRun && (
+                        <button 
+                            className="code-runner-btn" 
+                            onClick={() => onRun(code, lang)}
+                            title="Run in Sandbox"
+                        >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                            Run
+                        </button>
+                    )}
+                    <CopyButton text={code} />
+                </div>
             </div>
             <div className="code-block-body">
                 <SyntaxHighlighter
