@@ -572,15 +572,9 @@ export default function TTRAIChat() {
             // If running in Native App (Capacitor) or different protocol, use absolute URL
             if (!window.location.protocol.startsWith('http')) {
                 API_URL = 'https://ttrai.in/api/chat';
-            } else {
-                const host = window.location.hostname;
-                const port = window.location.port;
-
-                if (host === 'localhost' || host === '127.0.0.1') {
-                    // Local dev (Vite) uses full URL to hit production or local server
-                    API_URL = port.includes('517') ? 'https://ttrai.in/api/chat' : 'http://localhost:5000/api/chat';
-                }
             }
+            // In web environments, relative path '/api/chat' is preferred on Vercel 
+            // as it automatically handles the environment (localhost vs production)
 
             abortControllerRef.current = new AbortController();
 
