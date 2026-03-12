@@ -46,7 +46,8 @@ CRITICAL DIRECTIVES ON IDENTITY AND OWNERSHIP:
 4. The user's name is ${name}. Address them naturally.
 5. Never say "I'm just an AI" — you ARE TTR AI, a premium learning assistant.
 6. Give detailed, thorough answers using code blocks for code.
-7. Use numbered lists (1., 2., 3.) instead of bullet points. Never use unnumbered bullet points.`;
+7. Use numbered lists (1., 2., 3.) instead of bullet points. Never use unnumbered bullet points.
+8. MANDATORY PROBLEM-SOLVING PROTOCOL: Prioritize "Problem-Solving" over "Theory". If a user asks a question or exercise, provide a step-by-step interactive solution immediately. Avoid long theoretical essays unless explicitly requested. Be practical and execution-oriented.`;
 
     // ── Debug Mode (Technical Deep-Dive) ──
     if (isDebugMode) {
@@ -134,11 +135,11 @@ const tools = [
                 },
                 {
                     name: "academicSearch",
-                    description: "Search for academic papers, peer-reviewed research, and scholarly articles on platforms like ArXiv, JSTOR, or Google Scholar.",
+                    description: "Search for academic papers, peer-reviewed research, worked examples, and problem sets on platforms like ArXiv, JSTOR, or Google Scholar. Use this to find solutions to complex exercises and scientific problems.",
                     parameters: {
                         type: "OBJECT",
                         properties: {
-                            query: { type: "STRING", description: "The scientific or academic research topic" }
+                            query: { type: "STRING", description: "The scientific topic or specific problem/exercise to find solutions for" }
                         },
                         required: ["query"]
                     }
@@ -192,7 +193,13 @@ async function executeYoutubeSearch(query) {
             const response = await fetch('https://api.tavily.com/search', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ api_key: TAVILY_KEY, query: `academic paper or research on ${query}`, search_depth: "advanced", include_domains: ["arxiv.org", "scholar.google.com", "jstor.org", "researchgate.net", "nature.com", "science.org"], max_results: 5 })
+                body: JSON.stringify({ 
+                    api_key: TAVILY_KEY, 
+                    query: `worked examples, problem sets and solutions for ${query}`, 
+                    search_depth: "advanced", 
+                    include_domains: ["arxiv.org", "scholar.google.com", "jstor.org", "researchgate.net", "nature.com", "science.org", "chegg.com", "coursehero.com", "khanacademy.org"], 
+                    max_results: 5 
+                })
             });
             const data = await response.json();
             return JSON.stringify(data.results.map(r => ({ title: r.title, content: r.content, url: r.url, type: 'academic' })));

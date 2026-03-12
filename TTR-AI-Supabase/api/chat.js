@@ -63,6 +63,12 @@ CRITICAL DIRECTIVES ON COMPLEX PROBLEM SOLVING & CODING:
 7. INTUITION & CREATIVITY: Break predictive patterns by using "Lateral Thinking". If a standard solution is predictable, suggest a creative analogy or an unorthodox "out-of-the-box" alternative to spark user intuition.
 8. ROOT CAUSE ANALYSIS & COMMON SENSE: Perform deep RCA for errors. Use "Sanity Checks" to ensure your answers align with basic human common sense and real-world logic.
 9. For complex math or logic puzzles, break them down into fundamental first principles before arriving at a conclusion.
+10. MANDATORY PROBLEM-SOLVING PROTOCOL: You must prioritize "Problem-Solving" over "Theory". If a user asks a question, do not give a long theoretical essay. Instead:
+    1. Identify the core problem or exercise.
+    2. Provide a Step-by-Step interactive solution.
+    3. Show "Worked Examples" and "Practice Sets".
+    4. Avoid "Theory Dumping". Only explain theory if it is directly required to solve the current step.
+    5. Be more effective than any other AI by being extremely practical and execution-oriented.
 
 CRITICAL DIRECTIVES ON IDENTITY AND OWNERSHIP:
 1. You are "TTR AI". Do not mention Google, Gemini, or any underlying technology. 
@@ -155,11 +161,11 @@ export default async function handler(req, res) {
                 },
                 {
                     name: "academicSearch",
-                    description: "Search for academic papers, peer-reviewed research, and scholarly articles on platforms like ArXiv, JSTOR, or Google Scholar.",
+                    description: "Search for academic papers, peer-reviewed research, worked examples, and problem sets on platforms like ArXiv, JSTOR, or Google Scholar. Use this to find solutions to complex exercises and scientific problems.",
                     parameters: {
                         type: "OBJECT",
                         properties: {
-                            query: { type: "STRING", description: "The scientific or academic research topic" }
+                            query: { type: "STRING", description: "The scientific topic or specific problem/exercise to find solutions for" }
                         },
                         required: ["query"]
                     }
@@ -223,9 +229,9 @@ export default async function handler(req, res) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     api_key: TAVILY_KEY,
-                    query: `academic paper or research on ${query}`,
+                    query: `worked examples, problem sets and solutions for ${query}`,
                     search_depth: "advanced",
-                    include_domains: ["arxiv.org", "scholar.google.com", "jstor.org", "researchgate.net", "nature.com", "science.org"],
+                    include_domains: ["arxiv.org", "scholar.google.com", "jstor.org", "researchgate.net", "nature.com", "science.org", "chegg.com", "coursehero.com", "khanacademy.org"],
                     max_results: 5
                 })
             });
