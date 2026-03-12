@@ -106,92 +106,123 @@ const TIERS = {
     premium: { hourly: Infinity, daily: Infinity }
 };
 
+// ─── TOOL DEFINITIONS ─────────────
+const tools = [
+    {
+        functionDeclarations: [
+            {
+                name: "tavilySearch",
+                description: "Search the live web for real-time information, news, articles, and current events.",
+                parameters: {
+                    type: "OBJECT",
+                    properties: {
+                        query: { type: "STRING", description: "The search query for the internet" }
+                    },
+                    required: ["query"]
+                }
+            },
+            {
+                name: "youtubeSearch",
+                description: "Search YouTube for educational, technical, or informative videos on a specific topic.",
+                parameters: {
+                    type: "OBJECT",
+                    properties: {
+                        query: { type: "STRING", description: "The topic or keywords to search on YouTube" }
+                    },
+                    required: ["query"]
+                }
+            }
+        ]
+    }
+];
+
+async function executeSearch(query) {
+    const TAVILY_KEY = process.env.TAVILY_API_KEY;
+    if (!TAVILY_KEY) return "Search is currently unavailable (API Key missing).";
+    try {
+        const response = await fetch('https://api.tavily.com/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ api_key: TAVILY_KEY, query: query, search_depth: "advanced", max_results: 5 })
+        });
+        const data = await response.json();
+        return JSON.stringify(data.results.map(r => ({ title: r.title, content: r.content, url: r.url })));
+    } catch (error) {
+        console.error("Tavily Search Error:", error);
+        return "Failed to fetch search results.";
+    }
+}
+
+async function executeYoutubeSearch(query) {
+    const YT_KEY = process.env.YOUTUBE_API_KEY;
+    if (!YT_KEY) return "YouTube search is currently unavailable (API Key missing).";
+    try {
+        const response = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=5&key=${YT_KEY}`);
+        const data = await response.json();
+        if (!data.items) return "No videos found.";
+        const videos = data.items.map(v => ({
+            title: v.snippet.title,
+            description: v.snippet.description,
+            videoId: v.id.videoId,
+            url: `https://www.youtube.com/watch?v=${v.id.videoId}`,
+            channel: v.snippet.channelTitle
+        }));
+        return JSON.stringify(videos);
+    } catch (error) {
+        console.error("YouTube Search Error:", error);
+        return "Failed to fetch YouTube results.";
+    }
+}
+
 // ── Chat Endpoint ──
 app.post('/api/chat', async (req, res) => {
     try {
         const { history, message, image, mimeType, userContext, userId, plan = 'free' } = req.body;
-
-        // --- Rate Limiting Check ---
         const identifier = userId || req.ip || 'anonymous';
 
-        // 1. Anti-Bot / Anti-DDoS Limit (100 per minute)
+        // --- Rate Limiting ---
         const minuteCount = (requestCounts.minute.get(identifier) || 0) + 1;
         requestCounts.minute.set(identifier, minuteCount);
-        if (minuteCount > 100) return res.status(429).json({ error: 'Too many requests in a minute. Please slow down.' });
+        if (minuteCount > 100) return res.status(429).json({ error: 'Too many requests' });
 
-        // 2. Plan-based Limits
         const userTier = TIERS[plan] || TIERS.free;
-
         const hourCount = (requestCounts.hour.get(identifier) || 0) + 1;
         requestCounts.hour.set(identifier, hourCount);
-        if (hourCount > userTier.hourly) {
-            return res.status(429).json({ error: `You have hit your ${plan.toUpperCase()} plan hourly limit (${userTier.hourly} msgs). Please upgrade your plan or try again later.` });
-        }
+        if (hourCount > userTier.hourly) return res.status(429).json({ error: 'Hourly limit hit' });
 
-        const dayCount = (requestCounts.day.get(identifier) || 0) + 1;
-        requestCounts.day.set(identifier, dayCount);
-        if (dayCount > userTier.daily) {
-            return res.status(429).json({ error: `You have hit your ${plan.toUpperCase()} plan daily limit (${userTier.daily} msgs). Please upgrade your plan or try again tomorrow.` });
-        }
-        // --- End Rate Limiting ---
+        if (!message && !image) return res.status(400).json({ error: 'No input' });
 
-        if (!message && !image) {
-            return res.status(400).json({ error: 'No message or image provided' });
-        }
-
-        // Handle document context (Pillar 3: Model Awareness)
-        const hasDoc = message?.includes('--- DOCUMENT CONTENT ---');
-        let sessionPrompt = getSystemPrompt(userContext);
-        if (hasDoc) {
-            sessionPrompt += `\n\nCORE MODE: DOCUMENT ANALYSIS. 
-The user has uploaded document(s). 
-1. Use the provided "DOCUMENT CONTENT" blocks as your primary source of truth.
-2. If the user asks for a summary, synthesize information across the document(s).
-3. If they ask a specific question, cite which document and part you found the answer in.
-4. If the info isn't in the provided document(s), say so politely.`;
-        }
-
-        const chat = model.startChat({
+        const modelWithTools = genAI.getGenerativeModel({ model: currentModelName, tools });
+        const systemPrompt = getSystemPrompt(userContext);
+        const chat = modelWithTools.startChat({
             history: history || [],
-            systemInstruction: { parts: [{ text: sessionPrompt }] },
+            systemInstruction: { parts: [{ text: systemPrompt }] },
         });
 
-        // Build message parts
         const parts = [];
         if (message) parts.push({ text: message });
-        if (image && mimeType) {
-            parts.push({ inlineData: { mimeType, data: image } });
-        }
+        if (image && mimeType) parts.push({ inlineData: { mimeType, data: image } });
 
-        const result = await chat.sendMessage(parts);
-        const response = await result.response;
+        let result = await chat.sendMessage(parts);
+        let firstCall = result.response.candidates[0].content.parts.find(p => p.functionCall);
 
-        res.json({ text: response.text() });
-    } catch (error) {
-        console.error('AI Error:', error.message);
-        console.error('Full error:', JSON.stringify(error, null, 2));
+        if (firstCall) {
+            const { name, args } = firstCall.functionCall;
+            let toolData = null;
+            if (name === "tavilySearch") toolData = await executeSearch(args.query);
+            else if (name === "youtubeSearch") toolData = await executeYoutubeSearch(args.query);
 
-        // Try fallback models
-        for (let i = 1; i < MODELS.length; i++) {
-            try {
-                console.log(`Trying fallback model: ${MODELS[i]}`);
-                const fallback = genAI.getGenerativeModel({ model: MODELS[i] });
-                const systemPrompt = getSystemPrompt(req.body.userContext);
-                const chat = fallback.startChat({
-                    history: req.body.history || [],
-                    systemInstruction: { parts: [{ text: systemPrompt }] },
-                });
-                const result = await chat.sendMessage([{ text: req.body.message || 'Hello' }]);
-                const response = await result.response;
-                console.log(`✅ Fallback ${MODELS[i]} succeeded`);
-                return res.json({ text: response.text() });
-            } catch (retryErr) {
-                console.error(`Fallback ${MODELS[i]} failed:`, retryErr.message);
-                continue;
+            if (toolData) {
+                const toolResult = { functionResponse: { name, response: { content: toolData } } };
+                const finalResult = await chat.sendMessage([toolResult]);
+                return res.json({ text: finalResult.response.text() });
             }
         }
 
-        res.status(500).json({ error: 'AI is temporarily unavailable. Please try again in a moment.' });
+        res.json({ text: result.response.text() });
+    } catch (error) {
+        console.error('AI Error:', error.message);
+        res.status(500).json({ error: 'AI is temporarily unavailable.' });
     }
 });
 
