@@ -141,6 +141,17 @@ export default async function handler(req, res) {
                         },
                         required: ["query"]
                     }
+                },
+                {
+                    name: "youtubeSearch",
+                    description: "Search YouTube for educational, technical, or informative videos on a specific topic.",
+                    parameters: {
+                        type: "OBJECT",
+                        properties: {
+                            query: { type: "STRING", description: "The topic or keywords to search on YouTube" }
+                        },
+                        required: ["query"]
+                    }
                 }
             ]
         }
@@ -169,6 +180,29 @@ export default async function handler(req, res) {
         }
     }
 
+    async function executeYoutubeSearch(query) {
+        const YT_KEY = process.env.YOUTUBE_API_KEY;
+        if (!YT_KEY) return "YouTube search is currently unavailable (API Key missing).";
+
+        try {
+            const response = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=5&key=${YT_KEY}`);
+            const data = await response.json();
+            if (!data.items) return "No videos found.";
+            
+            const videos = data.items.map(v => ({
+                title: v.snippet.title,
+                description: v.snippet.description,
+                videoId: v.id.videoId,
+                url: `https://www.youtube.com/watch?v=${v.id.videoId}`,
+                channel: v.snippet.channelTitle
+            }));
+            return JSON.stringify(videos);
+        } catch (error) {
+            console.error("YouTube Search Error:", error);
+            return "Failed to fetch YouTube results.";
+        }
+    }
+
     for (const modelName of MODELS) {
         try {
             const model = genAI.getGenerativeModel({ model: modelName, tools });
@@ -191,17 +225,21 @@ export default async function handler(req, res) {
             // Step 2: Handle Tool Call (if AI decides it needs to search)
             if (firstCall) {
                 const { name, args } = firstCall.functionCall;
+                let toolData = null;
+
                 if (name === "tavilySearch") {
-                    const searchData = await executeSearch(args.query);
-                    
-                    // Send tool response back to AI
+                    toolData = await executeSearch(args.query);
+                } else if (name === "youtubeSearch") {
+                    toolData = await executeYoutubeSearch(args.query);
+                }
+
+                if (toolData) {
                     const toolResult = {
                         functionResponse: {
-                            name: "tavilySearch",
-                            response: { content: searchData }
+                            name: name,
+                            response: { content: toolData }
                         }
                     };
-                    
                     const finalResult = await chat.sendMessage([toolResult]);
                     return res.status(200).json({ text: finalResult.response.text() });
                 }
