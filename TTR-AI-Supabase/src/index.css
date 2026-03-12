@@ -2831,3 +2831,61 @@ a:hover {
     flex-direction: column;
   }
 }
+
+/* ═══════════════════════════════════════════════════
+   STUDY NEXUS & DHARMA XP
+   ═══════════════════════════════════════════════════ */
+.nexus-tag {
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nexus-tag:hover {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: #8b5cf6;
+  color: #a78bfa;
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.2);
+}
+
+.dharma-xp-stat {
+  animation: dharma-pulse 3s infinite ease-in-out;
+}
+
+@keyframes dharma-pulse {
+  0% { box-shadow: 0 0 5px rgba(255, 215, 0, 0.1); }
+  50% { box-shadow: 0 0 15px rgba(255, 215, 0, 0.3); }
+  100% { box-shadow: 0 0 5px rgba(255, 215, 0, 0.1); }
+}
+
+.mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.verify-badge {
+  font-size: 10px;
+  background: rgba(255, 215, 0, 0.2);
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  color: #ffd700;
+  padding: 2px 4px;
+  border-radius: 4px;
+  margin-left: 8px;
+  flex-shrink: 0;
+  animation: badge-glow 2s infinite alternate;
+}
+
+@keyframes badge-glow {
+  from { opacity: 0.6; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1.05); }
+}

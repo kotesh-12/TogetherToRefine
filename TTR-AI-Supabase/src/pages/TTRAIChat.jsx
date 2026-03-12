@@ -10,11 +10,14 @@ import { useSpeech } from '../hooks/useSpeech';
 import anime from 'animejs';
 import logo from '../assets/logo.png';
 import { THEMES, THEME_CATEGORIES } from '../themeData';
+import mermaid from 'mermaid';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
 import pptxgen from 'pptxgenjs';
 import pLimit from 'p-limit';
+import JSZip from 'jszip';
+
 
 // Optimized UI Components
 import {
@@ -77,6 +80,34 @@ function AdminStatsBadge() {
         </div>
     );
 }
+
+// Mermaid Diagram Component
+const MermaidDiagram = ({ chart }) => {
+    const chartRef = useRef(null);
+    const [svg, setSvg] = useState('');
+
+    useEffect(() => {
+        if (chartRef.current && chart) {
+            try {
+                mermaid.render('mermaid-chart', chart)
+                    .then(({ svg }) => {
+                        setSvg(svg);
+                    })
+                    .catch(error => {
+                        console.error("Mermaid rendering failed:", error);
+                        setSvg(`<pre style="color: red;">Mermaid rendering failed: ${error.message}</pre>`);
+                    });
+            } catch (error) {
+                console.error("Mermaid parsing failed:", error);
+                setSvg(`<pre style="color: red;">Mermaid parsing failed: ${error.message}</pre>`);
+            }
+        }
+    }, [chart]);
+
+    return (
+        <div ref={chartRef} dangerouslySetInnerHTML={{ __html: svg }} style={{ overflowX: 'auto', padding: '10px', background: 'var(--bg-secondary)', borderRadius: '8px' }} />
+    );
+};
 
 // The main view exported for the application
 /* ──────────────── Main Chat Page ──────────────── */
@@ -148,10 +179,25 @@ export default function TTRAIChat() {
     const customMarkdownComponents = useMemo(() => ({
         ...markdownCodeRenderers,
         code: (props) => {
-            // Re-use the existing complex logic but inject onRun
+            const { inline, className, children } = props;
+            const match = /language-(\w+)/.exec(className || '');
+            if (!inline && match && match[1] === 'mermaid') {
+                return <MermaidDiagram chart={String(children)} />;
+            }
             return markdownCodeRenderers.code({ ...props, onRun: handleRunCode });
         }
     }), [handleRunCode]);
+
+    // Dharma XP State
+    const [dharmaXP, setDharmaXP] = useState(() => Number(localStorage.getItem('ttr_dharma_xp')) || 0);
+    useEffect(() => {
+        localStorage.setItem('ttr_dharma_xp', dharmaXP);
+    }, [dharmaXP]);
+
+    // Initialize mermaid on mount
+    useEffect(() => {
+        mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+    }, []);
 
     // Handle Sandbox Iframe Injection
     useEffect(() => {
@@ -646,7 +692,14 @@ export default function TTRAIChat() {
                 throw new Error(`Server error: ${response.status}`);
             }
             const result = await response.json();
-            const responseText = result.response || result.text || 'No response received.';
+            const responseText = result.response || result.text;
+            // ─── Extract Dharma XP ───
+            const xpMatch = responseText.match(/\[Dharma Points: \+(\d+)\]/);
+            if (xpMatch) {
+                const points = parseInt(xpMatch[1]);
+                setDharmaXP(prev => prev + points);
+            }
+
             const sources = result.sources || null;
             const toolCalled = result.toolCalled || null;
 
@@ -1034,6 +1087,17 @@ export default function TTRAIChat() {
                     </button>
                 </div>
 
+                {/* Dharma XP Stat */}
+                <div className="dharma-xp-stat" style={{ padding: '15px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', margin: '0 20px 15px 20px', border: '1px solid rgba(255, 215, 0, 0.2)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '11px', color: '#ffd700', fontWeight: 'bold' }}>🕉️ DHARMA XP</span>
+                        <span style={{ fontSize: '11px', color: '#fff' }}>{dharmaXP} PTS</span>
+                    </div>
+                    <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px', overflow: 'hidden' }}>
+                        <div style={{ width: `${Math.min((dharmaXP % 1000) / 10, 100)}%`, height: '100%', background: 'linear-gradient(90deg, #ffd700, #ff8c00)', borderRadius: '10px' }} />
+                    </div>
+                </div>
+
                 {user ? (
                     <>
                         <div className="sessions-list">
@@ -1286,6 +1350,15 @@ export default function TTRAIChat() {
                                     </div>
                                 )}
 
+                                {msg.sender === 'ai' && !loading && (
+                                    <div className="study-nexus-shelf" style={{ marginTop: '15px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                        <button onClick={() => { setInput('/quiz based on your last response'); setTimeout(() => handleSend(), 100); }} className="nexus-tag">📝 Practice Quiz</button>
+                                        <button onClick={() => { setInput('/flashcards for this content'); setTimeout(() => handleSend(), 100); }} className="nexus-tag">📇 Flashcards</button>
+                                        <button onClick={() => { setInput('/mindmap to visualize this'); setTimeout(() => handleSend(), 100); }} className="nexus-tag">🗺️ Concept Map</button>
+                                        <button onClick={() => { setInput('/debate on alternate views'); setTimeout(() => handleSend(), 100); }} className="nexus-tag">⚔️ Gurukul Debate</button>
+                                    </div>
+                                )}
+
                                 {/* ─── RESEARCH SOURCE CARDS ───────────── */}
                                 {msg.sources && msg.sources.length > 0 && (
                                     <div className="research-sources">
@@ -1296,7 +1369,10 @@ export default function TTRAIChat() {
                                         <div className="sources-grid">
                                             {msg.sources.map((src, sIdx) => (
                                                 <a key={sIdx} href={src.url} target="_blank" rel="noopener noreferrer" className="source-card">
-                                                    <div className="source-title">{src.title}</div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                        <div className="source-title">{src.title}</div>
+                                                        {src.type === 'academic' && <span className="verify-badge" title="TTR Deep Verification Passed">✨</span>}
+                                                    </div>
                                                     <div className="source-meta">
                                                         {src.channel ? <span>{src.channel}</span> : <span>{new URL(src.url).hostname}</span>}
                                                     </div>
