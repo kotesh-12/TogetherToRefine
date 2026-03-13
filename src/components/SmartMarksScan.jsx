@@ -58,7 +58,7 @@ export default function SmartMarksScan({ onClose, onScanComplete }) {
             // SECURITY: API key is NEVER used here. The Vercel serverless function handles Gemini auth.
             const API_URL = window.location.hostname === 'localhost'
                 ? 'http://localhost:5000/api/vision-marks'
-                : 'https://together-to-refine.vercel.app/api/vision-marks';
+                : '/api/vision-marks';
 
             const res = await fetch(API_URL, {
                 method: 'POST',

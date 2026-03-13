@@ -51,12 +51,22 @@
 </head>
 
 <body>
+  <div id="root-loading">
+    <div class="root-spinner"></div>
+    <p>Loading Together To Refine...</p>
+  </div>
+  <div id="error-display" style="display: none; position: fixed; inset: 20px; z-index: 10000; background: #fff5f5; color: #c53030; padding: 20px; border: 1px solid #feb2b2; border-radius: 8px; font-family: system-ui;"></div>
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
   <script>
-    // Global Error Logger (Non-destructive)
+    // Global Error Logger 
     window.onerror = function (msg, url, line) {
       console.error("Global Error:", msg, url, line);
+      const display = document.getElementById('error-display');
+      if (display) {
+        display.style.display = 'block';
+        display.innerHTML = '<h3>Something went wrong</h3><p>' + msg + '</p><button onclick="location.reload()" style="margin-top: 10px; padding: 8px 16px; background: #c53030; color: white; border: none; border-radius: 4px; cursor: pointer;">Reload Page</button>';
+      }
     };
   </script>
 </body>

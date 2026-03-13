@@ -7,6 +7,63 @@
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    /* Immediate Loading State */
+    #root-loading {
+      position: fixed;
+      inset: 0;
+      background: #0f0f14;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      font-family: 'Inter', system-ui, sans-serif;
+      color: #6C63FF;
+    }
+
+    .root-spinner {
+      width: 50px;
+      height: 50px;
+      border: 3px solid rgba(108, 99, 255, 0.1);
+      border-top: 3px solid #6C63FF;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    #error-display {
+      display: none;
+      position: fixed;
+      inset: 20px;
+      z-index: 10000;
+      background: #1a0505;
+      color: #ff4d4d;
+      padding: 30px;
+      border: 1px solid #ff4d4d;
+      border-radius: 12px;
+      font-family: monospace;
+      overflow: auto;
+    }
+  </style>
+  <script>
+    window.onerror = function(msg, url, lineNo, columnNo, error) {
+      console.error('GLOBAL ERROR:', msg, url, lineNo, columnNo, error);
+      const errDisplay = document.getElementById('error-display');
+      if (errDisplay) {
+        errDisplay.style.display = 'block';
+        errDisplay.innerHTML = '<h2>Application Crash</h2><p>' + msg + '</p><p><small>' + url + ':' + lineNo + '</small></p><button onclick="location.reload()" style="background: #ff4d4d; border: none; color: white; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-top: 20px;">Reload App</button>';
+      }
+      return false;
+    };
+    window.onunhandledrejection = function(event) {
+      console.error('UNHANDLED REJECTION:', event.reason);
+    };
+  </script>
 
   <!-- Primary SEO Meta Tags -->
   <title>TTRAI - Together To Refine | TTR AI - AI Learning Platform for Students</title>
@@ -104,6 +161,11 @@
       subjects through personalized AI tutoring, Gurukul Path learning, and smart study tools. Visit ttrai.in to get
       started.</p>
   </noscript>
+  <div id="root-loading">
+    <div class="root-spinner"></div>
+    <p>Loading TTR AI...</p>
+  </div>
+  <div id="error-display"></div>
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
 </body>

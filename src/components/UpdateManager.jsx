@@ -2,6 +2,13 @@ import React, { useEffect, useState } from 'react';
 
 export default function UpdateManager() {
     // Temporarily disabled to fix deployment crash
+    React.useEffect(() => {
+        const loader = document.getElementById('root-loading');
+        if (loader) {
+            loader.style.opacity = '0';
+            setTimeout(() => { if(loader.parentNode) loader.remove(); }, 500);
+        }
+    }, []);
     return null;
 
     /* DISABLED CODE - Will re-enable after cache clears

@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../supabaseClient';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { markdownCodeRenderers } from '../components/CodeBlock';
+import { MarkdownCode, MarkdownTable } from '../components/CodeBlock';
 import { isDocumentFile, isImageFile, getFileTypeInfo, processDocument } from '../utils/documentProcessor';
 import { useSpeech } from '../hooks/useSpeech';
-import anime from 'animejs';
+import anime from 'animejs/lib/anime.es.js';
 import logo from '../assets/logo.png';
 import { THEMES, THEME_CATEGORIES } from '../themeData';
 import mermaid from 'mermaid';
@@ -99,7 +99,7 @@ const MermaidDiagram = ({ chart }) => {
                     });
             } catch (error) {
                 console.error("Mermaid parsing failed:", error);
-                setSvg(`<pre style="color: red;">Mermaid parsing failed: ${error.message}</pre>`);
+                setTimeout(() => setSvg(`<pre style="color: red;">Mermaid parsing failed: ${error.message}</pre>`), 0);
             }
         }
     }, [chart]);
@@ -107,6 +107,16 @@ const MermaidDiagram = ({ chart }) => {
     return (
         <div ref={chartRef} dangerouslySetInnerHTML={{ __html: svg }} style={{ overflowX: 'auto', padding: '10px', background: 'var(--bg-secondary)', borderRadius: '8px' }} />
     );
+};
+
+// Helper for safe storage access
+const getSafeStorage = (key, fallback = null, useSession = false) => {
+    try {
+        const storage = useSession ? sessionStorage : localStorage;
+        return storage.getItem(key) || fallback;
+    } catch {
+        return fallback;
+    }
 };
 
 // The main view exported for the application
@@ -121,6 +131,9 @@ export default function TTRAIChat() {
     const [loading, setLoading] = useState(false);
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
+    const curtainRef = useRef(null);
+    const fourWayMenuRef = useRef(null);
+
 
     // Auto-adjust textarea height
     const adjustHeight = useCallback(() => {
@@ -144,7 +157,7 @@ export default function TTRAIChat() {
     const [isDebugMode, setIsDebugMode] = useState(false);
 
     // Incognito Mode
-    const [incognitoMode, setIncognitoMode] = useState(() => sessionStorage.getItem('ttr_incognito') === 'true');
+    const [incognitoMode, setIncognitoMode] = useState(() => getSafeStorage('ttr_incognito', 'false', true) === 'true');
 
     // Premium Features State
     const [isFocusMode, setIsFocusMode] = useState(false);
@@ -164,7 +177,7 @@ export default function TTRAIChat() {
     const [showFourWayMenu, setShowFourWayMenu] = useState(false);
 
     // Theme State
-    const [theme, setTheme] = useState(localStorage.getItem('ttr_theme') || 'dark');
+    const [theme, setTheme] = useState(() => getSafeStorage('ttr_theme', 'dark'));
     const [showThemeGallery, setShowThemeGallery] = useState(false);
     const langMenuRef = useRef(null);
 
@@ -177,19 +190,19 @@ export default function TTRAIChat() {
     }, []);
 
     const customMarkdownComponents = useMemo(() => ({
-        ...markdownCodeRenderers,
+        table: MarkdownTable,
         code: (props) => {
             const { inline, className, children } = props;
             const match = /language-(\w+)/.exec(className || '');
             if (!inline && match && match[1] === 'mermaid') {
                 return <MermaidDiagram chart={String(children)} />;
             }
-            return markdownCodeRenderers.code({ ...props, onRun: handleRunCode });
+            return <MarkdownCode {...props} onRun={handleRunCode} />;
         }
     }), [handleRunCode]);
 
     // Dharma XP State
-    const [dharmaXP, setDharmaXP] = useState(() => Number(localStorage.getItem('ttr_dharma_xp')) || 0);
+    const [dharmaXP, setDharmaXP] = useState(() => Number(getSafeStorage('ttr_dharma_xp', '0')) || 0);
     useEffect(() => {
         localStorage.setItem('ttr_dharma_xp', dharmaXP);
     }, [dharmaXP]);
@@ -268,7 +281,7 @@ export default function TTRAIChat() {
 
     // aggresively set theme variables on the first render to avoid flash
     const initTheme = () => {
-        const savedTheme = localStorage.getItem('ttr_theme') || 'dark';
+        const savedTheme = getSafeStorage('ttr_theme', 'dark');
         const current = THEMES.find(t => t.id === savedTheme) || THEMES[0];
         const root = document.documentElement;
         const isLight = current.mode === 'light';
@@ -335,7 +348,7 @@ export default function TTRAIChat() {
 
     // Handle Text Highlighting for "Act & Explain" feature
     useEffect(() => {
-        const handleMouseUp = (e) => {
+        const handleMouseUp = (_e) => {
             const selection = window.getSelection();
             if (selection && selection.toString().trim() !== '') {
                 // Ensure selection is inside a message content
@@ -536,7 +549,7 @@ export default function TTRAIChat() {
                 const reader = new FileReader();
                 reader.onloadend = () => setSelectedImage(reader.result);
                 reader.readAsDataURL(file);
-            } else if (isDocumentFile(file) || true) {
+            } else if (isDocumentFile(file)) {
                 // Handle as document
                 setSelectedImage(null);
                 const docId = Date.now() + Math.random();
@@ -650,6 +663,7 @@ export default function TTRAIChat() {
                 message: apiMessageContent,
                 userContext: {
                     name: displayName,
+                    email: user?.email || 'Guest',
                     gurukul_path: currentPath,
                     domain: currentDomain || 'gurukul',
                     fourWayMode: fourWayMode,
@@ -886,14 +900,14 @@ export default function TTRAIChat() {
                     content = lines.slice(1).join('\n').trim();
                 }
 
-                title = title.replace(/^[\d\.\-\:]+\s*/, '').substring(0, 100);
+                title = title.replace(/^[0-9.\-:]+\s*/, '').substring(0, 100);
                 if (!title) title = "Key Concept";
 
                 slide.addText(title, { x: 0.5, y: 0.5, w: 9.0, h: 1, fontSize: 26, bold: true, color: '000000' });
 
                 if (content) {
                     const bulletLines = content.split('\n')
-                        .map(line => line.replace(/^[\-\*\•]\s*/, '').trim())
+                        .map(line => line.replace(/^[*-•]\s*/, '').trim())
                         .filter(line => line.length > 0);
 
                     const bulletObjects = bulletLines.map(line => {
