@@ -37,6 +37,20 @@ function AppRoutes() {
 }
 
 function App() {
+  React.useEffect(() => {
+    // Secondary loader removal trigger
+    const loader = document.getElementById('root-loading');
+    if (loader) {
+        setTimeout(() => {
+            const el = document.getElementById('root-loading');
+            if (el) {
+                el.style.opacity = '0';
+                setTimeout(() => el.remove(), 500);
+            }
+        }, 1000); // Wait a bit for the first frame
+    }
+  }, []);
+
   return (
     <PWAProvider>
       <AuthProvider>

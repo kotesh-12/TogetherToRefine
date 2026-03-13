@@ -433,10 +433,21 @@ export default function TTRAIChat() {
     // Welcome message
     const WELCOME_MSG = { text: "Hello! I'm **TTR AI** 🧠 — your intelligent learning companion.\n\nAsk me anything about academics, coding, science, math, or just have a conversation!", sender: 'ai' };
 
-    // Set welcome message on mount
+    // Set welcome message on mount and remove root loader
     useEffect(() => {
         setMessages([WELCOME_MSG]);
-    }, []);
+        
+        // Remove the initial loading screen from index.html
+        const loader = document.getElementById('root-loading');
+        if (loader) {
+            loader.style.transition = 'opacity 0.5s ease';
+            loader.style.opacity = '0';
+            setTimeout(() => {
+                const el = document.getElementById('root-loading');
+                if (el) el.remove();
+            }, 500);
+        }
+    }, [WELCOME_MSG]);
 
     /* ── Load all sessions ── */
     const loadSessions = useCallback(async () => {

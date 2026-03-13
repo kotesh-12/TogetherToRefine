@@ -182,8 +182,22 @@
   </noscript>
   <div id="root-loading">
     <div class="root-spinner"></div>
-    <p>Loading TTR AI...</p>
+    <p id="loading-text">Loading TTR AI...</p>
+    <div id="loading-timeout" style="display:none; margin-top: 20px; text-align: center;">
+      <p style="color: #ff4d4d; font-size: 14px;">This is taking longer than expected.</p>
+      <button onclick="location.reload()" style="background: #2a2a3d; border: 1px solid #444; color: #ccc; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px;">Retry Connection</button>
+    </div>
   </div>
+  <script>
+    // Safety timeout: if React doesn't remove the loader in 10s, show retry
+    setTimeout(() => {
+      const loader = document.getElementById('root-loading');
+      if (loader && loader.style.opacity !== '0') {
+        const timeoutDiv = document.getElementById('loading-timeout');
+        if (timeoutDiv) timeoutDiv.style.display = 'block';
+      }
+    }, 10000);
+  </script>
   <div id="error-display"></div>
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
