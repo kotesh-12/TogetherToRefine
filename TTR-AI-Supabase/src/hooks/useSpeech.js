@@ -4,7 +4,6 @@ export function useSpeech() {
     const [isListening, setIsListening] = useState(false);
     const [speakingText, setSpeakingText] = useState(null);
     const recognitionRef = useRef(null);
-    const utteranceRef = useRef(null);
 
     // Initial load for voices (optional fix for Chrome)
     useEffect(() => {

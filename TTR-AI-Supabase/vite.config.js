@@ -61,12 +61,19 @@ export default defineConfig({
       }
     })
   ],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true
+      }
+    }
+  },
   build: {
-    chunkSizeWarningLimit: 2500, // Raise warning threshold (pdfjs is large)
+    chunkSizeWarningLimit: 2500, // Raise warning threshold
     rollupOptions: {
       output: {
         manualChunks: {
-          // Split heavy document processing libs into separate chunks
           'pdf-worker': ['pdfjs-dist'],
           'doc-parsers': ['mammoth', 'jszip'],
           'syntax-highlight': ['react-syntax-highlighter'],

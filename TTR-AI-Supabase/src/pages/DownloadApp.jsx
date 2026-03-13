@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePWA } from '../context/PWAContext';
 import logo from '../assets/logo.png';
@@ -10,7 +10,6 @@ export default function DownloadApp() {
     // Check Platform
     const isAndroid = /Android/i.test(navigator.userAgent);
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    const isWindows = /Windows/i.test(navigator.userAgent);
 
     const handleInstallClick = () => {
         promptInstall();

@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef, memo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { markdownCodeRenderers } from './CodeBlock';
-import anime from 'animejs';
+import { MarkdownCode, MarkdownTable } from './CodeBlock';
+import anime from 'animejs/lib/anime.es.js';
 import logo from '../assets/logo.png';
 
 /**
@@ -121,21 +121,32 @@ export const TypewriterMessage = memo(({ text, onComplete }) => {
 
     useEffect(() => {
         idx.current = 0;
-        setDisplayed('');
+        // Reset displayed text on text change
+        setTimeout(() => setDisplayed(''), 0);
+        
         const iv = setInterval(() => {
             setDisplayed(prev => {
                 if (idx.current < text.length) {
                     const ch = text.charAt(idx.current);
                     idx.current++;
-                    return prev + ch;
+                    const next = prev + ch;
+                    // If we just finished, call the callback
+                    if (idx.current === text.length && onComplete) {
+                        onComplete();
+                    }
+                    return next;
                 }
                 clearInterval(iv);
-                if (onComplete) onComplete();
                 return prev;
             });
         }, 5);
         return () => clearInterval(iv);
     }, [text, onComplete]);
 
-    return <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownCodeRenderers}>{displayed}</ReactMarkdown>;
+    const renderers = useMemo(() => ({
+        code: MarkdownCode,
+        table: MarkdownTable
+    }), []);
+
+    return <ReactMarkdown remarkPlugins={[remarkGfm]} components={renderers}>{displayed}</ReactMarkdown>;
 });

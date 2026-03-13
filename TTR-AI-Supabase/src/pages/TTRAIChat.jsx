@@ -119,6 +119,24 @@ const getSafeStorage = (key, fallback = null, useSession = false) => {
     }
 };
 
+const setSafeStorage = (key, value, useSession = false) => {
+    try {
+        const storage = useSession ? sessionStorage : localStorage;
+        storage.setItem(key, value);
+    } catch (e) {
+        console.warn('Storage set failed:', e);
+    }
+};
+
+const removeSafeStorage = (key, useSession = false) => {
+    try {
+        const storage = useSession ? sessionStorage : localStorage;
+        storage.removeItem(key);
+    } catch (e) {
+        console.warn('Storage remove failed:', e);
+    }
+};
+
 // The main view exported for the application
 /* ──────────────── Main Chat Page ──────────────── */
 export default function TTRAIChat() {
@@ -169,8 +187,8 @@ export default function TTRAIChat() {
     const [copiedIndex, setCopiedIndex] = useState(null);
 
     // Gurukul Path State
-    const [currentPath, setCurrentPath] = useState(localStorage.getItem('ttr_guest_path') || '');
-    const [currentDomain, setCurrentDomain] = useState(localStorage.getItem('ttr_guest_domain') || null);
+    const [currentPath, setCurrentPath] = useState(getSafeStorage('ttr_guest_path', ''));
+    const [currentDomain, setCurrentDomain] = useState(getSafeStorage('ttr_guest_domain', null));
     const [showPathModal, setShowPathModal] = useState(false);
 
     const [fourWayMode, setFourWayMode] = useState(null);
@@ -204,7 +222,7 @@ export default function TTRAIChat() {
     // Dharma XP State
     const [dharmaXP, setDharmaXP] = useState(() => Number(getSafeStorage('ttr_dharma_xp', '0')) || 0);
     useEffect(() => {
-        localStorage.setItem('ttr_dharma_xp', dharmaXP);
+        setSafeStorage('ttr_dharma_xp', dharmaXP);
     }, [dharmaXP]);
 
     // Initialize mermaid on mount
@@ -311,21 +329,21 @@ export default function TTRAIChat() {
     // Persist path, domain, theme, and incognito
     useEffect(() => {
         if (currentPath) {
-            localStorage.setItem('ttr_guest_path', currentPath);
+            setSafeStorage('ttr_guest_path', currentPath);
         } else {
-            localStorage.removeItem('ttr_guest_path');
+            removeSafeStorage('ttr_guest_path');
         }
         if (currentDomain) {
-            localStorage.setItem('ttr_guest_domain', currentDomain);
+            setSafeStorage('ttr_guest_domain', currentDomain);
         } else {
-            localStorage.removeItem('ttr_guest_domain');
+            removeSafeStorage('ttr_guest_domain');
         }
-        localStorage.setItem('ttr_theme', theme);
+        setSafeStorage('ttr_theme', theme);
         // Incognito uses sessionStorage (clears when tab closes, like real incognito)
         if (incognitoMode) {
-            sessionStorage.setItem('ttr_incognito', 'true');
+            setSafeStorage('ttr_incognito', 'true', true);
         } else {
-            sessionStorage.removeItem('ttr_incognito');
+            removeSafeStorage('ttr_incognito', true);
         }
     }, [currentPath, currentDomain, theme, incognitoMode]);
 
@@ -528,7 +546,7 @@ export default function TTRAIChat() {
         e.target.value = '';
 
         // TTR Tier Verification
-        const currentPlan = localStorage.getItem('ttr_subscription_plan') || 'free';
+        const currentPlan = getSafeStorage('ttr_subscription_plan') || 'free';
         const LIMITS = {
             free: { docs: 1, pgs: 10 },
             basic: { docs: 3, pgs: 15 },
@@ -673,7 +691,7 @@ export default function TTRAIChat() {
                 image: (imgData && !hasDocs) ? imgData.split(',')[1] : null,
                 mimeType: (imgData && !hasDocs) ? imgData.match(/:(.*?);/)?.[1] : null,
                 userId: user?.id || null, // For rate limiting track
-                plan: localStorage.getItem('ttr_subscription_plan') || 'free', // Current tier for backend logic
+                plan: getSafeStorage('ttr_subscription_plan') || 'free', // Current tier for backend logic
             };
 
             // Reset debug mode after sending if it was manual
@@ -1153,7 +1171,7 @@ export default function TTRAIChat() {
                                     transition: 'transform 0.2s',
                                 }}
                             >
-                                <span>💎</span> Upgrade Plan ({localStorage.getItem('ttr_subscription_plan')?.toUpperCase() || 'FREE'})
+                                <span>💎</span> Upgrade Plan ({getSafeStorage('ttr_subscription_plan')?.toUpperCase() || 'FREE'})
                             </button>
 
                             <button

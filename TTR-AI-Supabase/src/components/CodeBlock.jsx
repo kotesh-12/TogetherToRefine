@@ -1,46 +1,6 @@
 import React, { useState, memo } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-
-/**
- * LANGUAGE_DISPLAY_NAMES - Maps language identifiers to display names
- */
-const LANGUAGE_DISPLAY_NAMES = {
-    js: 'JavaScript', javascript: 'JavaScript', jsx: 'JSX',
-    ts: 'TypeScript', typescript: 'TypeScript', tsx: 'TSX',
-    py: 'Python', python: 'Python',
-    java: 'Java', c: 'C', cpp: 'C++', 'c++': 'C++', cs: 'C#', csharp: 'C#',
-    html: 'HTML', css: 'CSS', scss: 'SCSS', sass: 'SASS', less: 'LESS',
-    json: 'JSON', xml: 'XML', yaml: 'YAML', yml: 'YAML',
-    sql: 'SQL', graphql: 'GraphQL',
-    bash: 'Bash', shell: 'Shell', sh: 'Shell', powershell: 'PowerShell', ps1: 'PowerShell',
-    go: 'Go', rust: 'Rust', ruby: 'Ruby', php: 'PHP', swift: 'Swift', kotlin: 'Kotlin',
-    dart: 'Dart', r: 'R', matlab: 'MATLAB', scala: 'Scala',
-    markdown: 'Markdown', md: 'Markdown', text: 'Text', txt: 'Text',
-    dockerfile: 'Dockerfile', docker: 'Docker',
-};
-
-/**
- * Custom theme based on oneDark but matching TTRAI's aesthetic
- */
-const ttraiCodeTheme = {
-    ...oneDark,
-    'pre[class*="language-"]': {
-        ...oneDark['pre[class*="language-"]'],
-        background: 'transparent',
-        margin: 0,
-        padding: '16px',
-        fontSize: '13.5px',
-        lineHeight: '1.6',
-        fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', monospace",
-    },
-    'code[class*="language-"]': {
-        ...oneDark['code[class*="language-"]'],
-        background: 'transparent',
-        fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', monospace",
-        fontSize: '13.5px',
-    },
-};
+import { LANGUAGE_DISPLAY_NAMES, ttraiCodeTheme } from '../utils/codeBlockConfig';
 
 /**
  * CopyButton - Animated copy-to-clipboard button
@@ -157,27 +117,29 @@ export const InlineCode = memo(({ children }) => (
  * MarkdownRenderers - Custom renderers for ReactMarkdown
  * Use this as the `components` prop for ReactMarkdown
  */
-export const markdownCodeRenderers = {
-    code({ node, inline, className, children, ...props }) {
-        const match = /language-(\w+)/.exec(className || '');
+export function MarkdownCode(props) {
+    const { _node, inline, className, children, ...rest } = props;
+    const match = /language-(\w+)/.exec(className || '');
 
-        // If it's a fenced code block (has language or is multi-line)
-        if (!inline && (match || String(children).includes('\n'))) {
-            return (
-                <CodeBlock language={match ? match[1] : 'text'}>
-                    {children}
-                </CodeBlock>
-            );
-        }
-
-        // Otherwise render as inline code
-        return <InlineCode {...props}>{children}</InlineCode>;
-    },
-    table({ node, ...props }) {
+    // If it's a fenced code block (has language or is multi-line)
+    if (!inline && (match || String(children).includes('\n'))) {
         return (
-            <div className="custom-table-wrapper">
-                <table {...props} />
-            </div>
+            <CodeBlock language={match ? match[1] : 'text'}>
+                {children}
+            </CodeBlock>
         );
     }
-};
+
+    // Otherwise render as inline code
+    return <InlineCode {...rest}>{children}</InlineCode>;
+}
+
+export function MarkdownTable(props) {
+    return (
+        <div className="custom-table-wrapper">
+            <table {...props} />
+        </div>
+    );
+}
+
+// Renderers are imported and mapped where used.

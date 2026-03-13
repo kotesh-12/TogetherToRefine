@@ -5,7 +5,7 @@ export default function Pricing() {
     const navigate = useNavigate();
     const currentPlan = localStorage.getItem('ttr_subscription_plan') || 'free';
 
-    const handleSubscribe = (planId) => {
+    const handleSubscribe = (_planId) => {
         alert('Upgrades are coming soon! Until then, please use your current plan.');
     };
 

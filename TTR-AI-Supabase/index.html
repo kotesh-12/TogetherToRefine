@@ -51,17 +51,36 @@
     }
   </style>
   <script>
+    window.TTR_VERSION = "2.0.1-fixed";
     window.onerror = function(msg, url, lineNo, columnNo, error) {
       console.error('GLOBAL ERROR:', msg, url, lineNo, columnNo, error);
       const errDisplay = document.getElementById('error-display');
       if (errDisplay) {
         errDisplay.style.display = 'block';
-        errDisplay.innerHTML = '<h2>Application Crash</h2><p>' + msg + '</p><p><small>' + url + ':' + lineNo + '</small></p><button onclick="location.reload()" style="background: #ff4d4d; border: none; color: white; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-top: 20px;">Reload App</button>';
+        errDisplay.style.background = '#0a0a0f';
+        errDisplay.style.border = '2px solid #6C63FF';
+        errDisplay.innerHTML = `
+          <div style="color: #6C63FF; margin-bottom: 20px;">
+            <h2 style="margin: 0;">TTR AI Recovery</h2>
+            <p style="font-size: 14px; opacity: 0.8;">An unexpected error occurred. We've detected a possible crash.</p>
+          </div>
+          <div style="background: rgba(255,0,0,0.1); padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 13px;">
+            <strong style="color: #ff4d4d;">Error Path:</strong> ${window.location.href}<br>
+            <strong style="color: #ff4d4d;">Message:</strong> ${msg}<br>
+            <strong style="color: #ff4d4d;">Source:</strong> ${url?.split('/').pop()}:${lineNo}
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button onclick="location.reload()" style="flex: 1; background: #6C63FF; border: none; color: white; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold;">Reload Page</button>
+            <button onclick="localStorage.clear(); sessionStorage.clear(); location.reload();" style="flex: 1; background: #2a2a3d; border: 1px solid #444; color: #ccc; padding: 12px; border-radius: 8px; cursor: pointer;">Clear Cache & Reset</button>
+          </div>
+          <p style="margin-top: 20px; font-size: 11px; text-align: center; color: #555;">TTR-AI-Supabase Engine v2.0.1</p>
+        `;
       }
       return false;
     };
     window.onunhandledrejection = function(event) {
       console.error('UNHANDLED REJECTION:', event.reason);
+      // Optional: trigger the same UI
     };
   </script>
 
