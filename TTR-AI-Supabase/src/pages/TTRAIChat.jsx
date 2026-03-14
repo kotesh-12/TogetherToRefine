@@ -1200,6 +1200,20 @@ export default function TTRAIChat() {
                                 <span>📲</span> Download App
                             </button>
 
+                            <button
+                                onClick={() => navigate('/roadmap')}
+                                style={{
+                                    width: '100%', padding: '6px', borderRadius: '8px',
+                                    background: 'rgba(139, 92, 246, 0.05)', color: '#a78bfa',
+                                    border: '1px solid rgba(139, 92, 246, 0.2)', cursor: 'pointer',
+                                    marginBottom: '6px', fontSize: '11px', display: 'flex',
+                                    alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                <span>🎗️</span> Platform Evolution
+                            </button>
+
                             {/* Admin-Only Section — visible only to koteshbitra789@gmail.com */}
                             {user?.email === 'koteshbitra789@gmail.com' && (
                                 <>
@@ -1235,6 +1249,19 @@ export default function TTRAIChat() {
                             </div>
                         </div>
                         <div className="sidebar-footer">
+                            <button
+                                onClick={() => navigate('/roadmap')}
+                                style={{
+                                    width: '100%', padding: '8px', borderRadius: '10px',
+                                    background: 'rgba(139, 92, 246, 0.1)', color: '#a78bfa',
+                                    border: '1px solid rgba(139, 92, 246, 0.2)', cursor: 'pointer',
+                                    marginBottom: '15px', fontSize: '12px', display: 'flex',
+                                    alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                    transition: 'all 0.2s ease', fontWeight: 'bold'
+                                }}
+                            >
+                                <span>🎗️</span> Platform Evolution
+                            </button>
                             <small style={{ color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px', display: 'block', textAlign: 'center' }}>Theme Gallery</small>
                             <div className="theme-selector-mini" onClick={() => setShowThemeGallery(true)}>
                                 <div className="theme-dot dark"></div>
