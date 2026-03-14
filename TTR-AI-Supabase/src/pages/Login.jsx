@@ -111,7 +111,7 @@ export default function Login() {
                     <div className="brand-icon">
                         <img src={logo} alt="TTR" className="logo" style={{ height: '40px', width: 'auto', objectFit: 'contain' }} />
                     </div>
-                    <h1 className="brand-title">TTR AI</h1>
+                    <h1 className="brand-title">TTRAI</h1>
                     <p className="brand-subtitle">Your Intelligent Learning Companion</p>
                 </div>
 
@@ -119,7 +119,7 @@ export default function Login() {
                 <div className="login-card">
                     <div className="card-header">
                         <h2>{isLogin ? 'Welcome Back' : 'Create Account'}</h2>
-                        <p>{isLogin ? 'Sign in to continue your conversation' : 'Join TTR AI today'}</p>
+                        <p>{isLogin ? 'Sign in to continue your conversation' : 'Join TTRAI today'}</p>
                     </div>
 
                     {error && (

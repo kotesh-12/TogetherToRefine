@@ -139,7 +139,7 @@ const removeSafeStorage = (key, useSession = false) => {
 
 // The main view exported for the application
 // Moved outside to avoid infinite re-renders
-const WELCOME_MSG_CONSTANT = { text: "Hello! I'm **TTR AI** 🧠 — your intelligent learning companion.\n\nAsk me anything about academics, coding, science, math, or just have a conversation!", sender: 'ai' };
+const WELCOME_MSG_CONSTANT = { text: "Hello! I'm **TTRAI** 🧠 — your intelligent learning companion.\n\nAsk me anything about academics, coding, science, math, or just have a conversation!", sender: 'ai' };
 
 /* ──────────────── Main Chat Page ──────────────── */
 export default function TTRAIChat() {
@@ -852,7 +852,7 @@ export default function TTRAIChat() {
         const pdf = new jsPDF('p', 'mm', 'a4');
         pdf.setFontSize(22);
         pdf.setTextColor(139, 92, 246); // TTR Accent
-        pdf.text("TTR AI Premium Document", 20, 20);
+        pdf.text("TTRAI Premium Document", 20, 20);
 
         pdf.setFontSize(12);
         pdf.setTextColor(40, 40, 40);
@@ -868,7 +868,7 @@ export default function TTRAIChat() {
             pdf.text(splitText[i], 20, y);
             y += 7; // Line spacing
         }
-        pdf.save(`TTR_Doc_${Date.now()}.pdf`);
+        pdf.save(`TTRAI_Doc_${Date.now()}.pdf`);
     };
 
     const exportMessageAsPPT = async (msgText) => {
@@ -876,11 +876,11 @@ export default function TTRAIChat() {
         try {
             const pres = new pptxgen();
             pres.layout = 'LAYOUT_16x9';
-            pres.author = 'TTR AI';
+            pres.author = 'TTRAI';
 
             let slide1 = pres.addSlide();
             slide1.background = { color: 'FFFFFF' };
-            slide1.addText('TTR AI Presentation', { x: 1, y: 1.5, w: '100%', h: 1.5, fontSize: 44, color: '000000', align: 'center', bold: true });
+            slide1.addText('TTRAI Presentation', { x: 1, y: 1.5, w: '100%', h: 1.5, fontSize: 44, color: '000000', align: 'center', bold: true });
 
             // Clean up the entire text before splitting to avoid markdown artifacts breaking the parser
             let cleanMsg = msgText.replace(/\*\*/g, '').replace(/__/g, '').replace(/###/g, '').replace(/##/g, '');
@@ -956,7 +956,7 @@ export default function TTRAIChat() {
             // Wait until ALL slides have resolved
             await Promise.all(slidePromises);
 
-            await pres.writeFile({ fileName: `TTR_AI_Enterprise_PPT_${Date.now()}.pptx` });
+            await pres.writeFile({ fileName: `TTRAI_Enterprise_PPT_${Date.now()}.pptx` });
         } catch (error) {
             console.error('PPTX Generation Failed:', error);
             alert('Failed to generate visual presentation. Formatting was too complex.');
@@ -972,7 +972,7 @@ export default function TTRAIChat() {
         }
         try {
             const exportData = messages.filter(m => m.text).map(msg => ({
-                Sender: msg.sender === 'ai' ? 'TTR AI' : 'You',
+                Sender: msg.sender === 'ai' ? 'TTRAI' : 'You',
                 Message: msg.text,
                 Time: new Date().toLocaleString()
             }));
@@ -980,7 +980,7 @@ export default function TTRAIChat() {
             const worksheet = XLSX.utils.json_to_sheet(exportData);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Chat History");
-            XLSX.writeFile(workbook, `TTR_AI_Chat_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`);
+            XLSX.writeFile(workbook, `TTRAI_Chat_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`);
         } catch (err) {
             console.error(err);
             alert('Failed to export Excel.');
@@ -1265,7 +1265,7 @@ export default function TTRAIChat() {
                     </button>
                     <div className="header-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <img src={logo} alt="TTR" style={{ height: '32px', width: 'auto', display: 'block', marginRight: '6px' }} />
-                        <span style={{ fontSize: '18px', fontWeight: 'bold' }}>TTR AI</span>
+                        <span style={{ fontSize: '18px', fontWeight: 'bold' }}>TTRAI</span>
                     </div>
                     <div className="header-actions">
                         <button
@@ -1648,7 +1648,7 @@ export default function TTRAIChat() {
                                 adjustHeight();
                             }}
                             onKeyDown={handleKeyDown}
-                            placeholder="Ask TTR AI anything..."
+                            placeholder="Ask TTRAI anything..."
                             rows="1"
                             disabled={loading}
                         />
@@ -1671,7 +1671,7 @@ export default function TTRAIChat() {
                             onStop={handleStop}
                         />
                     </div>
-                    <p className="input-hint">TTR AI can make mistakes. Verify important information.</p>
+                    <p className="input-hint">TTRAI can make mistakes. Verify important information.</p>
                 </div>
             </div>
 

@@ -14,8 +14,8 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB limit for PWA precache
       },
       manifest: {
-        name: 'TTR AI - Together To Refine',
-        short_name: 'TTR AI',
+        name: 'TTRAI - Together To Refine',
+        short_name: 'TTRAI',
         description: 'TTR AI - Your Intelligent Learning Companion. AI-powered study tools, quizzes, and document analysis.',
         theme_color: '#0f0f14',
         background_color: '#0f0f14',

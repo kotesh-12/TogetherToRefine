@@ -42,11 +42,19 @@ dependencies {
     implementation project(':capacitor-cordova-android-plugins')
 }
 
+configurations.all {
+    resolutionStrategy.eachDependency { DependencyResolveDetails details ->
+        if (details.requested.group == 'org.jetbrains.kotlin' && details.requested.name.startsWith('kotlin-stdlib-jdk')) {
+            details.useTarget "org.jetbrains.kotlin:kotlin-stdlib:${details.requested.version}"
+        }
+    }
+}
+
 apply from: 'capacitor.build.gradle'
 
 try {
     def servicesJSON = file('google-services.json')
-    if (servicesJSON.text) {
+    if (servicesJSON.exists()) {
         apply plugin: 'com.google.gms.google-services'
     }
 } catch(Exception e) {
