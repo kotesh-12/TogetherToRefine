@@ -69,8 +69,8 @@ const Leaderboard = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                         <img src={logo} alt="TTR" style={{ height: '40px' }} />
                         <div>
-                            <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>Hall of Mastery</h1>
-                            <p style={{ fontSize: '12px', color: '#a78bfa', margin: 0 }}>Celebrating the growth of every Seeker</p>
+                            <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>Dharma Hall</h1>
+                            <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>Registry of Disciplined Seekers</p>
                         </div>
                     </div>
                     <button 
@@ -84,22 +84,22 @@ const Leaderboard = () => {
                             cursor: 'pointer'
                         }}
                     >
-                        Return to Gurukul
+                        Back to Work
                     </button>
                 </header>
 
                 <div style={{ 
                     padding: '30px', 
                     borderRadius: '20px', 
-                    background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(37, 99, 235, 0.1))',
-                    border: '1px solid rgba(139, 92, 246, 0.2)',
+                    background: 'rgba(30, 30, 40, 0.4)',
+                    border: '1px solid rgba(255, 255, 255, 0.05)',
                     marginBottom: '40px',
                     textAlign: 'center'
                 }}>
-                    <div style={{ fontSize: '14px', color: '#a78bfa', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '2px' }}>Your Wisdom Progress</div>
+                    <div style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '2px' }}>Current Discipline Level</div>
                     <div style={{ fontSize: '48px', fontWeight: 'bold', color: '#fff' }}>{userXP} XP</div>
-                    <div style={{ fontSize: '16px', color: '#94a3b8' }}>Honorable Title: {userXP > 2000 ? 'Grandmaster' : (userXP > 1000 ? 'Sage' : 'Seeker')}</div>
-                    <p style={{ fontSize: '13px', color: '#64748b', marginTop: '10px' }}>"Every step in knowledge is a victory for the soul."</p>
+                    <div style={{ fontSize: '16px', color: '#64748b' }}>Designation: {userXP > 2000 ? 'Grandmaster' : (userXP > 1000 ? 'Sage' : 'Seeker')}</div>
+                    <p style={{ fontSize: '13px', color: '#475569', marginTop: '10px' }}>"Knowledge without discipline is a weight. Carry it with focus."</p>
                 </div>
 
                 <div className="leaderboard-card" style={{
@@ -110,9 +110,9 @@ const Leaderboard = () => {
                 }}>
                     <div style={{ padding: '20px', background: 'rgba(255,255,255,0.02)', display: 'grid', gridTemplateColumns: '50px 1fr 100px 120px', fontWeight: 'bold', color: '#94a3b8', fontSize: '14px' }}>
                         <span>Step</span>
-                        <span>Seeker Name</span>
-                        <span style={{ textAlign: 'right' }}>Wisdom XP</span>
-                        <span style={{ textAlign: 'right' }}>Path Title</span>
+                        <span>Seeker</span>
+                        <span style={{ textAlign: 'right' }}>Dharma XP</span>
+                        <span style={{ textAlign: 'right' }}>Designation</span>
                     </div>
 
                     {leaders.map((leader, index) => (
@@ -125,7 +125,7 @@ const Leaderboard = () => {
                                 gridTemplateColumns: '50px 1fr 100px 120px',
                                 alignItems: 'center',
                                 borderTop: '1px solid rgba(255,255,255,0.03)',
-                                background: leader.name.includes('Kotesh') ? 'rgba(139, 92, 246, 0.1)' : 'transparent'
+                                background: leader.name.includes('Kotesh') ? 'rgba(139, 92, 246, 0.05)' : 'transparent'
                             }}
                         >
                             <span style={{ 
@@ -133,14 +133,14 @@ const Leaderboard = () => {
                                 fontWeight: 'bold', 
                                 color: index === 0 ? '#fbbf24' : (index === 1 ? '#94a3b8' : (index === 2 ? '#b45309' : '#475569'))
                             }}>{index + 1}</span>
-                            <span style={{ fontWeight: '600' }}>{leader.name}</span>
+                            <span style={{ fontWeight: '600', color: '#e8e8f0' }}>{leader.name}</span>
                             <span style={{ textAlign: 'right', color: '#60a5fa', fontWeight: 'bold' }}>{leader.xp.toLocaleString()}</span>
                             <span style={{ textAlign: 'right', fontSize: '12px' }}>
                                 <span style={{ 
-                                    background: 'rgba(96, 165, 250, 0.1)', 
+                                    background: 'rgba(255, 255, 255, 0.05)', 
                                     padding: '4px 8px', 
                                     borderRadius: '4px', 
-                                    color: '#60a5fa' 
+                                    color: '#94a3b8' 
                                 }}>
                                     {leader.title}
                                 </span>
@@ -149,10 +149,9 @@ const Leaderboard = () => {
                     ))}
                 </div>
 
-                <div style={{ marginTop: '40px', textAlign: 'center', color: '#94a3b8', fontSize: '14px', lineHeight: '1.6' }}>
-                    <p>"This hall is not for battle, but for inspiration. <br/>
-                    Seeing others rise encourages us all to reach higher levels of understanding."</p>
-                    <small style={{ color: '#64748b' }}>Updates with every profound realization.</small>
+                <div style={{ marginTop: '40px', textAlign: 'center', color: '#64748b', fontSize: '14px', lineHeight: '1.6' }}>
+                    <p>Steady progress is the only indicator of true intent. <br/>
+                    The hall documents those who maintain consistency in their pursuit.</p>
                 </div>
             </div>
         </div>
