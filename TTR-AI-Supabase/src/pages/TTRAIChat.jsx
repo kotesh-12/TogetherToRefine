@@ -1121,22 +1121,22 @@ export default function TTRAIChat() {
                     <span>+</span> New Chat
                 </button>
 
-                <div style={{ display: 'flex', gap: '8px', padding: '0 20px', marginBottom: '15px' }}>
-                    <button onClick={exportChatAsPDF} style={{ flex: 1, padding: '8px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px dashed rgba(239, 68, 68, 0.3)', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+                <div style={{ display: 'flex', gap: '6px', padding: '0 10px', marginBottom: '8px' }}>
+                    <button onClick={exportChatAsPDF} style={{ flex: 1, padding: '5px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px dashed rgba(239, 68, 68, 0.3)', borderRadius: '8px', cursor: 'pointer', fontSize: '10px', fontWeight: 'bold' }}>
                         📄 PDF
                     </button>
-                    <button onClick={exportChatAsExcel} style={{ flex: 1, padding: '8px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px dashed rgba(16, 185, 129, 0.3)', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+                    <button onClick={exportChatAsExcel} style={{ flex: 1, padding: '5px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px dashed rgba(16, 185, 129, 0.3)', borderRadius: '8px', cursor: 'pointer', fontSize: '10px', fontWeight: 'bold' }}>
                         📊 Excel
                     </button>
                 </div>
 
                 {/* Dharma XP Stat */}
-                <div className="dharma-xp-stat" style={{ padding: '15px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', margin: '0 20px 15px 20px', border: '1px solid rgba(255, 215, 0, 0.2)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '11px', color: '#ffd700', fontWeight: 'bold' }}>🕉️ DHARMA XP</span>
-                        <span style={{ fontSize: '11px', color: '#fff' }}>{dharmaXP} PTS</span>
+                <div className="dharma-xp-stat" style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', margin: '0 10px 8px 10px', border: '1px solid rgba(255, 215, 0, 0.2)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                        <span style={{ fontSize: '10px', color: '#ffd700', fontWeight: 'bold' }}>🕉️ DHARMA XP</span>
+                        <span style={{ fontSize: '10px', color: '#fff' }}>{dharmaXP} PTS</span>
                     </div>
-                    <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px', overflow: 'hidden' }}>
+                    <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px', overflow: 'hidden' }}>
                         <div style={{ width: `${Math.min((dharmaXP % 1000) / 10, 100)}%`, height: '100%', background: 'linear-gradient(90deg, #ffd700, #ff8c00)', borderRadius: '10px' }} />
                     </div>
                 </div>
@@ -1173,10 +1173,10 @@ export default function TTRAIChat() {
                             <button
                                 onClick={() => navigate('/pricing')}
                                 style={{
-                                    width: '100%', padding: '10px', borderRadius: '10px',
+                                    width: '100%', padding: '6px', borderRadius: '8px',
                                     background: 'linear-gradient(90deg, #bb86fc, #8b5cf6)', color: '#fff',
                                     border: 'none', cursor: 'pointer',
-                                    marginBottom: '10px', fontSize: '13px', display: 'flex',
+                                    marginBottom: '6px', fontSize: '11px', display: 'flex',
                                     alignItems: 'center', justifyContent: 'center', gap: '8px',
                                     fontWeight: 'bold', boxShadow: '0 4px 10px rgba(139, 92, 246, 0.3)',
                                     transition: 'transform 0.2s',
@@ -1189,10 +1189,10 @@ export default function TTRAIChat() {
                                 className="download-sidebar-btn"
                                 onClick={() => navigate('/download-app')}
                                 style={{
-                                    width: '100%', padding: '10px', borderRadius: '10px',
+                                    width: '100%', padding: '6px', borderRadius: '8px',
                                     background: 'rgba(255,255,255,0.05)', color: '#fff',
                                     border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer',
-                                    marginBottom: '10px', fontSize: '13px', display: 'flex',
+                                    marginBottom: '6px', fontSize: '11px', display: 'flex',
                                     alignItems: 'center', justifyContent: 'center', gap: '8px',
                                     transition: 'all 0.2s ease'
                                 }}

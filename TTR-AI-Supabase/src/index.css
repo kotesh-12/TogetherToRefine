@@ -583,11 +583,11 @@ a:hover {
 /* ──────────────── Theme Selector ──────────────── */
 .theme-selector-mini {
   display: flex;
-  gap: 12px;
-  padding: 12px;
+  gap: 8px;
+  padding: 6px 10px;
   background: var(--bg-tertiary);
   border-radius: var(--radius);
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   justify-content: center;
   border: 1px solid var(--border);
   cursor: pointer;
@@ -604,18 +604,18 @@ a:hover {
   color: white;
   border: none;
   border-radius: 50%;
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 12px;
   box-shadow: 0 0 10px var(--accent-glow);
 }
 
 .theme-dot {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   border: 2px solid transparent;
   transition: var(--transition);
@@ -690,12 +690,12 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 18px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--border);
 }
 
 .sidebar-header h3 {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
 }
 
@@ -717,13 +717,13 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 12px 14px;
-  padding: 10px 16px;
+  margin: 10px 14px;
+  padding: 8px 14px;
   background: var(--accent-glow);
   border: 1px dashed var(--accent);
   border-radius: var(--radius-sm);
   color: var(--accent);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
@@ -757,7 +757,7 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
+  padding: 8px 10px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: var(--transition);
@@ -774,7 +774,7 @@ a:hover {
 }
 
 .session-title {
-  font-size: 13px;
+  font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -789,11 +789,11 @@ a:hover {
 }
 
 .sidebar-footer {
-  padding: 16px;
+  padding: 12px;
   border-top: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .user-info {
@@ -826,12 +826,12 @@ a:hover {
 
 .logout-btn {
   width: 100%;
-  padding: 8px;
+  padding: 6px;
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.2);
   border-radius: var(--radius-sm);
   color: #fca5a5;
-  font-size: 13px;
+  font-size: 12px;
   font-family: inherit;
   cursor: pointer;
   transition: var(--transition);
@@ -856,11 +856,11 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 8px 16px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
-  height: 60px; /* Fixed header height */
+  height: 52px; /* Fixed header height reduced */
   z-index: 10;
 }
 
@@ -1150,8 +1150,8 @@ a:hover {
 
 /* ── Input Area ── */
 .input-area {
-  padding: 12px 16px;
-  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  padding: 10px 16px;
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--border);
   background: var(--bg-secondary);
   flex-shrink: 0;
@@ -1285,9 +1285,9 @@ a:hover {
 
 .input-hint {
   text-align: center;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-muted);
-  margin-top: 8px;
+  margin-top: 4px;
   max-width: 820px;
   margin-left: auto;
   margin-right: auto;
