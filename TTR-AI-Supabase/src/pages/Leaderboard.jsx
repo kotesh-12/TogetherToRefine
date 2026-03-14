@@ -68,7 +68,10 @@ const Leaderboard = () => {
                 <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '50px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                         <img src={logo} alt="TTR" style={{ height: '40px' }} />
-                        <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>Gurukul Leaderboard</h1>
+                        <div>
+                            <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>Hall of Mastery</h1>
+                            <p style={{ fontSize: '12px', color: '#a78bfa', margin: 0 }}>Celebrating the growth of every Seeker</p>
+                        </div>
                     </div>
                     <button 
                         onClick={() => navigate('/')}
@@ -93,9 +96,10 @@ const Leaderboard = () => {
                     marginBottom: '40px',
                     textAlign: 'center'
                 }}>
-                    <div style={{ fontSize: '14px', color: '#a78bfa', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '2px' }}>Your Current Standing</div>
+                    <div style={{ fontSize: '14px', color: '#a78bfa', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '2px' }}>Your Wisdom Progress</div>
                     <div style={{ fontSize: '48px', fontWeight: 'bold', color: '#fff' }}>{userXP} XP</div>
-                    <div style={{ fontSize: '16px', color: '#94a3b8' }}>Title: {userXP > 2000 ? 'Grandmaster' : (userXP > 1000 ? 'Sage' : 'Seeker')}</div>
+                    <div style={{ fontSize: '16px', color: '#94a3b8' }}>Honorable Title: {userXP > 2000 ? 'Grandmaster' : (userXP > 1000 ? 'Sage' : 'Seeker')}</div>
+                    <p style={{ fontSize: '13px', color: '#64748b', marginTop: '10px' }}>"Every step in knowledge is a victory for the soul."</p>
                 </div>
 
                 <div className="leaderboard-card" style={{
@@ -105,10 +109,10 @@ const Leaderboard = () => {
                     border: '1px solid rgba(255,255,255,0.05)'
                 }}>
                     <div style={{ padding: '20px', background: 'rgba(255,255,255,0.02)', display: 'grid', gridTemplateColumns: '50px 1fr 100px 120px', fontWeight: 'bold', color: '#94a3b8', fontSize: '14px' }}>
-                        <span>Rank</span>
-                        <span>Name</span>
-                        <span style={{ textAlign: 'right' }}>XP</span>
-                        <span style={{ textAlign: 'right' }}>Title</span>
+                        <span>Step</span>
+                        <span>Seeker Name</span>
+                        <span style={{ textAlign: 'right' }}>Wisdom XP</span>
+                        <span style={{ textAlign: 'right' }}>Path Title</span>
                     </div>
 
                     {leaders.map((leader, index) => (
@@ -145,8 +149,10 @@ const Leaderboard = () => {
                     ))}
                 </div>
 
-                <div style={{ marginTop: '30px', textAlign: 'center', color: '#64748b', fontSize: '12px' }}>
-                    Leaderboard updates every time you complete a profound learning session.
+                <div style={{ marginTop: '40px', textAlign: 'center', color: '#94a3b8', fontSize: '14px', lineHeight: '1.6' }}>
+                    <p>"This hall is not for battle, but for inspiration. <br/>
+                    Seeing others rise encourages us all to reach higher levels of understanding."</p>
+                    <small style={{ color: '#64748b' }}>Updates with every profound realization.</small>
                 </div>
             </div>
         </div>
