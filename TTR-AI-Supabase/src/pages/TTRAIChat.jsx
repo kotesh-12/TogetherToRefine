@@ -229,7 +229,20 @@ export default function TTRAIChat() {
     const [dharmaXP, setDharmaXP] = useState(() => Number(getSafeStorage('ttr_dharma_xp', '0')) || 0);
     useEffect(() => {
         setSafeStorage('ttr_dharma_xp', dharmaXP);
-    }, [dharmaXP]);
+        
+        // Background Sync to Supabase
+        if (user && !incognitoMode) {
+            supabase.from('profiles').upsert({ 
+                id: user.id, 
+                dharma_xp: dharmaXP,
+                email: user.email,
+                name: user.user_metadata?.name || user.email.split('@')[0],
+                updated_at: new Date()
+            }).then(({ error }) => {
+                if (error) console.log("XP Sync: Profile table sync deferred (Schema might be missing)");
+            });
+        }
+    }, [dharmaXP, user, incognitoMode]);
 
     // Active Recall State (Suggestion 5)
     const [recallSubject, setRecallSubject] = useState(() => getSafeStorage('ttr_recall_subject', ''));
@@ -427,6 +440,7 @@ export default function TTRAIChat() {
     const [motherTongue, setMotherTongue] = useState('Hindi');
 
     const [showLangMenu, setShowLangMenu] = useState(false);
+    const [autoSpeak, setAutoSpeak] = useState(() => getSafeStorage('ttr_auto_speak', 'false') === 'true');
     const { speak, listen, isListening, speakingText } = useSpeech();
 
     const handleMicClick = useCallback(() => {
@@ -437,7 +451,7 @@ export default function TTRAIChat() {
         }
         listen((text) => {
             setInput(prev => (prev + ' ' + text).trim());
-        }, lang);
+        }, lang, true);
     }, [fourWayMode, motherTongue, listen]);
 
     // Set welcome message on mount and remove root loader
@@ -772,6 +786,13 @@ export default function TTRAIChat() {
             if (user && sessionId && !incognitoMode) {
                 await saveMessage(responseText, 'assistant', sessionId);
                 loadSessions();
+            }
+
+            // Auto-Speak (Suggestion 3)
+            if (autoSpeak) {
+                const langCode = fourWayMode === 'teaching' ? 
+                    ({'Hindi': 'hi-IN', 'Telugu': 'te-IN', 'Tamil': 'ta-IN'}[motherTongue] || 'en-US') : 'en-US';
+                speak(responseText, langCode, currentPath || 'default');
             }
 
             // Update Active Recall (Suggestion 5)
@@ -1152,7 +1173,14 @@ export default function TTRAIChat() {
                 </div>
 
                 {/* Dharma XP Stat */}
-                <div className="dharma-xp-stat" style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', margin: '0 10px 8px 10px', border: '1px solid rgba(255, 215, 0, 0.2)' }}>
+                <div className="dharma-xp-stat" onClick={() => navigate('/leaderboard')} style={{ 
+                    padding: '8px 12px', 
+                    background: 'rgba(255,255,255,0.05)', 
+                    borderRadius: '10px', 
+                    margin: '0 10px 8px 10px', 
+                    border: '1px solid rgba(255, 215, 0, 0.2)',
+                    cursor: 'pointer'
+                }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                         <span style={{ fontSize: '10px', color: '#ffd700', fontWeight: 'bold' }}>🕉️ DHARMA XP</span>
                         <span style={{ fontSize: '10px', color: '#fff' }}>{dharmaXP} PTS</span>
@@ -1254,6 +1282,20 @@ export default function TTRAIChat() {
                             </button>
 
                             <button
+                                onClick={() => navigate('/leaderboard')}
+                                style={{
+                                    width: '100%', padding: '6px', borderRadius: '8px',
+                                    background: 'rgba(251, 191, 36, 0.05)', color: '#fbbf24',
+                                    border: '1px solid rgba(251, 191, 36, 0.2)', cursor: 'pointer',
+                                    marginBottom: '6px', fontSize: '11px', display: 'flex',
+                                    alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                <span>🏆</span> Gurukul Leaderboard
+                            </button>
+
+                            <button
                                 onClick={() => navigate('/roadmap')}
                                 style={{
                                     width: '100%', padding: '6px', borderRadius: '8px',
@@ -1265,6 +1307,25 @@ export default function TTRAIChat() {
                                 }}
                             >
                                 <span>🎗️</span> Platform Evolution
+                            </button>
+
+                            <button
+                                onClick={() => {
+                                    const next = !autoSpeak;
+                                    setAutoSpeak(next);
+                                    setSafeStorage('ttr_auto_speak', next.toString());
+                                }}
+                                style={{
+                                    width: '100%', padding: '6px', borderRadius: '8px',
+                                    background: autoSpeak ? 'rgba(34, 197, 94, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+                                    color: autoSpeak ? '#4ade80' : '#94a3b8',
+                                    border: `1px solid ${autoSpeak ? 'rgba(34, 197, 94, 0.3)' : 'rgba(255, 255, 255, 0.1)'}`,
+                                    cursor: 'pointer', marginBottom: '6px', fontSize: '11px', display: 'flex',
+                                    alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                <span>{autoSpeak ? '🔊' : '🔈'}</span> {autoSpeak ? 'Hands-free Guru ON' : 'Enable Voice Guru'}
                             </button>
 
                             {/* Admin-Only Section — visible only to koteshbitra789@gmail.com */}
