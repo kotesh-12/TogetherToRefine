@@ -138,6 +138,9 @@ const removeSafeStorage = (key, useSession = false) => {
 };
 
 // The main view exported for the application
+// Moved outside to avoid infinite re-renders
+const WELCOME_MSG_CONSTANT = { text: "Hello! I'm **TTR AI** 🧠 — your intelligent learning companion.\n\nAsk me anything about academics, coding, science, math, or just have a conversation!", sender: 'ai' };
+
 /* ──────────────── Main Chat Page ──────────────── */
 export default function TTRAIChat() {
     const { user, signOut } = useAuth();
@@ -430,12 +433,9 @@ export default function TTRAIChat() {
         }, lang);
     }, [fourWayMode, motherTongue, listen]);
 
-    // Welcome message
-    const WELCOME_MSG = { text: "Hello! I'm **TTR AI** 🧠 — your intelligent learning companion.\n\nAsk me anything about academics, coding, science, math, or just have a conversation!", sender: 'ai' };
-
     // Set welcome message on mount and remove root loader
     useEffect(() => {
-        setMessages([WELCOME_MSG]);
+        setMessages([WELCOME_MSG_CONSTANT]);
         
         // Remove the initial loading screen from index.html
         const loader = document.getElementById('root-loading');
@@ -447,7 +447,7 @@ export default function TTRAIChat() {
                 if (el) el.remove();
             }, 500);
         }
-    }, [WELCOME_MSG]);
+    }, []);
 
     /* ── Load all sessions ── */
     const loadSessions = useCallback(async () => {
