@@ -145,9 +145,12 @@ const WELCOME_MSG_CONSTANT = { text: "Hello! I'm **TTRAI** 🧠 — your intelli
 export default function TTRAIChat() {
     const { user, signOut } = useAuth();
     const navigate = useNavigate();
+    const { sessionId: nexusSessionId } = useParams();
+    const location = useLocation();
 
     // Chat state
     const [messages, setMessages] = useState([]);
+    const [activeModule, setActiveModule] = useState(location.state?.activeModule || null);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
     const messagesEndRef = useRef(null);
@@ -227,6 +230,10 @@ export default function TTRAIChat() {
     useEffect(() => {
         setSafeStorage('ttr_dharma_xp', dharmaXP);
     }, [dharmaXP]);
+
+    // Active Recall State (Suggestion 5)
+    const [recallSubject, setRecallSubject] = useState(() => getSafeStorage('ttr_recall_subject', ''));
+    const [lastStudyTime, setLastStudyTime] = useState(() => Number(getSafeStorage('ttr_last_study', '0')));
 
     // Initialize mermaid on mount
     useEffect(() => {
@@ -435,7 +442,12 @@ export default function TTRAIChat() {
 
     // Set welcome message on mount and remove root loader
     useEffect(() => {
-        setMessages([WELCOME_MSG_CONSTANT]);
+        if (nexusSessionId) {
+            setCurrentSessionId(nexusSessionId);
+            setMessages([]); // Will be populated by loadMessages
+        } else {
+            setMessages([WELCOME_MSG_CONSTANT]);
+        }
         
         // Remove the initial loading screen from index.html
         const loader = document.getElementById('root-loading');
@@ -698,6 +710,7 @@ export default function TTRAIChat() {
                     fourWayMode: fourWayMode,
                     motherTongue: fourWayMode === 'teaching' ? motherTongue : null,
                     isDebugMode: shouldDebug, // Signal to AI to focus on debugging
+                    activeModule: activeModule // Suggestion 2
                 },
                 image: (imgData && !hasDocs) ? imgData.split(',')[1] : null,
                 mimeType: (imgData && !hasDocs) ? imgData.match(/:(.*?);/)?.[1] : null,
@@ -756,10 +769,18 @@ export default function TTRAIChat() {
             };
             setMessages(prev => [...prev, aiMsg]);
 
-            // Save AI response (only if logged in and NOT incognito)
             if (user && sessionId && !incognitoMode) {
                 await saveMessage(responseText, 'assistant', sessionId);
                 loadSessions();
+            }
+
+            // Update Active Recall (Suggestion 5)
+            if (text && text.length > 5) {
+                const subject = text.substring(0, 20);
+                setRecallSubject(subject);
+                setLastStudyTime(Date.now());
+                setSafeStorage('ttr_recall_subject', subject);
+                setSafeStorage('ttr_last_study', Date.now().toString());
             }
 
         } catch (err) {
@@ -1200,6 +1221,38 @@ export default function TTRAIChat() {
                                 <span>📲</span> Download App
                             </button>
 
+                            {/* Active Recall Nudge (Suggestion 5) */}
+                            {recallSubject && Date.now() - lastStudyTime > 3600000 && (
+                                <div style={{
+                                    margin: '10px 0', padding: '12px', borderRadius: '12px',
+                                    background: 'linear-gradient(135deg, rgba(167, 139, 250, 0.1), rgba(139, 92, 246, 0.1))',
+                                    border: '1px solid rgba(167, 139, 250, 0.2)', boxShadow: '0 0 15px rgba(139, 92, 246, 0.1)'
+                                }}>
+                                    <div style={{ fontSize: '10px', color: '#a78bfa', fontWeight: 'bold', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>⚡ Active Recall</div>
+                                    <div style={{ fontSize: '11px', color: '#e8e8f0', marginBottom: '8px', lineHeight: '1.4' }}>Seeker, it's time to test your memory on "{recallSubject}".</div>
+                                    <button 
+                                        onClick={() => { setInput(`/quiz on ${recallSubject}`); setTimeout(() => handleSend(), 100); }}
+                                        style={{ width: '100%', padding: '6px', borderRadius: '6px', background: '#8b5cf6', color: 'white', border: 'none', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}
+                                    >
+                                        Start Recap (+20 Dharma XP)
+                                    </button>
+                                </div>
+                            )}
+
+                            <button
+                                onClick={() => navigate('/intelligence-hub')}
+                                style={{
+                                    width: '100%', padding: '6px', borderRadius: '8px',
+                                    background: 'rgba(59, 130, 246, 0.05)', color: '#60a5fa',
+                                    border: '1px solid rgba(59, 130, 246, 0.2)', cursor: 'pointer',
+                                    marginBottom: '6px', fontSize: '11px', display: 'flex',
+                                    alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                <span>🔱</span> Intelligence Hub
+                            </button>
+
                             <button
                                 onClick={() => navigate('/roadmap')}
                                 style={{
@@ -1292,7 +1345,15 @@ export default function TTRAIChat() {
                     </button>
                     <div className="header-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <img src={logo} alt="TTR" style={{ height: '32px', width: 'auto', display: 'block', marginRight: '6px' }} />
-                        <span style={{ fontSize: '18px', fontWeight: 'bold' }}>TTRAI</span>
+                        <span style={{ fontSize: '18px', fontWeight: 'bold' }}>{activeModule ? activeModule.replace('_', ' ').toUpperCase() : 'TTRAI'}</span>
+                        {activeModule && (
+                            <button 
+                                onClick={() => setActiveModule(null)}
+                                style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)', fontSize: '10px', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer' }}
+                            >
+                                EXIT ARENA
+                            </button>
+                        )}
                     </div>
                     <div className="header-actions">
                         <button
@@ -1308,6 +1369,19 @@ export default function TTRAIChat() {
                             title="Choose AI Experience Path"
                         >
                             {currentPath && activeHeroes[currentPath] ? activeHeroes[currentPath].emoji : '🎗️'}
+                        </button>
+                        <button
+                            className="path-header-btn"
+                            disabled={!currentSessionId}
+                            onClick={() => {
+                                if (!currentSessionId) return;
+                                const shareUrl = `${window.location.origin}${window.location.pathname}#/nexus/${currentSessionId}`;
+                                navigator.clipboard.writeText(shareUrl);
+                                alert("Nexus Link copied! Share this with other Seekers to collaborate.");
+                            }}
+                            title="Study Nexus — Share with Seekers"
+                        >
+                            🤝
                         </button>
                         <button
                             className={`path-header-btn incognito-btn ${incognitoMode ? 'active' : ''}`}

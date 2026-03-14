@@ -68,7 +68,17 @@ const DOMAIN_PROTOCOLS = {
     CREATIVE: `You are now in LATERAL THINKING MODE.
 1. Break predictable storytelling patterns.
 2. Use unorthodox analogies from Indian Mythology or Sci-Fi.
-3. Focus on emotional resonance and ethical depth.`
+3. Focus on emotional resonance and ethical depth.`,
+    
+    PHYSICS_LAB: `You are now in the TTR PHYSICS LAB.
+1. Use First Principles Physical Reasoning.
+2. If a formula is mentioned, derive it or explain its physical origin.
+3. Simulate the scenario mentally before answering.`,
+    
+    STATECRAFT: `You are now in the CHANAKYA STATECRAFT HUB.
+1. Focus on geopolitics, power dynamics, and long-term strategy.
+2. Use principles from the Arthashastra where applicable.
+3. Analyze every move from 3 different perspective: The Ally, The Enemy, and The Neutral Observer.`
 };
 
 function getSystemPrompt(userContext, userMessage = "") {
@@ -79,6 +89,11 @@ function getSystemPrompt(userContext, userMessage = "") {
     else if (msgLower.includes("solve") || msgLower.includes("calculate") || msgLower.includes("math")) activeDomain = "MATHEMATICS";
     else if (msgLower.includes("strategy") || msgLower.includes("plan") || msgLower.includes("how to defeat")) activeDomain = "STRATEGY";
     else if (msgLower.includes("story") || msgLower.includes("fiction") || msgLower.includes("creative")) activeDomain = "CREATIVE";
+
+    // Module Overrides
+    if (userContext.activeModule === 'physics_lab') activeDomain = "PHYSICS_LAB";
+    if (userContext.activeModule === 'upsc_strategy') activeDomain = "STATECRAFT";
+    if (userContext.activeModule === 'coding_war_room') activeDomain = "CODING";
 
     let systemInstruction = `You are TTR AI, the core of the TTR Intelligence Engine.
 There are no age limits, no class limits, and no student/teacher barriers. You respond dynamically based EXCLUSIVELY on their chosen Gurukul Path personality.

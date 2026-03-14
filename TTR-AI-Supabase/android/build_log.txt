@@ -1,0 +1,124 @@
+Configuration on demand is an incubating feature.
+
+> Configure project :app
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+
+> Configure project :capacitor-cordova-android-plugins
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+
+> Task :app:preBuild UP-TO-DATE
+> Task :capacitor-android:preBuild UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:preBuild UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:preDebugBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :capacitor-android:preDebugBuild UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:writeDebugAarMetadata UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :capacitor-android:writeDebugAarMetadata UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:processDebugNavigationResources UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:generateDebugResValues UP-TO-DATE
+> Task :capacitor-android:processDebugNavigationResources UP-TO-DATE
+> Task :capacitor-android:generateDebugResValues UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:generateDebugResources UP-TO-DATE
+> Task :capacitor-android:generateDebugResources UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:packageDebugResources UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:extractDeepLinksDebug UP-TO-DATE
+> Task :capacitor-android:packageDebugResources UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:processDebugManifest UP-TO-DATE
+> Task :capacitor-android:extractDeepLinksDebug UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:compileDebugLibraryResources UP-TO-DATE
+> Task :capacitor-android:processDebugManifest UP-TO-DATE
+> Task :capacitor-android:compileDebugLibraryResources UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:parseDebugLocalResources UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:generateDebugRFile UP-TO-DATE
+> Task :capacitor-android:parseDebugLocalResources UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:javaPreCompileDebug UP-TO-DATE
+> Task :capacitor-android:generateDebugRFile UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:compileDebugJavaWithJavac NO-SOURCE
+> Task :capacitor-android:javaPreCompileDebug UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:mergeDebugShaders UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:compileDebugShaders NO-SOURCE
+> Task :capacitor-cordova-android-plugins:generateDebugAssets UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:mergeDebugAssets UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:processDebugJavaRes NO-SOURCE
+> Task :capacitor-cordova-android-plugins:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:mergeDebugJniLibFolders UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:mergeDebugNativeLibs NO-SOURCE
+> Task :capacitor-cordova-android-plugins:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:checkDebugAarMetadata UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:stripDebugDebugSymbols NO-SOURCE
+> Task :capacitor-cordova-android-plugins:copyDebugJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :app:processDebugNavigationResources UP-TO-DATE
+> Task :app:compileDebugNavigationResources UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :capacitor-android:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :capacitor-android:mergeDebugShaders UP-TO-DATE
+> Task :capacitor-android:compileDebugShaders NO-SOURCE
+> Task :capacitor-android:generateDebugAssets UP-TO-DATE
+> Task :capacitor-android:mergeDebugAssets UP-TO-DATE
+> Task :capacitor-android:processDebugJavaRes NO-SOURCE
+> Task :capacitor-android:mergeDebugJniLibFolders UP-TO-DATE
+> Task :capacitor-android:mergeDebugNativeLibs NO-SOURCE
+> Task :capacitor-android:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :capacitor-android:bundleLibRuntimeToJarDebug
+> Task :capacitor-android:bundleLibCompileToJarDebug
+> Task :capacitor-android:checkDebugAarMetadata FAILED
+> Task :capacitor-android:bundleLibRuntimeToDirDebug
+> Task :app:packageDebugResources FAILED
+> Task :capacitor-cordova-android-plugins:extractDebugAnnotations
+
+FAILURE: Build completed with 2 failures.
+
+1: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':capacitor-android:checkDebugAarMetadata'.
+> Unable to delete directory 'C:\Users\hp\OneDrive\Documents\Desktop\TTR-AI\TTR-AI-Supabase\node_modules\@capacitor\android\capacitor\build\intermediates\aar_metadata_check\debug\checkDebugAarMetadata'
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+==============================================================================
+
+2: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':app:packageDebugResources'.
+> Unable to delete directory 'C:\Users\hp\OneDrive\Documents\Desktop\TTR-AI\TTR-AI-Supabase\android\app\build\intermediates\packaged_res\debug\packageDebugResources'
+    Failed to delete some children. This might happen because a process has files open or has its working directory set in the target directory.
+    - C:\Users\hp\OneDrive\Documents\Desktop\TTR-AI\TTR-AI-Supabase\android\app\build\intermediates\packaged_res\debug\packageDebugResources\drawable-land-ldpi-v4
+    - C:\Users\hp\OneDrive\Documents\Desktop\TTR-AI\TTR-AI-Supabase\android\app\build\intermediates\packaged_res\debug\packageDebugResources\drawable-land-night-hdpi-v8
+    - C:\Users\hp\OneDrive\Documents\Desktop\TTR-AI\TTR-AI-Supabase\android\app\build\intermediates\packaged_res\debug\packageDebugResources\drawable-land-night-ldpi-v8
+    - C:\Users\hp\OneDrive\Documents\Desktop\TTR-AI\TTR-AI-Supabase\android\app\build\intermediates\packaged_res\debug\packageDebugResources\drawable-land-night-mdpi-v8
+    - C:\Users\hp\OneDrive\Documents\Desktop\TTR-AI\TTR-AI-Supabase\android\app\build\intermediates\packaged_res\debug\packageDebugResources\drawable-land-night-xhdpi-v8
+    - C:\Users\hp\OneDrive\Documents\Desktop\TTR-AI\TTR-AI-Supabase\android\app\build\intermediates\packaged_res\debug\packageDebugResources\drawable-land-night-xxhdpi-v8
+    - C:\Users\hp\OneDrive\Documents\Desktop\TTR-AI\TTR-AI-Supabase\android\app\build\intermediates\packaged_res\debug\packageDebugResources\drawable-land-night-xxxhdpi-v8
+    - C:\Users\hp\OneDrive\Documents\Desktop\TTR-AI\TTR-AI-Supabase\android\app\build\intermediates\packaged_res\debug\packageDebugResources\drawable-night-v8
+    - C:\Users\hp\OneDrive\Documents\Desktop\TTR-AI\TTR-AI-Supabase\android\app\build\intermediates\packaged_res\debug\packageDebugResources\drawable-port-ldpi-v4
+    - C:\Users\hp\OneDrive\Documents\Desktop\TTR-AI\TTR-AI-Supabase\android\app\build\intermediates\packaged_res\debug\packageDebugResources\drawable-port-night-hdpi-v8
+    - C:\Users\hp\OneDrive\Documents\Desktop\TTR-AI\TTR-AI-Supabase\android\app\build\intermediates\packaged_res\debug\packageDebugResources\drawable-port-night-ldpi-v8
+    - C:\Users\hp\OneDrive\Documents\Desktop\TTR-AI\TTR-AI-Supabase\android\app\build\intermediates\packaged_res\debug\packageDebugResources\drawable-port-night-mdpi-v8
+    - C:\Users\hp\OneDrive\Documents\Desktop\TTR-AI\TTR-AI-Supabase\android\app\build\intermediates\packaged_res\debug\packageDebugResources\drawable-port-night-xhdpi-v8
+    - C:\Users\hp\OneDrive\Documents\Desktop\TTR-AI\TTR-AI-Supabase\android\app\build\intermediates\packaged_res\debug\packageDebugResources\drawable-port-night-xxhdpi-v8
+    - C:\Users\hp\OneDrive\Documents\Desktop\TTR-AI\TTR-AI-Supabase\android\app\build\intermediates\packaged_res\debug\packageDebugResources\drawable-port-night-xxxhdpi-v8
+    - C:\Users\hp\OneDrive\Documents\Desktop\TTR-AI\TTR-AI-Supabase\android\app\build\intermediates\packaged_res\debug\packageDebugResources\mipmap-ldpi-v4
+    - and more ...
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+==============================================================================
+
+BUILD FAILED in 41s
+50 actionable tasks: 6 executed, 44 up-to-date
