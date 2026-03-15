@@ -69,7 +69,13 @@ export default function Login() {
                     setLoading(false);
                     return;
                 }
-                await signUp(email, password, name);
+                const result = await signUp(email, password, name);
+                if (result.user && !result.session) {
+                    setError('Account created! Please check your email to confirm your account.');
+                    setIsLogin(true); // Switch to login mode so they can sign in after confirming
+                    setLoading(false);
+                    return;
+                }
             }
             navigate('/');
         } catch (err) {

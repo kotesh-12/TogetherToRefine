@@ -20,9 +20,10 @@ export default function DownloadApp() {
     return (
         <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(0,0,0,0.85)', // Darker dim for more focus
+            background: '#0f0f14',
+            color: '#ffffff',
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            zIndex: 9999, backdropFilter: 'blur(8px)',
+            zIndex: 9999,
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
         }}>
             {/* BACK BUTTON (Top Left) */}
@@ -51,30 +52,31 @@ export default function DownloadApp() {
 
             {/* MAIN CARD */}
             <div style={{
-                background: 'white',
-                width: '90%', maxWidth: '380px',
-                borderRadius: '24px',
-                padding: '40px 30px',
+                background: 'rgba(255,255,255,0.03)',
+                width: '90%', maxWidth: '420px',
+                borderRadius: '32px',
+                padding: '40px 20px',
                 textAlign: 'center',
-                boxShadow: '0 25px 60px rgba(0,0,0,0.5)',
+                boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                backdropFilter: 'blur(10px)',
                 animation: 'popIn 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28)',
                 position: 'relative'
             }}>
                 <img
-                    src={`${logo}?v=58`}
-                    alt="App Icon"
+                    src="/apple-touch-icon.png"
+                    alt="TTR-AI Logo"
                     style={{
                         width: '90px', height: '90px', borderRadius: '22px',
                         marginBottom: '20px', boxShadow: '0 10px 25px rgba(0,0,0,0.15)'
                     }}
-                    onError={(e) => e.target.style.display = 'none'}
                 />
 
-                <h2 style={{ fontSize: '24px', margin: '0 0 10px 0', color: '#1a1a1a', fontWeight: '700' }}>
+                <h2 style={{ fontSize: '24px', margin: '0 0 10px 0', color: '#ffffff', fontWeight: '700' }}>
                     Install App
                 </h2>
 
-                <p style={{ fontSize: '15px', color: '#666', marginBottom: '35px', lineHeight: '1.6' }}>
+                <p style={{ color: '#94a3b8', fontSize: '14px', margin: '0 0 30px 0', lineHeight: '1.5' }}>
                     Together To Refine works best as an app. Install it now for easy access.
                 </p>
 

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../hooks/useAuth';
 import anime from 'animejs';
-import logo from '../assets/ttr_logo.png';
+import logo from '../assets/logo.png';
 
 const Leaderboard = () => {
     const navigate = useNavigate();
@@ -65,11 +65,11 @@ const Leaderboard = () => {
             fontFamily: 'Inter, sans-serif'
         }}>
             <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-                <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '50px' }}>
+                <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '30px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <img src={logo} alt="TTR" style={{ height: '40px' }} />
+                        <img src="/apple-touch-icon.png" alt="TTRAI" style={{ height: '45px' }} />
                         <div>
-                            <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>Dharma Hall</h1>
+                            <h1 className="header-title" style={{ fontSize: '28px', margin: 0 }}>Dharma Hall</h1>
                             <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>Registry of Disciplined Seekers</p>
                         </div>
                     </div>

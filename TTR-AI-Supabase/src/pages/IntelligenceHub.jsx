@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import anime from 'animejs';
-import logo from '../assets/ttr_logo.png';
+import logo from '../assets/logo.png';
 
 const MODULES = [
     {
@@ -68,7 +68,7 @@ const IntelligenceHub = () => {
             <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
                 <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '50px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <img src={logo} alt="TTR" style={{ height: '40px' }} />
+                        <img src="/apple-touch-icon.png" alt="TTRAI" style={{ height: '40px' }} />
                         <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>Intelligence Hub</h1>
                     </div>
                     <button 

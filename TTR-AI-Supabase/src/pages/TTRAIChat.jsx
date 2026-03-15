@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../supabaseClient';
 import ReactMarkdown from 'react-markdown';
@@ -1234,20 +1234,7 @@ export default function TTRAIChat() {
                                 <span>💎</span> Upgrade Plan ({getSafeStorage('ttr_subscription_plan')?.toUpperCase() || 'FREE'})
                             </button>
 
-                            <button
-                                className="download-sidebar-btn"
-                                onClick={() => navigate('/download-app')}
-                                style={{
-                                    width: '100%', padding: '6px', borderRadius: '8px',
-                                    background: 'rgba(255,255,255,0.05)', color: '#fff',
-                                    border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer',
-                                    marginBottom: '6px', fontSize: '11px', display: 'flex',
-                                    alignItems: 'center', justifyContent: 'center', gap: '8px',
-                                    transition: 'all 0.2s ease'
-                                }}
-                            >
-                                <span>📲</span> Download App
-                            </button>
+
 
                             {/* Active Recall Nudge (Suggestion 5) */}
                             {recallSubject && Date.now() - lastStudyTime > 3600000 && (
@@ -1296,17 +1283,17 @@ export default function TTRAIChat() {
                             </button>
 
                             <button
-                                onClick={() => navigate('/roadmap')}
+                                onClick={() => navigate('/download-app')}
                                 style={{
                                     width: '100%', padding: '6px', borderRadius: '8px',
-                                    background: 'rgba(139, 92, 246, 0.05)', color: '#a78bfa',
-                                    border: '1px solid rgba(139, 92, 246, 0.2)', cursor: 'pointer',
+                                    background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa',
+                                    border: '1px solid rgba(59, 130, 246, 0.2)', cursor: 'pointer',
                                     marginBottom: '6px', fontSize: '11px', display: 'flex',
                                     alignItems: 'center', justifyContent: 'center', gap: '8px',
                                     transition: 'all 0.2s ease'
                                 }}
                             >
-                                <span>🎗️</span> Platform Evolution
+                                <span>📲</span> Download App
                             </button>
 
                             <button
@@ -1364,17 +1351,17 @@ export default function TTRAIChat() {
                         </div>
                         <div className="sidebar-footer">
                             <button
-                                onClick={() => navigate('/roadmap')}
+                                onClick={() => navigate('/download-app')}
                                 style={{
                                     width: '100%', padding: '8px', borderRadius: '10px',
-                                    background: 'rgba(139, 92, 246, 0.1)', color: '#a78bfa',
-                                    border: '1px solid rgba(139, 92, 246, 0.2)', cursor: 'pointer',
+                                    background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa',
+                                    border: '1px solid rgba(59, 130, 246, 0.2)', cursor: 'pointer',
                                     marginBottom: '15px', fontSize: '12px', display: 'flex',
                                     alignItems: 'center', justifyContent: 'center', gap: '8px',
                                     transition: 'all 0.2s ease', fontWeight: 'bold'
                                 }}
                             >
-                                <span>🎗️</span> Platform Evolution
+                                <span>📲</span> Download App
                             </button>
                             <small style={{ color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px', display: 'block', textAlign: 'center' }}>Theme Gallery</small>
                             <div className="theme-selector-mini" onClick={() => setShowThemeGallery(true)}>
@@ -1405,7 +1392,7 @@ export default function TTRAIChat() {
                         </svg>
                     </button>
                     <div className="header-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <img src={logo} alt="TTR" style={{ height: '32px', width: 'auto', display: 'block', marginRight: '6px' }} />
+                        <img src="/apple-touch-icon.png" alt="TTRAI" style={{ height: '32px', width: 'auto', display: 'block', marginRight: '6px' }} />
                         <span style={{ fontSize: '18px', fontWeight: 'bold' }}>{activeModule ? activeModule.replace('_', ' ').toUpperCase() : 'TTRAI'}</span>
                         {activeModule && (
                             <button 
@@ -1476,7 +1463,7 @@ export default function TTRAIChat() {
                         <AnimatedMessage key={i} msg={msg}>
                             {msg.sender === 'ai' && (
                                 <div className="msg-avatar ai-avatar">
-                                    <img src={logo} alt="TTR AI" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
+                                    <img src="/apple-touch-icon.png" alt="TTRAI" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
                                 </div>
                             )}
                             <div className="msg-content">

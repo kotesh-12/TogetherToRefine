@@ -31,7 +31,7 @@ export const BreathingOrb = memo(() => {
         <div className="msg-content" style={{ background: 'transparent', border: 'none', padding: '10px 5px', boxShadow: 'none' }}>
             <img
                 ref={orbRef}
-                src={logo}
+                src="/apple-touch-icon.png"
                 alt="Thinking"
                 style={{ width: '30px', height: '30px', objectFit: 'contain', borderRadius: '50%' }}
             />
