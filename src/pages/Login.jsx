@@ -148,11 +148,8 @@ export default function Login() {
     useEffect(() => {
         if (userLoading) return; // Wait for initial load
 
-        // CRITICAL FIX: If we are intentionally in Signup mode, don't auto-redirect
-        // until the user actually completes the signup process.
-        if (!isLogin) return;
-
         if (user) {
+            console.log("Login: User authenticated, checking profile...", { hasRole: !!userData?.role });
             if (userData && userData.role) {
                 const isApproved = userData.approved === true;
 
@@ -190,12 +187,12 @@ export default function Login() {
                     }
                 }
             } else {
-                if (!userData) {
-                    navigate('/details');
-                }
+                // User is authenticated but no profile/role retrieved yet from Firestore
+                console.log("Login: No profile data, directing to details onboarding.");
+                navigate('/details', { replace: true });
             }
         }
-    }, [user, userData, userLoading, navigate]);
+    }, [user, userData, userLoading, navigate, isLogin]);
 
     // Effect 2: Config Error Check
     useEffect(() => {
