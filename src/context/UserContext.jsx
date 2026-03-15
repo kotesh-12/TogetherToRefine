@@ -77,25 +77,28 @@ export function UserProvider({ children }) {
                 // Session Management
                 registerSession(currentUser.uid).then((sessionId) => {
                     if (sessionId && currentUser) {
-                        // Use a more robust path or role-based path for sessions
-                        // For now, keep 'users' but add a delay to account for Firestore latency on new accounts
+                        // IMPORTANT: Use a collection-neutral path for sessions if possible, 
+                        // or ensure we check the correct collection. For now, sessions are centralized in /users/{uid}/sessions
                         const sessionRef = doc(db, 'users', currentUser.uid, 'sessions', sessionId);
-                        
-                        // Delay listener attachment slightly to prevent immediate 'doc-not-found' signouts on new accounts
+
                         setTimeout(() => {
                             if (!auth.currentUser) return;
                             unsubscribeSession = onSnapshot(sessionRef, (docSnap) => {
-                                // If the doc specifically exists then disappears, then it's a revocation.
-                                // But if it never existed (e.g. latency/new user), we don't sign out yet.
-                                if (docSnap.metadata.fromCache) return; // Ignore initial cache misses
+                                if (docSnap.metadata.fromCache) return;
+
+                                // If the document doesn't exist, it COULD be a revocation, 
+                                // BUT if the user is BRAND NEW (no profile), we allow the session to be 'missing' 
+                                // in Firestore temporarily while writes propagate.
                                 if (!docSnap.exists()) {
-                                    console.warn("Session revoked or not found. Signing out.");
-                                    auth.signOut().then(() => {
-                                        clearLocalSession();
-                                    });
+                                    // Only sign out if we ALREADY had local data (meaning this was an active session that was deleted)
+                                    const hasLocalData = !!sessionStorage.getItem('user_profile_cache');
+                                    if (hasLocalData) {
+                                        console.warn("Active session revoked. Signing out.");
+                                        auth.signOut().then(() => { clearLocalSession(); });
+                                    }
                                 }
                             });
-                        }, 3000); 
+                        }, 5000); // Increased to 5s for slower connections
                     }
                 }).catch(e => console.error("Session Error:", e));
 

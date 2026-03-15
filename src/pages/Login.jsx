@@ -24,18 +24,15 @@ const ADMIN_EMAIL = 'koteshbitra789@gmail.com';
 
 export default function Login() {
     const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     // -------------------------------------------------------------------------
     // 1. ALL HOOK DECLARATIONS (Must be at top, unconditional)
     // -------------------------------------------------------------------------
     const [configError, setConfigError] = useState(window.FIREBASE_CONFIG_ERROR || null);
     
-    // SIMPLIFIED: Use local state for toggle to ensure absolute stability.
-    const [isLogin, setIsLogin] = useState(() => {
-        const params = new URLSearchParams(window.location.search);
-        return params.get('mode') !== 'signup';
-    });
-    
+    // Correctly use searchParams from react-router-dom (handles hashes too)
+    const isLogin = searchParams.get('mode') !== 'signup';
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -74,13 +71,12 @@ export default function Login() {
     const toggleMode = (e) => {
         if (e) e.preventDefault();
         const nextMode = !isLogin;
-        setIsLogin(nextMode);
+        setSearchParams(prev => {
+            if (nextMode) prev.delete('mode');
+            else prev.set('mode', 'signup');
+            return prev;
+        });
         setError('');
-        // Sync with URL without relying on it for UI
-        const url = new URL(window.location);
-        if (nextMode) url.searchParams.delete('mode');
-        else url.searchParams.set('mode', 'signup');
-        window.history.replaceState({}, '', url);
     };
 
     const checkUserExists = async (uid) => {
@@ -149,15 +145,13 @@ export default function Login() {
     // -------------------------------------------------------------------------
 
     useEffect(() => {
-        // 1. If we are still waiting for UserContext to tell us the status, do nothing.
         if (userLoading) return;
+        if (!user) {
+            setLoading(false); // Auth verified, no user, stop local spinner
+            return;
+        }
 
-        // 2. If no Firebase user is present, we stay on Login.
-        if (!user) return;
-
-        // 3. We have a user! Now wait for the profile data.
-        console.log("Login: Evaluating authenticated state...", { hasRole: !!userData?.role, email: user.email });
-
+        // If we have a user, check their profile
         if (userData && userData.role) {
             // User has a role! Determine where they belong.
             const isApproved = userData.approved === true;
@@ -182,13 +176,10 @@ export default function Login() {
             } else {
                 redirectToRolePage(userData.role);
             }
-        } else {
-            // User is logged in but UserContext has finished detection and found NO profile.
-            // ONLY THEN do we treat them as a brand new user and go to details.
-            if (!userLoading) {
-                console.log("Login: No profile found after detection, routing to onboarding.");
-                navigate('/details', { replace: true });
-            }
+        } else if (!userLoading) {
+            // No profile found for logged in user -> Go to setup
+            console.log("Login: Logged in but no profile. Redirecting to details.");
+            navigate('/details', { replace: true, state: { role: 'student' } });
         }
     }, [user, userData, userLoading, navigate]);
 
