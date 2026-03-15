@@ -28,7 +28,7 @@ export function AuthProvider({ children }) {
             password,
             options: {
                 data: { name },
-                emailRedirectTo: window.location.origin + '/#/'
+                emailRedirectTo: window.location.origin
             }
         });
         if (error) throw error;
@@ -45,12 +45,11 @@ export function AuthProvider({ children }) {
     };
 
     const signInWithGoogle = async () => {
-        // For HashRouter, redirecting to the origin and then letting Supabase client 
-        // handle the hash fragment tokens is standard. 
+        // Now using BrowserRouter, we don't need the hash fragment in the redirect URL
         const { data, error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: window.location.origin + '/#/'
+                redirectTo: window.location.origin
             }
         });
         if (error) throw error;
