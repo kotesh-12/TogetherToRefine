@@ -22,9 +22,29 @@ async function setupDatabase() {
             });
             console.log("✅ Connected with root/root!");
         } catch (e2) {
-            console.error("❌ Could not connect to MySQL with default credentials.");
-            console.error("Please edit .env and set MYSQL_PASSWORD manually.");
-            process.exit(1);
+            try {
+                console.log("⚠️ Trying root/20050701...");
+                connection = await mysql.createConnection({
+                    host: 'localhost',
+                    user: 'root',
+                    password: '20050701'
+                });
+                console.log("✅ Connected with root/20050701!");
+            } catch (e3) {
+                try {
+                    console.log("⚠️ Trying root/mysql...");
+                    connection = await mysql.createConnection({
+                        host: 'localhost',
+                        user: 'root',
+                        password: 'mysql'
+                    });
+                    console.log("✅ Connected with root/mysql!");
+                } catch (e4) {
+                    console.error("❌ Could not connect to MySQL with default credentials.");
+                    console.error("Please edit .env and set MYSQL_PASSWORD manually.");
+                    process.exit(1);
+                }
+            }
         }
     }
 

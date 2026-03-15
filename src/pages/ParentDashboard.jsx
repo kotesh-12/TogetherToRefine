@@ -42,7 +42,13 @@ export default function ParentDashboard() {
 
             console.log("Fetching children for parent:", parentIdentifier);
 
-            // query users where parentPhone == parentIdentifier
+            if (!parentIdentifier) {
+                setLoading(false);
+                return;
+            }
+
+            // Robust query: Look for children where parentPhone matches current user's phone OR email
+            // (In case the parent signed up with email but child has their phone number listed)
             const q = query(
                 collection(db, "users"),
                 where("parentPhone", "==", parentIdentifier),
