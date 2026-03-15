@@ -28,7 +28,7 @@ export function AuthProvider({ children }) {
             password,
             options: {
                 data: { name },
-                emailRedirectTo: window.location.origin
+                emailRedirectTo: window.location.origin + '/#/'
             }
         });
         if (error) throw error;
@@ -50,7 +50,7 @@ export function AuthProvider({ children }) {
         const { data, error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: window.location.origin + (window.location.pathname || '') + '#/'
+                redirectTo: window.location.origin + '/#/'
             }
         });
         if (error) throw error;

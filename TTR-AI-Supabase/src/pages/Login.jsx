@@ -100,6 +100,8 @@ export default function Login() {
             const msg = err.message || '';
             if (msg.includes('rate limit')) {
                 setError('Sign-up is currently busy (rate limit). Please try "Continue with Google" or try again in a few minutes.');
+            } else if (msg.includes('Invalid login credentials')) {
+                setError('Invalid email or password. If you just signed up, please check your inbox (and spam) to confirm your email address first!');
             } else {
                 setError(msg || 'Authentication failed.');
             }
