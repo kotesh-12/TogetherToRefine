@@ -114,13 +114,13 @@ export default function Details() {
     };
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                setUserId(user.uid);
+        if (userLoading) return;
 
-                // Try to get role from Firestore if not in local state
+        if (user) {
+            setUserId(user.uid);
+            // Profile fetching logic
+            const loadProfile = async () => {
                 try {
-                    // If we received a role from Login page, trust it but STILL fetch initial data
                     if (passedRole) {
                         setRole(passedRole);
                         setIsRoleLocked(true);
@@ -130,54 +130,54 @@ export default function Details() {
                         if (userDoc.exists()) {
                             const data = userDoc.data();
                             setFormData(data);
-                            setInitialData(data); // Capture baseline (e.g., approved: true from smart admission)
+                            setInitialData(data);
+                            // Also update local UserContext if needed
+                            setUserData(data);
                         }
-
-                        setLoading(false);
-                        return;
-                    }
-
-                    // Check 'users' (Student)
-                    let userDoc = await getDoc(doc(db, "users", user.uid));
-                    if (userDoc.exists()) {
-                        const data = userDoc.data();
-                        setRole(data.role || 'student'); // Fallback to 'student' if role field is missing
-                        setFormData(data);
-                        setInitialData(data); // Capture baseline
-                        setIsRoleLocked(true);
                     } else {
-                        // Check 'teachers'
-                        userDoc = await getDoc(doc(db, "teachers", user.uid));
+                        // Try to find profile in ANY collection
+                        let userDoc = await getDoc(doc(db, "users", user.uid));
                         if (userDoc.exists()) {
                             const data = userDoc.data();
-                            setRole(data.role || 'teacher'); // Fallback to 'teacher'
+                            setRole('student');
                             setFormData(data);
-                            setInitialData(data); // Capture baseline
+                            setInitialData(data);
                             setIsRoleLocked(true);
+                            setUserData(data);
                         } else {
-                            // Check 'institutions'
-                            userDoc = await getDoc(doc(db, "institutions", user.uid));
+                            userDoc = await getDoc(doc(db, "teachers", user.uid));
                             if (userDoc.exists()) {
                                 const data = userDoc.data();
-                                setRole(data.role || 'institution'); // Fallback to 'institution'
+                                setRole('teacher');
                                 setFormData(data);
-                                setInitialData(data); // Capture baseline
+                                setInitialData(data);
                                 setIsRoleLocked(true);
+                                setUserData(data);
+                            } else {
+                                userDoc = await getDoc(doc(db, "institutions", user.uid));
+                                if (userDoc.exists()) {
+                                    const data = userDoc.data();
+                                    setRole('institution');
+                                    setFormData(data);
+                                    setInitialData(data);
+                                    setIsRoleLocked(true);
+                                    setUserData(data);
+                                }
                             }
                         }
                     }
                 } catch (e) {
-                    console.error("Error fetching role: ", e);
+                    console.error("Error fetching profile:", e);
+                } finally {
+                    setLoading(false);
                 }
-            } else {
-                // Return to login if not authenticated
-                navigate('/');
-            }
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, [navigate]);
+            };
+            loadProfile();
+        } else {
+            // Only navigate home if we are SURE there is no user
+            if (!userLoading) navigate('/');
+        }
+    }, [user, userLoading, passedRole, navigate]);
 
     // Load institutions
     useEffect(() => {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import {
     createUserWithEmailAndPassword,
@@ -24,14 +24,21 @@ const ADMIN_EMAIL = 'koteshbitra789@gmail.com';
 
 export default function Login() {
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     // -------------------------------------------------------------------------
     // 1. ALL HOOK DECLARATIONS (Must be at top, unconditional)
     // -------------------------------------------------------------------------
     const [configError, setConfigError] = useState(window.FIREBASE_CONFIG_ERROR || null);
     
-    // Use query params to persist mode across re-renders/mounts
-    const queryParams = new URLSearchParams(window.location.search);
-    const [isLogin, setIsLogin] = useState(queryParams.get('mode') !== 'signup');
+    // Is it Login mode or Signup mode?
+    const isLogin = searchParams.get('mode') !== 'signup';
+    const setIsLogin = (val) => {
+        setSearchParams(prev => {
+            if (val) prev.delete('mode');
+            else prev.set('mode', 'signup');
+            return prev;
+        });
+    };
     
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -69,14 +76,8 @@ export default function Login() {
 
     // Helper functions (safe to be here)
     const toggleMode = () => {
-        const newMode = !isLogin;
-        setIsLogin(newMode);
+        setIsLogin(!isLogin);
         setError('');
-        // Sync with URL without reloading
-        const url = new URL(window.location);
-        if (newMode) url.searchParams.delete('mode');
-        else url.searchParams.set('mode', 'signup');
-        window.history.replaceState({}, '', url);
     };
 
     const checkUserExists = async (uid) => {
