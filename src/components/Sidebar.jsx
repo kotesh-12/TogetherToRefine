@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 
 export default function Sidebar({ isOpen }) {
     const navigate = useNavigate();
     const location = useLocation();
     const { userData } = useUser();
     const { t } = useLanguage();
+    const { theme, toggleTheme } = useTheme();
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     // Filter by Role - Wait for userData to load
     if (!userData || !userData.role) {
@@ -146,9 +149,103 @@ export default function Sidebar({ isOpen }) {
                 })}
             </div>
 
-            {/* Bottom Section */}
-            <div style={{ padding: '20px', borderTop: '1px solid var(--divider)', fontSize: '10px', color: 'var(--text-muted)', textAlign: 'center' }}>
-                {isOpen ? 'Together To Refine © 2026' : 'TTR'}
+            {/* Premium Upward Dropdown Section */}
+            <div style={{ padding: '12px', borderTop: '1px solid var(--divider)', position: 'relative' }}>
+                {isMenuOpen && (
+                    <div style={{
+                        position: 'absolute',
+                        bottom: '100%',
+                        left: '12px',
+                        right: '12px',
+                        background: 'var(--bg-surface)',
+                        borderRadius: '16px',
+                        boxShadow: '0 -10px 25px rgba(0,0,0,0.1), 0 4px 12px rgba(0,0,0,0.05)',
+                        padding: '8px',
+                        marginBottom: '12px',
+                        zIndex: 1200,
+                        border: '1px solid var(--divider)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px',
+                        animation: 'slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                    }}>
+                        <style>{`
+                            @keyframes slideUp {
+                                from { opacity: 0; transform: translateY(20px) scale(0.95); }
+                                to { opacity: 1; transform: translateY(0) scale(1); }
+                            }
+                        `}</style>
+                        
+                        {[
+                            { label: 'Themes', icon: theme === 'Dark' ? '☀️' : '🌙', action: toggleTheme },
+                            { label: 'Upgrade Plan', icon: '💎', action: () => navigate('/fees/student') },
+                            { label: 'Intelligence Hub', icon: '🧠', action: () => navigate('/ttr-ai') },
+                            { label: 'Gurukul Board', icon: '🎓', action: () => navigate('/student') },
+                            { label: 'Enable Voice', icon: '🎙️', action: () => alert('Voice Intelligence Enabled') },
+                            { label: 'Download App', icon: '📱', action: () => navigate('/download') },
+                        ].map((item, i) => (
+                            <div
+                                key={i}
+                                onClick={() => { item.action(); setIsMenuOpen(false); }}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '12px',
+                                    padding: '10px 14px',
+                                    borderRadius: '10px',
+                                    cursor: 'pointer',
+                                    fontSize: '13px',
+                                    fontWeight: '600',
+                                    color: 'var(--text-main)',
+                                    transition: 'all 0.2s ease',
+                                    background: 'transparent'
+                                }}
+                                onMouseOver={(e) => e.currentTarget.style.background = 'var(--secondary)'}
+                                onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                            >
+                                <span style={{ fontSize: '18px' }}>{item.icon}</span>
+                                {isOpen && <span>{item.label}</span>}
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <div
+                    onClick={() => setIsMenuOpen(!isMenuOpen)}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: isOpen ? 'flex-start' : 'center',
+                        padding: '12px 16px',
+                        cursor: 'pointer',
+                        borderRadius: '12px',
+                        background: 'var(--primary-gradient, linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%))',
+                        color: 'white',
+                        transition: 'all 0.3s ease',
+                        boxShadow: '0 4px 12px rgba(26, 115, 232, 0.2)',
+                        position: 'relative',
+                        overflow: 'hidden'
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                    onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                >
+                    <span style={{ fontSize: '20px', minWidth: '32px', display: 'flex', justifyContent: 'center' }}>✨</span>
+                    {isOpen && (
+                        <span style={{
+                            fontSize: '14px',
+                            fontWeight: '700',
+                            whiteSpace: 'nowrap',
+                            marginLeft: '8px'
+                        }}>
+                            {t('signup')}
+                        </span>
+                    )}
+                    {isMenuOpen && <div style={{ position: 'absolute', right: '12px', fontSize: '10px' }}>▼</div>}
+                </div>
+
+                <div style={{ marginTop: '12px', fontSize: '10px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                    {isOpen ? 'Together To Refine © 2026' : 'TTR'}
+                </div>
             </div>
         </div>
     );
