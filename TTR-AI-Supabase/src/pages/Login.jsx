@@ -1,19 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import anime from 'animejs/lib/anime.es.js';
 import logo from '../assets/logo.png';
 
 export default function Login() {
-    const [isLogin, setIsLogin] = useState(true);
+    const [searchParams, setSearchParams] = useSearchParams();
+    const isLogin = searchParams.get('mode') !== 'signup';
+    
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
     const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const { signIn, signUp, signInWithGoogle } = useAuth();
+    const { user, signIn, signUp, signInWithGoogle } = useAuth();
     const navigate = useNavigate();
+
+    // Unified redirection logic
+    useEffect(() => {
+        if (user && !success) {
+            navigate('/', { replace: true });
+        }
+    }, [user, navigate, success]);
 
     // Setup Anime.js animation for the logo
     useEffect(() => {
@@ -48,6 +58,7 @@ export default function Login() {
     const handleAuth = async (e) => {
         e.preventDefault();
         setError('');
+        setSuccess('');
         setLoading(true);
 
         try {
@@ -57,7 +68,11 @@ export default function Login() {
                     setLoading(false);
                     return;
                 }
-                await signIn(email, password);
+                const result = await signIn(email, password);
+                if (result.user) {
+                    setSuccess('Login Successful! Diverting to chat...');
+                    setTimeout(() => navigate('/', { replace: true }), 800);
+                }
             } else {
                 if (!email || !password || !name) {
                     setError('Please fill in all required fields.');
@@ -71,15 +86,23 @@ export default function Login() {
                 }
                 const result = await signUp(email, password, name);
                 if (result.user && !result.session) {
-                    setError('Account created! Please check your email to confirm your account.');
-                    setIsLogin(true); // Switch to login mode so they can sign in after confirming
+                    setSuccess('Account created! Please check your email to confirm your account.');
+                    setSearchParams({ mode: 'login' }); 
                     setLoading(false);
                     return;
+                } else if (result.user) {
+                    setSuccess('Account created! Welcome to TTRAI.');
+                    setTimeout(() => navigate('/', { replace: true }), 1500);
                 }
             }
-            navigate('/');
         } catch (err) {
-            setError(err.message || 'Authentication failed.');
+            console.error("Auth Error:", err);
+            const msg = err.message || '';
+            if (msg.includes('rate limit')) {
+                setError('Sign-up is currently busy (rate limit). Please try "Continue with Google" or try again in a few minutes.');
+            } else {
+                setError(msg || 'Authentication failed.');
+            }
         } finally {
             setLoading(false);
         }
@@ -132,6 +155,13 @@ export default function Login() {
                         <div className="error-banner">
                             <span className="error-icon">⚠️</span>
                             <span>{error}</span>
+                        </div>
+                    )}
+
+                    {success && (
+                        <div className="success-banner" style={{ background: 'rgba(52, 211, 153, 0.1)', color: '#34d399', padding: '12px', borderRadius: '8px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', border: '1px solid rgba(52, 211, 153, 0.2)' }}>
+                            <span className="success-icon">✅</span>
+                            <span>{success}</span>
                         </div>
                     )}
 
@@ -202,7 +232,10 @@ export default function Login() {
 
                     <div className="toggle-mode">
                         <span>{isLogin ? "Don't have an account?" : 'Already have an account?'}</span>
-                        <button onClick={() => { setIsLogin(!isLogin); setError(''); }}>
+                        <button onClick={() => { 
+                            setSearchParams({ mode: isLogin ? 'signup' : 'login' });
+                            setError(''); 
+                        }}>
                             {isLogin ? 'Sign Up' : 'Sign In'}
                         </button>
                     </div>

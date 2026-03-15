@@ -1344,7 +1344,7 @@ export default function TTRAIChat() {
                             <div className="guest-notice">
                                 <div className="guest-icon">🔒</div>
                                 <p>Sign in to save your chat history and access it from any device.</p>
-                                <button className="signin-prompt-btn" onClick={() => navigate('/login')}>
+                                <button className="signin-prompt-btn" onClick={() => navigate('/login?mode=login')}>
                                     Sign In / Sign Up
                                 </button>
                             </div>
@@ -1392,7 +1392,7 @@ export default function TTRAIChat() {
                         </svg>
                     </button>
                     <div className="header-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <img src="/apple-touch-icon.png" alt="TTRAI" style={{ height: '32px', width: 'auto', display: 'block', marginRight: '6px' }} />
+                        <img src={logo} alt="TTRAI" style={{ height: '32px', width: 'auto', display: 'block', marginRight: '6px' }} />
                         <span style={{ fontSize: '18px', fontWeight: 'bold' }}>{activeModule ? activeModule.replace('_', ' ').toUpperCase() : 'TTRAI'}</span>
                         {activeModule && (
                             <button 
