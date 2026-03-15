@@ -131,12 +131,12 @@ export default function Login() {
     const redirectToRolePage = (role) => {
         const r = (role || '').toLowerCase();
         switch (r) {
-            case 'student': navigate('/student'); break;
-            case 'teacher': navigate('/teacher'); break;
-            case 'institution': navigate('/institution'); break;
-            case 'admin': navigate('/admin'); break;
-            case 'parent': navigate('/parent'); break;
-            default: navigate('/admission');
+            case 'student': navigate('/student', { replace: true }); break;
+            case 'teacher': navigate('/teacher', { replace: true }); break;
+            case 'institution': navigate('/institution', { replace: true }); break;
+            case 'admin': navigate('/admin', { replace: true }); break;
+            case 'parent': navigate('/parent', { replace: true }); break;
+            default: navigate('/admission', { replace: true });
         }
     };
 
@@ -145,31 +145,28 @@ export default function Login() {
     // -------------------------------------------------------------------------
 
     useEffect(() => {
+        // Sole source of navigation after auth
         if (userLoading) return;
         if (!user) {
-            setLoading(false); // Auth verified, no user, stop local spinner
+            setLoading(false); 
             return;
         }
 
-        // If we have a user, check their profile
         if (userData && userData.role) {
-            // User has a role! Determine where they belong.
             const isApproved = userData.approved === true;
-
             if (isApproved) {
-                // Check for incomplete profiles for approved users
                 const isStudentIncomplete = userData.role === 'student' && (!userData.class || !userData.institutionId);
                 const isTeacherIncomplete = userData.role === 'teacher' && (!userData.subject || !userData.institutionId);
                 const isInstitutionIncomplete = userData.role === 'institution' && (!userData.schoolName);
 
                 if (!userData.profileCompleted || isStudentIncomplete || isTeacherIncomplete || isInstitutionIncomplete) {
-                    navigate('/details', { replace: true });
+                    navigate('/details', { replace: true, state: { role: userData.role } });
                     return;
                 }
             }
 
             if (!isApproved) {
-                if (!userData.profileCompleted) navigate('/details', { replace: true });
+                if (!userData.profileCompleted) navigate('/details', { replace: true, state: { role: userData.role } });
                 else navigate('/pending-approval', { replace: true });
             } else if (!userData.onboardingCompleted) {
                 navigate('/onboarding', { replace: true });
@@ -177,11 +174,10 @@ export default function Login() {
                 redirectToRolePage(userData.role);
             }
         } else if (!userLoading) {
-            // No profile found for logged in user -> Go to setup
-            console.log("Login: Logged in but no profile. Redirecting to details.");
-            navigate('/details', { replace: true, state: { role: 'student' } });
+            // New user detection
+            navigate('/details', { replace: true, state: { role: role } });
         }
-    }, [user, userData, userLoading, navigate]);
+    }, [user, userData, userLoading, navigate, role]);
 
     // Effect 2: Config Error Check
     useEffect(() => {
@@ -199,33 +195,6 @@ export default function Login() {
                 const result = await getRedirectResult(auth);
                 if (result && isMounted) {
                     setLoading(true);
-                    const user = result.user;
-
-                    // ── ADMIN BYPASS (Redirect flow) ──────────────────────
-                    if (user.email === ADMIN_EMAIL) {
-                        await setDoc(doc(db, 'users', user.uid), {
-                            name: user.displayName || 'Admin',
-                            email: user.email,
-                            role: 'admin',
-                            approved: true,
-                            profileCompleted: true,
-                            onboardingCompleted: true,
-                        }, { merge: true });
-                        if (isMounted) navigate('/admin', { replace: true });
-                        return;
-                    }
-                    // ─────────────────────────────────────────────────────
-
-                    const { role, isNew, approved } = await checkUserExists(user.uid);
-
-                    if (isMounted) {
-                        if (role && !isNew) {
-                            if (approved === false) navigate('/pending-approval');
-                            else redirectToRolePage(role);
-                        } else {
-                            navigate('/details');
-                        }
-                    }
                 }
             } catch (err) {
                 console.error("Redirect Login Failed:", err);
@@ -287,35 +256,11 @@ export default function Login() {
 
         try {
             if (isLogin) {
-                const userCredential = await signInWithEmailAndPassword(auth, email, password);
-                const uid = userCredential.user.uid;
-                const { role: dbRole, isNew, approved } = await checkUserExists(uid);
-
-                if (dbRole) {
-                    if (isNew) {
-                        navigate('/details');
-                        return;
-                    } else {
-                        if (approved === false) navigate('/pending-approval');
-                        else redirectToRolePage(dbRole);
-                    }
-                } else {
-                    // Fallback if role not found automatically - maybe direct to details to picking one?
-                    // Or just default to details
-                    navigate('/details');
-                }
+                await signInWithEmailAndPassword(auth, email, password);
             } else {
-                let uid;
-                if (auth.currentUser) {
-                    uid = auth.currentUser.uid;
-                } else {
-                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                    uid = userCredential.user.uid;
+                if (!auth.currentUser) {
+                    await createUserWithEmailAndPassword(auth, email, password);
                 }
-
-                // Two-step registration: account created, now collect profile details
-                navigate('/details', { state: { role } });
-                return;
             }
         } catch (err) {
             console.error(err);
@@ -334,33 +279,7 @@ export default function Login() {
         provider.setCustomParameters({ prompt: 'select_account' });
 
         try {
-            const result = await signInWithPopup(auth, provider);
-            const user = result.user;
-
-            // ── ADMIN BYPASS (Popup flow) ─────────────────────────────────
-            if (user.email === ADMIN_EMAIL) {
-                await setDoc(doc(db, 'users', user.uid), {
-                    name: user.displayName || 'Admin',
-                    email: user.email,
-                    role: 'admin',
-                    approved: true,
-                    profileCompleted: true,
-                    onboardingCompleted: true,
-                }, { merge: true });
-                navigate('/admin', { replace: true });
-                return;
-            }
-            // ─────────────────────────────────────────────────────────────
-
-            const { role: dbRole, isNew, approved } = await checkUserExists(user.uid);
-
-            if (dbRole && !isNew) {
-                if (approved === false) navigate('/pending-approval');
-                else redirectToRolePage(dbRole);
-            } else {
-                navigate('/details', { state: { role: role } });
-                return;
-            }
+            await signInWithPopup(auth, provider);
         } catch (err) {
             console.error("Popup Error:", err);
             if (['auth/popup-blocked', 'auth/cancelled-popup-request', 'auth/popup-closed-by-user'].includes(err.code)) {
