@@ -144,55 +144,49 @@ export default function Login() {
     // 2. USE EFFECTS (Unconditional)
     // -------------------------------------------------------------------------
 
-    // Effect 1: Redirect logic for logged-in users
     useEffect(() => {
-        if (userLoading) return; // Wait for initial load
+        // 1. If we are still waiting for UserContext to tell us the status, do nothing.
+        if (userLoading) return;
 
-        if (user) {
-            console.log("Login: User authenticated, checking profile...", { hasRole: !!userData?.role });
-            if (userData && userData.role) {
-                const isApproved = userData.approved === true;
+        // 2. If no Firebase user is present, we stay on Login.
+        if (!user) return;
 
-                // Only send to /details if they are APPROVED but have an incomplete profile.
-                // For unapproved users (e.g. Smart Admission), we do NOT bounce them back to details.
-                // They may have just submitted and be sitting on /pending-approval.
-                if (isApproved) {
-                    const isStudentIncomplete = userData.role === 'student' && (!userData.class || !userData.institutionId);
-                    const isTeacherIncomplete = userData.role === 'teacher' && (!userData.subject || !userData.institutionId);
-                    const isInstitutionIncomplete = userData.role === 'institution' && (!userData.schoolName);
+        // 3. We have a user! Now wait for the profile data.
+        console.log("Login: Evaluating authenticated state...", { hasRole: !!userData?.role, email: user.email });
 
-                    if (!userData.profileCompleted || isStudentIncomplete || isTeacherIncomplete || isInstitutionIncomplete) {
-                        navigate('/details', { replace: true });
-                        return;
-                    }
+        if (userData && userData.role) {
+            // User has a role! Determine where they belong.
+            const isApproved = userData.approved === true;
+
+            if (isApproved) {
+                // Check for incomplete profiles for approved users
+                const isStudentIncomplete = userData.role === 'student' && (!userData.class || !userData.institutionId);
+                const isTeacherIncomplete = userData.role === 'teacher' && (!userData.subject || !userData.institutionId);
+                const isInstitutionIncomplete = userData.role === 'institution' && (!userData.schoolName);
+
+                if (!userData.profileCompleted || isStudentIncomplete || isTeacherIncomplete || isInstitutionIncomplete) {
+                    navigate('/details', { replace: true });
+                    return;
                 }
+            }
 
-                if (!isApproved) {
-                    // Not approved — either awaiting institution approval, or needs profile first
-                    if (!userData.profileCompleted) {
-                        navigate('/details', { replace: true });
-                    } else {
-                        navigate('/pending-approval', { replace: true });
-                    }
-                } else if (!userData.onboardingCompleted) {
-                    navigate('/onboarding', { replace: true });
-                } else {
-                    switch ((userData.role || '').toLowerCase().trim()) {
-                        case 'student': navigate('/student', { replace: true }); break;
-                        case 'teacher': navigate('/teacher', { replace: true }); break;
-                        case 'institution': navigate('/institution', { replace: true }); break;
-                        case 'admin': navigate('/admin', { replace: true }); break;
-                        case 'parent': navigate('/parent', { replace: true }); break;
-                        default: navigate('/details', { replace: true });
-                    }
-                }
+            if (!isApproved) {
+                if (!userData.profileCompleted) navigate('/details', { replace: true });
+                else navigate('/pending-approval', { replace: true });
+            } else if (!userData.onboardingCompleted) {
+                navigate('/onboarding', { replace: true });
             } else {
-                // User is authenticated but no profile/role retrieved yet from Firestore
-                console.log("Login: No profile data, directing to details onboarding.");
+                redirectToRolePage(userData.role);
+            }
+        } else {
+            // User is logged in but UserContext has finished detection and found NO profile.
+            // ONLY THEN do we treat them as a brand new user and go to details.
+            if (!userLoading) {
+                console.log("Login: No profile found after detection, routing to onboarding.");
                 navigate('/details', { replace: true });
             }
         }
-    }, [user, userData, userLoading, navigate, isLogin]);
+    }, [user, userData, userLoading, navigate]);
 
     // Effect 2: Config Error Check
     useEffect(() => {
