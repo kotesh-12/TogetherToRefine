@@ -24,21 +24,17 @@ const ADMIN_EMAIL = 'koteshbitra789@gmail.com';
 
 export default function Login() {
     const navigate = useNavigate();
-    const [searchParams, setSearchParams] = useSearchParams();
+    const [searchParams] = useSearchParams();
     // -------------------------------------------------------------------------
     // 1. ALL HOOK DECLARATIONS (Must be at top, unconditional)
     // -------------------------------------------------------------------------
     const [configError, setConfigError] = useState(window.FIREBASE_CONFIG_ERROR || null);
     
-    // Is it Login mode or Signup mode?
-    const isLogin = searchParams.get('mode') !== 'signup';
-    const setIsLogin = (val) => {
-        setSearchParams(prev => {
-            if (val) prev.delete('mode');
-            else prev.set('mode', 'signup');
-            return prev;
-        });
-    };
+    // SIMPLIFIED: Use local state for toggle to ensure absolute stability.
+    const [isLogin, setIsLogin] = useState(() => {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('mode') !== 'signup';
+    });
     
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -75,9 +71,16 @@ export default function Login() {
     const { t, language, toggleLanguage } = useLanguage();
 
     // Helper functions (safe to be here)
-    const toggleMode = () => {
-        setIsLogin(!isLogin);
+    const toggleMode = (e) => {
+        if (e) e.preventDefault();
+        const nextMode = !isLogin;
+        setIsLogin(nextMode);
         setError('');
+        // Sync with URL without relying on it for UI
+        const url = new URL(window.location);
+        if (nextMode) url.searchParams.delete('mode');
+        else url.searchParams.set('mode', 'signup');
+        window.history.replaceState({}, '', url);
     };
 
     const checkUserExists = async (uid) => {
@@ -534,7 +537,7 @@ export default function Login() {
                 </button>
 
                 <div className="auth-footer">
-                    <span onClick={toggleMode} className="auth-toggle-link">
+                    <span onClick={toggleMode} className="auth-toggle-link" style={{ cursor: 'pointer', color: 'var(--primary)', fontWeight: '600' }}>
                         {isLogin ? t('no_account') : t('have_account')}
                     </span>
                 </div>

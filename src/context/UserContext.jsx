@@ -76,16 +76,26 @@ export function UserProvider({ children }) {
 
                 // Session Management
                 registerSession(currentUser.uid).then((sessionId) => {
-                    if (sessionId) {
+                    if (sessionId && currentUser) {
+                        // Use a more robust path or role-based path for sessions
+                        // For now, keep 'users' but add a delay to account for Firestore latency on new accounts
                         const sessionRef = doc(db, 'users', currentUser.uid, 'sessions', sessionId);
-                        unsubscribeSession = onSnapshot(sessionRef, (docSnap) => {
-                            if (!docSnap.exists()) {
-                                auth.signOut().then(() => {
-                                    clearLocalSession();
-                                    alert("Session expired/revoked.");
-                                });
-                            }
-                        });
+                        
+                        // Delay listener attachment slightly to prevent immediate 'doc-not-found' signouts on new accounts
+                        setTimeout(() => {
+                            if (!auth.currentUser) return;
+                            unsubscribeSession = onSnapshot(sessionRef, (docSnap) => {
+                                // If the doc specifically exists then disappears, then it's a revocation.
+                                // But if it never existed (e.g. latency/new user), we don't sign out yet.
+                                if (docSnap.metadata.fromCache) return; // Ignore initial cache misses
+                                if (!docSnap.exists()) {
+                                    console.warn("Session revoked or not found. Signing out.");
+                                    auth.signOut().then(() => {
+                                        clearLocalSession();
+                                    });
+                                }
+                            });
+                        }, 3000); 
                     }
                 }).catch(e => console.error("Session Error:", e));
 
