@@ -23,11 +23,16 @@ const ADMIN_EMAIL = 'koteshbitra789@gmail.com';
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function Login() {
+    const navigate = useNavigate();
     // -------------------------------------------------------------------------
     // 1. ALL HOOK DECLARATIONS (Must be at top, unconditional)
     // -------------------------------------------------------------------------
     const [configError, setConfigError] = useState(window.FIREBASE_CONFIG_ERROR || null);
-    const [isLogin, setIsLogin] = useState(true);
+    
+    // Use query params to persist mode across re-renders/mounts
+    const queryParams = new URLSearchParams(window.location.search);
+    const [isLogin, setIsLogin] = useState(queryParams.get('mode') !== 'signup');
+    
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -59,14 +64,19 @@ export default function Login() {
         });
     };
 
-    const navigate = useNavigate();
     const { user, userData, loading: userLoading } = useUser();
     const { t, language, toggleLanguage } = useLanguage();
 
     // Helper functions (safe to be here)
     const toggleMode = () => {
-        setIsLogin(!isLogin);
+        const newMode = !isLogin;
+        setIsLogin(newMode);
         setError('');
+        // Sync with URL without reloading
+        const url = new URL(window.location);
+        if (newMode) url.searchParams.delete('mode');
+        else url.searchParams.set('mode', 'signup');
+        window.history.replaceState({}, '', url);
     };
 
     const checkUserExists = async (uid) => {
@@ -137,6 +147,10 @@ export default function Login() {
     // Effect 1: Redirect logic for logged-in users
     useEffect(() => {
         if (userLoading) return; // Wait for initial load
+
+        // CRITICAL FIX: If we are intentionally in Signup mode, don't auto-redirect
+        // until the user actually completes the signup process.
+        if (!isLogin) return;
 
         if (user) {
             if (userData && userData.role) {
