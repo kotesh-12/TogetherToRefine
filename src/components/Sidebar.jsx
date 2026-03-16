@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -12,6 +12,18 @@ export default function Sidebar({ isOpen }) {
     const { theme, toggleTheme } = useTheme();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [voiceEnabled, setVoiceEnabled] = useState(false);
+    const menuRef = useRef(null);
+
+    // Close menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (menuRef.current && !menuRef.current.contains(event.target)) {
+                setIsMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     // Filter by Role - Wait for userData to load
     if (!userData || !userData.role) {
@@ -151,48 +163,69 @@ export default function Sidebar({ isOpen }) {
             </div>
 
             {/* Premium Upward Dropdown Section */}
-            <div style={{ padding: '16px 12px', borderTop: '1px solid var(--divider)', position: 'relative' }}>
+            <div ref={menuRef} style={{ padding: '16px 12px', borderTop: '1px solid var(--divider)', position: 'relative' }}>
+                <style>{`
+                    @keyframes premiumPopup {
+                        0% { opacity: 0; transform: translateY(20px) scale(0.9); filter: blur(10px); }
+                        100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+                    }
+                    @keyframes slideInItem {
+                        from { opacity: 0; transform: translateY(10px); }
+                        to { opacity: 1; transform: translateY(0); }
+                    }
+                    @keyframes shimmer {
+                        0% { transform: translateX(-100%); }
+                        100% { transform: translateX(100%); }
+                    }
+                    .menu-item {
+                        animation: slideInItem 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+                        opacity: 0;
+                    }
+                    .premium-shimmer::after {
+                        content: '';
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        background: linear-gradient(
+                            90deg,
+                            transparent,
+                            rgba(255, 255, 255, 0.2),
+                            transparent
+                        );
+                        animation: shimmer 2s infinite;
+                        transform: skewX(-20deg);
+                    }
+                `}</style>
+
                 {isMenuOpen && (
                     <div style={{
                         position: 'absolute',
-                        bottom: '90px',
+                        bottom: 'calc(100% + 12px)',
                         left: '12px',
                         right: '12px',
-                        background: theme === 'Dark' ? 'rgba(30, 41, 59, 0.8)' : 'rgba(255, 255, 255, 0.8)',
-                        backdropFilter: 'blur(20px) saturate(180%)',
-                        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+                        background: theme === 'Dark' ? 'rgba(15, 23, 42, 0.75)' : 'rgba(255, 255, 255, 0.75)',
+                        backdropFilter: 'blur(20px) saturate(200%)',
+                        WebkitBackdropFilter: 'blur(20px) saturate(200%)',
                         borderRadius: '24px',
-                        boxShadow: '0 20px 50px rgba(0,0,0,0.2), 0 0 0 1px rgba(255,255,255,0.1)',
+                        boxShadow: '0 30px 60px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.1)',
                         padding: '12px',
                         zIndex: 1200,
                         border: '1px solid rgba(255, 255, 255, 0.2)',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '6px',
-                        animation: 'premiumPopup 0.4s cubic-bezier(0.19, 1, 0.22, 1)'
+                        transformOrigin: 'bottom center',
+                        animation: 'premiumPopup 0.5s cubic-bezier(0.19, 1, 0.22, 1)'
                     }}>
-                        <style>{`
-                            @keyframes premiumPopup {
-                                from { opacity: 0; transform: translateY(30px) scale(0.9); filter: blur(10px); }
-                                to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
-                            }
-                            @keyframes slideInItem {
-                                from { opacity: 0; transform: translateX(-10px); }
-                                to { opacity: 1; transform: translateX(0); }
-                            }
-                            .menu-item {
-                                animation: slideInItem 0.3s ease forwards;
-                                opacity: 0;
-                            }
-                        `}</style>
-                        
                         {[
-                            { label: 'Themes', icon: theme === 'Dark' ? '☀️' : '🌙', action: toggleTheme, color: '#f59e0b' },
-                            { label: 'Upgrade Plan', icon: '💎', action: () => navigate('/fees/student'), color: '#3b82f6' },
-                            { label: 'Intelligence Hub', icon: '🧠', action: () => navigate('/ttr-ai'), color: '#8b5cf6' },
-                            { label: 'Gurukul Board', icon: '🎓', action: () => navigate('/student'), color: '#10b981' },
-                            { label: 'Enable Voice', icon: voiceEnabled ? '🔊' : '🎙️', action: () => setVoiceEnabled(!voiceEnabled), color: voiceEnabled ? '#ef4444' : '#6b7280' },
-                            { label: 'Download App', icon: '📱', action: () => navigate('/download'), color: '#6366f1' },
+                            { label: 'Themes', icon: theme === 'Dark' ? '☀️' : '🌙', action: toggleTheme, color: '#f59e0b', sub: 'Switch Appearance' },
+                            { label: 'Upgrade Plan', icon: '💎', action: () => navigate('/fees/student'), color: '#3b82f6', sub: 'Unlock Features' },
+                            { label: 'Intelligence Hub', icon: '🧠', action: () => navigate('/ttr-ai'), color: '#8b5cf6', sub: 'AI Core' },
+                            { label: 'Gurukul Board', icon: '🎓', action: () => navigate('/student'), color: '#10b981', sub: 'My Progress' },
+                            { label: 'Enable Voice', icon: voiceEnabled ? '🔊' : '🎙️', action: () => setVoiceEnabled(!voiceEnabled), color: voiceEnabled ? '#ef4444' : '#6b7280', sub: 'Hands-free' },
+                            { label: 'Download App', icon: '📱', action: () => navigate('/download'), color: '#6366f1', sub: 'Mobile Ready' },
                         ].map((item, i) => (
                             <div
                                 key={i}
@@ -201,49 +234,60 @@ export default function Sidebar({ isOpen }) {
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '12px',
+                                    gap: '14px',
                                     padding: '12px 14px',
                                     borderRadius: '16px',
                                     cursor: 'pointer',
-                                    fontSize: '14px',
-                                    fontWeight: '600',
-                                    color: 'var(--text-main)',
                                     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                     background: 'transparent',
-                                    animationDelay: `${i * 0.05}s`
+                                    animationDelay: `${i * 0.05}s`,
+                                    position: 'relative',
+                                    overflow: 'hidden'
                                 }}
                                 onMouseOver={(e) => {
-                                    e.currentTarget.style.background = theme === 'Dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)';
-                                    e.currentTarget.style.transform = 'translateX(4px)';
+                                    e.currentTarget.style.background = theme === 'Dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)';
+                                    e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.05)';
                                 }}
                                 onMouseOut={(e) => {
                                     e.currentTarget.style.background = 'transparent';
-                                    e.currentTarget.style.transform = 'translateX(0)';
+                                    e.currentTarget.style.boxShadow = 'none';
                                 }}
                             >
                                 <span style={{ 
                                     fontSize: '20px', 
-                                    width: '32px', 
-                                    height: '32px', 
+                                    width: '36px', 
+                                    height: '36px', 
                                     display: 'flex', 
                                     alignItems: 'center', 
                                     justifyContent: 'center',
-                                    background: `${item.color}15`,
-                                    borderRadius: '10px',
-                                    color: item.color
+                                    background: `${item.color}20`,
+                                    borderRadius: '12px',
+                                    color: item.color,
+                                    boxShadow: `0 4px 10px ${item.color}30`
                                 }}>
                                     {item.icon}
                                 </span>
-                                {isOpen && <span>{item.label}</span>}
+                                {isOpen && (
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <span style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-main)' }}>{item.label}</span>
+                                        <span style={{ fontSize: '10px', color: 'var(--text-muted)', opacity: 0.7 }}>{item.sub}</span>
+                                    </div>
+                                )}
                                 {item.label === 'Enable Voice' && isOpen && (
                                     <div style={{ marginLeft: 'auto' }}>
                                         <div style={{ 
-                                            width: '8px', 
-                                            height: '8px', 
-                                            borderRadius: '50%', 
-                                            background: voiceEnabled ? '#ef4444' : '#94a3b8',
-                                            boxShadow: voiceEnabled ? '0 0 8px #ef4444' : 'none'
-                                        }} />
+                                            width: '24px', 
+                                            height: '12px', 
+                                            borderRadius: '20px', 
+                                            background: voiceEnabled ? '#ef4444' : '#cbd5e1',
+                                            padding: '2px',
+                                            transition: 'all 0.3s ease',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: voiceEnabled ? 'flex-end' : 'flex-start'
+                                        }}>
+                                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'white' }} />
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -251,81 +295,71 @@ export default function Sidebar({ isOpen }) {
                     </div>
                 )}
 
-                {/* Sign Up Button Card */}
+                {/* Main Sign Up Trigger Button */}
                 <div
                     onClick={() => setIsMenuOpen(!isMenuOpen)}
+                    className="premium-shimmer"
                     style={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: isOpen ? 'flex-start' : 'center',
-                        padding: '14px 18px',
+                        padding: '16px 20px',
                         cursor: 'pointer',
-                        borderRadius: '20px',
-                        background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)',
+                        borderRadius: '22px',
+                        background: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)',
                         color: 'white',
                         transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                        boxShadow: isMenuOpen ? '0 0 20px rgba(59, 130, 246, 0.5)' : '0 10px 20px rgba(0,0,0,0.1)',
+                        boxShadow: isMenuOpen ? '0 0 30px rgba(37, 99, 235, 0.5)' : '0 12px 24px rgba(0,0,0,0.15)',
                         position: 'relative',
                         overflow: 'hidden',
-                        transform: isMenuOpen ? 'scale(0.98)' : 'scale(1)'
+                        transform: isMenuOpen ? 'scale(0.96)' : 'scale(1)'
                     }}
                     onMouseOver={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)';
-                        e.currentTarget.style.boxShadow = '0 15px 30px rgba(59, 130, 246, 0.3)';
+                        e.currentTarget.style.transform = 'translateY(-5px) scale(1.03)';
+                        e.currentTarget.style.boxShadow = '0 20px 40px rgba(37, 99, 235, 0.35)';
                     }}
                     onMouseOut={(e) => {
-                        e.currentTarget.style.transform = isMenuOpen ? 'scale(0.98)' : 'scale(1)';
-                        e.currentTarget.style.boxShadow = isMenuOpen ? '0 0 20px rgba(59, 130, 246, 0.5)' : '0 10px 20px rgba(0,0,0,0.1)';
+                        e.currentTarget.style.transform = isMenuOpen ? 'scale(0.96)' : 'scale(1)';
+                        e.currentTarget.style.boxShadow = isMenuOpen ? '0 0 30px rgba(37, 99, 235, 0.5)' : '0 12px 24px rgba(0,0,0,0.15)';
                     }}
                 >
-                    {/* Glossy Overlay */}
-                    <div style={{
-                        position: 'absolute',
-                        top: '-50%',
-                        left: '-50%',
-                        width: '200%',
-                        height: '200%',
-                        background: 'radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%)',
-                        pointerEvents: 'none'
-                    }} />
-                    
-                    <span style={{ 
-                        fontSize: '22px', 
+                    <div style={{ 
+                        fontSize: '24px', 
                         minWidth: '32px', 
                         display: 'flex', 
                         justifyContent: 'center',
-                        filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
-                    }}>✨</span>
+                        filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.4))'
+                    }}>✨</div>
                     
                     {isOpen && (
-                        <div style={{ marginLeft: '12px', display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ marginLeft: '14px', display: 'flex', flexDirection: 'column', flex: 1 }}>
                             <span style={{
                                 fontSize: '15px',
-                                fontWeight: '800',
+                                fontWeight: '900',
                                 whiteSpace: 'nowrap',
-                                textShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                textTransform: 'uppercase',
+                                letterSpacing: '1px'
                             }}>
                                 {t('signup')}
                             </span>
-                            <span style={{ fontSize: '10px', opacity: 0.8, fontWeight: '500' }}>
-                                {isMenuOpen ? 'Close Menu' : 'Premium Access'}
+                            <span style={{ fontSize: '10px', opacity: 0.9, fontWeight: '500', color: 'rgba(255,255,255,0.8)' }}>
+                                {isMenuOpen ? 'Tap to close' : 'Explore Premium'}
                             </span>
                         </div>
                     )}
                     
                     {isOpen && (
                         <div style={{ 
-                            marginLeft: 'auto', 
-                            transition: 'transform 0.3s ease',
-                            transform: isMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)'
+                            transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                            transform: isMenuOpen ? 'rotate(180deg) scale(1.2)' : 'rotate(0deg) scale(1)',
+                            opacity: 0.8
                         }}>
-                            <span style={{ fontSize: '12px' }}>▲</span>
+                            <span style={{ fontSize: '14px' }}>▲</span>
                         </div>
                     )}
                 </div>
 
-                {/* Footer Copyright */}
-                <div style={{ marginTop: '16px', fontSize: '10px', color: 'var(--text-muted)', textAlign: 'center', opacity: 0.6, letterSpacing: '0.5px' }}>
+                <div style={{ marginTop: '16px', fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', fontWeight: '500', opacity: 0.5 }}>
                     {isOpen ? 'Together To Refine © 2026' : 'TTR'}
                 </div>
             </div>
