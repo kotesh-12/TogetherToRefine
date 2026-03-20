@@ -1214,7 +1214,8 @@ export default function TTRAIChat() {
             )}
 
             {/* ── Sidebar ── */}
-            <div className={`sidebar ${showSidebar ? 'open' : ''}`}>
+            <div className={`chat-sidebar ${showSidebar ? 'show' : ''}`}>
+
                 <div className="sidebar-header">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <img src={logo} alt="TTR-AI" style={{ height: '32px', width: 'auto' }} />
