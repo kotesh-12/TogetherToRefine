@@ -562,7 +562,14 @@ export default function TTRAIChat() {
 
     /* ── Auto scroll ── */
     const scrollToBottom = useCallback(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), []);
-    useEffect(() => scrollToBottom(), [messages, scrollToBottom]);
+    useEffect(() => {
+        // Only auto-scroll when a new AI message or User message is added, 
+        // not when switching historical sessions (which adds many messages at once)
+        if (messages.length > 2 && !loading) {
+            scrollToBottom();
+        }
+    }, [messages, scrollToBottom, loading]);
+
 
     /* ── Animation: Modal Spring-In ── */
     useEffect(() => {
