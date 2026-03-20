@@ -216,6 +216,7 @@ export default function TTRAIChat() {
     const [theme, setTheme] = useState(() => getSafeStorage('ttr_theme', 'dark'));
     const [showThemeGallery, setShowThemeGallery] = useState(false);
     const [showHeaderActions, setShowHeaderActions] = useState(false);
+    const [showSidebarExtra, setShowSidebarExtra] = useState(false);
     const langMenuRef = useRef(null);
 
     // Sandbox State
@@ -1325,102 +1326,116 @@ export default function TTRAIChat() {
                             )}
                         </div>
 
+                        {/* Active Recall Nudge */}
+                        {recallSubject && Date.now() - lastStudyTime > 3600000 && (
+                            <div style={{
+                                margin: '10px 14px', padding: '12px', borderRadius: '12px',
+                                background: 'linear-gradient(135deg, rgba(167, 139, 250, 0.1), rgba(139, 92, 246, 0.1))',
+                                border: '1px solid rgba(167, 139, 250, 0.2)', boxShadow: '0 0 15px rgba(139, 92, 246, 0.1)'
+                            }}>
+                                <div style={{ fontSize: '10px', color: '#a78bfa', fontWeight: 'bold', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>⚡ Active Recall</div>
+                                <div style={{ fontSize: '11px', color: '#e8e8f0', marginBottom: '8px', lineHeight: '1.4' }}>Seeker, it's time to test your memory on "{recallSubject}".</div>
+                                <button 
+                                    onClick={() => { setInput(`/quiz on ${recallSubject}`); setTimeout(() => handleSend(), 100); }}
+                                    style={{ width: '100%', padding: '6px', borderRadius: '6px', background: '#8b5cf6', color: 'white', border: 'none', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}
+                                >
+                                    Start Recap (+20 Dharma XP)
+                                </button>
+                            </div>
+                        )}
+
                         <div className="chat-sidebar-footer">
-                            <small style={{ color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px', display: 'block', textAlign: 'center' }}>Theme Gallery</small>
-                            <div className="theme-selector-mini" onClick={() => setShowThemeGallery(true)}>
-                                <div className="theme-dot dark"></div>
-                                <div className="theme-dot white"></div>
-                                <div className="theme-dot purple"></div>
-                                <div className="gallery-btn"><span>✨</span></div>
-                            </div>
-                            <div className="user-info">
+                            <div className="user-info" style={{ marginBottom: '8px' }}>
                                 <div className="user-avatar">{displayName.charAt(0).toUpperCase()}</div>
-                                <span className="user-name">{displayName}</span>
+                                <span className="user-name" style={{ flex: 1 }}>{displayName}</span>
+                                <button 
+                                    onClick={() => setShowSidebarExtra(!showSidebarExtra)}
+                                    style={{
+                                        background: 'none', border: 'none', color: 'var(--text-muted)',
+                                        fontSize: '18px', cursor: 'pointer', transition: 'transform 0.3s',
+                                        transform: showSidebarExtra ? 'rotate(180deg)' : 'rotate(0deg)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        padding: '4px'
+                                    }}
+                                    title={showSidebarExtra ? "Collapse Menu" : "Expand Menu"}
+                                >
+                                    ^
+                                </button>
                             </div>
 
-                            <button
-                                onClick={() => navigate('/pricing')}
-                                style={{
-                                    width: '100%', padding: '6px', borderRadius: '8px',
-                                    background: 'linear-gradient(90deg, #bb86fc, #8b5cf6)', color: '#fff',
-                                    border: 'none', cursor: 'pointer',
-                                    marginBottom: '6px', fontSize: '11px', display: 'flex',
-                                    alignItems: 'center', justifyContent: 'center', gap: '8px',
-                                    fontWeight: 'bold', boxShadow: '0 4px 10px rgba(139, 92, 246, 0.3)',
-                                    transition: 'transform 0.2s',
-                                }}
-                            >
-                                <span>💎</span> Upgrade Plan ({getSafeStorage('ttr_subscription_plan')?.toUpperCase() || 'FREE'})
-                            </button>
+                            {showSidebarExtra && (
+                                <div className="sidebar-extra-content animate-in-sideways" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                    <small style={{ color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px', display: 'block', textAlign: 'center' }}>Theme Gallery</small>
+                                    <div className="theme-selector-mini" onClick={() => setShowThemeGallery(true)}>
+                                        <div className="theme-dot dark"></div>
+                                        <div className="theme-dot white"></div>
+                                        <div className="theme-dot purple"></div>
+                                        <div className="gallery-btn"><span>✨</span></div>
+                                    </div>
 
-
-
-                            {/* Active Recall Nudge (Suggestion 5) */}
-                            {recallSubject && Date.now() - lastStudyTime > 3600000 && (
-                                <div style={{
-                                    margin: '10px 0', padding: '12px', borderRadius: '12px',
-                                    background: 'linear-gradient(135deg, rgba(167, 139, 250, 0.1), rgba(139, 92, 246, 0.1))',
-                                    border: '1px solid rgba(167, 139, 250, 0.2)', boxShadow: '0 0 15px rgba(139, 92, 246, 0.1)'
-                                }}>
-                                    <div style={{ fontSize: '10px', color: '#a78bfa', fontWeight: 'bold', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>⚡ Active Recall</div>
-                                    <div style={{ fontSize: '11px', color: '#e8e8f0', marginBottom: '8px', lineHeight: '1.4' }}>Seeker, it's time to test your memory on "{recallSubject}".</div>
-                                    <button 
-                                        onClick={() => { setInput(`/quiz on ${recallSubject}`); setTimeout(() => handleSend(), 100); }}
-                                        style={{ width: '100%', padding: '6px', borderRadius: '6px', background: '#8b5cf6', color: 'white', border: 'none', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' }}
+                                    <button
+                                        onClick={() => navigate('/pricing')}
+                                        style={{
+                                            width: '100%', padding: '6px', borderRadius: '8px',
+                                            background: 'linear-gradient(90deg, #bb86fc, #8b5cf6)', color: '#fff',
+                                            border: 'none', cursor: 'pointer',
+                                            marginBottom: '6px', fontSize: '11px', display: 'flex',
+                                            alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                            fontWeight: 'bold', boxShadow: '0 4px 10px rgba(139, 92, 246, 0.3)',
+                                            transition: 'transform 0.2s',
+                                        }}
                                     >
-                                        Start Recap (+20 Dharma XP)
+                                        <span>💎</span> Upgrade Plan ({getSafeStorage('ttr_subscription_plan')?.toUpperCase() || 'FREE'})
+                                    </button>
+
+                                    <button
+                                        onClick={() => navigate('/intelligence-hub')}
+                                        style={{
+                                            width: '100%', padding: '6px', borderRadius: '8px',
+                                            background: 'rgba(59, 130, 246, 0.05)', color: '#60a5fa',
+                                            border: '1px solid rgba(59, 130, 246, 0.2)', cursor: 'pointer',
+                                            marginBottom: '6px', fontSize: '11px', display: 'flex',
+                                            alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                    >
+                                        <span>🔱</span> Intelligence Hub
+                                    </button>
+
+                                    <button
+                                        onClick={() => navigate('/download-app')}
+                                        style={{
+                                            width: '100%', padding: '6px', borderRadius: '8px',
+                                            background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa',
+                                            border: '1px solid rgba(59, 130, 246, 0.2)', cursor: 'pointer',
+                                            marginBottom: '6px', fontSize: '11px', display: 'flex',
+                                            alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                    >
+                                        <span>📲</span> Download App
+                                    </button>
+
+                                    <button
+                                        onClick={() => {
+                                            const next = !autoSpeak;
+                                            setAutoSpeak(next);
+                                            setSafeStorage('ttr_auto_speak', next.toString());
+                                        }}
+                                        style={{
+                                            width: '100%', padding: '6px', borderRadius: '8px',
+                                            background: autoSpeak ? 'rgba(34, 197, 94, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+                                            color: autoSpeak ? '#4ade80' : '#94a3b8',
+                                            border: `1px solid ${autoSpeak ? 'rgba(34, 197, 94, 0.3)' : 'rgba(255, 255, 255, 0.1)'}`,
+                                            cursor: 'pointer', marginBottom: '6px', fontSize: '11px', display: 'flex',
+                                            alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                    >
+                                        <span>{autoSpeak ? '🔊' : '🔈'}</span> {autoSpeak ? 'Hands-free Guru ON' : 'Enable Voice Guru'}
                                     </button>
                                 </div>
                             )}
-
-                            <button
-                                onClick={() => navigate('/intelligence-hub')}
-                                style={{
-                                    width: '100%', padding: '6px', borderRadius: '8px',
-                                    background: 'rgba(59, 130, 246, 0.05)', color: '#60a5fa',
-                                    border: '1px solid rgba(59, 130, 246, 0.2)', cursor: 'pointer',
-                                    marginBottom: '6px', fontSize: '11px', display: 'flex',
-                                    alignItems: 'center', justifyContent: 'center', gap: '8px',
-                                    transition: 'all 0.2s ease'
-                                }}
-                            >
-                                <span>🔱</span> Intelligence Hub
-                            </button>
-
-
-
-                            <button
-                                onClick={() => navigate('/download-app')}
-                                style={{
-                                    width: '100%', padding: '6px', borderRadius: '8px',
-                                    background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa',
-                                    border: '1px solid rgba(59, 130, 246, 0.2)', cursor: 'pointer',
-                                    marginBottom: '6px', fontSize: '11px', display: 'flex',
-                                    alignItems: 'center', justifyContent: 'center', gap: '8px',
-                                    transition: 'all 0.2s ease'
-                                }}
-                            >
-                                <span>📲</span> Download App
-                            </button>
-
-                            <button
-                                onClick={() => {
-                                    const next = !autoSpeak;
-                                    setAutoSpeak(next);
-                                    setSafeStorage('ttr_auto_speak', next.toString());
-                                }}
-                                style={{
-                                    width: '100%', padding: '6px', borderRadius: '8px',
-                                    background: autoSpeak ? 'rgba(34, 197, 94, 0.1)' : 'rgba(255, 255, 255, 0.05)',
-                                    color: autoSpeak ? '#4ade80' : '#94a3b8',
-                                    border: `1px solid ${autoSpeak ? 'rgba(34, 197, 94, 0.3)' : 'rgba(255, 255, 255, 0.1)'}`,
-                                    cursor: 'pointer', marginBottom: '6px', fontSize: '11px', display: 'flex',
-                                    alignItems: 'center', justifyContent: 'center', gap: '8px',
-                                    transition: 'all 0.2s ease'
-                                }}
-                            >
-                                <span>{autoSpeak ? '🔊' : '🔈'}</span> {autoSpeak ? 'Hands-free Guru ON' : 'Enable Voice Guru'}
-                            </button>
 
                             {/* Admin-Only Section — visible only to koteshbitra789@gmail.com */}
                             {user?.email === 'koteshbitra789@gmail.com' && (
