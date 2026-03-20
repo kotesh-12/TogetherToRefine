@@ -24,8 +24,10 @@ import {
     BreathingOrb,
     AnimatedMessage,
     MagneticSubmitButton,
-    TypewriterMessage
+    TypewriterMessage,
+    BrainInsights
 } from '../components/ChatComponents';
+
 
 // Constants & Data
 import {
@@ -139,7 +141,10 @@ const removeSafeStorage = (key, useSession = false) => {
 
 // The main view exported for the application
 // Moved outside to avoid infinite re-renders
-const WELCOME_MSG_CONSTANT = { text: "Hello! I'm **TTRAI** 🧠 — your intelligent learning companion.\n\nAsk me anything about academics, coding, science, math, or just have a conversation!", sender: 'ai' };
+// The main view exported for the application
+const WELCOME_MSG_CONSTANT = { text: "Hello! I'm **TTRAI** 🧠 — your intelligent learning companion specialized in TogetherToRefine protocols.\n\nI have been updated with the **Self-Upgrading Intelligence Engine v2.5**:\n1.  **Context & Ideology Retention** (Memory)\n2.  **Psychological Mirroring** (Mindset Adaptation)\n3.  **Demographic Intelligence** (Cultural Empathy)\n4.  **Lateral Thinking** (Creative Problem-Solving)\n5.  **Explainable Reasoning** (Brain Insights)\n\nI am now actively learning your way of thinking and ideology to provide a truly personalized experience. How can we refine your journey today?", sender: 'ai' };
+
+
 
 /* ──────────────── Main Chat Page ──────────────── */
 export default function TTRAIChat() {
@@ -713,10 +718,19 @@ export default function TTRAIChat() {
                 apiMessageContent += "\n\nCRITICAL SYSTEM TRIGGER: The user heavily implies they want a PowerPoint. Please generate a highly professional, slide-by-slide presentation about this topic. Format it STRICTLY as follows for each slide:\n\nSlide: [Slide Title]\nContent:\n- [Bullet Point 1]\n- [Bullet Point 2]\nNotes: [What the speaker should say out loud regarding this slide]\n\nDo not add extra text outside this format.";
             }
 
+            // ─── Suggestion 1: Context Retention (Memory) ───
+            let summarizedMemory = "";
+            if (user && sessions.length > 0) {
+                const pastThemes = sessions.slice(0, 5).map(s => s.title).join(", ");
+                summarizedMemory = `User's recent session topics: ${pastThemes}. If relevant, relate the current query to these past learning themes.`;
+            }
+
             const payload = {
                 history: historyForApi,
                 message: apiMessageContent,
+                longTermMemory: summarizedMemory, // Persists context across sessions
                 userContext: {
+
                     name: displayName,
                     email: user?.email || 'Guest',
                     gurukul_path: currentPath,
@@ -762,7 +776,16 @@ export default function TTRAIChat() {
                 throw new Error(`Server error: ${response.status}`);
             }
             const result = await response.json();
-            const responseText = result.response || result.text;
+            let responseText = result.response || result.text;
+            
+            // ─── Explainability: Extract Thought Process ───
+            let thoughtProcess = '';
+            const thoughtMatch = responseText.match(/<thought>([\s\S]*?)<\/thought>/);
+            if (thoughtMatch) {
+                thoughtProcess = thoughtMatch[1].trim();
+                responseText = responseText.replace(/<thought>[\s\S]*?<\/thought>/, '').trim();
+            }
+
             // ─── Extract Dharma XP ───
             const xpMatch = responseText.match(/\[Dharma Points: \+(\d+)\]/);
             if (xpMatch) {
@@ -779,8 +802,10 @@ export default function TTRAIChat() {
                 isNew: true, 
                 question: text,
                 sources: sources,
-                toolCalled: toolCalled
+                toolCalled: toolCalled,
+                thought: thoughtProcess
             };
+
             setMessages(prev => [...prev, aiMsg]);
 
             if (user && sessionId && !incognitoMode) {
@@ -1573,6 +1598,8 @@ export default function TTRAIChat() {
                                         </div>
                                     </div>
                                 )}
+                                {/* ─── BRAIN INSIGHTS (EXPLAINABILITY) ─── */}
+                                {msg.thought && <BrainInsights thought={msg.thought} />}
                             </div>
 
                             {msg.sender === 'user' && (
@@ -1587,10 +1614,12 @@ export default function TTRAIChat() {
                         <div className="message ai">
                             <div className="msg-avatar ai-avatar">
                                 <img src={logo} alt="TTR AI" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
+                                <div style={{ position: 'absolute', bottom: '-4px', right: '-4px', width: '8px', height: '8px', background: '#10b981', borderRadius: '50%', border: '2px solid #0f0f14' }} title="TTR Intelligence Engine Online"></div>
                             </div>
                             <BreathingOrb />
                         </div>
                     )}
+
 
                     <div ref={messagesEndRef} />
                 </div>

@@ -113,11 +113,59 @@ export const MagneticSubmitButton = memo(({ onClick, disabled, loading, onStop }
 });
 
 /**
- * TypewriterMessage: Progressive text reveal
+ * BrainInsights: Expandable reasoning trail for AI transparency
  */
+export const BrainInsights = memo(({ thought }) => {
+    const [expanded, setExpanded] = useState(false);
+    if (!thought) return null;
+
+    return (
+        <div style={{
+            marginTop: '12px',
+            padding: '10px 15px',
+            background: 'rgba(108, 99, 255, 0.04)',
+            border: '1px solid rgba(108, 99, 255, 0.1)',
+            borderRadius: '10px',
+            fontSize: '13px',
+            color: 'var(--text-secondary)'
+        }}>
+            <button 
+                onClick={() => setExpanded(!expanded)}
+                style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--accent)',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: 0,
+                    marginBottom: expanded ? '8px' : 0
+                }}
+            >
+                {expanded ? '▼' : '▶'} Brain Insights (Reasoning)
+            </button>
+            {expanded && (
+                <div style={{ 
+                    fontStyle: 'italic', 
+                    lineHeight: '1.5',
+                    opacity: 0.9,
+                    borderLeft: '2px solid var(--accent)',
+                    paddingLeft: '10px'
+                }}>
+                    {thought}
+                </div>
+            )}
+        </div>
+    );
+});
+
 export const TypewriterMessage = memo(({ text, onComplete }) => {
     const [displayed, setDisplayed] = useState('');
     const idx = useRef(0);
+
 
     useEffect(() => {
         idx.current = 0;
