@@ -22,8 +22,10 @@ export default function DownloadApp() {
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
             background: '#0f0f14',
             color: '#ffffff',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start',
             zIndex: 9999,
+            overflowY: 'auto',
+            padding: '60px 20px',
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
         }}>
             {/* BACK BUTTON (Top Left) */}

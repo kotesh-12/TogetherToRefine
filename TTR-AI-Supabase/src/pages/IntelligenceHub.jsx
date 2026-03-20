@@ -59,7 +59,8 @@ const IntelligenceHub = () => {
 
     return (
         <div className="hub-container" style={{
-            minHeight: '100vh',
+            height: '100vh',
+            overflowY: 'auto',
             background: '#0f0f14',
             color: '#e8e8f0',
             padding: '40px 20px',

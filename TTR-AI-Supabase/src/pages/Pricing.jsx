@@ -71,7 +71,8 @@ export default function Pricing() {
 
     return (
         <div style={{
-            minHeight: '100vh',
+            height: '100vh',
+            overflowY: 'auto',
             background: 'linear-gradient(135deg, #0f0f14 0%, #1a1a2e 100%)',
             color: 'white',
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
