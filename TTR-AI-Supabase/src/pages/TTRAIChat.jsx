@@ -1349,17 +1349,21 @@ export default function TTRAIChat() {
                                 <div className="user-avatar">{displayName.charAt(0).toUpperCase()}</div>
                                 <span className="user-name" style={{ flex: 1 }}>{displayName}</span>
                                 <button 
+                                    className="premium-toggle"
                                     onClick={() => setShowSidebarExtra(!showSidebarExtra)}
                                     style={{
                                         background: 'none', border: 'none', color: 'var(--text-muted)',
-                                        fontSize: '18px', cursor: 'pointer', transition: 'transform 0.3s',
-                                        transform: showSidebarExtra ? 'rotate(180deg)' : 'rotate(0deg)',
+                                        fontSize: '18px', cursor: 'pointer',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        padding: '4px'
+                                        padding: '4px',
+                                        borderRadius: '50%'
                                     }}
                                     title={showSidebarExtra ? "Collapse Menu" : "Expand Menu"}
                                 >
-                                    ^
+                                    <span className="premium-toggle-icon" style={{
+                                        display: 'inline-block',
+                                        transform: showSidebarExtra ? 'rotate(180deg)' : 'rotate(0deg)'
+                                    }}>^</span>
                                 </button>
                             </div>
 
@@ -1529,12 +1533,25 @@ export default function TTRAIChat() {
                     </div>
                     <div className="header-actions">
                         <button 
-                            className={`path-header-btn toggle-actions-btn ${showHeaderActions ? 'active' : ''}`}
+                            className={`path-header-btn premium-toggle ${showHeaderActions ? 'active' : ''}`}
                             onClick={() => setShowHeaderActions(!showHeaderActions)}
                             title={showHeaderActions ? "Hide Tools" : "Show Tools"}
-                            style={{ marginRight: '4px', background: 'rgba(108, 99, 255, 0.1)', border: '1px solid rgba(108, 99, 255, 0.2)' }}
+                            style={{ 
+                                marginRight: '6px', 
+                                background: 'rgba(108, 99, 255, 0.1)', 
+                                border: '1px solid rgba(108, 99, 255, 0.2)',
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '50%'
+                            }}
                         >
-                            {showHeaderActions ? '>' : '<'}
+                            <span className="premium-toggle-icon" style={{ 
+                                display: 'inline-block',
+                                transform: showHeaderActions ? 'rotate(180deg)' : 'rotate(0deg)',
+                                color: 'var(--accent)',
+                                fontSize: '16px',
+                                fontWeight: 'bold'
+                            }}>{'<'}</span>
                         </button>
                         
                         {showHeaderActions && (

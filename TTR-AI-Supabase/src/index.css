@@ -91,6 +91,28 @@
   animation: animateInSideways 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+.premium-toggle {
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.premium-toggle:hover {
+  transform: scale(1.15);
+  filter: drop-shadow(0 0 8px var(--accent));
+  background: var(--accent-glow) !important;
+}
+
+.premium-toggle:active {
+  transform: scale(0.9);
+}
+
+.premium-toggle-icon {
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
 :root {
   --bg-primary: #0f0f14;
   --bg-secondary: #16161e;
