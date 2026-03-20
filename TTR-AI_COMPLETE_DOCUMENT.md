@@ -101,13 +101,20 @@ TTR-AI uses a reward system called **Dharma XP** to encourage disciplined learni
 
 ---
 
-## 🚀 7. Roadmap & Future (The Evolution)
-TTR-AI is in constant refinement. Upcoming features include:
-*   **Emotional Range (Sentiment Analysis):** Better understanding of user frustration or excitement.
-*   **Reinforcement Learning:** Learning from virtual simulations to handle novel scenarios.
-*   **Causal Reasoning:** Using Knowledge Graphs to explain "Why" things happen at a scientific level.
-*   **Fairness Algorithms:** Advanced bias mitigation to ensure total equity in AI outputs.
+## 🚀 7. Roadmap & The Evolution
+TTR-AI is in a state of continuous refinement. Our development is categorized into immediate active addressing and foundational long-term shifts.
+
+### **Actively Being Addressed (Short-Term / In Progress):**
+*   **📡 Data Freshness & Real-Time Intelligence:** Tool integrations (Tavily Search, YouTube Search) are being sharpened to ensure the AI always has a "live" pulse on the world.
+*   **🔍 Intent Decoding:** Continuous training of the pre-processing layer to better handle ambiguous or incomplete prompts, inferring the user's ultimate goal.
+
+### **Foundational Long-Term Goals:**
+*   **🧠 High-Fidelity Context Retention:** Moving towards persistent user profiles and dynamic Knowledge Graphs that recall specific learning breakthroughs across years of study.
+*   **🎨 Creativity vs. Rigidity Balance:** Further refining the "Sahadeva Protocol" to allow the AI to switch from technical rigidity to open-ended brainstorming seamlessly.
+*   **🛡️ Niche Domain Hallucination Shield:** Strengthening the knowledge validation pipeline with expert-curated data for specialized scientific and legal fields.
+*   **⚖️ Algorithmic Fairness:** Expansion of the "Bias Audit" module to ensure total equity in code generation and decision-making logic.
+*   **🧪 Real-World Physical Constraints:** Exploring partnerships to integrate advanced physics simulation engines for virtual laboratory experiments.
 
 ---
 **TTR-AI: Refining the Intelligence of the Future.**
-*Document generated on: 2026-03-20*
+*Document updated on: 2026-03-20*
