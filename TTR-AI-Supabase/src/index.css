@@ -943,14 +943,17 @@ a:hover {
   height: 100%;
   width: 100%;
   
-  /* Hide scrollbar while keeping scroll functionality */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
+  /* Total scrollbar removal */
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
 
 .messages-container::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Opera */
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
+
 
 
 
@@ -1209,13 +1212,16 @@ a:hover {
 }
 
 .input-area textarea::-webkit-scrollbar {
-  display: none;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 .input-area textarea {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
+
 
 
 
