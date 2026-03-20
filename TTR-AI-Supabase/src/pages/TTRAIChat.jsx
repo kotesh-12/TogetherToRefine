@@ -1258,7 +1258,8 @@ export default function TTRAIChat() {
 
                 {user ? (
                     <>
-                        <div className="sessions-list">
+                        <div className="sessions-list" style={{ flex: 1, overflowY: 'auto' }}>
+
                             {filteredSessions.map((s, idx) => (
                                 <div
                                     key={s.id}
@@ -1270,6 +1271,21 @@ export default function TTRAIChat() {
                                 </div>
                             ))}
                             {filteredSessions.length === 0 && <p className="no-sessions">No conversations yet</p>}
+
+                            {/* --- Sidebar Widgets (Inside Scroll) --- */}
+                            {user && (
+                                <div style={{ padding: '20px 0', borderTop: '1px solid var(--border)' }}>
+                                    <DharmaChallenge 
+                                        role={user?.user_metadata?.role || 'student'} 
+                                        onStart={(text) => handleSend(null, `/accept challenge: ${text}`)}
+                                    />
+                                    {sessions && sessions.length > 0 && (
+                                        <div style={{ marginTop: '20px' }}>
+                                            <KnowledgeGraph sessions={sessions} />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         <div className="sidebar-footer">
@@ -1406,7 +1422,7 @@ export default function TTRAIChat() {
                     </>
                 ) : (
                     <>
-                        <div className="sessions-list">
+                        <div className="sessions-list" style={{ flex: 1, overflowY: 'auto' }}>
                             <div className="guest-notice">
                                 <div className="guest-icon">🔒</div>
                                 <p>Sign in to save your chat history and access it from any device.</p>
@@ -1443,26 +1459,8 @@ export default function TTRAIChat() {
                         </div>
                     </>
                 )}
-
-
-                {/* --- Dharma Challenges (Challenge 3) --- */}
-                {user && (
-                    <div style={{ padding: '0 20px', marginTop: '20px' }}>
-                        <DharmaChallenge 
-                            role={user?.user_metadata?.role || 'student'} 
-                            onStart={(text) => handleSend(null, `/accept challenge: ${text}`)}
-                        />
-                    </div>
-                )}
-
-                {/* --- Knowledge Nexus Graph (Visualization 1) --- */}
-
-                {sessions && sessions.length > 0 && (
-                    <div style={{ padding: '20px 0 0 0', marginTop: 'auto', borderTop: '1px solid var(--border)' }}>
-                        <KnowledgeGraph sessions={sessions} />
-                    </div>
-                )}
             </div>
+
 
 
             {/* ── Sidebar Overlay ── */}
