@@ -748,18 +748,25 @@ a:hover {
   flex: 1;
   overflow-y: auto;
   padding: 4px 10px;
-  scrollbar-width: thin;
-  scrollbar-color: var(--accent) transparent;
+  scrollbar-width: auto; /* Standard thickness */
+  scrollbar-color: var(--accent) rgba(255, 255, 255, 0.05);
 }
 
+
 .sessions-list::-webkit-scrollbar {
-  width: 5px;
+  width: 8px; /* Standard thickness */
+}
+
+.sessions-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03); /* Visible track */
+  border-radius: 10px;
 }
 
 .sessions-list::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: var(--accent);
   border-radius: 10px;
 }
+
 
 
 
