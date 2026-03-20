@@ -27,6 +27,12 @@ import {
     TypewriterMessage,
     BrainInsights
 } from '../components/ChatComponents';
+import { KnowledgeGraph } from '../components/KnowledgeGraph';
+import { FocusSoundscape } from '../components/FocusSoundscape';
+import { DharmaChallenge } from '../components/DharmaChallenge';
+
+
+
 
 
 // Constants & Data
@@ -232,7 +238,23 @@ export default function TTRAIChat() {
 
     // Dharma XP State
     const [dharmaXP, setDharmaXP] = useState(() => Number(getSafeStorage('ttr_dharma_xp', '0')) || 0);
+    const [xpNotify, setXpNotify] = useState({ show: false, points: 0 });
+
     useEffect(() => {
+        if (xpNotify.show) {
+            anime({
+                targets: '.xp-popup',
+                translateY: [-20, -100],
+                opacity: [0, 1, 0],
+                duration: 2000,
+                easing: 'easeOutExpo',
+                complete: () => setXpNotify({ show: false, points: 0 })
+            });
+        }
+    }, [xpNotify.show]);
+
+    useEffect(() => {
+
         setSafeStorage('ttr_dharma_xp', dharmaXP);
         
         // Background Sync to Supabase
@@ -791,7 +813,9 @@ export default function TTRAIChat() {
             if (xpMatch) {
                 const points = parseInt(xpMatch[1]);
                 setDharmaXP(prev => prev + points);
+                setXpNotify({ show: true, points });
             }
+
 
             const sources = result.sources || null;
             const toolCalled = result.toolCalled || null;
@@ -1402,7 +1426,27 @@ export default function TTRAIChat() {
                         </div>
                     </>
                 )}
+
+
+                {/* --- Dharma Challenges (Challenge 3) --- */}
+                {user && (
+                    <div style={{ padding: '0 20px', marginTop: '20px' }}>
+                        <DharmaChallenge 
+                            role={user?.user_metadata?.role || 'student'} 
+                            onStart={(text) => handleSend(null, `/accept challenge: ${text}`)}
+                        />
+                    </div>
+                )}
+
+                {/* --- Knowledge Nexus Graph (Visualization 1) --- */}
+
+                {sessions && sessions.length > 0 && (
+                    <div style={{ padding: '20px 0 0 0', marginTop: 'auto', borderTop: '1px solid var(--border)' }}>
+                        <KnowledgeGraph sessions={sessions} />
+                    </div>
+                )}
             </div>
+
 
             {/* ── Sidebar Overlay ── */}
             {showSidebar && <div className="sidebar-overlay" onClick={() => setShowSidebar(false)} />}
@@ -1429,8 +1473,10 @@ export default function TTRAIChat() {
                         )}
                     </div>
                     <div className="header-actions">
+                        <FocusSoundscape />
                         <button
                             className={`path-header-btn ${isFocusMode ? 'active' : ''}`}
+
                             onClick={() => setIsFocusMode(!isFocusMode)}
                             title={isFocusMode ? 'Exit Focus Mode' : 'Enter Focus Mode (Zen UI)'}
                         >
@@ -1621,7 +1667,23 @@ export default function TTRAIChat() {
                     )}
 
 
+                    {xpNotify.show && (
+                        <div className="xp-popup" style={{
+                            position: 'absolute', bottom: '100px', left: '50%',
+                            transform: 'translateX(-50%)',
+                            background: 'linear-gradient(135deg, #10b981, #059669)',
+                            color: 'white', padding: '10px 20px', borderRadius: '30px',
+                            fontWeight: 'bold', fontSize: '18px', zIndex: 10000,
+                            boxShadow: '0 10px 30px rgba(16, 185, 129, 0.4)',
+                            display: 'flex', alignItems: 'center', gap: '8px',
+                            pointerEvents: 'none'
+                        }}>
+                            ✨ +{xpNotify.points} Dharma XP
+                        </div>
+                    )}
+
                     <div ref={messagesEndRef} />
+
                 </div>
 
                 {/* Input Area */}
