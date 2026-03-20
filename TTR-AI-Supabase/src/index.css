@@ -933,10 +933,18 @@ a:hover {
   overflow-y: auto;
   padding: 0;
   scroll-behavior: smooth;
-  scrollbar-width: thin;
   height: 100%;
   width: 100%;
+  
+  /* Hide scrollbar while keeping scroll functionality */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
 }
+
+.messages-container::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
 
 
 
@@ -1192,6 +1200,16 @@ a:hover {
   width: 100%;
   align-self: end;
 }
+
+.input-area textarea::-webkit-scrollbar {
+  display: none;
+}
+
+.input-area textarea {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
 
 
 
