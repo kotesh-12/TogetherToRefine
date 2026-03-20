@@ -863,10 +863,7 @@ a:hover {
 
 
 .chat-header {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+  position: relative; /* Not absolute */
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -875,8 +872,9 @@ a:hover {
   border-bottom: 1px solid var(--border);
   height: 56px;
   z-index: 100;
-  backdrop-filter: blur(10px);
+  flex-shrink: 0;
 }
+
 
 
 .menu-btn,
@@ -918,16 +916,14 @@ a:hover {
 /* ── Messages ── */
 .messages-container {
   flex: 1;
-  position: absolute;
-  top: 56px;
-  bottom: 85px; /* Leave space for fixed input */
-  left: 0;
-  right: 0;
   overflow-y: auto;
-  padding: 20px 0;
+  padding: 0;
   scroll-behavior: smooth;
   scrollbar-width: thin;
+  min-height: 0; /* ESSENTIAL for flex-scroll */
+  height: 0; /* ESSENTIAL for flex-scroll */
 }
+
 
 
 .messages-container::-webkit-scrollbar {
@@ -1172,18 +1168,16 @@ a:hover {
 
 /* ── Input Area ── */
 .input-area {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  position: relative; /* Not absolute */
   padding: 10px 16px;
   padding-bottom: max(10px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--border);
   background: var(--bg-secondary);
   flex-shrink: 0;
   z-index: 100;
-  min-height: 85px;
+  width: 100%;
 }
+
 
 
 .image-preview {
