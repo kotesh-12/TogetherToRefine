@@ -217,6 +217,7 @@ export default function TTRAIChat() {
     const [showThemeGallery, setShowThemeGallery] = useState(false);
     const [showHeaderActions, setShowHeaderActions] = useState(false);
     const [showSidebarExtra, setShowSidebarExtra] = useState(false);
+    const [isZenMode, setIsZenMode] = useState(false);
     const langMenuRef = useRef(null);
 
     // Sandbox State
@@ -1571,7 +1572,7 @@ export default function TTRAIChat() {
                             }}>{'<'}</span>
 
                             {/* Status Indicator Dot */}
-                            {!showHeaderActions && (incognitoMode || isFocusMode || zenMode) && (
+                            {!showHeaderActions && (incognitoMode || isFocusMode || isZenMode) && (
                                 <span style={{
                                     position: 'absolute',
                                     top: '4px',
@@ -1588,7 +1589,7 @@ export default function TTRAIChat() {
                         
                         {showHeaderActions && (
                             <div className="header-actions-group animate-in-sideways" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <FocusSoundscape />
+                                <FocusSoundscape onToggle={(active) => setIsZenMode(active)} />
                                 <button
                                     className={`path-header-btn ${isFocusMode ? 'active' : ''}`}
 

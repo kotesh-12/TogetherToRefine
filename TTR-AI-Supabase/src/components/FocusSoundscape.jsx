@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
  * FocusSoundscape: Uses Web Audio API to generate low-frequency 
  * binaural beats for psychological focus entrainment.
  */
-export const FocusSoundscape = () => {
+export const FocusSoundscape = ({ onToggle }) => {
     const [isActive, setIsActive] = useState(false);
     const [mode, setMode] = useState('Zen'); // Zen, Focus, Deep
     const audioContext = useRef(null);
@@ -54,11 +54,13 @@ export const FocusSoundscape = () => {
             oscR.start();
             oscillators.current = [oscL, oscR, gainL, gainR];
             setIsActive(true);
+            if (onToggle) onToggle(true);
         } else {
             // Stop Audio
             oscillators.current.forEach(node => node.stop?.());
             oscillators.current = [];
             setIsActive(false);
+            if (onToggle) onToggle(false);
         }
     };
 
