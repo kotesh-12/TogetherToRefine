@@ -215,6 +215,7 @@ export default function TTRAIChat() {
     // Theme State
     const [theme, setTheme] = useState(() => getSafeStorage('ttr_theme', 'dark'));
     const [showThemeGallery, setShowThemeGallery] = useState(false);
+    const [showHeaderActions, setShowHeaderActions] = useState(false);
     const langMenuRef = useRef(null);
 
     // Sandbox State
@@ -255,20 +256,57 @@ export default function TTRAIChat() {
     }, [xpNotify.show]);
 
     useEffect(() => {
+        const fetchUserProfile = async () => {
+            if (user && !incognitoMode) {
+                try {
+                    // First Priority: Fetch from Profile table
+                    const { data, error } = await supabase
+                        .from('profiles')
+                        .select('dharma_xp, hero_title')
+                        .eq('id', user.id)
+                        .single();
+                    
+                    if (data) {
+                        setDharmaXP(data.dharma_xp || 0);
+                        setSafeStorage('ttr_dharma_xp', data.dharma_xp || 0);
+                    } else if (error && error.code === 'PGRST116') {
+                        // Profile doesn't exist yet, create it with local storage value
+                        const initialXP = Number(getSafeStorage('ttr_dharma_xp', '0')) || 0;
+                        await supabase.from('profiles').upsert({ 
+                            id: user.id, 
+                            dharma_xp: initialXP,
+                            email: user.email,
+                            name: user.user_metadata?.name || user.email.split('@')[0],
+                            updated_at: new Date()
+                        });
+                    }
+                } catch (e) {
+                    console.log("XP Sync: Initialization deferred (Profile table might be missing)");
+                }
+            }
+        };
 
+        fetchUserProfile();
+    }, [user, incognitoMode]);
+
+    useEffect(() => {
         setSafeStorage('ttr_dharma_xp', dharmaXP);
         
-        // Background Sync to Supabase
+        // Background Sync to Supabase - Deferred slightly to avoid spamming
         if (user && !incognitoMode) {
-            supabase.from('profiles').upsert({ 
-                id: user.id, 
-                dharma_xp: dharmaXP,
-                email: user.email,
-                name: user.user_metadata?.name || user.email.split('@')[0],
-                updated_at: new Date()
-            }).then(({ error }) => {
-                if (error) console.log("XP Sync: Profile table sync deferred (Schema might be missing)");
-            });
+            const syncTimer = setTimeout(() => {
+                supabase.from('profiles').upsert({ 
+                    id: user.id, 
+                    dharma_xp: dharmaXP,
+                    email: user.email,
+                    name: user.user_metadata?.name || user.email.split('@')[0],
+                    updated_at: new Date()
+                }).then(({ error }) => {
+                    if (error) console.log("XP Sync: Profile sync deferred (Schema might be missing or RLS issue)");
+                });
+            }, 3000); 
+
+            return () => clearTimeout(syncTimer);
         }
     }, [dharmaXP, user, incognitoMode]);
 
@@ -1216,12 +1254,12 @@ export default function TTRAIChat() {
             {/* ── Sidebar ── */}
             <div className={`chat-sidebar ${showSidebar ? 'show' : ''}`}>
 
-                <div className="sidebar-header">
+                <div className="chat-sidebar-header">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <img src={logo} alt="TTR-AI" style={{ height: '32px', width: 'auto' }} />
                         <h3>Chat History</h3>
                     </div>
-                    <button className="sidebar-close" onClick={() => setShowSidebar(false)}>✕</button>
+                    <button className="chat-sidebar-close" onClick={() => setShowSidebar(false)}>✕</button>
                 </div>
 
 
@@ -1288,7 +1326,7 @@ export default function TTRAIChat() {
                             )}
                         </div>
 
-                        <div className="sidebar-footer">
+                        <div className="chat-sidebar-footer">
                             <small style={{ color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px', display: 'block', textAlign: 'center' }}>Theme Gallery</small>
                             <div className="theme-selector-mini" onClick={() => setShowThemeGallery(true)}>
                                 <div className="theme-dot dark"></div>
@@ -1431,7 +1469,7 @@ export default function TTRAIChat() {
                                 </button>
                             </div>
                         </div>
-                        <div className="sidebar-footer">
+                        <div className="chat-sidebar-footer">
                             <button
                                 onClick={() => navigate('/download-app')}
                                 style={{
@@ -1464,7 +1502,7 @@ export default function TTRAIChat() {
 
 
             {/* ── Sidebar Overlay ── */}
-            {showSidebar && <div className="sidebar-overlay" onClick={() => setShowSidebar(false)} />}
+            {showSidebar && <div className="chat-sidebar-overlay" onClick={() => setShowSidebar(false)} />}
 
             {/* ── Main Chat ── */}
             <div className="chat-main">
@@ -1488,42 +1526,56 @@ export default function TTRAIChat() {
                         )}
                     </div>
                     <div className="header-actions">
-                        <FocusSoundscape />
-                        <button
-                            className={`path-header-btn ${isFocusMode ? 'active' : ''}`}
+                        <button 
+                            className={`path-header-btn toggle-actions-btn ${showHeaderActions ? 'active' : ''}`}
+                            onClick={() => setShowHeaderActions(!showHeaderActions)}
+                            title={showHeaderActions ? "Hide Tools" : "Show Tools"}
+                            style={{ marginRight: '4px', background: 'rgba(108, 99, 255, 0.1)', border: '1px solid rgba(108, 99, 255, 0.2)' }}
+                        >
+                            {showHeaderActions ? '>' : '<'}
+                        </button>
+                        
+                        {showHeaderActions && (
+                            <div className="header-actions-group animate-in-sideways" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <FocusSoundscape />
+                                <button
+                                    className={`path-header-btn ${isFocusMode ? 'active' : ''}`}
 
-                            onClick={() => setIsFocusMode(!isFocusMode)}
-                            title={isFocusMode ? 'Exit Focus Mode' : 'Enter Focus Mode (Zen UI)'}
-                        >
-                            {isFocusMode ? '🔍' : '🧘‍♂️'}
-                        </button>
-                        <button
-                            className="path-header-btn"
-                            onClick={() => setShowPathModal(true)}
-                            title="Choose AI Experience Path"
-                        >
-                            {currentPath && activeHeroes[currentPath] ? activeHeroes[currentPath].emoji : '🎗️'}
-                        </button>
-                        <button
-                            className="path-header-btn"
-                            disabled={!currentSessionId}
-                            onClick={() => {
-                                if (!currentSessionId) return;
-                                const shareUrl = `${window.location.origin}${window.location.pathname}#/nexus/${currentSessionId}`;
-                                navigator.clipboard.writeText(shareUrl);
-                                alert("Nexus Link copied! Share this with other Seekers to collaborate.");
-                            }}
-                            title="Study Nexus — Share with Seekers"
-                        >
-                            🤝
-                        </button>
-                        <button
-                            className={`path-header-btn incognito-btn ${incognitoMode ? 'active' : ''}`}
-                            onClick={toggleIncognito}
-                            title={incognitoMode ? 'Incognito Mode ON — Nothing is saved' : 'Enable Incognito Mode'}
-                        >
-                            {incognitoMode ? '🕶️' : '🥷'}
-                        </button>
+                                    onClick={() => setIsFocusMode(!isFocusMode)}
+                                    title={isFocusMode ? 'Exit Focus Mode' : 'Enter Focus Mode (Zen UI)'}
+                                >
+                                    {isFocusMode ? '🔍' : '🧘‍♂️'}
+                                </button>
+                                <button
+                                    className="path-header-btn"
+                                    onClick={() => setShowPathModal(true)}
+                                    title="Choose AI Experience Path"
+                                >
+                                    {currentPath && activeHeroes[currentPath] ? activeHeroes[currentPath].emoji : '🎗️'}
+                                </button>
+                                <button
+                                    className="path-header-btn"
+                                    disabled={!currentSessionId}
+                                    onClick={() => {
+                                        if (!currentSessionId) return;
+                                        const shareUrl = `${window.location.origin}${window.location.pathname}#/nexus/${currentSessionId}`;
+                                        navigator.clipboard.writeText(shareUrl);
+                                        alert("Nexus Link copied! Share this with other Seekers to collaborate.");
+                                    }}
+                                    title="Study Nexus — Share with Seekers"
+                                >
+                                    🤝
+                                </button>
+                                <button
+                                    className={`path-header-btn incognito-btn ${incognitoMode ? 'active' : ''}`}
+                                    onClick={toggleIncognito}
+                                    title={incognitoMode ? 'Incognito Mode ON — Nothing is saved' : 'Enable Incognito Mode'}
+                                >
+                                    {incognitoMode ? '🕶️' : '🥷'}
+                                </button>
+                            </div>
+                        )}
+                        
                         {!user && (
                             <button className="signin-header-btn" onClick={() => navigate('/login')}>
                                 Sign In
@@ -1549,7 +1601,7 @@ export default function TTRAIChat() {
                         <AnimatedMessage key={i} msg={msg}>
                             {msg.sender === 'ai' && (
                                 <div className="msg-avatar ai-avatar">
-                                    <img src="/apple-touch-icon.png" alt="TTRAI" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
+                                    <img src={logo} alt="TTRAI" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
                                 </div>
                             )}
                             <div className="msg-content">

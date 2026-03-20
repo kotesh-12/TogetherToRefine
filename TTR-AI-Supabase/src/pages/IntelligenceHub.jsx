@@ -68,7 +68,7 @@ const IntelligenceHub = () => {
             <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
                 <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '50px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <img src="/apple-touch-icon.png" alt="TTRAI" style={{ height: '40px' }} />
+                        <img src={logo} alt="TTRAI" style={{ height: '40px', width: 'auto' }} />
                         <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>Intelligence Hub</h1>
                     </div>
                     <button 

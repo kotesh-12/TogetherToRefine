@@ -64,7 +64,7 @@ export default function DownloadApp() {
                 position: 'relative'
             }}>
                 <img
-                    src="/apple-touch-icon.png"
+                    src={logo}
                     alt="TTR-AI Logo"
                     style={{
                         width: '90px', height: '90px', borderRadius: '22px',

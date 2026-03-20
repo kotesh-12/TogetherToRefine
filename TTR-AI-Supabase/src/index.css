@@ -76,6 +76,21 @@
   }
 }
 
+@keyframes animateInSideways {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-in-sideways {
+  animation: animateInSideways 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 :root {
   --bg-primary: #0f0f14;
   --bg-secondary: #16161e;
@@ -919,18 +934,22 @@ a:hover {
 }
 
 
-
-
-
-
-
-
-
+/* --- Scrollbar Styles --- */
+.messages-container::-webkit-scrollbar,
+.sessions-list::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
-
+.messages-container::-webkit-scrollbar-track,
+.sessions-list::-webkit-scrollbar-track {
   background: var(--border);
+  border-radius: 6px;
+}
+
+.messages-container::-webkit-scrollbar-thumb,
+.sessions-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 6px;
 }
 
@@ -1178,6 +1197,7 @@ a:hover {
 }
 
 
+.input-area::-webkit-scrollbar {
   display: none !important;
   width: 0 !important;
   height: 0 !important;
@@ -1260,10 +1280,11 @@ a:hover {
 }
 
 
+.input-area textarea::-webkit-scrollbar {
   width: 4px;
 }
 
-
+.input-area textarea::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: 10px;
 }
@@ -1333,12 +1354,15 @@ a:hover {
    ═══════════════════════════════════════════════════ */
 @media (min-width: 769px) {
   .chat-sidebar {
-    position: relative;
-    transform: translateX(0);
+    position: relative !important;
+    transform: translateX(0) !important;
+    display: flex !important;
+    z-index: 100;
   }
 
+  .sidebar-overlay,
   .chat-sidebar-overlay {
-    display: none;
+    display: none !important;
   }
 
   .chat-sidebar-close {
@@ -1924,20 +1948,21 @@ a:hover {
 }
 
 
+.code-block-body::-webkit-scrollbar {
   height: 6px;
   width: 6px;
 }
 
-
+.code-block-body::-webkit-scrollbar-track {
   background: transparent;
 }
 
-
+.code-block-body::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 3px;
 }
 
-
+.code-block-body::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
 }
 
@@ -2696,21 +2721,26 @@ a:hover {
   overflow-x: auto;
 }
 
-
-
+/* Code & Sidebar Scrollbar Refinements */
+.code-block-body::-webkit-scrollbar,
+.sessions-list::-webkit-scrollbar {
+  width: 8px;
   height: 8px;
 }
 
-
+.code-block-body::-webkit-scrollbar-track,
+.sessions-list::-webkit-scrollbar-track {
   background: rgba(0, 0, 0, 0.2);
 }
 
-
+.code-block-body::-webkit-scrollbar-thumb,
+.sessions-list::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.2);
   border-radius: 4px;
 }
 
-
+.code-block-body::-webkit-scrollbar-thumb:hover,
+.sessions-list::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.4);
 }
 
