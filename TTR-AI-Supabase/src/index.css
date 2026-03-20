@@ -747,10 +747,9 @@ a:hover {
 }
 
 .sessions-list {
-  flex: 1;
-  overflow-y: auto;
   padding: 4px 10px;
 }
+
 
 .sessions-list::-webkit-scrollbar {
   width: 4px;

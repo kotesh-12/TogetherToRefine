@@ -115,6 +115,7 @@ const MermaidDiagram = ({ chart }) => {
     return (
         <div ref={chartRef} dangerouslySetInnerHTML={{ __html: svg }} style={{ overflowX: 'auto', padding: '10px', background: 'var(--bg-secondary)', borderRadius: '8px' }} />
     );
+
 };
 
 // Helper for safe storage access
@@ -561,14 +562,18 @@ export default function TTRAIChat() {
     }, [user, loadSessions]);
 
     /* ── Auto scroll ── */
+    const lastMessageCount = useRef(0);
     const scrollToBottom = useCallback(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), []);
+    
     useEffect(() => {
-        // Only auto-scroll when a new AI message or User message is added, 
-        // not when switching historical sessions (which adds many messages at once)
-        if (messages.length > 2 && !loading) {
+        // Only auto-scroll if we have NEW messages (length increased)
+        // AND it's not the initial load of a session (where lastMessageCount was 0)
+        if (messages.length > lastMessageCount.current && lastMessageCount.current > 0) {
             scrollToBottom();
         }
-    }, [messages, scrollToBottom, loading]);
+        lastMessageCount.current = messages.length;
+    }, [messages, scrollToBottom]);
+
 
 
     /* ── Animation: Modal Spring-In ── */
@@ -1211,9 +1216,13 @@ export default function TTRAIChat() {
             {/* ── Sidebar ── */}
             <div className={`sidebar ${showSidebar ? 'open' : ''}`}>
                 <div className="sidebar-header">
-                    <h3>Chat History</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <img src={logo} alt="TTR-AI" style={{ height: '32px', width: 'auto' }} />
+                        <h3>Chat History</h3>
+                    </div>
                     <button className="sidebar-close" onClick={() => setShowSidebar(false)}>✕</button>
                 </div>
+
 
                 <button className="new-chat-btn" onClick={startNewChat}>
                     <span>+</span> New Chat
