@@ -1356,7 +1356,8 @@ export default function TTRAIChat() {
                                         fontSize: '18px', cursor: 'pointer',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         padding: '4px',
-                                        borderRadius: '50%'
+                                        borderRadius: '50%',
+                                        position: 'relative'
                                     }}
                                     title={showSidebarExtra ? "Collapse Menu" : "Expand Menu"}
                                 >
@@ -1364,6 +1365,21 @@ export default function TTRAIChat() {
                                         display: 'inline-block',
                                         transform: showSidebarExtra ? 'rotate(180deg)' : 'rotate(0deg)'
                                     }}>^</span>
+
+                                    {/* Sidebar Status Indicator (Voice Guru ON) */}
+                                    {!showSidebarExtra && autoSpeak && (
+                                        <span style={{
+                                            position: 'absolute',
+                                            top: '0px',
+                                            right: '0px',
+                                            width: '8px',
+                                            height: '8px',
+                                            background: '#4ade80',
+                                            borderRadius: '50%',
+                                            border: '1.5px solid var(--sidebar-bg)',
+                                            boxShadow: '0 0 8px rgba(74, 222, 128, 0.5)'
+                                        }} />
+                                    )}
                                 </button>
                             </div>
 
@@ -1542,7 +1558,8 @@ export default function TTRAIChat() {
                                 border: '1px solid rgba(108, 99, 255, 0.2)',
                                 width: '32px',
                                 height: '32px',
-                                borderRadius: '50%'
+                                borderRadius: '50%',
+                                position: 'relative'
                             }}
                         >
                             <span className="premium-toggle-icon" style={{ 
@@ -1552,6 +1569,21 @@ export default function TTRAIChat() {
                                 fontSize: '16px',
                                 fontWeight: 'bold'
                             }}>{'<'}</span>
+
+                            {/* Status Indicator Dot */}
+                            {!showHeaderActions && (incognitoMode || isFocusMode || zenMode) && (
+                                <span style={{
+                                    position: 'absolute',
+                                    top: '4px',
+                                    right: '4px',
+                                    width: '8px',
+                                    height: '8px',
+                                    background: incognitoMode ? '#ef4444' : '#4ade80',
+                                    borderRadius: '50%',
+                                    border: '1.5px solid #0f0f14',
+                                    boxShadow: `0 0 8px ${incognitoMode ? '#ef444488' : '#4ade8088'}`
+                                }} />
+                            )}
                         </button>
                         
                         {showHeaderActions && (
