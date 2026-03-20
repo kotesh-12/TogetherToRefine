@@ -8,7 +8,7 @@ import DownloadApp from './pages/DownloadApp';
 import Pricing from './pages/Pricing';
 import Roadmap from './pages/Roadmap';
 import IntelligenceHub from './pages/IntelligenceHub';
-import Leaderboard from './pages/Leaderboard';
+
 import './index.css';
 
 // Lazy load for high security - stops Admin code from bundling with user code
@@ -26,7 +26,7 @@ function AppRoutes() {
       <Route path="/pricing" element={<Pricing />} />
       <Route path="/roadmap" element={<Roadmap />} />
       <Route path="/intelligence-hub" element={<IntelligenceHub />} />
-      <Route path="/leaderboard" element={<Leaderboard />} />
+
 
       {/* 🚨 Hidden Admin Route 🚨 */}
       <Route

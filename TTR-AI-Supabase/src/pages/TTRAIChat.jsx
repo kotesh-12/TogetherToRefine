@@ -1277,13 +1277,12 @@ export default function TTRAIChat() {
                 </div>
 
                 {/* Dharma XP Stat */}
-                <div className="dharma-xp-stat" onClick={() => navigate('/leaderboard')} style={{ 
+                <div className="dharma-xp-stat" style={{ 
                     padding: '8px 12px', 
                     background: 'rgba(255,255,255,0.05)', 
                     borderRadius: '10px', 
                     margin: '0 10px 8px 10px', 
                     border: '1px solid rgba(255, 215, 0, 0.2)',
-                    cursor: 'pointer'
                 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                         <span style={{ fontSize: '10px', color: '#ffd700', fontWeight: 'bold' }}>🕉️ DHARMA XP</span>
@@ -1388,19 +1387,7 @@ export default function TTRAIChat() {
                                 <span>🔱</span> Intelligence Hub
                             </button>
 
-                            <button
-                                onClick={() => navigate('/leaderboard')}
-                                style={{
-                                    width: '100%', padding: '6px', borderRadius: '8px',
-                                    background: 'rgba(251, 191, 36, 0.05)', color: '#fbbf24',
-                                    border: '1px solid rgba(251, 191, 36, 0.2)', cursor: 'pointer',
-                                    marginBottom: '6px', fontSize: '11px', display: 'flex',
-                                    alignItems: 'center', justifyContent: 'center', gap: '8px',
-                                    transition: 'all 0.2s ease'
-                                }}
-                            >
-                                <span>🏆</span> Gurukul Leaderboard
-                            </button>
+
 
                             <button
                                 onClick={() => navigate('/download-app')}
