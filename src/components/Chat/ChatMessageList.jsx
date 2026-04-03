@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { 
     AnimatedMessage, 
@@ -9,6 +9,66 @@ import {
 
 import useChatStore from '../../store/useChatStore';
 import { Virtuoso } from 'react-virtuoso';
+
+// --- Perplexity-Style Source Citation Panel ---
+const SourcePanel = ({ sources, toolCalled }) => {
+    const [expanded, setExpanded] = useState(false);
+    if (!sources || sources.length === 0) return null;
+
+    const toolIcon = toolCalled === 'youtubeSearch' ? '🎬' 
+        : toolCalled === 'academicSearch' ? '📚' 
+        : '🌐';
+    const toolLabel = toolCalled === 'youtubeSearch' ? 'YouTube' 
+        : toolCalled === 'academicSearch' ? 'Research' 
+        : 'Web';
+
+    const displaySources = expanded ? sources : sources.slice(0, 3);
+
+    return (
+        <div className="ttr-source-panel">
+            <button 
+                className="ttr-source-toggle"
+                onClick={() => setExpanded(!expanded)}
+            >
+                <span className="ttr-source-icon">{toolIcon}</span>
+                <span className="ttr-source-label">{sources.length} {toolLabel} Sources</span>
+                <span className={`ttr-source-chevron ${expanded ? 'expanded' : ''}`}>▾</span>
+            </button>
+            <div className={`ttr-source-list ${expanded ? 'expanded' : ''}`}>
+                {displaySources.map((src, i) => {
+                    const domain = (() => {
+                        try { return new URL(src.url).hostname.replace('www.', ''); } 
+                        catch { return 'source'; }
+                    })();
+                    const favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
+                    
+                    return (
+                        <a 
+                            key={i} 
+                            href={src.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="ttr-source-item"
+                            title={src.title || src.content}
+                        >
+                            <span className="ttr-source-num">{i + 1}</span>
+                            <img src={favicon} alt="" className="ttr-source-favicon" onError={(e) => { e.target.style.display = 'none'; }} />
+                            <div className="ttr-source-info">
+                                <span className="ttr-source-title">{src.title || domain}</span>
+                                <span className="ttr-source-domain">{domain}</span>
+                            </div>
+                        </a>
+                    );
+                })}
+                {!expanded && sources.length > 3 && (
+                    <button className="ttr-source-more" onClick={() => setExpanded(true)}>
+                        +{sources.length - 3} more sources
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+};
 
 export const ChatMessageList = ({
     messagesEndRef,
@@ -68,6 +128,11 @@ export const ChatMessageList = ({
                             {msg.text}
                         </ReactMarkdown>
                     </div>
+                )}
+
+                {/* Perplexity-Style Source Citations */}
+                {msg.sender === 'ai' && msg.sources && (
+                    <SourcePanel sources={msg.sources} toolCalled={msg.toolCalled} />
                 )}
                 
                 {msg.sender === 'ai' && (
