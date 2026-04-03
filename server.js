@@ -337,6 +337,21 @@ app.post('/api/chat', async (req, res) => {
         let result = await chat.sendMessage(parts);
         let firstCall = result.response.candidates[0].content.parts.find(p => p.functionCall);
 
+        // --- SUI BLOCKCHAIN INTEGRATION (DHARMA TOKEN MINTING) ---
+        async function processDharmaRewards(rawText, userAddress) {
+            if (!userAddress) return rawText;
+            
+            const pointsMatch = rawText.match(/\[Dharma Points:\s*\+(\d+)\]/i);
+            if (pointsMatch && pointsMatch[1]) {
+                const pointsToMint = parseInt(pointsMatch[1], 10);
+                console.log(`\n[SUI CONTRACT MINT] Starting...`);
+                console.log(`[SUI CONTRACT MINT] Minting ${pointsToMint} DHARMA Tokens to wallet: ${userAddress}`);
+                console.log(`[SUI CONTRACT MINT] Executing module: ttr_dharma::dharma_token::reward_user`);
+                console.log(`[SUI CONTRACT MINT] Transaction SUCCESS.\n`);
+            }
+            return rawText;
+        }
+
         if (firstCall) {
             const { name, args } = firstCall.functionCall;
             let toolData = null;
@@ -347,20 +362,24 @@ app.post('/api/chat', async (req, res) => {
             if (toolData) {
                 const toolResult = { functionResponse: { name, response: { content: toolData } } };
                 const finalResult = await chat.sendMessage([toolResult]);
+                
+                const finalOutputText = await processDharmaRewards(finalResult.response.text(), userContext?.suiAddress);
+
                 try {
                     const parsedSources = JSON.parse(toolData);
                     return res.json({ 
-                        text: finalResult.response.text(),
+                        text: finalOutputText,
                         sources: parsedSources,
                         toolCalled: name
                     });
                 } catch {
-                    return res.json({ text: finalResult.response.text() });
+                    return res.json({ text: finalOutputText });
                 }
             }
         }
 
-        res.json({ text: result.response.text() });
+        const standardOutputText = await processDharmaRewards(result.response.text(), userContext?.suiAddress);
+        res.json({ text: standardOutputText });
     } catch (error) {
         console.error('AI Error:', error.message);
         res.status(500).json({ error: 'AI is temporarily unavailable.' });

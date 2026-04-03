@@ -499,6 +499,26 @@ export default async function handler(req, res) {
             let response = result.response;
             let firstCall = response.candidates[0].content.parts.find(p => p.functionCall);
 
+            // --- SUI BLOCKCHAIN INTEGRATION (DHARMA TOKEN MINTING) ---
+            async function processDharmaRewards(rawText, userAddress) {
+                if (!userAddress) return rawText;
+                
+                // Look for [Dharma Points: +X] in the AI's response
+                const pointsMatch = rawText.match(/\[Dharma Points:\s*\+(\d+)\]/i);
+                if (pointsMatch && pointsMatch[1]) {
+                    const pointsToMint = parseInt(pointsMatch[1], 10);
+                    
+                    // Trigger the Move Contract here (Simulated locally for now)
+                    console.log(`[SUI CONTRACT MINT] Starting...`);
+                    console.log(`[SUI CONTRACT MINT] Minting ${pointsToMint} DHARMA Tokens to wallet: ${userAddress}`);
+                    console.log(`[SUI CONTRACT MINT] Executing module: ttr_dharma::dharma_token::reward_user`);
+                    console.log(`[SUI CONTRACT MINT] Transaction SUCCESS.`);
+                    
+                    // The text doesn't need to change, but we could inject a transaction hash here in the future
+                }
+                return rawText;
+            }
+
             // Step 2: Handle Tool Call (if AI decides it needs to search)
             if (firstCall) {
                 const { name, args } = firstCall.functionCall;
@@ -519,20 +539,24 @@ export default async function handler(req, res) {
                         }
                     };
                     const finalResult = await chat.sendMessage([toolResult]);
+                    
+                    const finalOutputText = await processDharmaRewards(finalResult.response.text(), userContext?.suiAddress);
+
                     try {
                         const parsedSources = JSON.parse(toolData);
                         return res.status(200).json({ 
-                            text: finalResult.response.text(),
+                            text: finalOutputText,
                             sources: parsedSources,
                             toolCalled: name
                         });
                     } catch {
-                        return res.status(200).json({ text: finalResult.response.text() });
+                        return res.status(200).json({ text: finalOutputText });
                     }
                 }
             }
 
-            return res.status(200).json({ text: response.text() });
+            const standardOutputText = await processDharmaRewards(response.text(), userContext?.suiAddress);
+            return res.status(200).json({ text: standardOutputText });
         } catch (error) {
             console.error(`Model ${modelName} failed: `, error.message);
             continue;

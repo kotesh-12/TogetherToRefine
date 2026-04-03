@@ -884,6 +884,7 @@ export default function TTRAIChat() {
                     isAgentMode: isAgentMode,
                     isMinimal: zenMode,
                     miniMemory: miniMemory,
+                    suiAddress: suiAddress,
                     // --- 100K Mentality (Collective Intelligence) ---
                     collectiveIntelligence: {
                         enabled: true,
