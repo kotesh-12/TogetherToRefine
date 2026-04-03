@@ -890,6 +890,12 @@ export default function TTRAIChat() {
                         swarmMode: !!(user && sessions.length > 5),
                         anonymousDataShare: !incognitoMode
                     },
+                    // --- Nirantar Spaced-Repetition ---
+                    nirantarChallenge: (() => {
+                        if (messages.length > 0) return false; // Only trigger at the very start of a new chat session
+                        const lastStudyTime = parseInt(getSafeStorage('ttr_last_study_time') || '0', 10);
+                        return (Date.now() - lastStudyTime > 24 * 60 * 60 * 1000); // 24 hours gap
+                    })(),
                     // --- AI Mimicry & Curiosity (Dynamic Identity) ---
                     engagement: {
                         mimicryLevel: messages.length > 3 ? 0.8 : 0.2,
@@ -1005,6 +1011,11 @@ export default function TTRAIChat() {
             if (user && sessionId && !incognitoMode) {
                 await saveMessage(responseText, 'assistant', sessionId);
                 loadSessions();
+            }
+
+            // Update Nirantar Study Tracker
+            if (!incognitoMode) {
+                setSafeStorage('ttr_last_study_time', Date.now().toString());
             }
 
             // Auto-Speak (Suggestion 3)

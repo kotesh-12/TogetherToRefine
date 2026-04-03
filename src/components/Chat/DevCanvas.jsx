@@ -46,6 +46,46 @@ export const DevCanvas = ({ data, isOpen, onClose }) => {
                 </body>
                 </html>
             `;
+        } else if (['react', 'jsx', 'tsx'].includes(data.language.toLowerCase())) {
+            // Live React WebContainer
+            content = `
+                <html>
+                <head>
+                    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin><\/script>
+                    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin><\/script>
+                    <script src="https://unpkg.com/@babel/standalone/babel.min.js"><\/script>
+                    <script src="https://cdn.tailwindcss.com"><\/script>
+                    <style>
+                        body { margin: 0; background: #fff; color: #111; font-family: sans-serif; }
+                    </style>
+                </head>
+                <body>
+                    <div id="root"></div>
+                    <script>
+                        const oldLog = console.log;
+                        console.log = (...args) => {
+                            window.parent.postMessage({ type: 'console', log: args.join(' ') }, '*');
+                            oldLog(...args);
+                        };
+                        window.onerror = function(msg, url, lineNo, columnNo, error) {
+                            window.parent.postMessage({ type: 'console', log: 'ERROR: ' + msg }, '*');
+                            return false;
+                        };
+                    <\/script>
+                    <script type="text/babel" data-type="module">
+                        const { useState, useEffect, useRef, useMemo, useCallback } = React;
+                        
+                        ${data.code}
+
+                        // Auto-mount if a default export or App component exists
+                        if (typeof App !== 'undefined') {
+                            const root = ReactDOM.createRoot(document.getElementById('root'));
+                            root.render(<App />);
+                        }
+                    <\/script>
+                </body>
+                </html>
+            `;
         } else if (data.language === 'css') {
             content = `
                 <html>
