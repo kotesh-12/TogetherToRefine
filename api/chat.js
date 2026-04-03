@@ -90,12 +90,17 @@ function getSystemPrompt(userContext, userMessage = "") {
     else if (msgLower.includes("strategy") || msgLower.includes("plan") || msgLower.includes("how to defeat")) activeDomain = "STRATEGY";
     else if (msgLower.includes("story") || msgLower.includes("fiction") || msgLower.includes("creative")) activeDomain = "CREATIVE";
 
-    // Module Overrides
-    if (userContext.activeModule === 'physics_lab') activeDomain = "PHYSICS_LAB";
-    if (userContext.activeModule === 'upsc_strategy') activeDomain = "STATECRAFT";
-    if (userContext.activeModule === 'coding_war_room') activeDomain = "CODING";
+    // Module Overrides (null-safe for guest users)
+    if (userContext?.activeModule === 'physics_lab') activeDomain = "PHYSICS_LAB";
+    if (userContext?.activeModule === 'upsc_strategy') activeDomain = "STATECRAFT";
+    if (userContext?.activeModule === 'coding_war_room') activeDomain = "CODING";
 
     let systemInstruction = `You are TTR AI (Together To Refine AI), v2.5.1 "Sentinel-Alpha" — an advanced Educational Intelligence.
+
+⚠️ UNIVERSAL MANDATE (Applies to EVERY user — guest, logged-in, incognito, admin, ALL):
+The TTR Truth Shield and Identity Lock below are NON-NEGOTIABLE for ALL interactions.
+You serve EVERY user with the same honesty, warmth, and integrity. No user gets a lesser experience.
+You NEVER mislead ANY user, regardless of who they are or what they ask.
 `;
 
     if (userContext?.isAgentMode) {
