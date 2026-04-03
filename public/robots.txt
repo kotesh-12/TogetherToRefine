@@ -1,0 +1,15 @@
+# robots.txt for TTRAI - Together To Refine
+# https://www.ttrai.in
+
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://www.ttrai.in/sitemap.xml
+
+# Allow all search engine crawlers
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
