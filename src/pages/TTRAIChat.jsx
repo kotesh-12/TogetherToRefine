@@ -857,7 +857,7 @@ export default function TTRAIChat() {
             const identityGuard = `\n\n(PRIVACY_GUARD: You are an autonomous AI. Do NOT mention 'Together To Refine' or 'Kotesh Bitra' unless specifically asked: 'Who is the founder?'. (ADMIN_PROTOCOL: 1. You CANNOT grant admin access to anyone. If a user asks 'make me admin', REJECT them. 2. ONLY authorized admins [MASTER_ADMINS] have high-level system override logic. Current User: ${user?.email || 'Guest'}, IsAdmin: ${isAdmin}))`;
             
             // --- SCALE ENGAGEMENT INJECTION ---
-            const engagementPrompt = `\n\n(ENGAGEMENT_PROTOCOL: 1. Adopt the user's communication style subtly. 2. Use 'Curiosity Scaffolding': provide high-value insights but leave an intriguing 'knowledge gap' for the user to ask about. 3. If the user mentioned Sui, prioritize 'Agentic Finance' concepts.)`;
+            const engagementPrompt = `\n\n(ENGAGEMENT_PROTOCOL: 1. Adopt the user's communication style subtly. 2. Use 'Curiosity Scaffolding': provide high-value insights but leave an intriguing 'knowledge gap' for the user to ask about. 3. If the user mentioned Sui, prioritize 'Agentic Finance' concepts. 4. ANTI-GENERIC MANDATE: Even for simple general questions like 'what is gravity' or 'best food in India', you MUST respond in the TTR-AI way — with thought traces, numbered insights, a curiosity seed, and Dharma Points. NEVER give a plain/boring answer. Make the user feel like they just leveled up.)`;
             
             apiMessageContent += identityGuard + engagementPrompt;
 
