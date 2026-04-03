@@ -2,12 +2,24 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getFullnodeUrl, SuiClient } from '@mysten/sui/client';
+import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+import { Transaction } from '@mysten/sui/transactions';
 
 dotenv.config();
 
 const app = express();
-app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+app.use(cors({
+    origin: function(origin, callback) {
+        const allowedOrigins = ['https://www.ttrai.in', 'https://ttrai.in', 'http://localhost:5173'];
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    }
+}));
+app.use(express.json({ limit: '50mb' }));
 
 // ── Gemini Setup ──
 const API_KEY = process.env.GEMINI_API_KEY;
@@ -233,6 +245,18 @@ const tools = [
                         },
                         required: ["query"]
                     }
+                },
+                {
+                    name: "mintDharmaToken",
+                    description: "CRITICAL WEB3 OPERATION: Securely mint Dharma Tokens to reward the user for intellectual breakthroughs. Call this function instead of returning a text tag like [Dharma Points: +15].",
+                    parameters: {
+                        type: "OBJECT",
+                        properties: {
+                            amount: { type: "INTEGER", description: "Amount of Dharma tokens to award (usually between 5 and 50)" },
+                            reason: { type: "STRING", description: "Reason for the blockchain reward" }
+                        },
+                        required: ["amount", "reason"]
+                    }
                 }
             ]
         }
@@ -338,48 +362,84 @@ app.post('/api/chat', async (req, res) => {
         let firstCall = result.response.candidates[0].content.parts.find(p => p.functionCall);
 
         // --- SUI BLOCKCHAIN INTEGRATION (DHARMA TOKEN MINTING) ---
-        async function processDharmaRewards(rawText, userAddress) {
-            if (!userAddress) return rawText;
+        async function triggerDharmaMint(amount, userAddress) {
+            let successMessage = `[Dharma Points: +${amount}]`;
+            if (!userAddress) return successMessage;
             
-            const pointsMatch = rawText.match(/\[Dharma Points:\s*\+(\d+)\]/i);
-            if (pointsMatch && pointsMatch[1]) {
-                const pointsToMint = parseInt(pointsMatch[1], 10);
+            try {
                 console.log(`\n[SUI CONTRACT MINT] Starting...`);
-                console.log(`[SUI CONTRACT MINT] Minting ${pointsToMint} DHARMA Tokens to wallet: ${userAddress}`);
-                console.log(`[SUI CONTRACT MINT] Executing module: ttr_dharma::dharma_token::reward_user`);
-                console.log(`[SUI CONTRACT MINT] Transaction SUCCESS.\n`);
+                console.log(`[SUI CONTRACT MINT] Minting ${amount} DHARMA Tokens to wallet: ${userAddress}`);
+                
+                // Execute the real Smart Contract if SUI_PRIVATE_KEY exists
+                if (process.env.SUI_PRIVATE_KEY && process.env.SUI_PACKAGE_ID && process.env.SUI_TREASURY_CAP_ID) {
+                    const client = new SuiClient({ url: getFullnodeUrl('testnet') });
+                    const keypair = Ed25519Keypair.fromSecretKey(process.env.SUI_PRIVATE_KEY);
+                    
+                    const tx = new Transaction();
+                    
+                    // Call the Move function: ttr_dharma::dharma_token::reward_user
+                    tx.moveCall({
+                        target: `${process.env.SUI_PACKAGE_ID}::dharma_token::reward_user`,
+                        arguments: [
+                            tx.object(process.env.SUI_TREASURY_CAP_ID),
+                            tx.pure.u64(amount),
+                            tx.pure.address(userAddress)
+                        ],
+                    });
+                    
+                    const result = await client.signAndExecuteTransaction({ signer: keypair, transaction: tx });
+                    console.log(`[SUI CONTRACT MINT] Transaction SUCCESS. Digest: ${result.digest}`);
+                    
+                    successMessage += `\n\n*(Transaction Confirmed on Sui Testnet! Tx: ${result.digest})*`;
+                } else {
+                    console.log(`[SUI CONTRACT MINT] DEV MODE: Simulated SUCCESS.\n`);
+                }
+            } catch (err) {
+                console.error('[SUI MINT ERROR]', err);
             }
-            return rawText;
+            return successMessage;
         }
 
         if (firstCall) {
             const { name, args } = firstCall.functionCall;
             let toolData = null;
-            if (name === "tavilySearch") toolData = await executeSearch(args.query);
-            else if (name === "youtubeSearch") toolData = await executeYoutubeSearch(args.query);
-            else if (name === "academicSearch") toolData = await executeAcademicSearch(args.query);
+            
+            if (name === "mintDharmaToken") {
+                const resultText = await triggerDharmaMint(args.amount, userContext?.suiAddress);
+                const toolResult = {
+                    functionResponse: {
+                        name: name,
+                        response: { content: { success: true, message: `Successfully minted ${args.amount} points to ${userContext?.suiAddress}` } }
+                    }
+                };
+                const finalResult = await chat.sendMessage([toolResult]);
+                return res.json({ text: resultText + "\n\n" + finalResult.response.text(), toolCalled: name });
+            } else if (name === "tavilySearch") {
+                toolData = await executeSearch(args.query);
+            } else if (name === "youtubeSearch") {
+                toolData = await executeYoutubeSearch(args.query);
+            } else if (name === "academicSearch") {
+                toolData = await executeAcademicSearch(args.query);
+            }
 
             if (toolData) {
                 const toolResult = { functionResponse: { name, response: { content: toolData } } };
                 const finalResult = await chat.sendMessage([toolResult]);
-                
-                const finalOutputText = await processDharmaRewards(finalResult.response.text(), userContext?.suiAddress);
 
                 try {
                     const parsedSources = JSON.parse(toolData);
                     return res.json({ 
-                        text: finalOutputText,
+                        text: finalResult.response.text(),
                         sources: parsedSources,
                         toolCalled: name
                     });
                 } catch {
-                    return res.json({ text: finalOutputText });
+                    return res.json({ text: finalResult.response.text() });
                 }
             }
         }
 
-        const standardOutputText = await processDharmaRewards(result.response.text(), userContext?.suiAddress);
-        res.json({ text: standardOutputText });
+        res.json({ text: result.response.text() });
     } catch (error) {
         console.error('AI Error:', error.message);
         res.status(500).json({ error: 'AI is temporarily unavailable.' });

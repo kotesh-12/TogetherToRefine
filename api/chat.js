@@ -1,4 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getFullnodeUrl, SuiClient } from '@mysten/sui/client';
+import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+import { Transaction } from '@mysten/sui/transactions';
 
 const MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
 
@@ -338,8 +341,14 @@ ADAPTIVE DIRECTIVE: Adjust your tone to match the user's 'Style Sync' while main
 }
 
 export default async function handler(req, res) {
-    // CORS headers for all responses
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    const allowedOrigins = ['https://www.ttrai.in', 'https://ttrai.in', 'http://localhost:5173'];
+    const origin = req.headers.origin;
+    if (allowedOrigins.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    } else if (origin) {
+         // Strict block if origin is present but unauthorized
+        return res.status(403).json({ error: "Access Denied: Invalid Origin" });
+    }
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -405,6 +414,18 @@ export default async function handler(req, res) {
                             query: { type: "STRING", description: "The scientific topic or specific problem/exercise to find solutions for" }
                         },
                         required: ["query"]
+                    }
+                },
+                {
+                    name: "mintDharmaToken",
+                    description: "CRITICAL WEB3 OPERATION: Securely mint Dharma Tokens to reward the user for intellectual breakthroughs. Call this function instead of returning a text tag like [Dharma Points: +15].",
+                    parameters: {
+                        type: "OBJECT",
+                        properties: {
+                            amount: { type: "INTEGER", description: "Amount of Dharma tokens to award (usually between 5 and 50)" },
+                            reason: { type: "STRING", description: "Reason for the blockchain reward" }
+                        },
+                        required: ["amount", "reason"]
                     }
                 }
             ]
@@ -500,30 +521,58 @@ export default async function handler(req, res) {
             let firstCall = response.candidates[0].content.parts.find(p => p.functionCall);
 
             // --- SUI BLOCKCHAIN INTEGRATION (DHARMA TOKEN MINTING) ---
-            async function processDharmaRewards(rawText, userAddress) {
-                if (!userAddress) return rawText;
+            async function triggerDharmaMint(amount, userAddress) {
+                let successMessage = `[Dharma Points: +${amount}]`;
+                if (!userAddress) return successMessage;
                 
-                // Look for [Dharma Points: +X] in the AI's response
-                const pointsMatch = rawText.match(/\[Dharma Points:\s*\+(\d+)\]/i);
-                if (pointsMatch && pointsMatch[1]) {
-                    const pointsToMint = parseInt(pointsMatch[1], 10);
-                    
-                    // Trigger the Move Contract here (Simulated locally for now)
+                try {
                     console.log(`[SUI CONTRACT MINT] Starting...`);
-                    console.log(`[SUI CONTRACT MINT] Minting ${pointsToMint} DHARMA Tokens to wallet: ${userAddress}`);
-                    console.log(`[SUI CONTRACT MINT] Executing module: ttr_dharma::dharma_token::reward_user`);
-                    console.log(`[SUI CONTRACT MINT] Transaction SUCCESS.`);
+                    console.log(`[SUI CONTRACT MINT] Minting ${amount} DHARMA Tokens to wallet: ${userAddress}`);
                     
-                    // The text doesn't need to change, but we could inject a transaction hash here in the future
+                    if (process.env.SUI_PRIVATE_KEY && process.env.SUI_PACKAGE_ID && process.env.SUI_TREASURY_CAP_ID) {
+                        const client = new SuiClient({ url: getFullnodeUrl('testnet') });
+                        const keypair = Ed25519Keypair.fromSecretKey(process.env.SUI_PRIVATE_KEY);
+                        
+                        const tx = new Transaction();
+                        tx.moveCall({
+                            target: `${process.env.SUI_PACKAGE_ID}::dharma_token::reward_user`,
+                            arguments: [
+                                tx.object(process.env.SUI_TREASURY_CAP_ID),
+                                tx.pure.u64(amount),
+                                tx.pure.address(userAddress)
+                            ],
+                        });
+                        
+                        const result = await client.signAndExecuteTransaction({ signer: keypair, transaction: tx });
+                        console.log(`[SUI CONTRACT MINT] Transaction SUCCESS. Digest: ${result.digest}`);
+                        successMessage += `\n\n*(Transaction Confirmed on Sui Testnet! Tx: ${result.digest})*`;
+                    } else {
+                        console.log(`[SUI CONTRACT MINT] DEV MODE: Simulated SUCCESS.`);
+                    }
+                } catch (err) {
+                    console.error('[SUI MINT ERROR]', err);
                 }
-                return rawText;
+                return successMessage;
             }
 
-            // Step 2: Handle Tool Call (if AI decides it needs to search)
+            // Step 2: Handle Tool Call
             if (firstCall) {
                 const { name, args } = firstCall.functionCall;
                 let toolData = null;
-                if (name === "tavilySearch") {
+                
+                if (name === "mintDharmaToken") {
+                    const resultText = await triggerDharmaMint(args.amount, userContext?.suiAddress);
+                    
+                    const toolResult = {
+                        functionResponse: {
+                            name: name,
+                            response: { content: { success: true, message: `Successfully minted ${args.amount} points to ${userContext?.suiAddress}` } }
+                        }
+                    };
+                    const finalResult = await chat.sendMessage([toolResult]);
+                    return res.status(200).json({ text: resultText + "\n\n" + finalResult.response.text(), toolCalled: name });
+                    
+                } else if (name === "tavilySearch") {
                     toolData = await executeSearch(args.query);
                 } else if (name === "youtubeSearch") {
                     toolData = await executeYoutubeSearch(args.query);
@@ -540,7 +589,7 @@ export default async function handler(req, res) {
                     };
                     const finalResult = await chat.sendMessage([toolResult]);
                     
-                    const finalOutputText = await processDharmaRewards(finalResult.response.text(), userContext?.suiAddress);
+                    const finalOutputText = finalResult.response.text();
 
                     try {
                         const parsedSources = JSON.parse(toolData);
@@ -555,8 +604,7 @@ export default async function handler(req, res) {
                 }
             }
 
-            const standardOutputText = await processDharmaRewards(response.text(), userContext?.suiAddress);
-            return res.status(200).json({ text: standardOutputText });
+            return res.status(200).json({ text: response.text() });
         } catch (error) {
             console.error(`Model ${modelName} failed: `, error.message);
             continue;
