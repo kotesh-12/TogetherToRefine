@@ -39,9 +39,6 @@ export const BreathingOrb = memo(() => {
     );
 });
 
-/**
- * AnimatedMessage: Wrapper for fluid message entrance
- */
 export const AnimatedMessage = memo(({ msg, children }) => {
     const msgRef = useRef(null);
 
@@ -49,22 +46,38 @@ export const AnimatedMessage = memo(({ msg, children }) => {
         if (msg.isNew) {
             anime({
                 targets: msgRef.current,
-                translateY: [30, 0],
-                scale: [0.95, 1],
+                translateY: [40, 0],
+                scale: [0.9, 1],
                 opacity: [0, 1],
-                duration: 900,
+                filter: ['blur(15px)', 'blur(0px)'],
+                duration: 1200,
                 easing: 'easeOutElastic(1, .8)',
-                delay: msg.sender === 'ai' ? 100 : 0
+                delay: msg.sender === 'ai' ? 150 : 0
             });
         }
     }, [msg.isNew, msg.sender]);
 
     return (
-        <div ref={msgRef} className={`message ${msg.sender}`} style={{ opacity: msg.isNew ? 0 : 1 }}>
+        <div 
+            ref={msgRef} 
+            className={`message ${msg.sender} glass-modern`} 
+            style={{ 
+                opacity: msg.isNew ? 0 : 1,
+                marginBottom: '20px',
+                borderRadius: msg.sender === 'ai' ? '20px 20px 20px 5px' : '20px 20px 5px 20px',
+                background: msg.sender === 'ai' ? 'rgba(255,255,255,0.03)' : 'rgba(108, 99, 255, 0.05)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                backdropFilter: 'blur(10px)',
+                padding: '16px 20px',
+                boxShadow: msg.sender === 'ai' ? '0 8px 32px rgba(0,0,0,0.2)' : '0 8px 32px rgba(108, 99, 255, 0.1)',
+                animation: msg.sender === 'ai' ? 'bionicBreathe 8s infinite alternate' : 'none'
+            }}
+        >
             {children}
         </div>
     );
 });
+
 
 /**
  * MagneticSubmitButton: Interactive send/stop button
@@ -133,18 +146,20 @@ export const BrainInsights = memo(({ thought, confidence, debugMode, containerCl
 
     return (
         <div className={`brain-insights-container ${containerClass}`} style={{
-            marginTop: '12px',
-            padding: '10px 14px',
-            background: debugMode ? 'rgba(239, 68, 68, 0.08)' : 'rgba(108, 99, 255, 0.04)',
-            border: debugMode ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(108, 99, 255, 0.1)',
-            borderRadius: '12px',
+            marginTop: '16px',
+            padding: '14px 18px',
+            background: debugMode ? 'rgba(239, 68, 68, 0.05)' : 'rgba(255, 255, 255, 0.02)',
+            border: debugMode ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(255, 255, 255, 0.05)',
+            borderRadius: '16px',
             fontSize: '13px',
             color: 'var(--text-secondary)',
-            transition: '0.4s ease',
-            boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+            transition: '0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+            backdropFilter: 'blur(5px)',
+            boxShadow: 'inset 0 0 20px rgba(255,255,255,0.01)',
             minWidth: 0,
             overflowX: 'hidden'
         }}>
+
             <div className={`brain-insights-header ${headerClass}`} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '5px' }}>
                     <button 
