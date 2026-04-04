@@ -89,6 +89,10 @@ export const ChatInput = ({
                             value={input}
                             onChange={(e) => {
                                 setInput(e.target.value);
+                                // Auto-resize logic
+                                e.target.style.height = 'auto';
+                                e.target.style.height = `${Math.min(e.target.scrollHeight, 150)}px`;
+                                
                                 if (e.target.value.startsWith('/')) {
                                     setShowSlashMenu(true);
                                 } else {
@@ -99,10 +103,27 @@ export const ChatInput = ({
                                 if (e.key === 'Enter' && !e.shiftKey) {
                                     e.preventDefault();
                                     handleSend(e);
+                                    // Reset height after send
+                                    setTimeout(() => {
+                                        if (inputRef.current) inputRef.current.style.height = 'auto';
+                                    }, 10);
                                 }
                             }}
                             placeholder={isAgentMode ? "Deploy Siddh Protocol..." : "Message TTR..."}
                             rows="1"
+                            style={{
+                                width: '100%',
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'var(--text-primary)',
+                                fontSize: '14px',
+                                outline: 'none',
+                                resize: 'none',
+                                maxHeight: '150px',
+                                overflowY: 'auto',
+                                padding: '12px 0',
+                                lineHeight: '1.4'
+                            }}
                         />
                         
                         {showSlashMenu && input.startsWith('/') && (
