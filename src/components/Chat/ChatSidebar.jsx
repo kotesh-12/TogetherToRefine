@@ -257,16 +257,6 @@ export const ChatSidebar = ({
                                     <div className="gallery-btn"><span>✨</span></div>
                                 </div>
 
-                                <div style={{ marginTop: '10px', marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                    <DharmaChallenge 
-                                        role={user?.user_metadata?.role || 'student'} 
-                                        onStart={(text) => handleSend(null, `/accept challenge: ${text}`)}
-                                    />
-                                    {sessions && sessions.length > 0 && (
-                                        <KnowledgeGraph sessions={sessions} />
-                                    )}
-                                </div>
-
                                 <button
                                     onClick={() => navigate('/pricing')}
                                     style={{

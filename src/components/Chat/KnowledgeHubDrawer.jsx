@@ -1,9 +1,10 @@
 import React from 'react';
 import anime from 'animejs';
 import useChatStore from '../../store/useChatStore';
+import { KnowledgeGraph } from '../KnowledgeGraph';
 
 export const KnowledgeHubDrawer = ({ isOpen, onClose }) => {
-    const { knowledgeBase, setKnowledgeBase } = useChatStore();
+    const { knowledgeBase, setKnowledgeBase, sessions } = useChatStore();
     const panelRef = React.useRef(null);
 
     React.useEffect(() => {
@@ -56,8 +57,12 @@ export const KnowledgeHubDrawer = ({ isOpen, onClose }) => {
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+                {sessions && sessions.length > 0 && <KnowledgeGraph sessions={sessions} />}
+                
+                <h4 style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '25px', marginBottom: '15px', paddingBottom: '8px', borderBottom: '1px solid var(--border)' }}>Memory Nodes</h4>
+
                 {knowledgeBase.length === 0 ? (
-                    <div style={{ textAlign: 'center', marginTop: '100px', color: 'var(--text-muted)' }}>
+                    <div style={{ textAlign: 'center', marginTop: '20px', color: 'var(--text-muted)' }}>
                         <div style={{ fontSize: '40px', marginBottom: '16px' }}>🌑</div>
                         <p style={{ fontSize: '14px' }}>Your memory bank is empty. Start learning to record key insights.</p>
                     </div>
