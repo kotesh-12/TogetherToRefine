@@ -290,6 +290,51 @@ export default function TTRAIChat() {
         }
     }), [handleRunCode]);
 
+    // Auto-Select AI Setup
+    useEffect(() => {
+        window.handleAutoSelect = async () => {
+            const draft = inputRef.current?.value?.trim();
+            if (!draft) {
+                alert("Please type a question first, then click ✨ to auto-select the best AI logic!");
+                return;
+            }
+
+            try {
+                const apiBase = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+                    ? 'http://localhost:5000' 
+                    : 'https://together-to-refine.vercel.app';
+                
+                // Show loading indicator
+                const origBtnText = inputRef.current.placeholder;
+                inputRef.current.placeholder = "✨ AI routing...";
+                
+                const res = await fetch(`${apiBase}/api/auto-select`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: draft })
+                });
+
+                if (!res.ok) throw new Error("Failed auto select");
+                const data = await res.json();
+                
+                // Set the Path and Mode
+                if (data.path && data.path !== 'default') setCurrentPath(data.path);
+                if (data.mode) setFourWayMode(data.mode);
+                
+                inputRef.current.placeholder = origBtnText;
+                
+                // Create a cool notification
+                alert(`✨ AI Router Engaged:\n\nPath Selected: ${data.path.toUpperCase()}\nMode Engaged: ${data.mode.toUpperCase()}\n\nReason: ${data.reason}`);
+                
+            } catch (err) {
+                console.error(err);
+                alert("Failed to auto-select right now. Ensure backend is synced.");
+                inputRef.current.placeholder = "Type your command...";
+            }
+        };
+        return () => delete window.handleAutoSelect;
+    }, [setCurrentPath, setFourWayMode]);
+
     // Dharma XP State
     const [dharmaXP, setDharmaXP] = useState(() => Number(getSafeStorage('ttr_dharma_xp', '0')) || 0);
     const [xpNotify, setXpNotify] = useState({ show: false, points: 0 });

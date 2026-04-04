@@ -64,6 +64,30 @@ export const ChatHeader = ({
             </div>
             <div className="header-actions">
                 <button
+                    className="path-header-btn"
+                    onClick={() => {
+                        if (window.handleAutoSelect) window.handleAutoSelect();
+                    }}
+                    title="Auto-select best AI Path & Mode for your question"
+                    style={{
+                        marginRight: '6px',
+                        background: 'rgba(16, 185, 129, 0.1)',
+                        border: '1px solid rgba(16, 185, 129, 0.3)',
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        color: '#10b981',
+                        cursor: 'pointer'
+                    }}
+                >
+                    <span style={{ fontSize: '16px' }}>✨</span>
+                </button>
+
+                <button
                     className={`path-header-btn premium-toggle ${showHeaderActions ? 'active' : ''}`}
                     onClick={() => setShowHeaderActions(!showHeaderActions)}
                     title={showHeaderActions ? "Hide Tools" : "Show Tools"}
@@ -84,7 +108,8 @@ export const ChatHeader = ({
                     <span className="premium-toggle-icon" style={{
                         transform: showHeaderActions ? 'rotate(180deg)' : 'rotate(0deg)',
                         fontSize: '16px',
-                        fontWeight: 'bold'
+                        fontWeight: 'bold',
+                        transition: '0.3s'
                     }}>{showHeaderActions ? '✕' : '🛠️'}</span>
 
                     {!showHeaderActions && (incognitoMode || isFocusMode || zenMode) && (
@@ -101,34 +126,35 @@ export const ChatHeader = ({
                         }} />
                     )}
                 </button>
+
                 <div className={`header-actions-group ${showHeaderActions ? 'show-mobile' : 'hide-mobile'}`} style={{ 
-                    display: 'flex', 
+                    display: showHeaderActions ? 'flex' : 'none', 
                     alignItems: 'center', 
                     gap: '8px', 
                     overflowX: 'auto', 
                     scrollbarWidth: 'none' 
                 }}>
-                    <FocusSoundscape onToggle={(active) => setZenMode(active)} />
-                    <button className={`path-header-btn ${isFocusMode ? 'active' : ''}`} onClick={() => setIsFocusMode(!isFocusMode)} title="Focus">
-                        {isFocusMode ? '🔍' : '🧘‍♂️'}
-                    </button>
-                    <button className="path-header-btn" onClick={() => setShowPathModal(true)} title="AI Path">
-                        {currentPath && activeHeroes[currentPath] ? activeHeroes[currentPath].emoji : '🎗️'}
-                    </button>
-                    <button className="path-header-btn" disabled={!currentSessionId} onClick={() => {
-                        if (!currentSessionId) return;
-                        const shareUrl = `${window.location.origin}${window.location.pathname}#/nexus/${currentSessionId}`;
-                        navigator.clipboard.writeText(shareUrl);
-                        alert("Nexus Link copied!");
-                    }} title="Nexus">
-                        🤝
-                    </button>
-                    <button className={`path-header-btn incognito-btn ${incognitoMode ? 'active' : ''}`} onClick={() => setIncognitoMode(!incognitoMode)} title="Incognito">
-                        {incognitoMode ? '🕶️' : '🥷'}
-                    </button>
-
                     {showHeaderActions && (
                         <>
+                            <FocusSoundscape onToggle={(active) => setZenMode(active)} />
+                            <button className={`path-header-btn ${isFocusMode ? 'active' : ''}`} onClick={() => setIsFocusMode(!isFocusMode)} title="Focus">
+                                {isFocusMode ? '🔍' : '🧘‍♂️'}
+                            </button>
+                            <button className="path-header-btn" onClick={() => setShowPathModal(true)} title="AI Path">
+                                {currentPath && activeHeroes[currentPath] ? activeHeroes[currentPath].emoji : '🎗️'}
+                            </button>
+                            <button className="path-header-btn" disabled={!currentSessionId} onClick={() => {
+                                if (!currentSessionId) return;
+                                const shareUrl = `${window.location.origin}${window.location.pathname}#/nexus/${currentSessionId}`;
+                                navigator.clipboard.writeText(shareUrl);
+                                alert("Nexus Link copied!");
+                            }} title="Nexus">
+                                🤝
+                            </button>
+                            <button className={`path-header-btn incognito-btn ${incognitoMode ? 'active' : ''}`} onClick={() => setIncognitoMode(!incognitoMode)} title="Incognito">
+                                {incognitoMode ? '🕶️' : '🥷'}
+                            </button>
+
                             {roadmapData && (
                                 <button onClick={() => setRoadmapMode(!isRoadmapMode)} style={{ padding: '8px 12px', background: isRoadmapMode ? '#10b981' : 'rgba(255,255,255,0.1)', border: '1px solid #333', borderRadius: '10px', color: '#fff', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer', flexShrink: 0 }}>
                                     🗺️ ROADMAP
