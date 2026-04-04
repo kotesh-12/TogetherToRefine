@@ -78,5 +78,35 @@ export const NativeBridge = {
         }
 
         await PushNotifications.register();
+    },
+
+    // 🕊️ Sentinel Notifications (Gap 1/Siri)
+    sendLocalNotification: async (title, body) => {
+        try {
+            await PushNotifications.requestPermissions();
+            await PushNotifications.createChannel({
+                id: 'ttr-sentinel',
+                name: 'TTR Sentinel Notifications',
+                description: 'Autonomous AI Insights',
+                importance: 5, // Max
+                visibility: 1
+            });
+            await PushNotifications.schedule({
+                notifications: [
+                    {
+                        title: title,
+                        body: body,
+                        id: Math.floor(Math.random() * 100000),
+                        channelId: 'ttr-sentinel',
+                        smallIcon: 'ic_stat_name', // Needs to match manifest icon
+                        actionTypeId: 'OPEN_APP'
+                    }
+                ]
+            });
+            return true;
+        } catch (e) {
+            console.error('Notification Error:', e);
+            return false;
+        }
     }
 };
