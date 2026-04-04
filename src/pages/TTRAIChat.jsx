@@ -1017,17 +1017,15 @@ export default function TTRAIChat() {
             
             apiMessageContent += identityGuard + engagementPrompt;
 
-            // ─── Suggestion 1: Context Retention (Memory) ───
-            let summarizedMemory = "";
-            if (user && sessions.length > 0) {
-                const pastThemes = sessions.slice(0, 5).map(s => s.title).join(", ");
-                summarizedMemory = `User's recent session topics: ${pastThemes}. If relevant, relate the current query to these past learning themes.`;
-            }
+            const currentKnowledge = useChatStore.getState().knowledgeBase || [];
+            const kbSummary = currentKnowledge.slice(-20).map(n => `- ${n.concept}: ${n.summary}`).join('\n');
+            const pastThemes = sessions.slice(0, 5).map(s => s.title).join(", ");
+            const combinedMemory = `[Knowledge Nexus Nodes]:\n${kbSummary}\n\n[Session Context]: User's recent session topics: ${pastThemes}. If relevant, relate the current query to these past learning themes.`;
 
             const payload = {
                 history: historyForApi,
                 message: apiMessageContent,
-                longTermMemory: summarizedMemory,
+                longTermMemory: combinedMemory,
                 userContext: {
                     name: displayName,
                     email: user?.email || 'Guest',
