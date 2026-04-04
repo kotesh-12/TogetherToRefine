@@ -20,33 +20,67 @@ export const DevCanvas = ({ data, isOpen, onClose }) => {
         }
     }, [isOpen, data]);
 
+    const [auditResults, setAuditResults] = useState({ state: 'idle', issues: [] });
+
+    const performSiddhAudit = (code, lang) => {
+        const issues = [];
+        const low = code.toLowerCase();
+        
+        // Security Audit
+        if (low.includes('eval(')) issues.push({ type: 'CRITICAL', msg: 'Eval() detected. High risk of XSS execution.' });
+        if (low.includes('innerhtml')) issues.push({ type: 'WARNING', msg: 'innerHTML used. Consider textContent for security.' });
+        if (low.includes('http://')) issues.push({ type: 'WARNING', msg: 'Insecure HTTP link detected.' });
+
+        // Performance Audit
+        if (low.includes('.map(') && low.includes('.filter(')) issues.push({ type: 'INFO', msg: 'Chained array methods found. Optimize for single-pass O(n) if data is large.' });
+        if (low.includes('settimeout') || low.includes('setinterval')) issues.push({ type: 'INFO', msg: 'Memory leak alert: Ensure cleanup on component unmount.' });
+
+        // Quality Audit
+        if (code.length > 3000) issues.push({ type: 'WARNING', msg: 'Module length exceeds 3k chars. Consider architectural decoupling.' });
+        
+        setAuditResults({ state: 'audited', issues });
+    };
+
     const runCode = () => {
         if (!iframeRef.current || !data?.code) return;
         
         const iframe = iframeRef.current;
         const doc = iframe.contentDocument || iframe.contentWindow.document;
         
+        // Run Gap 4 Audit before execution
+        performSiddhAudit(data.code, data.language);
+
         let content = '';
         if (data.language === 'html') {
             content = data.code;
         } else if (data.language === 'javascript' || data.language === 'js') {
             content = `
                 <html>
-                <body style="background: #fff; font-family: sans-serif; padding: 20px;">
+                <body style="background: #111; color: #fff; font-family: 'Fira Code', monospace; padding: 20px;">
                     <div id="output"></div>
                     <script>
                         const output = document.getElementById('output');
                         const oldLog = console.log;
                         console.log = (...args) => {
                             window.parent.postMessage({ type: 'console', log: args.join(' ') }, '*');
+                            const line = document.createElement('div');
+                            line.style.color = '#4ade80';
+                            line.textContent = '> ' + args.join(' ');
+                            output.appendChild(line);
                             oldLog(...args);
                         };
+                        window.onerror = (msg) => {
+                            const line = document.createElement('div');
+                            line.style.color = '#f87171';
+                            line.textContent = '[ERROR] ' + msg;
+                            output.appendChild(line);
+                        }
                     </script>
                     <script>${data.code}<\/script>
                 </body>
                 </html>
             `;
-        } else if (['react', 'jsx', 'tsx'].includes(data.language.toLowerCase())) {
+        } else if (['react', 'jsx', 'tsx', 'javascriptreact'].includes(data.language.toLowerCase())) {
             // Live React WebContainer
             content = `
                 <html>
@@ -56,7 +90,8 @@ export const DevCanvas = ({ data, isOpen, onClose }) => {
                     <script src="https://unpkg.com/@babel/standalone/babel.min.js"><\/script>
                     <script src="https://cdn.tailwindcss.com"><\/script>
                     <style>
-                        body { margin: 0; background: #fff; color: #111; font-family: sans-serif; }
+                        body { margin: 0; background: transparent; color: #111; font-family: sans-serif; overflow: hidden; }
+                        #root { height: 100vh; width: 100vw; overflow: auto; background: #fff; }
                     </style>
                 </head>
                 <body>
@@ -67,20 +102,23 @@ export const DevCanvas = ({ data, isOpen, onClose }) => {
                             window.parent.postMessage({ type: 'console', log: args.join(' ') }, '*');
                             oldLog(...args);
                         };
-                        window.onerror = function(msg, url, lineNo, columnNo, error) {
-                            window.parent.postMessage({ type: 'console', log: 'ERROR: ' + msg }, '*');
+                        window.onerror = function(msg) {
+                            window.parent.postMessage({ type: 'console', log: 'RUNTIME ERROR: ' + msg }, '*');
                             return false;
                         };
                     <\/script>
                     <script type="text/babel" data-type="module">
                         const { useState, useEffect, useRef, useMemo, useCallback } = React;
-                        
-                        ${data.code}
-
-                        // Auto-mount if a default export or App component exists
-                        if (typeof App !== 'undefined') {
-                            const root = ReactDOM.createRoot(document.getElementById('root'));
-                            root.render(<App />);
+                        try {
+                            ${data.code}
+                            if (typeof App !== 'undefined') {
+                                const root = ReactDOM.createRoot(document.getElementById('root'));
+                                root.render(<App />);
+                            } else {
+                                console.log("System Alert: No 'App' component found to mount.");
+                            }
+                        } catch (e) {
+                            console.log("SYNTAX ERROR: " + e.message);
                         }
                     <\/script>
                 </body>
@@ -90,12 +128,14 @@ export const DevCanvas = ({ data, isOpen, onClose }) => {
             content = `
                 <html>
                 <head><style>${data.code}</style></head>
-                <body style="background: #f0f0f4; padding: 20px;">
-                    <h2>CSS Preview</h2>
-                    <div class="test-element">Styling applied to this element.</div>
-                    <button>Sample Button</button>
-                    <div style="margin-top: 20px;">
-                       <div style="width: 100px; height: 100px; background: #3b82f6; border-radius: 8px;"></div>
+                <body style="background: #f0f0f4; padding: 20px; font-family: sans-serif;">
+                    <h2 style="color: #444; border-bottom: 1px solid #ccc; padding-bottom: 10px;">CSS Render Pass</h2>
+                    <div class="test-element" style="padding: 20px; border: 1px dashed #999; border-radius: 8px; margin: 10px 0;">Preview Area: Styling applied here.</div>
+                    <button style="padding: 8px 16px;">Sample Button</button>
+                    <div style="margin-top: 20px; display: flex; gap: 10px;">
+                       <div style="width: 50px; height: 50px; background: #3b82f6; border-radius: 4px;"></div>
+                       <div style="width: 50px; height: 50px; background: #ef4444; border-radius: 4px;"></div>
+                       <div style="width: 50px; height: 50px; background: #10b981; border-radius: 4px;"></div>
                     </div>
                 </body>
                 </html>
