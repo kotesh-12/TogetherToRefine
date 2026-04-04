@@ -33,7 +33,11 @@ export const ChatHeader = ({
         isKnowledgeHubOpen,
         setKnowledgeHubOpen,
         setZenMode,
-        zenMode
+        zenMode,
+        autoCruise,
+        setAutoCruise,
+        isWarRoom,
+        setWarRoom
     } = useChatStore();
     return (
         <div className="chat-header">
@@ -64,14 +68,20 @@ export const ChatHeader = ({
             </div>
             <div className="header-actions">
                 <button
-                    className="path-header-btn"
+                    className={`path-header-btn ${autoCruise ? 'active' : ''}`}
                     onClick={() => {
-                        if (window.handleAutoSelect) window.handleAutoSelect();
+                        const nextState = !autoCruise;
+                        setAutoCruise(nextState);
+                        if (nextState) {
+                            alert("🏎️ Cruise Control ON!\nTTR-AI will now automatically analyze and optimize your Path and Mode for every message in the background.");
+                        } else {
+                            alert("🛑 Cruise Control OFF.\nYou are back to manual routing.");
+                        }
                     }}
-                    title="Auto-select best AI Path & Mode for your question"
+                    title={autoCruise ? "Cruise Control ON" : "Turn On Cruise Control"}
                     style={{
                         marginRight: '6px',
-                        background: 'rgba(16, 185, 129, 0.1)',
+                        background: autoCruise ? '#10b981' : 'rgba(16, 185, 129, 0.1)',
                         border: '1px solid rgba(16, 185, 129, 0.3)',
                         width: '32px',
                         height: '32px',
@@ -80,8 +90,9 @@ export const ChatHeader = ({
                         alignItems: 'center',
                         justifyContent: 'center',
                         flexShrink: 0,
-                        color: '#10b981',
-                        cursor: 'pointer'
+                        color: autoCruise ? '#fff' : '#10b981',
+                        cursor: 'pointer',
+                        transition: '0.3s'
                     }}
                 >
                     <span style={{ fontSize: '16px' }}>✨</span>
@@ -142,6 +153,18 @@ export const ChatHeader = ({
                             </button>
                             <button className="path-header-btn" onClick={() => setShowPathModal(true)} title="AI Path">
                                 {currentPath && activeHeroes[currentPath] ? activeHeroes[currentPath].emoji : '🎗️'}
+                            </button>
+                            <button
+                                className={`path-header-btn ${isWarRoom ? 'active' : ''}`}
+                                onClick={() => setWarRoom(!isWarRoom)}
+                                title={isWarRoom ? "War Room Active: Multi-Agent Debate" : "Enter War Room"}
+                                style={{
+                                    background: isWarRoom ? '#ef4444' : 'transparent',
+                                    color: isWarRoom ? '#fff' : 'inherit',
+                                    border: isWarRoom ? '1px solid #ef4444' : 'none'
+                                }}
+                            >
+                                ⚔️
                             </button>
                             <button className="path-header-btn" disabled={!currentSessionId} onClick={() => {
                                 if (!currentSessionId) return;

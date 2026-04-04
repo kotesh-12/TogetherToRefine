@@ -39,8 +39,15 @@ const useChatStore = create((set, get) => ({
     theme: localStorage.getItem('ttr_theme') || 'dark',
     knowledgeBase: JSON.parse(localStorage.getItem('ttr_knowledge_base') || '[]'),
     suiAddress: localStorage.getItem('ttr_sui_address') || '',
+    autoCruise: localStorage.getItem('ttr_auto_cruise') === 'true',
+    isWarRoom: false,
 
     // Actions
+    setWarRoom: (active) => set({ isWarRoom: active }),
+    setAutoCruise: (active) => {
+        localStorage.setItem('ttr_auto_cruise', active);
+        set({ autoCruise: active });
+    },
     setSuiAddress: (addr) => {
         localStorage.setItem('ttr_sui_address', addr);
         set({ suiAddress: addr });

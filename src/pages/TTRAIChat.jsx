@@ -40,6 +40,7 @@ import { ChatHeader } from '../components/Chat/ChatHeader';
 import { ChatSidebar } from '../components/Chat/ChatSidebar';
 import { ChatMessageList } from '../components/Chat/ChatMessageList';
 import { ChatInput } from '../components/Chat/ChatInput';
+import { DharmaMarketplace } from '../components/Chat/DharmaMarketplace';
 import { suiService } from '../services/suiService';
 
 import useChatStore from '../store/useChatStore';
@@ -197,7 +198,8 @@ export default function TTRAIChat() {
         motherTongue, setMotherTongue,
         showLangMenu, setShowLangMenu,
         showSlashMenu, setShowSlashMenu,
-        startNewChat
+        startNewChat,
+        autoCruise, setAutoCruise
     } = useChatStore();
 
     const [activeModule, setActiveModule] = useState(location.state?.activeModule || null);
@@ -287,6 +289,42 @@ export default function TTRAIChat() {
                 return <MermaidDiagram chart={String(children)} />;
             }
             return <MarkdownCode {...props} onRun={handleRunCode} />;
+        },
+        img: (props) => {
+            const isPollinations = props.src && props.src.includes('pollinations.ai');
+            return (
+                <div style={{ display: 'flex', justifyContent: 'center', margin: '20px 0', border: 'none', background: 'transparent' }}>
+                    <div style={{ position: 'relative', width: 'fit-content', background: isPollinations ? 'var(--bg-secondary)' : 'transparent', borderRadius: '12px' }}>
+                        {isPollinations && (
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: -1 }}>
+                                <div className="typing-indicator"><span></span><span></span><span></span></div>
+                            </div>
+                        )}
+                        <img 
+                            {...props} 
+                            style={{ 
+                                maxWidth: '100%', 
+                                maxHeight: '500px', 
+                                borderRadius: '12px', 
+                                boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                objectFit: 'contain'
+                            }} 
+                        />
+                        {isPollinations && (
+                            <div style={{
+                                position: 'absolute', bottom: '10px', right: '10px', 
+                                background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+                                color: 'white', fontSize: '10px', padding: '4px 8px',
+                                borderRadius: '4px', border: '1px solid rgba(255,255,255,0.2)',
+                                zIndex: 2
+                            }}>
+                                ✨ AI Generated
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
         }
     }), [handleRunCode]);
 
@@ -338,6 +376,7 @@ export default function TTRAIChat() {
     // Dharma XP State
     const [dharmaXP, setDharmaXP] = useState(() => Number(getSafeStorage('ttr_dharma_xp', '0')) || 0);
     const [xpNotify, setXpNotify] = useState({ show: false, points: 0 });
+    const [showMarketplace, setShowMarketplace] = useState(false);
 
     useEffect(() => {
         if (xpNotify.show) {
@@ -623,6 +662,56 @@ export default function TTRAIChat() {
         }, lang, true);
     }, [fourWayMode, motherTongue, listen]);
 
+    // Push-to-Talk (Spacebar)
+    useEffect(() => {
+        let isSpacePressed = false;
+        
+        const handleKeyDown = (e) => {
+            if (e.code === 'Space') {
+                const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+                const isTyping = activeTag === 'textarea' || activeTag === 'input';
+                
+                // Only trigger if we aren't actively typing
+                if (!isTyping && !isSpacePressed) {
+                    e.preventDefault();
+                    isSpacePressed = true;
+                    if (!isListening) {
+                        handleMicClick(); // Turn on microphone
+                    }
+                }
+            }
+        };
+
+        const handleKeyUp = (e) => {
+            if (e.code === 'Space') {
+                const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+                const isTyping = activeTag === 'textarea' || activeTag === 'input';
+                
+                if (!isTyping) {
+                    isSpacePressed = false;
+                    if (isListening) {
+                        handleMicClick(); // Turn off microphone
+                        
+                        // Small delay then trigger send if input isn't empty
+                        setTimeout(() => {
+                            if (useChatStore.getState().input.trim()) {
+                                handleSend(new Event('submit'));
+                            }
+                        }, 500);
+                    }
+                }
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        document.addEventListener('keyup', handleKeyUp);
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+            document.removeEventListener('keyup', handleKeyUp);
+        };
+    }, [isListening, handleMicClick]);
+
     // Set welcome message on mount and remove root loader
     useEffect(() => {
         if (nexusSessionId) {
@@ -814,6 +903,28 @@ export default function TTRAIChat() {
         const text = (overrideText || input).trim();
         if (!text && !selectedImage && selectedDocs.length === 0) return;
 
+        // Cruise Control Interceptor
+        if (autoCruise && text && !overrideText) {
+            try {
+                const apiBase = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+                    ? 'http://localhost:5000' : 'https://together-to-refine.vercel.app';
+                
+                const res = await fetch(`${apiBase}/api/auto-select`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: text })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.path && data.path !== 'default') setCurrentPath(data.path);
+                    if (data.mode) setFourWayMode(data.mode);
+                }
+            } catch (err) {
+                console.error("AutoCruise silent failure:", err);
+            }
+        }
+
         setInput('');
         if (inputRef.current) inputRef.current.style.height = 'auto';
         const imgData = selectedImage;
@@ -927,6 +1038,7 @@ export default function TTRAIChat() {
                     isDebugMode: shouldDebug,
                     activeModule: activeModule,
                     isAgentMode: isAgentMode,
+                    isWarRoom: useChatStore.getState().isWarRoom,
                     isMinimal: zenMode,
                     miniMemory: miniMemory,
                     suiAddress: suiAddress,
@@ -1539,10 +1651,11 @@ export default function TTRAIChat() {
                 handleSend={handleSend}
                 recallSubject={recallSubject}
                 lastStudyTime={lastStudyTime}
-                displayName={user?.user_metadata?.name || user?.email?.split('@')[0]}
+                displayName={displayName}
                 signOut={signOut}
                 getSafeStorage={getSafeStorage}
                 setSafeStorage={setSafeStorage}
+                setShowMarketplace={setShowMarketplace}
             />
 
             {/* ── Sidebar Overlay ── */}
@@ -1823,11 +1936,18 @@ export default function TTRAIChat() {
                 </div>
             )}
 
-                <DevCanvas 
-                    data={devCanvasData} 
-                    isOpen={isDevCanvasOpen} 
-                    onClose={closeDevCanvas} 
-                />
+            <DharmaMarketplace 
+                isOpen={showMarketplace}
+                onClose={() => setShowMarketplace(false)}
+                dharmaXP={dharmaXP}
+                setDharmaXP={setDharmaXP}
+            />
+
+            <DevCanvas 
+                data={devCanvasData} 
+                isOpen={isDevCanvasOpen} 
+                onClose={closeDevCanvas} 
+            />
         </div >
     );
 }

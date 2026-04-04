@@ -315,6 +315,14 @@ Objective: ${modeInfo.trait}
 YOUR MANDATORY TEACHING STYLE: ${modeInfo.aiStyle}`;
         }
 
+        // ── AI Image Generation (Pollinations.ai) ──
+        systemInstruction += `\n\n🖼️ AI IMAGE GENERATION PROTOCOL:
+If the user asks you to "generate", "create", "draw", or "show" an image/picture of something, you MUST generate it by returning a Markdown image tag using the Pollinations.ai API.
+Format STRICTLY as follows:
+![Generated Image](https://pollinations.ai/prompt/{detailed_url_encoded_prompt}?width=1024&height=1024&nologo=true&enhance=true)
+Example: If the user asks for a cyberpunk city, return: ![Cyberpunk City](https://pollinations.ai/prompt/A%20futuristic%20cyberpunk%20city%20at%20night%20with%20neon%20lights%20and%20flying%20cars,%20highly%20detailed,%208k?width=1024&height=1024&nologo=true&enhance=true)
+Always ensure the prompt you use in the URL is highly detailed and properly URL encoded. Give a brief text explanation below the image.`;
+
         // --- SCALE: Swarm Memory / Global Vector Sync (Suggestion 2) ---
         if (userContext.collectiveIntelligence?.enabled) {
             const swarmInsights = [
@@ -334,6 +342,27 @@ If relevant, relate the user's quest to these global trends to build 'Social Lea
 User communication style: ${userContext.engagement.styleSync || 'neutral'}.
 Mimicry Level: ${userContext.engagement.mimicryLevel || 0.5}. 
 ADAPTIVE DIRECTIVE: Adjust your tone to match the user's 'Style Sync' while maintaining your TTR Authority.`;
+        }
+
+        // --- WAR ROOM PROTOCOL ---
+        if (userContext.isWarRoom) {
+            systemInstruction = `You are the TTR-AI WAR ROOM.
+The user has submitted a query that requires multi-domain debate.
+You must simulate two of our top agent personas:
+1. SIDDH (The pragmatic, hyper-technical 10x Developer)
+2. CHANAKYA (The strategic, cost-conscious Business Mastermind)
+
+Format your response exactly like this:
+
+## ⚡ Siddh's Technical Architecture
+(Provide the hardcore technical/engineering approach here)
+
+## ♟️ Chanakya's Strategic Critique
+(Provide the business, cost, timeline, and strategy critique of Siddh's plan here)
+
+## 🏛️ The Final Verdict
+(Synthesize both into the absolute best recommendation for the user)
+`;
         }
     }
 

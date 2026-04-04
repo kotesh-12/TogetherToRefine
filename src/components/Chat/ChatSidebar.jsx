@@ -130,15 +130,25 @@ export const ChatSidebar = ({
             </div>
 
             {/* Dharma XP Stat */}
-            <div className="dharma-xp-stat" style={{ 
-                padding: '8px 12px', 
-                background: 'rgba(255,255,255,0.05)', 
-                borderRadius: '10px', 
-                margin: '0 10px 8px 10px', 
-                border: '1px solid rgba(255, 215, 0, 0.2)',
-            }}>
+            <div 
+                className="dharma-xp-stat" 
+                onClick={() => setShowMarketplace && setShowMarketplace(true)}
+                style={{ 
+                    padding: '8px 12px', 
+                    background: 'rgba(255,255,255,0.05)', 
+                    borderRadius: '10px', 
+                    margin: '0 10px 8px 10px', 
+                    border: '1px solid rgba(255, 215, 0, 0.4)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 0 10px rgba(255, 215, 0, 0.1)'
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(255, 215, 0, 0.1)'; }}
+                onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                title="Open Dharma Marketplace"
+            >
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                    <span style={{ fontSize: '10px', color: '#ffd700', fontWeight: 'bold' }}>🕉️ DHARMA XP</span>
+                    <span style={{ fontSize: '10px', color: '#ffd700', fontWeight: 'bold' }}>🕉️ DHARMA XP (Click to Spend)</span>
                     <span style={{ fontSize: '10px', color: '#fff' }}>{dharmaXP} PTS</span>
                 </div>
                 <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px', overflow: 'hidden' }}>
@@ -160,49 +170,6 @@ export const ChatSidebar = ({
                             </div>
                         ))}
                         {filteredSessions.length === 0 && <p className="no-sessions">No conversations yet</p>}
-                        
-                        {!window.matchMedia('(display-mode: standalone)').matches && (
-                            <div style={{ 
-                                margin: '20px 12px', 
-                                padding: '15px', 
-                                background: 'rgba(59, 130, 246, 0.08)', 
-                                borderRadius: '16px', 
-                                border: '1px solid rgba(59, 130, 246, 0.2)',
-                                textAlign: 'center'
-                            }}>
-                                <div style={{ fontSize: '20px', marginBottom: '10px' }}>📲</div>
-                                <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '5px' }}>Enhance Your Journey</div>
-                                <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '12px' }}>Install TTRAI on your home screen for smoother access on slow networks.</div>
-                                <button 
-                                    onClick={() => navigate('/download-app')}
-                                    style={{ width: '100%', padding: '8px', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
-                                    Install Now
-                                </button>
-                            </div>
-                        )}
-
-                        <div style={{ padding: '20px 0', borderTop: '1px solid var(--border)' }}>
-                            <DharmaChallenge 
-                                role={user?.user_metadata?.role || 'student'} 
-                                onStart={(text) => handleSend(null, `/accept challenge: ${text}`)}
-                            />
-                            
-                            <button 
-                                onClick={() => {
-                                    setKnowledgeHubOpen(true);
-                                    setShowSidebar(false);
-                                }}
-                                style={{ width: '100%', marginTop: '20px', padding: '12px', background: 'var(--accent-glow)', border: '1px solid var(--accent)', borderRadius: '12px', color: 'var(--accent)', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                            >
-                                🗺️ Open Knowledge Nexus
-                            </button>
-
-                            {sessions && sessions.length > 0 && (
-                                <div style={{ marginTop: '20px' }}>
-                                    <KnowledgeGraph sessions={sessions} />
-                                </div>
-                            )}
-                        </div>
                     </div>
 
                     {recallSubject && Date.now() - lastStudyTime > 3600000 && (
@@ -288,6 +255,16 @@ export const ChatSidebar = ({
                                     <div className="theme-dot white"></div>
                                     <div className="theme-dot purple"></div>
                                     <div className="gallery-btn"><span>✨</span></div>
+                                </div>
+
+                                <div style={{ marginTop: '10px', marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                    <DharmaChallenge 
+                                        role={user?.user_metadata?.role || 'student'} 
+                                        onStart={(text) => handleSend(null, `/accept challenge: ${text}`)}
+                                    />
+                                    {sessions && sessions.length > 0 && (
+                                        <KnowledgeGraph sessions={sessions} />
+                                    )}
                                 </div>
 
                                 <button
