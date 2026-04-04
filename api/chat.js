@@ -3,7 +3,7 @@ import { getFullnodeUrl, SuiClient } from '@mysten/sui/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Transaction } from '@mysten/sui/transactions';
 
-const MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
+const MODELS = ['gemini-2.0-pro-exp-02-05', 'gemini-2.0-flash', 'gemini-1.5-pro'];
 
 // ─── GURUKUL PATH HERO DATA ─────────────
 const GURUKUL_HEROES = {
