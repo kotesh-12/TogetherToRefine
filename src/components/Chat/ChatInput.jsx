@@ -1,5 +1,7 @@
 import React from 'react';
 import { MagneticSubmitButton } from '../ChatComponents';
+import { useNativeAgent } from '../../hooks/useNativeAgent';
+
 
 import useChatStore from '../../store/useChatStore';
 
@@ -33,6 +35,21 @@ export const ChatInput = ({
         setMotherTongue,
         zenMode
     } = useChatStore();
+
+    const { captureHomework, vibrate } = useNativeAgent();
+
+    const handleCameraClick = async () => {
+        try {
+            vibrate(); // Feedback
+            const base64 = await captureHomework();
+            if (base64) {
+                setSelectedImage(`data:image/jpeg;base64,${base64}`);
+            }
+        } catch (e) {
+            console.error('Camera capture failed', e);
+        }
+    };
+
     return (
         <div className="input-container" style={{ display: zenMode ? 'flex' : 'block' }}>
             {/* Contextual Action Pills (Signature UX 1) */}
@@ -71,7 +88,12 @@ export const ChatInput = ({
                 )}
 
                 <div className="input-row">
+                    <button className="action-btn camera-btn" onClick={handleCameraClick} title="Scan Homework (Camera)">
+                        📷
+                    </button>
+
                     <button className="action-btn file-btn" onClick={() => fileInputRef.current?.click()} title="Attach (Image/PDF/DOCX)">
+
                         📎
                         <input
                             type="file"
