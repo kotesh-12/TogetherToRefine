@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { WELCOME_MSG } from '../constants/chatData';
+import { NativeBridge } from '../services/nativeBridge';
+
 
 const useChatStore = create((set, get) => ({
     // Core State
@@ -41,6 +43,11 @@ const useChatStore = create((set, get) => ({
     suiAddress: localStorage.getItem('ttr_sui_address') || '',
     autoCruise: localStorage.getItem('ttr_auto_cruise') === 'true',
     isWarRoom: false,
+    
+    // --- MAYA-ROOP (Liquid UI) ---
+    uiHeatmap: JSON.parse(localStorage.getItem('ttr_ui_heatmap') || '{}'),
+    visibleTools: JSON.parse(localStorage.getItem('ttr_visible_tools') || '["explain", "roadmap", "devcanvas", "knowledge"]'),
+
 
     // Actions
     setWarRoom: (active) => set({ isWarRoom: active }),
@@ -101,9 +108,30 @@ const useChatStore = create((set, get) => ({
     setIncognitoMode: (active) => set({ incognitoMode: active }),
     setMotherTongue: (lang) => set({ motherTongue: lang }),
     
+    // --- Liquid UI Actions ---
+    trackToolUsage: (toolId) => set((state) => {
+        const heatmap = { ...state.uiHeatmap };
+        heatmap[toolId] = (heatmap[toolId] || 0) + 1;
+        localStorage.setItem('ttr_ui_heatmap', JSON.stringify(heatmap));
+        
+        // Auto-Optimization Logic: If a tool is used > 5 times, ensure it's in visibleTools
+        let visible = [...state.visibleTools];
+        if (heatmap[toolId] > 5 && !visible.includes(toolId)) {
+            visible.push(toolId);
+            localStorage.setItem('ttr_visible_tools', JSON.stringify(visible));
+        }
+        return { uiHeatmap: heatmap, visibleTools: visible };
+    }),
+
+    setLiquidTheme: async (themeId) => {
+        // Device-Specific Native Mutation
+        await NativeBridge.setLocalPreference('ttr_device_theme', themeId);
+        set({ theme: themeId });
+    },
+
     // Complex Actions
     startNewChat: () => set({
-        messages: [], // Will be populated by caller with Persona welcome
+        messages: [], 
         currentSessionId: null,
         isRoadmapMode: false,
         isDevCanvasOpen: false

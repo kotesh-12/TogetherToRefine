@@ -7,6 +7,8 @@ import { Camera, CameraResultType } from '@capacitor/camera';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Share } from '@capacitor/share';
+import { Preferences } from '@capacitor/preferences';
+
 
 /**
  * TTR-AI Native Bridge (KAVACH Protocol)
@@ -159,5 +161,15 @@ export const NativeBridge = {
             console.error('SMS Trigger Failed', e);
             return false;
         }
+    },
+
+    // 🎭 Liquid UI Persistence (MAYA-ROOP - Device Only)
+    setLocalPreference: async (key, value) => {
+        await Preferences.set({ key, value: JSON.stringify(value) });
+    },
+
+    getLocalPreference: async (key) => {
+        const { value } = await Preferences.get({ key });
+        return value ? JSON.parse(value) : null;
     }
 };

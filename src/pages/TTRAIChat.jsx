@@ -1150,8 +1150,33 @@ export default function TTRAIChat() {
                 }, 1000);
                 responseText = cleanResponse;
             }
+
+            // ─── Liquid UI Interceptor (MAYA-ROOP - Gap 1/Siri) ───
+            const themeMatch = responseText.match(/THEME_INTENT:\s*(\w+)/i);
+            if (themeMatch) {
+                const newTheme = themeMatch[1].toLowerCase();
+                const cleanResponse = responseText.replace(/THEME_INTENT:\s*\w+/gi, '').trim();
+                setTimeout(() => {
+                    useChatStore.getState().setLiquidTheme(newTheme);
+                    vibrate();
+                    console.log(`MAYA-ROOP: Self-Mutating UI to Theme: ${newTheme}`);
+                }, 800);
+                responseText = cleanResponse;
+            }
+
+            const layoutMatch = responseText.match(/LAYOUT_INTENT:\s*(\w+)/i);
+            if (layoutMatch) {
+                const toolId = layoutMatch[1].toLowerCase();
+                const cleanResponse = responseText.replace(/LAYOUT_INTENT:\s*\w+/gi, '').trim();
+                setTimeout(() => {
+                    useChatStore.getState().trackToolUsage(toolId); 
+                    console.log(`MAYA-ROOP: Auto-surfacing tool: ${toolId}`);
+                }, 800);
+                responseText = cleanResponse;
+            }
             
             // ─── Explainability: Extract Thought Process ───
+
             let thoughtProcess = '';
             const thoughtMatch = responseText.match(/<thought>([\s\S]*?)<\/thought>/);
             if (thoughtMatch) {
