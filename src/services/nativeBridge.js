@@ -1,4 +1,6 @@
 import { Device } from '@capacitor/device';
+import { AppLauncher } from '@capacitor/app-launcher';
+
 import { Network } from '@capacitor/network';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { Camera, CameraResultType } from '@capacitor/camera';
@@ -121,6 +123,40 @@ export const NativeBridge = {
             return true;
         } catch (e) {
             console.error('Notification Error:', e);
+            return false;
+        }
+    },
+
+    // 📞 System Action Orchestration (Gap 1/Siri)
+    triggerNativeCall: async (phoneNumber) => {
+        try {
+            const cleanNumber = phoneNumber.replace(/\s/g, '');
+            const { value } = await AppLauncher.canOpenUrl({ url: `tel:${cleanNumber}` });
+            if (value) {
+                await AppLauncher.openUrl({ url: `tel:${cleanNumber}` });
+                return true;
+            }
+            window.open(`tel:${cleanNumber}`); // Fallback
+            return true;
+        } catch (e) {
+            console.error('Call Trigger Failed', e);
+            return false;
+        }
+    },
+
+    triggerNativeSMS: async (phoneNumber, message) => {
+        try {
+            const cleanNumber = phoneNumber.replace(/\s/g, '');
+            const encodedMsg = encodeURIComponent(message || '');
+            const { value } = await AppLauncher.canOpenUrl({ url: `sms:${cleanNumber}` });
+            if (value) {
+                await AppLauncher.openUrl({ url: `sms:${cleanNumber}&body=${encodedMsg}` });
+                return true;
+            }
+            window.open(`sms:${cleanNumber}?body=${encodedMsg}`); // Fallback
+            return true;
+        } catch (e) {
+            console.error('SMS Trigger Failed', e);
             return false;
         }
     }

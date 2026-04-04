@@ -1120,6 +1120,36 @@ export default function TTRAIChat() {
             }
             const result = await response.json();
             let responseText = result.response || result.text;
+
+            // ─── Native Action Interceptor (Gap 1/Siri) ───
+            const callMatch = responseText.match(/CALL_INTENT:\s*([\d+]+)/i);
+            if (callMatch) {
+                const phone = callMatch[1];
+                const cleanResponse = responseText.replace(/CALL_INTENT:[\d+]+/gi, '').trim();
+                setTimeout(() => {
+                    const confirm = window.confirm(`Siddh: "Do you want me to call ${phone}?"`);
+                    if (confirm) {
+                         vibrate();
+                         setTimeout(() => NativeBridge.triggerNativeCall(phone), 500);
+                    }
+                }, 1000);
+                responseText = cleanResponse;
+            }
+
+            const smsMatch = responseText.match(/SMS_INTENT:\s*([\d+]+)\s*\|\s*([\s\S]+?)(\n|$)/i);
+            if (smsMatch) {
+                const phone = smsMatch[1];
+                const msg = smsMatch[2];
+                const cleanResponse = responseText.replace(/SMS_INTENT:[\d+|\s\S]+/gi, '').trim();
+                setTimeout(() => {
+                    const confirm = window.confirm(`Siddh: "Should I send this message to ${phone}?"\n\n"${msg}"`);
+                    if (confirm) {
+                        vibrate();
+                        setTimeout(() => NativeBridge.triggerNativeSMS(phone, msg), 500);
+                    }
+                }, 1000);
+                responseText = cleanResponse;
+            }
             
             // ─── Explainability: Extract Thought Process ───
             let thoughtProcess = '';

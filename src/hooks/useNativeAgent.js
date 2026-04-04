@@ -39,6 +39,8 @@ export function useNativeAgent() {
         captureHomework,
         vibrate: NativeBridge.vibrate,
         share: NativeBridge.shareContent,
-        sendSentinelAlert: NativeBridge.sendLocalNotification
+        sendSentinelAlert: NativeBridge.sendLocalNotification,
+        callUser: NativeBridge.triggerNativeCall,
+        sendMessage: NativeBridge.triggerNativeSMS
     };
 }
