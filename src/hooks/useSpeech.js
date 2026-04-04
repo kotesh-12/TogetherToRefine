@@ -17,7 +17,8 @@ export function useSpeech() {
     const speak = (text, langCode = 'en-US', tone = 'default') => {
         if (!('speechSynthesis' in window) || !text) return;
 
-        window.speechSynthesis.cancel(); // Clears queue
+        // Immediate Interruption for "Bionic" feel
+        window.speechSynthesis.cancel(); 
 
         if (speakingText === text) {
             setSpeakingText(null);
@@ -26,12 +27,12 @@ export function useSpeech() {
 
         const cleanText = text.replace(/[*#_`[\]]/g, '').replace(/\[Dharma Points:.*?\]/g, '');
 
-        // Chunking logic for Mobile stability
+        // Bionic Chunking: Smaller chunks (120 chars) for faster first-audio-frame delivery
         const chunks = cleanText.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [cleanText];
         const safeChunks = [];
         chunks.forEach(chunk => {
-            if (chunk.length > 180) {
-                const subChunks = chunk.match(/.{1,180}(\s|$)/g) || [chunk];
+            if (chunk.length > 120) {
+                const subChunks = chunk.match(/.{1,120}(\s|$)/g) || [chunk];
                 safeChunks.push(...subChunks);
             } else {
                 safeChunks.push(chunk);
@@ -39,36 +40,31 @@ export function useSpeech() {
         });
 
         const voices = window.speechSynthesis.getVoices();
-        let targetVoice = null;
-        if (langCode && langCode !== 'en-US') {
-            targetVoice = voices.find(v => v.lang.includes(langCode))
-                || voices.find(v => v.lang.startsWith(langCode.split('-')[0]));
-        }
-        if (!targetVoice) {
-            targetVoice = voices.find(v => v.name.includes("Google") && v.lang.includes("en"))
-                || voices.find(v => v.lang.startsWith("en"));
-        }
+        let targetVoice = voices.find(v => v.lang.includes(langCode) && v.localService) 
+                       || voices.find(v => v.lang.includes(langCode))
+                       || voices.find(v => v.name.includes("Google") && v.lang.includes("en"))
+                       || voices.find(v => v.lang.startsWith("en"));
 
-        // Tone Profiles (Suggestion 3)
+        // Tone Profiles (Mastery Personalities)
         const profiles = {
-            arjuna: { rate: 1.1, pitch: 1.0 },
-            krishna: { rate: 0.9, pitch: 1.1 },
-            chanakya: { rate: 1.2, pitch: 0.9 },
-            default: { rate: 1.0, pitch: 1.0 }
+            arjuna: { rate: 1.15, pitch: 1.0 },
+            krishna: { rate: 0.95, pitch: 1.1 },
+            chanakya: { rate: 1.25, pitch: 0.9 },
+            default: { rate: 1.05, pitch: 1.0 } // 5% faster default for "Pro" feel
         };
 
         const currentTone = profiles[tone] || profiles['default'];
 
         safeChunks.forEach((chunkText, index) => {
-            const utterance = new SpeechSynthesisUtterance(chunkText);
-
-            if (targetVoice) {
-                utterance.voice = targetVoice;
-                utterance.lang = targetVoice.lang;
-            }
-
+            const utterance = new SpeechSynthesisUtterance(chunkText.trim());
+            if (targetVoice) utterance.voice = targetVoice;
             utterance.rate = currentTone.rate;
             utterance.pitch = currentTone.pitch;
+
+            if (index === 0) {
+                // First chunk triggers 'speaking' UI state immediately
+                setSpeakingText(text);
+            }
 
             if (index === safeChunks.length - 1) {
                 utterance.onend = () => setSpeakingText(null);
@@ -77,8 +73,6 @@ export function useSpeech() {
 
             window.speechSynthesis.speak(utterance);
         });
-
-        setSpeakingText(text);
     };
 
     // Speech-to-Text (STT)
