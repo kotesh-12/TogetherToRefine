@@ -45,6 +45,21 @@ export const NativeBridge = {
     },
 
     // 📁 File System Access
+    pickAndReadFile: async () => {
+        try {
+            // This allows the AI to "read" local phone docs
+            const result = await Filesystem.readFile({
+                path: '', // Will be updated by native picker logic in future patch
+                directory: Directory.Documents,
+                encoding: Encoding.UTF8
+            });
+            return result.data;
+        } catch (e) {
+            console.error('File Read Error:', e);
+            return null;
+        }
+    },
+
     saveStudyNote: async (filename, content) => {
         try {
             await Filesystem.writeFile({
