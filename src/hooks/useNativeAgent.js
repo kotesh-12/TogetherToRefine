@@ -41,6 +41,7 @@ export function useNativeAgent() {
         share: NativeBridge.shareContent,
         sendSentinelAlert: NativeBridge.sendLocalNotification,
         callUser: NativeBridge.triggerNativeCall,
-        sendMessage: NativeBridge.triggerNativeSMS
+        sendMessage: NativeBridge.triggerNativeSMS,
+        setNativeAlarm: NativeBridge.triggerNativeAlarm
     };
 }

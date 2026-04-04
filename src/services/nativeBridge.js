@@ -171,5 +171,46 @@ export const NativeBridge = {
     getLocalPreference: async (key) => {
         const { value } = await Preferences.get({ key });
         return value ? JSON.parse(value) : null;
+    },
+
+    // ⏰ Time Mastery (KALA-STHAPANA - Native Clock App)
+    triggerNativeAlarm: async (hour, minute, label = 'TTR AI Mastery Alarm') => {
+        try {
+            const h = parseInt(hour);
+            const m = parseInt(minute);
+            
+            // Android Deep Intent (Direct to Alarm App)
+            const { value: canOpen } = await AppLauncher.canOpenUrl({ url: 'com.android.deskclock' });
+            if (canOpen) {
+                // This is a direct native command
+                await AppLauncher.openUrl({ 
+                    url: `intent://#Intent;action=android.intent.action.SET_ALARM;i.android.intent.extra.alarm.HOUR=${h};i.android.intent.extra.alarm.MINUTES=${m};s.android.intent.extra.alarm.MESSAGE=${encodeURIComponent(label)};b.android.intent.extra.alarm.SKIP_UI=true;end` 
+                });
+                return true;
+            }
+
+            // iOS / Universal Fallback: Local Scheduled Alert with Sound
+            const now = new Date();
+            const target = new Date();
+            target.setHours(h, m, 0, 0);
+            if (target < now) target.setDate(target.getDate() + 1); // Tomorrow
+
+            await PushNotifications.schedule({
+                notifications: [
+                    {
+                        title: '⏰ TTR Mastery Alarm',
+                        body: `Time to wake up and refine! Topic: ${label}`,
+                        id: 999,
+                        schedule: { at: target },
+                        sound: 'alarm.wav', // Native sound trigger
+                        importance: 5
+                    }
+                ]
+            });
+            return true;
+        } catch (e) {
+            console.error('Alarm Sync Failed', e);
+            return false;
+        }
     }
 };

@@ -1174,8 +1174,26 @@ export default function TTRAIChat() {
                 }, 800);
                 responseText = cleanResponse;
             }
+
+            // ─── Time Mastery Interceptor (KALA-STHAPANA - Gap 1/Siri) ───
+            const alarmMatch = responseText.match(/ALARM_INTENT:\s*(\d{1,2}):(\d{2})\s*\|?\s*([\s\S]*?)(\n|$)/i);
+            if (alarmMatch) {
+                const hour = alarmMatch[1];
+                const minute = alarmMatch[2];
+                const label = alarmMatch[3]?.trim() || 'TTR Mastery Session';
+                const cleanResponse = responseText.replace(/ALARM_INTENT:[\d+|\s:|\||\w|\s]+/gi, '').trim();
+                setTimeout(() => {
+                    const confirm = window.confirm(`Siddh: "Should I set your system alarm for ${hour}:${minute} to focus on '${label}'?"`);
+                    if (confirm) {
+                        vibrate();
+                        NativeBridge.triggerNativeAlarm(hour, minute, label);
+                    }
+                }, 1000);
+                responseText = cleanResponse;
+            }
             
             // ─── Explainability: Extract Thought Process ───
+
 
             let thoughtProcess = '';
             const thoughtMatch = responseText.match(/<thought>([\s\S]*?)<\/thought>/);
