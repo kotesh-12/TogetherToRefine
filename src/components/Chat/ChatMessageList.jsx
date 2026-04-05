@@ -103,7 +103,7 @@ export const ChatMessageList = ({
 
     const MessageItem = ({ index, msg }) => (
         <AnimatedMessage msg={msg}>
-            {msg.sender === 'ai' && (
+            {msg?.sender === 'ai' && (
                 <div className="msg-avatar ai-avatar">
                     {isAgentMode ? (
                         <div style={{ position: 'relative' }}>
@@ -115,27 +115,33 @@ export const ChatMessageList = ({
                     )}
                 </div>
             )}
+
             <div className="msg-content">
-                {msg.image && <img src={msg.image} alt="User upload" className="msg-image" />}
-                {msg.sender === 'ai' && index === messages.length - 1 && loading ? (
+                {msg?.image && <img src={msg.image} alt="User upload" className="msg-image" />}
+                {msg?.sender === 'ai' && index === messages.length - 1 && loading ? (
                     <TypewriterMessage text={msg.text} />
                 ) : (
-                    <div className={`ai-message-body ${speakingText === msg.text ? 'is-speaking' : ''}`}>
+                    <div className={`ai-message-body ${speakingText === msg?.text ? 'is-speaking' : ''}`}>
                         <ReactMarkdown 
                             remarkPlugins={[remarkGfm]}
                             components={customMarkdownComponents}
                         >
-                            {msg.text}
+                            {msg?.text}
                         </ReactMarkdown>
                     </div>
                 )}
 
                 {/* Perplexity-Style Source Citations */}
-                {msg.sender === 'ai' && msg.sources && (
+                {msg?.sender === 'ai' && msg?.sources && (
                     <SourcePanel sources={msg.sources} toolCalled={msg.toolCalled} />
                 )}
+
+                {/* Integrated Reasoning/Thoughts (TTR Masterpiece Fix) */}
+                {msg?.sender === 'ai' && msg?.thought && (
+                    <BrainInsights thought={msg.thought} confidence={msg.confidence} />
+                )}
                 
-                {msg.sender === 'ai' && (
+                {msg?.sender === 'ai' && (
                     <div className="msg-actions">
                         <button className={`msg-action-btn ${feedback[index] === 'liked' ? 'active' : ''}`} onClick={() => handleLike(index)}>
                             {feedback[index] === 'liked' ? '❤️' : '🤍'}
@@ -152,6 +158,7 @@ export const ChatMessageList = ({
                     </div>
                 )}
             </div>
+
             {msg.sender === 'user' && (
                 <div className="msg-avatar user-avatar">
                     {msg.sender.charAt(0).toUpperCase()}
@@ -161,7 +168,7 @@ export const ChatMessageList = ({
     );
 
     return (
-        <div className="chat-messages" style={{ display: isRoadmapMode || isDevCanvasOpen ? 'none' : 'flex', height: '100%', flexDirection: 'column' }}>
+        <div className="chat-messages" style={{ display: isRoadmapMode || isDevCanvasOpen ? 'none' : 'flex', height: '100%', flexDirection: 'column', position: 'relative' }}>
             {incognitoMode && (
                 <div className="incognito-banner" style={{ flexShrink: 0 }}>
                     <span>🕶️</span>
@@ -203,9 +210,9 @@ export const ChatMessageList = ({
 
             {/* AI Personality Visuals (Layered on top) */}
             <div style={{ pointerEvents: 'none', position: 'absolute', inset: 0, zIndex: 10 }}>
-                <BreathingOrb isAgentMode={isAgentMode} />
-                <BrainInsights messages={messages} />
+                {loading && <BreathingOrb />}
             </div>
+
 
             {/* Performance/Mastery Overlays */}
             {turnCount >= 5 && (
