@@ -200,7 +200,9 @@ export default function TTRAIChat() {
         showLangMenu, setShowLangMenu,
         showSlashMenu, setShowSlashMenu,
         startNewChat,
-        autoCruise, setAutoCruise
+        autoCruise, setAutoCruise,
+        isLocked, setIsLocked,
+        biometricEnabled, setBiometricEnabled
     } = useChatStore();
 
     const [activeModule, setActiveModule] = useState(location.state?.activeModule || null);
@@ -1010,6 +1012,18 @@ export default function TTRAIChat() {
             const lowerText = text ? text.toLowerCase() : '';
             if (lowerText.includes('generate ppt') || lowerText.includes('create ppt')) {
                 apiMessageContent += "\n\n(PPT_TRIGGER: Generate a professional, slide-by-slide presentation. Format: Slide: [Title] \nContent: - [Bullet] \nNotes: [Script])";
+            }
+
+            // ─── SECURITY_INTENT (Lock Chat) ───
+            const lockKeywords = ['lock', 'security', 'protect', 'biometric'];
+            if (lockKeywords.some(k => lowerText.includes(k))) {
+                useChatStore.getState().setIsLocked(true);
+                setMessages(prev => [...prev, {
+                    text: "SIDDH SENTINEL: Intelligence Hub locked. Biometric handshake required for re-entry. 🛡️",
+                    sender: 'ai',
+                    thought: "User requested security escalation. Deploying glass-modern encryption shield."
+                }]);
+                return;
             }
 
             // ─── Phase 6: Admin Logic & Identity ───
@@ -2025,12 +2039,67 @@ export default function TTRAIChat() {
                 dharmaXP={dharmaXP}
                 setDharmaXP={setDharmaXP}
             />
-
             <DevCanvas 
                 data={devCanvasData} 
                 isOpen={isDevCanvasOpen} 
                 onClose={closeDevCanvas} 
             />
+
+            {/* --- SIDDH SENTINEL: Security Overlay (Masterpiece UI) --- */}
+            {useChatStore().isLocked && (
+                <div className="security-overlay glass-modern" style={{
+                    position: 'fixed',
+                    inset: 0,
+                    zIndex: 10000,
+                    background: 'rgba(15, 15, 20, 0.95)',
+                    backdropFilter: 'blur(30px)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    animation: 'fadeIn 0.8s ease-out'
+                }}>
+                    <div className="lock-orb" style={{ 
+                        width: '120px', 
+                        height: '120px', 
+                        borderRadius: '50%', 
+                        background: 'radial-gradient(circle, var(--accent), transparent)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: '40px',
+                        boxShadow: '0 0 50px var(--accent-glow)',
+                        animation: 'bionicBreathe 4s infinite alternate'
+                    }}>
+                        <span style={{ fontSize: '50px' }}>🛡️</span>
+                    </div>
+                    <h2 style={{ color: 'white', fontSize: '24px', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '10px' }}>Siddh Sentinel</h2>
+                    <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', marginBottom: '30px' }}>Authentication Protocol Alpha-7 Required</p>
+                    
+                    <button 
+                        onClick={() => useChatStore.getState().setIsLocked(false)}
+                        className="glass-modern"
+                        style={{
+                            padding: '16px 40px',
+                            background: 'var(--accent)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '50px',
+                            fontWeight: 'bold',
+                            letterSpacing: '1px',
+                            cursor: 'pointer',
+                            boxShadow: '0 10px 30px rgba(108, 99, 255, 0.3)',
+                            transition: '0.3s'
+                        }}
+                    >
+                        BIOMETRIC UNLOCK
+                    </button>
+                    
+                    <div style={{ marginTop: '50px', fontSize: '10px', color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase', letterSpacing: '4px' }}>
+                        Encrypted by KAVACH
+                    </div>
+                </div>
+            )}
         </div >
     );
 }

@@ -14,6 +14,18 @@ const useChatStore = create((set, get) => ({
     currentSessionId: null,
     sessions: [],
     
+    // --- SIDDH SENTINEL (Security) ---
+    isLocked: localStorage.getItem('ttr_locked') === 'true',
+    biometricEnabled: localStorage.getItem('ttr_biometric') === 'true',
+    setIsLocked: (locked) => {
+        localStorage.setItem('ttr_locked', locked);
+        set({ isLocked: locked });
+    },
+    setBiometricEnabled: (enabled) => {
+        localStorage.setItem('ttr_biometric', enabled);
+        set({ biometricEnabled: enabled });
+    },
+    
     // UI State
     showSidebar: false,
     showSidebarExtra: false,
