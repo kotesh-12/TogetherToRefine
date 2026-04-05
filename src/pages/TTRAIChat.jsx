@@ -517,7 +517,8 @@ export default function TTRAIChat() {
                 root.style.setProperty('--border', isLight ? '#e2e8f0' : '#2a2a3d');
                 root.style.colorScheme = isLight ? 'light' : 'dark';
 
-                setTheme(themeId);
+                setTheme(themeId); // Update Zustand Store
+                setSafeStorage('ttr_theme', themeId); // Immediate Persistence
 
                 anime({
                     targets: curtainRef.current,
@@ -763,6 +764,7 @@ export default function TTRAIChat() {
 
     // Derived list of sessions (Sorted & Filtered)
     const filteredSessions = useMemo(() => {
+        if (!sessions || sessions.length === 0) return [];
         return sessions.filter(s => {
             if (fourWayMode) return s.title?.startsWith(`[${fourWayMode}] `);
             return !['[conceptual]', '[fictional]', '[storytelling]', '[teaching]'].some(pref => s.title?.includes(pref));
