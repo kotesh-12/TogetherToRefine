@@ -48,6 +48,11 @@ export const NativeBridge = {
         return image.base64String;
     },
 
+    callUser: NativeBridge.triggerNativeCall,
+    sendMessage: NativeBridge.triggerNativeSMS,
+    setNativeAlarm: NativeBridge.triggerNativeAlarm,
+    launchApp: NativeBridge.openAppByPackage,
+
     // 📁 File System Access
     pickAndReadFile: async () => {
         try {
@@ -210,6 +215,29 @@ export const NativeBridge = {
             return true;
         } catch (e) {
             console.error('Alarm Sync Failed', e);
+            return false;
+        }
+    },
+    
+    // 🚀 Social & Communication Mastery (Native App Launching)
+    openAppByPackage: async (bundleId) => {
+        try {
+            // Bundle IDs: 'com.instagram.android', 'com.whatsapp', etc.
+            const { value } = await AppLauncher.canOpenUrl({ url: bundleId });
+            if (value) {
+                await AppLauncher.openUrl({ url: bundleId });
+                return true;
+            }
+            // Universal Link Fallback
+            const fallbacks = {
+                'instagram': 'https://instagram.com',
+                'whatsapp': 'https://wa.me'
+            };
+            const fbKey = bundleId.includes('instagram') ? 'instagram' : 'whatsapp';
+            window.open(fallbacks[fbKey] || `https://google.com/search?q=${bundleId}`);
+            return true;
+        } catch (e) {
+            console.error('App Launch Failed', e);
             return false;
         }
     }
