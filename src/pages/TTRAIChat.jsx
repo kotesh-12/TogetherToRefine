@@ -185,6 +185,7 @@ export default function TTRAIChat() {
         showSidebar, setShowSidebar,
         zenMode, setZenMode,
         isAgentMode, setIsAgentMode,
+        nativePermissions, setNativePermissions,
         isRoadmapMode, setRoadmapMode,
         roadmapData, setRoadmapData,
         isDevCanvasOpen, setDevCanvasOpen, setDevCanvas, updateDevCanvasData, closeDevCanvas, devCanvasData,
@@ -228,6 +229,20 @@ export default function TTRAIChat() {
             localStorage.setItem('ttr_tour_completed', 'true');
             setRunTour(false);
         }
+    };
+
+    // Siddh Permission Modal Logic
+    const [showSiddhModal, setShowSiddhModal] = useState(false);
+    useEffect(() => {
+        if (isAgentMode && nativePermissions === 'undetermined') {
+            setShowSiddhModal(true);
+        }
+    }, [isAgentMode, nativePermissions]);
+
+    const handleSiddhPermission = (granted) => {
+        setNativePermissions(granted ? 'granted' : 'denied');
+        setShowSiddhModal(false);
+        if (!granted) setIsAgentMode(false);
     };
 
     const tourSteps = [
@@ -1215,6 +1230,16 @@ export default function TTRAIChat() {
             };
             const appMatch = Object.keys(socialApps).find(app => lowerText.includes(app));
             if (appMatch && (lowerText.includes('open') || lowerText.includes('launch') || lowerText.includes('read'))) {
+                
+                if (nativePermissions !== 'granted') {
+                    setMessages(prev => [...prev, {
+                        text: "⚠️ **PERMISSION REQUIRED**: Siddh cannot orchestrate system apps without your authorization. Please enable 'Device Access' in your settings or click the Lock icon to proceed.",
+                        sender: 'ai'
+                    }]);
+                    setLoading(false);
+                    return;
+                }
+
                 NativeBridge.openAppByPackage(socialApps[appMatch]);
                 
                 let extraContext = "";
@@ -1233,6 +1258,16 @@ export default function TTRAIChat() {
 
             // ─── WHATSAPP_MESSAGE_INTENT (Targeted Sending) ───
             if (lowerText.includes('whatsapp') && lowerText.includes('sent') && lowerText.includes('vijayaraghava')) {
+                
+                if (nativePermissions !== 'granted') {
+                    setMessages(prev => [...prev, {
+                        text: "⚠️ **PERMISSION REQUIRED**: Siddh cannot send automated messages without System Access. Please authorize the SIDDH_CONSCIOUSNESS protocol.",
+                        sender: 'ai'
+                    }]);
+                    setLoading(false);
+                    return;
+                }
+
                 const message = "Hi";
                 const contact = "Vijayaraghava Kits";
                 
@@ -2139,6 +2174,70 @@ export default function TTRAIChat() {
                     
                     <div style={{ marginTop: '50px', fontSize: '10px', color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase', letterSpacing: '4px' }}>
                         Encrypted by KAVACH
+                    </div>
+                </div>
+            )}
+
+            {/* --- SIDDH permission HANDSHAKE (Signature UX) --- */}
+            {isAgentMode && nativePermissions === 'undetermined' && (
+                <div className="security-overlay glass-modern" style={{
+                    position: 'fixed',
+                    inset: 0,
+                    zIndex: 11000,
+                    background: 'rgba(10, 10, 15, 0.98)',
+                    backdropFilter: 'blur(40px)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '30px',
+                    textAlign: 'center',
+                    animation: 'fadeIn 0.8s ease-out'
+                }}>
+                    <div className="permission-orb" style={{ 
+                        width: '100px', 
+                        height: '100px', 
+                        borderRadius: '50%', 
+                        background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: '30px',
+                        boxShadow: '0 0 40px rgba(139, 92, 246, 0.4)',
+                        animation: 'bionicBreathe 3s infinite alternate'
+                    }}>
+                        <span style={{ fontSize: '40px' }}>⚡</span>
+                    </div>
+                    
+                    <h2 style={{ color: 'white', fontSize: '22px', fontWeight: '800', marginBottom: '12px' }}>DEVICE CONSCIOUSNESS</h2>
+                    <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', maxWidth: '300px', lineHeight: '1.6', marginBottom: '40px' }}>
+                        Siddh requires permission to orchestrate system apps, send automated messages, and access your device hardware.
+                    </p>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', maxWidth: '280px' }}>
+                        <button 
+                            onClick={() => {
+                                setNativePermissions('granted');
+                                alert("SIDDH_PROTOCOL: Access Granted. Autonomous social orchestration enabled.");
+                            }}
+                            style={{ padding: '16px', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '15px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' }}
+                        >
+                            ALLOW ACCESS
+                        </button>
+                        
+                        <button 
+                            onClick={() => {
+                                setNativePermissions('denied');
+                                setIsAgentMode(false);
+                            }}
+                            style={{ padding: '16px', background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '15px', fontWeight: 'bold', cursor: 'pointer' }}
+                        >
+                            NOT NOW
+                        </button>
+                    </div>
+                    
+                    <div style={{ marginTop: '40px', fontSize: '9px', color: 'rgba(255,255,255,0.3)', letterSpacing: '2px', textTransform: 'uppercase' }}>
+                        TTR Security Protocol Alpha-9
                     </div>
                 </div>
             )}
