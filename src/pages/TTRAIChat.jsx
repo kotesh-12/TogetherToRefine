@@ -264,18 +264,7 @@ export default function TTRAIChat() {
         }
     ];
 
-    // Auto-adjust textarea height
-    const adjustHeight = useCallback(() => {
-        const textarea = inputRef.current;
-        if (textarea) {
-            textarea.style.height = 'auto';
-            textarea.style.height = `${textarea.scrollHeight}px`;
-        }
-    }, []);
-
-    useEffect(() => {
-        adjustHeight();
-    }, [input, adjustHeight]);
+    // Auto-adjust removed to fix blinking
 
     // ─── Native System Access (Gap 1/Siri Logic) ───
     const { deviceInfo, networkStatus, captureHomework, vibrate } = useNativeAgent();
