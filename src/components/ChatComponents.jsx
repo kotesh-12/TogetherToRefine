@@ -70,7 +70,7 @@ export const AnimatedMessage = memo(({ msg, children }) => {
                 backdropFilter: 'blur(10px)',
                 padding: '16px 20px',
                 boxShadow: msg?.sender === 'ai' ? '0 8px 32px rgba(0,0,0,0.2)' : '0 8px 32px rgba(108, 99, 255, 0.1)',
-                animation: msg?.sender === 'ai' ? 'bionicBreathe 8s infinite alternate' : 'none'
+                animation: 'none'
             }}
         >
             {children}
@@ -82,30 +82,22 @@ export const AnimatedMessage = memo(({ msg, children }) => {
 /**
  * MagneticSubmitButton: Interactive send/stop button
  */
-export const MagneticSubmitButton = memo(({ onClick, disabled, loading, onStop, type = "button" }) => {
-    const btnRef = useRef(null);
-
+export const MagneticSubmitButton = memo(({ onClick, disabled, loading, onStop, type = "button", style, children }) => {
     const handlePress = (e) => {
-        anime({
-            targets: btnRef.current,
-            scale: [1, 0.8, 1.1, 1],
-            duration: 600,
-            easing: 'easeOutElastic(1, .5)'
-        });
         if (loading) {
-            onStop();
+            onStop?.();
         } else {
-            onClick(e);
+            onClick?.(e);
         }
     };
 
     return loading ? (
         <button
             type="button"
-            ref={btnRef}
             className="send-btn stop"
             onClick={handlePress}
             title="Stop"
+            style={style}
         >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                 <rect x="6" y="6" width="12" height="12" rx="2" />
@@ -114,15 +106,17 @@ export const MagneticSubmitButton = memo(({ onClick, disabled, loading, onStop, 
     ) : (
         <button
             type={type}
-            ref={btnRef}
             className="send-btn"
             onClick={handlePress}
             disabled={disabled}
             title="Send"
+            style={style}
         >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
-            </svg>
+            {children || (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
+                </svg>
+            )}
         </button>
     );
 });
