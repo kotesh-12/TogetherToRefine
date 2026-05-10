@@ -94,13 +94,13 @@ export default function Roadmap() {
                     ← Back to Chat
                 </button>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '15px', marginBottom: '20px' }}>
-                    <img src={logo} alt="TTRAI" style={{ height: '60px', width: 'auto' }} />
+                    <img src={logo} alt="TTR AI" style={{ height: '40px', width: 'auto' }} />
                     <h1 style={{ fontSize: '42px', fontWeight: '800', background: 'linear-gradient(135deg, #fff 0%, #8b5cf6 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: 0 }}>
                         Platform Evolution
                     </h1>
                 </div>
                 <p style={{ color: '#94a3b8', fontSize: '18px', maxWidth: '700px', margin: '0 auto', lineHeight: '1.6' }}>
-                    Inspired by the discipline of Arjuna, we are transforming every technological challenge into a pillar of strength. This is the roadmap for TTRAI's continuous refinement.
+                    Inspired by the discipline of Arjuna, we are transforming every technological challenge into a pillar of strength. This is the roadmap for TTR AI's continuous refinement.
                 </p>
             </div>
 

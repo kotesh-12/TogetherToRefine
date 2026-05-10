@@ -7,19 +7,6 @@ export const DevCanvas = ({ data, isOpen, onClose }) => {
     const canvasRef = useRef(null);
     const [consoleLogs, setConsoleLogs] = useState([]);
 
-    useEffect(() => {
-        if (isOpen) {
-            anime({
-                targets: canvasRef.current,
-                scale: [0.98, 1],
-                opacity: [0, 1],
-                duration: 500,
-                easing: 'easeOutQuart'
-            });
-            runCode();
-        }
-    }, [isOpen, data]);
-
     const [auditResults, setAuditResults] = useState({ state: 'idle', issues: [] });
 
     const performSiddhAudit = (code, lang) => {
@@ -41,7 +28,7 @@ export const DevCanvas = ({ data, isOpen, onClose }) => {
         setAuditResults({ state: 'audited', issues });
     };
 
-    const runCode = () => {
+    function runCode() {
         if (!iframeRef.current || !data?.code) return;
         
         const iframe = iframeRef.current;
@@ -76,7 +63,7 @@ export const DevCanvas = ({ data, isOpen, onClose }) => {
                             output.appendChild(line);
                         }
                     </script>
-                    <script>${data.code}<\/script>
+                    <script>${data.code}</script>
                 </body>
                 </html>
             `;
@@ -85,10 +72,10 @@ export const DevCanvas = ({ data, isOpen, onClose }) => {
             content = `
                 <html>
                 <head>
-                    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin><\/script>
-                    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin><\/script>
-                    <script src="https://unpkg.com/@babel/standalone/babel.min.js"><\/script>
-                    <script src="https://cdn.tailwindcss.com"><\/script>
+                    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+                    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+                    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+                    <script src="https://cdn.tailwindcss.com"></script>
                     <style>
                         body { margin: 0; background: transparent; color: #111; font-family: sans-serif; overflow: hidden; }
                         #root { height: 100vh; width: 100vw; overflow: auto; background: #fff; }
@@ -106,7 +93,7 @@ export const DevCanvas = ({ data, isOpen, onClose }) => {
                             window.parent.postMessage({ type: 'console', log: 'RUNTIME ERROR: ' + msg }, '*');
                             return false;
                         };
-                    <\/script>
+                    </script>
                     <script type="text/babel" data-type="module">
                         const { useState, useEffect, useRef, useMemo, useCallback } = React;
                         try {
@@ -120,7 +107,7 @@ export const DevCanvas = ({ data, isOpen, onClose }) => {
                         } catch (e) {
                             console.log("SYNTAX ERROR: " + e.message);
                         }
-                    <\/script>
+                    </script>
                 </body>
                 </html>
             `;
@@ -157,6 +144,20 @@ export const DevCanvas = ({ data, isOpen, onClose }) => {
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
     }, []);
+
+    useEffect(() => {
+        if (isOpen) {
+            anime({
+                targets: canvasRef.current,
+                scale: [0.98, 1],
+                opacity: [0, 1],
+                duration: 500,
+                easing: 'easeOutQuart'
+            });
+            runCode();
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, data]);
 
     if (!isOpen) return null;
 

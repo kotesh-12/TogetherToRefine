@@ -4,7 +4,7 @@ import App from './App.jsx'
 import { NativeBridge } from './services/nativeBridge';
 
 // Initializing KAVACH Protocol (System-Level Agent Bridge)
-if (!window.location.protocol.startsWith('http')) {
+if (window.Capacitor && !window.location.protocol.startsWith('http')) {
     NativeBridge.initPush().catch(err => console.warn('Push registration failed:', err));
 }
 

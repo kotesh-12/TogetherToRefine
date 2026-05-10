@@ -1,9 +1,6 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { getFullnodeUrl, SuiClient } from '@mysten/sui/client';
-import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { Transaction } from '@mysten/sui/transactions';
+// Top-level imports moved inside handler for crash-resilience
 
-const MODELS = ['gemini-2.0-pro-exp-02-05', 'gemini-2.0-flash', 'gemini-1.5-pro'];
+const MODELS = ['gemini-1.5-flash', 'gemini-2.0-flash-exp', 'gemini-2.0-flash'];
 
 // ─── GURUKUL PATH HERO DATA ─────────────
 const GURUKUL_HEROES = {
@@ -370,38 +367,61 @@ Format your response exactly like this:
 }
 
 export default async function handler(req, res) {
-    const allowedOrigins = ['https://www.ttrai.in', 'https://ttrai.in', 'http://localhost:5173'];
-    const origin = req.headers.origin;
-    if (allowedOrigins.includes(origin)) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-    } else if (origin) {
-         // Strict block if origin is present but unauthorized
-        return res.status(403).json({ error: "Access Denied: Invalid Origin" });
-    }
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    try {
+        console.log(`[DEBUG] Request received. Method: ${req.method}`);
+        const allowedOrigins = [
+            'https://www.ttrai.in', 
+            'https://ttrai.in', 
+            'http://localhost:5173',
+            'http://localhost:3000',
+            'http://localhost',
+            'capacitor://localhost',
+            'https://together-to-refine.vercel.app'
+        ];
+        const origin = req.headers.origin;
+        if (origin && allowedOrigins.includes(origin)) {
+            res.setHeader('Access-Control-Allow-Origin', origin);
+        } else if (origin) {
+            console.warn(`[CORS] Rejected origin: ${origin}`);
+            // Let's be permissive for now to debug, or return 200 for OPTIONS
+        }
+        
+        res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
+        if (req.method === 'OPTIONS') {
+            return res.status(200).end();
+        }
 
-    if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method not allowed' });
-    }
+        if (req.method !== 'POST') {
+            return res.status(405).json({ error: 'Method not allowed' });
+        }
 
-    const API_KEY = process.env.GEMINI_API_KEY;
-    if (!API_KEY) {
-        return res.status(500).json({ error: 'API key not configured' });
-    }
+        const API_KEY = process.env.GEMINI_API_KEY;
+        if (!API_KEY) {
+            console.error('[FATAL] GEMINI_API_KEY is missing!');
+            return res.status(500).json({ error: 'API key not configured' });
+        }
 
-    const { history, message, image, mimeType, userContext, longTermMemory } = req.body;
+        const { history, message, image, mimeType, userContext, longTermMemory } = req.body || {};
+        console.log(`[DEBUG] Payload parsed. User: ${userContext?.name || 'Guest'}`);
 
-    if (!message && !image) {
-        return res.status(400).json({ error: 'No message or image provided' });
-    }
+        if (!message && !image) {
+            return res.status(400).json({ error: 'No message or image provided' });
+        }
 
-    const genAI = new GoogleGenerativeAI(API_KEY);
-    let systemPrompt = getSystemPrompt(userContext, message || "");
+        console.log(`[DEBUG] Node Version: ${process.version}`);
+        
+        // Dynamic Imports for Vercel Resilience
+        const [{ GoogleGenerativeAI }, { getFullnodeUrl, SuiClient }, { Ed25519Keypair }, { Transaction }] = await Promise.all([
+            import('@google/generative-ai'),
+            import('@mysten/sui/client'),
+            import('@mysten/sui/keypairs/ed25519'),
+            import('@mysten/sui/transactions')
+        ]);
+
+        const genAI = new GoogleGenerativeAI(API_KEY);
+        let systemPrompt = getSystemPrompt(userContext, message || "");
     
     // Wire longTermMemory (session titles) into the system prompt
     if (longTermMemory) {
@@ -532,6 +552,7 @@ export default async function handler(req, res) {
 
     for (const modelName of MODELS) {
         try {
+            console.log(`[DEBUG] Attempting model: ${modelName}`);
             const model = genAI.getGenerativeModel({ model: modelName, tools });
             const chat = model.startChat({
                 history: history || [],
@@ -544,20 +565,22 @@ export default async function handler(req, res) {
                 parts.push({ inlineData: { mimeType, data: image } });
             }
 
+            console.log(`[DEBUG] Sending message to Gemini...`);
             // Step 1: Initial message
             let result = await chat.sendMessage(parts);
             let response = result.response;
-            let firstCall = response.candidates[0].content.parts.find(p => p.functionCall);
+            console.log(`[DEBUG] Gemini responded. Checking for tool calls...`);
+            
+            let firstCall = response.candidates?.[0]?.content?.parts?.find(p => p.functionCall);
 
             // --- SUI BLOCKCHAIN INTEGRATION (DHARMA TOKEN MINTING) ---
             async function triggerDharmaMint(amount, userAddress) {
+                console.log(`[DEBUG] triggerDharmaMint triggered for ${amount}`);
                 let successMessage = `[Dharma Points: +${amount}]`;
                 if (!userAddress) return successMessage;
                 
                 try {
                     console.log(`[SUI CONTRACT MINT] Starting...`);
-                    console.log(`[SUI CONTRACT MINT] Minting ${amount} DHARMA Tokens to wallet: ${userAddress}`);
-                    
                     if (process.env.SUI_PRIVATE_KEY && process.env.SUI_PACKAGE_ID && process.env.SUI_TREASURY_CAP_ID) {
                         const client = new SuiClient({ url: getFullnodeUrl('testnet') });
                         const keypair = Ed25519Keypair.fromSecretKey(process.env.SUI_PRIVATE_KEY);
@@ -587,6 +610,7 @@ export default async function handler(req, res) {
             // Step 2: Handle Tool Call
             if (firstCall) {
                 const { name, args } = firstCall.functionCall;
+                console.log(`[DEBUG] Tool Call detected: ${name}`, args);
                 let toolData = null;
                 
                 if (name === "mintDharmaToken") {
@@ -598,29 +622,36 @@ export default async function handler(req, res) {
                             response: { content: { success: true, message: `Successfully minted ${args.amount} points to ${userContext?.suiAddress}` } }
                         }
                     };
+                    console.log(`[DEBUG] Sending tool result back to Gemini (mintDharmaToken)...`);
                     const finalResult = await chat.sendMessage([toolResult]);
                     return res.status(200).json({ text: resultText + "\n\n" + finalResult.response.text(), toolCalled: name });
                     
                 } else if (name === "tavilySearch") {
+                    console.log(`[DEBUG] Executing tavilySearch for: ${args.query}`);
                     toolData = await executeSearch(args.query);
                 } else if (name === "youtubeSearch") {
+                    console.log(`[DEBUG] Executing youtubeSearch for: ${args.query}`);
                     toolData = await executeYoutubeSearch(args.query);
                 } else if (name === "academicSearch") {
+                    console.log(`[DEBUG] Executing academicSearch for: ${args.query}`);
                     toolData = await executeAcademicSearch(args.query);
                 }
 
                 if (toolData) {
+                    console.log(`[DEBUG] Tool data received. Wrapping tool response...`);
                     const toolResult = {
                         functionResponse: {
                             name: name,
                             response: { content: toolData }
                         }
                     };
+                    console.log(`[DEBUG] Sending tool data back to Gemini...`);
                     const finalResult = await chat.sendMessage([toolResult]);
                     
                     const finalOutputText = finalResult.response.text();
 
                     try {
+                        console.log(`[DEBUG] Attempting to parse toolData as JSON...`);
                         const parsedSources = JSON.parse(toolData);
                         return res.status(200).json({ 
                             text: finalOutputText,
@@ -633,12 +664,28 @@ export default async function handler(req, res) {
                 }
             }
 
-            return res.status(200).json({ text: response.text() });
+            console.log(`[DEBUG] No tool call. Returning final text response.`);
+            const finalReply = response.text();
+            return res.status(200).json({ text: finalReply });
         } catch (error) {
-            console.error(`Model ${modelName} failed: `, error.message);
+            console.error(`[FATAL] Model ${modelName} encountered an error:`, error);
+            console.error(`[FATAL] Stack trace:`, error.stack);
             continue;
         }
     }
 
-    return res.status(500).json({ error: 'AI is temporarily unavailable.' });
+    console.log(`[DEBUG] All models failed. Returning 500.`);
+    return res.status(500).json({ 
+        error: 'AI is temporarily unavailable.', 
+        details: 'All models failed or timed out.' 
+    });
+
+    } catch (fatalError) {
+        console.error('[FATAL CRASH]', fatalError);
+        return res.status(500).json({ 
+            error: 'Internal Server Error', 
+            details: fatalError.message,
+            stack: process.env.NODE_ENV === 'development' ? fatalError.stack : undefined
+        });
+    }
 }

@@ -3,7 +3,7 @@ import { WELCOME_MSG } from '../constants/chatData';
 import { NativeBridge } from '../services/nativeBridge';
 
 
-const useChatStore = create((set, get) => ({
+const useChatStore = create((set) => ({
     // Core State
     messages: [],
     input: '',
@@ -71,7 +71,9 @@ const useChatStore = create((set, get) => ({
         localStorage.setItem('ttr_sui_address', addr);
         set({ suiAddress: addr });
     },
-    setMessages: (messages) => set({ messages }),
+    setMessages: (fn) => set((state) => ({ 
+        messages: typeof fn === 'function' ? fn(state.messages) : fn 
+    })),
     addMessage: (msg) => set((state) => ({ messages: [...state.messages, msg] })),
     setInput: (input) => set({ input }),
     setLoading: (loading) => set({ loading }),
@@ -143,7 +145,7 @@ const useChatStore = create((set, get) => ({
 
     // Complex Actions
     startNewChat: () => set({
-        messages: [], 
+        messages: [WELCOME_MSG], 
         currentSessionId: null,
         isRoadmapMode: false,
         isDevCanvasOpen: false

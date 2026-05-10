@@ -107,7 +107,7 @@ export const ChatMessageList = ({
                 <div className="msg-avatar ai-avatar">
                     {isAgentMode ? (
                         <div style={{ position: 'relative' }}>
-                            <img src={logo} alt="TTRAI" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
+                            <img src={logo} alt="TTR AI" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
                             {suiAddress && <div style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: '8px', height: '8px', background: '#38bdf8', borderRadius: '50%', border: '1px solid white' }} title="Sui Connected" />}
                         </div>
                     ) : (
@@ -159,9 +159,9 @@ export const ChatMessageList = ({
                 )}
             </div>
 
-            {msg.sender === 'user' && (
+            {msg?.sender === 'user' && (
                 <div className="msg-avatar user-avatar">
-                    {msg.sender.charAt(0).toUpperCase()}
+                    {msg?.sender?.charAt(0)?.toUpperCase()}
                 </div>
             )}
         </AnimatedMessage>
@@ -192,7 +192,7 @@ export const ChatMessageList = ({
                                 {loading && (
                                     <div className="ai-message loading">
                                         <div className="msg-avatar ai-avatar">
-                                            <img src={logo} alt="TTRAI" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
+                                            <img src={logo} alt="TTR AI" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
                                         </div>
                                         <div className="msg-content">
                                             <div className="typing-indicator">

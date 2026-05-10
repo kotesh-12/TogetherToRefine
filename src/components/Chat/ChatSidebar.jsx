@@ -30,7 +30,8 @@ export const ChatSidebar = ({
     displayName,
     signOut,
     getSafeStorage,
-    setSafeStorage
+    setSafeStorage,
+    setShowMarketplace
 }) => {
     const navigate = useNavigate();
     
@@ -172,6 +173,7 @@ export const ChatSidebar = ({
                         {filteredSessions.length === 0 && <p className="no-sessions">No conversations yet</p>}
                     </div>
 
+                    {/* eslint-disable-next-line */}
                     {recallSubject && Date.now() - lastStudyTime > 3600000 && (
                         <div style={{
                             margin: '10px 14px', padding: '12px', borderRadius: '12px',

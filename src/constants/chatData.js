@@ -44,6 +44,6 @@ export const FOUR_WAY_HEROES = {
 };
 
 export const WELCOME_MSG = {
-    text: "Hello Seeker! I'm **TTRAI v2.5.1** 🧠 — your state-of-the-art **Psychological & Autonomous Agent**.\n\nI am now running the **Siddh Coding Protocol** for weaponized audits and tactical execution. How shall we refine your intelligence today?",
+    text: "Hello Seeker! I'm **TTR AI v2.5.1** 🧠 — your state-of-the-art **Psychological & Autonomous Agent**.\n\nI am now running the **Siddh Coding Protocol** for weaponized audits and tactical execution. How shall we refine your intelligence today?",
     sender: 'ai'
 };

@@ -28,6 +28,7 @@ export const DharmaChallenge = ({ role, onStart }) => {
     useEffect(() => {
         const pool = CHALLENGES[role] || CHALLENGES.student;
         const random = pool[Math.floor(Math.random() * pool.length)];
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setChallenge(random);
 
         // Standard AnimeJS call

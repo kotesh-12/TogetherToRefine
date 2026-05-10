@@ -15,6 +15,8 @@ import { THEMES, THEME_CATEGORIES } from '../themeData';
 import mermaid from 'mermaid';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
+
+import { NativeBridge } from '../services/nativeBridge';
 import * as XLSX from 'xlsx';
 import pptxgen from 'pptxgenjs';
 import pLimit from 'p-limit';
@@ -212,6 +214,7 @@ export default function TTRAIChat() {
     const curtainRef = useRef(null);
     const fourWayMenuRef = useRef(null);
     const langMenuRef = useRef(null);
+    const isNewSessionRef = useRef(false);
 
     // ─── First-Time Tour State ───
     const [runTour, setRunTour] = useState(false);
@@ -447,7 +450,7 @@ export default function TTRAIChat() {
         fetchUserProfile();
     }, [user, incognitoMode]);
 
-    // --- Sui zkLogin Integration (Suggestion 1) ---
+    // --- Sui zkLogin Integration ---
     useEffect(() => {
         const initSui = async () => {
             if (user && !incognitoMode && !suiAddress) {
@@ -690,7 +693,7 @@ export default function TTRAIChat() {
         let isSpacePressed = false;
         
         const handleKeyDown = (e) => {
-            if (e.code === 'Space') {
+            if (e.code === 'Space' && e.ctrlKey) {
                 const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
                 const isTyping = activeTag === 'textarea' || activeTag === 'input';
                 
@@ -739,16 +742,6 @@ export default function TTRAIChat() {
     useEffect(() => {
         if (nexusSessionId) {
             setCurrentSessionId(nexusSessionId);
-            setMessages([]); // Will be populated by loadMessages
-        } else {
-            const welcome = isAgentMode ? {
-                text: "Siddh Protocol v2.5.1 Online. ⚡ Operational parameters established. I am ready for weaponized debugging, autonomous audits, and tactical code execution.\n\nEverything you need for elite software development is at your command. State your objective.",
-                sender: 'ai'
-            } : {
-                text: "Hello Seeker! 🕉️ I am your **TTR Mentor**. I'm here to guide you through your educational journey with wisdom, patience, and clarity.\n\nI can help you with exams, conceptual clarity, or just a deep dive into any subject. How shall we begin your learning today?",
-                sender: 'ai'
-            };
-            setMessages([welcome]);
         }
         
         // Remove the initial loading screen from index.html
@@ -761,7 +754,7 @@ export default function TTRAIChat() {
                 if (el) el.remove();
             }, 500);
         }
-    }, []);
+    }, [nexusSessionId, setCurrentSessionId]);
 
     /* ── Load all sessions ── */
     const loadSessions = useCallback(async () => {
@@ -788,25 +781,45 @@ export default function TTRAIChat() {
         }).sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
     }, [sessions, fourWayMode]);
 
-    /* ── Load messages when session changes ── */
-    const loadMessages = useCallback(async (sessionId) => {
-        const { data, error } = await supabase
-            .from('chat_messages')
-            .select('*')
-            .eq('session_id', sessionId)
-            .order('created_at', { ascending: true });
-        if (!error && data && data.length > 0) {
-            setMessages(data.map(m => ({ text: m.content, sender: m.role === 'user' ? 'user' : 'ai', image: m.image_url })));
-        }
-    }, []);
-
     useEffect(() => {
+        const getWelcome = () => isAgentMode ? {
+            text: "Siddh Protocol v2.5.1 Online. ⚡ Operational parameters established. I am ready for weaponized debugging, autonomous audits, and tactical code execution.",
+            sender: 'ai'
+        } : {
+            text: "Hello Seeker! 🕉️ I am your **TTR Mentor**. I'm here to guide you through your educational journey with wisdom, patience, and clarity.\n\nI can help you with exams, conceptual clarity, or just a deep dive into any subject. How shall we begin your learning today?",
+            sender: 'ai'
+        };
+
         if (!currentSessionId) {
-            setMessages([WELCOME_MSG]);
+            setMessages([getWelcome()]);
             return;
         }
-        loadMessages(currentSessionId);
-    }, [currentSessionId, user, loadMessages]);
+
+        const fetchMessages = async () => {
+            if (isNewSessionRef.current) {
+                isNewSessionRef.current = false;
+                return;
+            }
+            const { data, error } = await supabase
+                .from('chat_messages')
+                .select('*')
+                .eq('session_id', currentSessionId)
+                .order('created_at', { ascending: true });
+            
+            if (!error && data && data.length > 0) {
+                setMessages(data.map(m => ({ text: m.content, sender: m.role === 'user' ? 'user' : 'ai', image: m.image_url })));
+            } else if (currentSessionId) {
+                // Only reset to welcome if we HAVE a session ID but no messages
+                setMessages([getWelcome()]);
+            }
+        };
+
+        if (!currentSessionId) {
+            if (messages.length === 0) setMessages([getWelcome()]);
+        } else {
+            fetchMessages();
+        }
+    }, [currentSessionId, user, isAgentMode, setMessages]);
 
     /* ── Save message to DB ── */
     const saveMessage = useCallback(async (content, role, sessionId, imageUrl = null) => {
@@ -924,6 +937,7 @@ export default function TTRAIChat() {
 
     /* ── Send Message ── */
     const handleSend = useCallback(async (e, overrideText = null) => {
+        if (e && e.preventDefault) e.preventDefault();
         const text = (overrideText || input).trim();
         if (!text && !selectedImage && selectedDocs.length === 0) return;
 
@@ -982,6 +996,7 @@ export default function TTRAIChat() {
             // Create session if logged in and needed (skip in incognito)
             let sessionId = currentSessionId;
             if (user && !sessionId && !incognitoMode) {
+                isNewSessionRef.current = true;
                 const sessionPrefix = fourWayMode ? `[${fourWayMode}] ` : '';
                 const baseTitle = text ? text.substring(0, 40) : (hasDocs ? `Docs: ${docsData.map(d => d.fileName).join(', ')}`.substring(0, 40) : 'New Chat');
                 const { data: newSession, error } = await supabase
@@ -989,7 +1004,10 @@ export default function TTRAIChat() {
                     .insert({ user_id: user.id, title: sessionPrefix + baseTitle })
                     .select()
                     .single();
-                if (error) throw error;
+                if (error) {
+                    isNewSessionRef.current = false;
+                    throw error;
+                }
                 sessionId = newSession.id;
                 setCurrentSessionId(sessionId);
                 loadSessions(); // update list
@@ -1212,7 +1230,7 @@ export default function TTRAIChat() {
                 const hour = alarmMatch[1];
                 const minute = alarmMatch[2];
                 const label = alarmMatch[3]?.trim() || 'TTR Mastery Session';
-                const cleanResponse = responseText.replace(/ALARM_INTENT:[\d+|\s:|\||\w|\s]+/gi, '').trim();
+                const cleanResponse = responseText.replace(/ALARM_INTENT:[\d+|\s:||\w|\s]+/gi, '').trim();
                 setTimeout(() => {
                     const confirm = window.confirm(`Siddh: "Should I set your system alarm for ${hour}:${minute} to focus on '${label}'?"`);
                     if (confirm) {
@@ -1556,7 +1574,7 @@ export default function TTRAIChat() {
         const pdf = new jsPDF('p', 'mm', 'a4');
         pdf.setFontSize(22);
         pdf.setTextColor(139, 92, 246); // TTR Accent
-        pdf.text("TTRAI Premium Document", 20, 20);
+        pdf.text("TTR AI Premium Document", 20, 20);
 
         pdf.setFontSize(12);
         pdf.setTextColor(40, 40, 40);
@@ -1572,7 +1590,7 @@ export default function TTRAIChat() {
             pdf.text(splitText[i], 20, y);
             y += 7; // Line spacing
         }
-        pdf.save(`TTRAI_Doc_${Date.now()}.pdf`);
+        pdf.save(`TTR_AI_Doc_${Date.now()}.pdf`);
     };
 
     const exportMessageAsPPT = async (msgText) => {
@@ -1580,11 +1598,11 @@ export default function TTRAIChat() {
         try {
             const pres = new pptxgen();
             pres.layout = 'LAYOUT_16x9';
-            pres.author = 'TTRAI';
+            pres.author = 'TTR AI';
 
             let slide1 = pres.addSlide();
             slide1.background = { color: 'FFFFFF' };
-            slide1.addText('TTRAI Presentation', { x: 1, y: 1.5, w: '100%', h: 1.5, fontSize: 44, color: '000000', align: 'center', bold: true });
+            slide1.addText('TTR AI Presentation', { x: 1, y: 1.5, w: '100%', h: 1.5, fontSize: 44, color: '000000', align: 'center', bold: true });
 
             // Clean up the entire text before splitting to avoid markdown artifacts breaking the parser
             let cleanMsg = msgText.replace(/\*\*/g, '').replace(/__/g, '').replace(/###/g, '').replace(/##/g, '');
@@ -1660,7 +1678,7 @@ export default function TTRAIChat() {
             // Wait until ALL slides have resolved
             await Promise.all(slidePromises);
 
-            await pres.writeFile({ fileName: `TTRAI_Enterprise_PPT_${Date.now()}.pptx` });
+            await pres.writeFile({ fileName: `TTR_AI_Enterprise_PPT_${Date.now()}.pptx` });
         } catch (error) {
             console.error('PPTX Generation Failed:', error);
             alert('Failed to generate visual presentation. Formatting was too complex.');
@@ -1676,7 +1694,7 @@ export default function TTRAIChat() {
         }
         try {
             const exportData = messages.filter(m => m.text).map(msg => ({
-                Sender: msg.sender === 'ai' ? 'TTRAI' : 'You',
+                Sender: msg.sender === 'ai' ? 'TTR AI' : 'You',
                 Message: msg.text,
                 Time: new Date().toLocaleString()
             }));
@@ -1684,7 +1702,7 @@ export default function TTRAIChat() {
             const worksheet = XLSX.utils.json_to_sheet(exportData);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Chat History");
-            XLSX.writeFile(workbook, `TTRAI_Chat_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`);
+            XLSX.writeFile(workbook, `TTR_AI_Chat_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`);
         } catch (err) {
             console.error(err);
             alert('Failed to export Excel.');
@@ -1736,10 +1754,18 @@ export default function TTRAIChat() {
         handleSend(null, prompt);
     }, [selectedDocs, handleSend]);
 
+    const { knowledgeBase, setKnowledgeBase } = useChatStore();
+
     /* ── Highlight Menu Handlers ── */
     const handleHighlightAction = useCallback((action) => {
         const text = highlightPopup.text;
         setHighlightPopup(prev => ({ ...prev, show: false }));
+
+        if (action === 'flashcard') {
+            setKnowledgeBase([...knowledgeBase, { concept: text, summary: "Saved from highlight", module: currentDomain }]);
+            alert("Added to Knowledge Hub Flashcards!");
+            return;
+        }
 
         let prompt = "";
         if (action === 'explain') prompt = `Please explain the following concept much simpler, like I'm a beginner: "${text}"`;
@@ -1773,6 +1799,7 @@ export default function TTRAIChat() {
         if (command === 'interview') prompt = "I want you to act like a strict job interviewer for my field. Ask me one technical interview question right now, and wait for my answer before grading it and asking the next one.";
         if (command === 'doc') prompt = "Please generate a highly professional, textbook-quality document about the current topic. Use a clear Title, Executive Summary, structured paragraphs, and a Conclusion.";
         if (command === 'ppt') prompt = "Please generate a highly professional, slide-by-slide presentation about the current topic. Format it STRICTLY as follows for each slide:\n\nSlide: [Slide Title]\nContent:\n- [Bullet Point 1]\n- [Bullet Point 2]\nNotes: [What the speaker should say out loud regarding this slide]\n\nDo not add extra text outside this format.";
+        if (command === 'cheatsheet') prompt = "Please generate a comprehensive, highly-structured Cheat Sheet for the current topic we are discussing. Format it with bullet points, bold keywords, and quick-reference syntax/equations, perfect for a student to review right before an exam.";
 
         handleSend(null, prompt);
     }, [handleSend]);
@@ -1802,6 +1829,19 @@ export default function TTRAIChat() {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
         >
+            {/* --- Highlight Popup --- */}
+            {highlightPopup.show && (
+                <div 
+                    className="highlight-popup"
+                    style={{ position: 'fixed', left: highlightPopup.x, top: highlightPopup.y, transform: 'translate(-50%, -100%)', zIndex: 100000, background: 'var(--bg-secondary)', padding: '5px', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', gap: '5px', boxShadow: '0 5px 20px rgba(0,0,0,0.5)' }}
+                >
+                    <button onClick={() => handleHighlightAction('explain')} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', padding: '5px' }}>🧠 Explain</button>
+                    <button onClick={() => handleHighlightAction('summarize')} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', padding: '5px' }}>📝 Summarize</button>
+                    <button onClick={() => handleHighlightAction('read')} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', padding: '5px' }}>🔊 Read</button>
+                    <button onClick={() => handleHighlightAction('flashcard')} style={{ background: 'transparent', border: 'none', color: '#ffd700', cursor: 'pointer', padding: '5px', fontWeight: 'bold' }}>⚡ Flashcard</button>
+                </div>
+            )}
+
             {/* ─── Sidebar ─── */}
             <ChatSidebar 
                 isSidebarHovered={isSidebarHovered}
@@ -1810,6 +1850,7 @@ export default function TTRAIChat() {
                 exportChatAsPDF={exportChatAsPDF}
                 exportChatAsExcel={exportChatAsExcel}
                 dharmaXP={dharmaXP}
+                setShowMarketplace={setShowMarketplace}
                 filteredSessions={filteredSessions}
                 loadSession={loadSession}
                 user={user}
@@ -1820,7 +1861,7 @@ export default function TTRAIChat() {
                 setReducedMotion={setReducedMotion}
                 autoSpeak={autoSpeak}
                 setAutoSpeak={setAutoSpeak}
-                MASTER_ADMINS={['koteshbitra789@gmail.com', 'admin@ttrai.com']}
+                MASTER_ADMINS={(import.meta.env.VITE_MASTER_ADMINS || 'koteshbitra78@gmail.com,koteshbitra789@gmail.com').split(',')}
                 AdminStatsBadge={AdminStatsBadge}
                 handleSend={handleSend}
                 recallSubject={recallSubject}
@@ -1829,7 +1870,6 @@ export default function TTRAIChat() {
                 signOut={signOut}
                 getSafeStorage={getSafeStorage}
                 setSafeStorage={setSafeStorage}
-                setShowMarketplace={setShowMarketplace}
             />
 
             {/* ── Sidebar Overlay ── */}

@@ -26,7 +26,11 @@ export function AuthProvider({ children }) {
             // After Google OAuth, clean up and navigate to home
             if (event === 'SIGNED_IN' && session?.user) {
                 // Replace the ugly token URL with the clean home route
-                window.location.replace(window.location.origin + '/#/');
+                const cleanOrigin = (window.location.origin && window.location.origin !== 'null') 
+                    ? window.location.origin 
+                    : window.location.pathname.split('index.html')[0];
+                
+                window.location.replace(cleanOrigin + '#/');
             }
         });
 

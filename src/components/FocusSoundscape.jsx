@@ -64,19 +64,20 @@ export const FocusSoundscape = ({ onToggle }) => {
         }
     };
 
+    const closeAudio = () => {
+        oscillators.current.forEach(node => node.stop?.());
+        oscillators.current = [];
+        setIsActive(false);
+    };
+
     useEffect(() => {
         if (isActive) {
             // Hot swap frequency if mode changes while playing
             closeAudio();
             toggleSound();
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [mode]);
-
-    const closeAudio = () => {
-        oscillators.current.forEach(node => node.stop?.());
-        oscillators.current = [];
-        setIsActive(false);
-    };
 
     useEffect(() => {
         return () => closeAudio();

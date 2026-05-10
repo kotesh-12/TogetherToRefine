@@ -66,7 +66,7 @@ export const ChatInput = ({
                 ))}
             </div>
 
-            <div className={`input-bar ${isDragging ? 'dragging' : ''}`}>
+            <form className={`input-bar ${isDragging ? 'dragging' : ''}`} onSubmit={(e) => { e?.preventDefault(); handleSend(e); }}>
                 {selectedImage && (
                     <div className="preview-container">
                         <img src={selectedImage} alt="Preview" className="image-preview" />
@@ -162,6 +162,9 @@ export const ChatInput = ({
                                 <div className="slash-item" onClick={() => { setInput('/audit '); setShowSlashMenu(false); }}>
                                     <span>🛡️</span> <b>/audit [code/text]</b> — Siddh Tactical Review
                                 </div>
+                                <div className="slash-item" onClick={() => { setInput('/cheatsheet '); setShowSlashMenu(false); }}>
+                                    <span>📄</span> <b>/cheatsheet</b> — Generate Summary PDF Notes
+                                </div>
                             </div>
                         )}
                     </div>
@@ -187,8 +190,9 @@ export const ChatInput = ({
                             {isListening ? '⬤' : '🎤'}
                         </button>
                         <MagneticSubmitButton 
+                            type="submit"
                             loading={loading}
-                            onClick={(e) => handleSend(e)}
+                            onClick={(e) => { e?.preventDefault(); handleSend(e); }}
                             style={{ 
                                 background: 'var(--accent)', 
                                 color: 'white', 
@@ -210,7 +214,7 @@ export const ChatInput = ({
                         </MagneticSubmitButton>
                     </div>
                 </div>
-            </div>
+            </form>
         </div>
     );
 };

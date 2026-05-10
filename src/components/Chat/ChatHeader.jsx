@@ -48,7 +48,7 @@ export const ChatHeader = ({
             </button>
             <div className="header-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <img src={logo} alt="TTRAI" style={{ height: '32px', width: 'auto', display: 'block', marginRight: '6px' }} />
-                <span style={{ fontSize: '18px', fontWeight: 'bold' }}>{activeModule ? activeModule.replace('_', ' ').toUpperCase() : 'TTRAI'}</span>
+                <span style={{ fontSize: '18px', fontWeight: 'bold' }}>{activeModule ? activeModule.replace('_', ' ').toUpperCase() : 'TTR AI'}</span>
                 
                 <div style={{ display: 'flex', gap: '4px' }}>
                     {activeModule && (

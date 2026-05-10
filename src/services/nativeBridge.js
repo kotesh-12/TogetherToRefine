@@ -48,10 +48,8 @@ export const NativeBridge = {
         return image.base64String;
     },
 
-    callUser: NativeBridge.triggerNativeCall,
-    sendMessage: NativeBridge.triggerNativeSMS,
-    setNativeAlarm: NativeBridge.triggerNativeAlarm,
-    launchApp: NativeBridge.openAppByPackage,
+    // Handlers are defined below as methods of the object.
+    // They will be accessible via NativeBridge.triggerNativeCall, etc.
 
     // 📁 File System Access
     pickAndReadFile: async () => {

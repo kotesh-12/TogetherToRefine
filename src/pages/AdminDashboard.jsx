@@ -16,8 +16,9 @@ export default function AdminDashboard() {
     const [auditLogs, setAuditLogs] = useState([]);
     const [reports, setReports] = useState([]);
 
-    // Admin Access Control Checklist (Hardcoded Protocol)
-    const MASTER_ADMINS = ['koteshbitra78@gmail.com', 'koteshbitra789@gmail.com'];
+    // Admin Access Control Checklist
+    const masterAdminsEnv = import.meta.env.VITE_MASTER_ADMINS || 'koteshbitra78@gmail.com,koteshbitra789@gmail.com';
+    const MASTER_ADMINS = masterAdminsEnv.split(',').map(email => email.trim()).filter(Boolean);
 
     React.useEffect(() => {
         if (user?.email && MASTER_ADMINS.includes(user.email)) {
@@ -28,8 +29,8 @@ export default function AdminDashboard() {
 
     const handleLogin = (e) => {
         e.preventDefault();
-        // Obfuscated check — not plain-text in bundle
-        const ADMIN_HASH = 'dHRyLW1hc3Rlci1hZG1pbg=='; // btoa('ttr-master-admin')
+        // Uses environment variable for enhanced security. Fallback to default if not provided.
+        const ADMIN_HASH = import.meta.env.VITE_ADMIN_HASH || 'dHRyLW1hc3Rlci1hZG1pbg==';
         if (btoa(password) === ADMIN_HASH) {
             setIsAuthenticated(true);
             fetchData();

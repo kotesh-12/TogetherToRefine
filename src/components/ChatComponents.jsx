@@ -43,7 +43,7 @@ export const AnimatedMessage = memo(({ msg, children }) => {
     const msgRef = useRef(null);
 
     useEffect(() => {
-        if (msg.isNew) {
+        if (msg?.isNew) {
             anime({
                 targets: msgRef.current,
                 translateY: [40, 0],
@@ -52,25 +52,25 @@ export const AnimatedMessage = memo(({ msg, children }) => {
                 filter: ['blur(15px)', 'blur(0px)'],
                 duration: 1200,
                 easing: 'easeOutElastic(1, .8)',
-                delay: msg.sender === 'ai' ? 150 : 0
+                delay: msg?.sender === 'ai' ? 150 : 0
             });
         }
-    }, [msg.isNew, msg.sender]);
+    }, [msg?.isNew, msg?.sender]);
 
     return (
         <div 
             ref={msgRef} 
-            className={`message ${msg.sender} glass-modern`} 
+            className={`message ${msg?.sender || ''} glass-modern`} 
             style={{ 
-                opacity: msg.isNew ? 0 : 1,
+                opacity: msg?.isNew ? 0 : 1,
                 marginBottom: '20px',
-                borderRadius: msg.sender === 'ai' ? '20px 20px 20px 5px' : '20px 20px 5px 20px',
-                background: msg.sender === 'ai' ? 'rgba(255,255,255,0.03)' : 'rgba(108, 99, 255, 0.05)',
+                borderRadius: msg?.sender === 'ai' ? '20px 20px 20px 5px' : '20px 20px 5px 20px',
+                background: msg?.sender === 'ai' ? 'rgba(255,255,255,0.03)' : 'rgba(108, 99, 255, 0.05)',
                 border: '1px solid rgba(255,255,255,0.08)',
                 backdropFilter: 'blur(10px)',
                 padding: '16px 20px',
-                boxShadow: msg.sender === 'ai' ? '0 8px 32px rgba(0,0,0,0.2)' : '0 8px 32px rgba(108, 99, 255, 0.1)',
-                animation: msg.sender === 'ai' ? 'bionicBreathe 8s infinite alternate' : 'none'
+                boxShadow: msg?.sender === 'ai' ? '0 8px 32px rgba(0,0,0,0.2)' : '0 8px 32px rgba(108, 99, 255, 0.1)',
+                animation: msg?.sender === 'ai' ? 'bionicBreathe 8s infinite alternate' : 'none'
             }}
         >
             {children}
@@ -82,10 +82,10 @@ export const AnimatedMessage = memo(({ msg, children }) => {
 /**
  * MagneticSubmitButton: Interactive send/stop button
  */
-export const MagneticSubmitButton = memo(({ onClick, disabled, loading, onStop }) => {
+export const MagneticSubmitButton = memo(({ onClick, disabled, loading, onStop, type = "button" }) => {
     const btnRef = useRef(null);
 
-    const handlePress = () => {
+    const handlePress = (e) => {
         anime({
             targets: btnRef.current,
             scale: [1, 0.8, 1.1, 1],
@@ -95,12 +95,13 @@ export const MagneticSubmitButton = memo(({ onClick, disabled, loading, onStop }
         if (loading) {
             onStop();
         } else {
-            onClick();
+            onClick(e);
         }
     };
 
     return loading ? (
         <button
+            type="button"
             ref={btnRef}
             className="send-btn stop"
             onClick={handlePress}
@@ -112,6 +113,7 @@ export const MagneticSubmitButton = memo(({ onClick, disabled, loading, onStop }
         </button>
     ) : (
         <button
+            type={type}
             ref={btnRef}
             className="send-btn"
             onClick={handlePress}
@@ -133,6 +135,7 @@ export const BrainInsights = memo(({ thought, confidence, debugMode, containerCl
     
     // Auto-expand in debug mode
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         if (debugMode) setExpanded(true);
     }, [debugMode]);
 

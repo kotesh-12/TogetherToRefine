@@ -16,6 +16,7 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,
+        navigateFallback: 'index.html',
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json,woff,woff2}'],
         runtimeCaching: [
           {
@@ -58,9 +59,9 @@ export default defineConfig({
         ]
       },
       manifest: {
-        name: 'TTRAI - Together To Refine',
-        short_name: 'TTRAI',
-        description: 'TTRAI - Your Intelligent Learning Companion. AI-powered study tools, Gurukul Path, and smart document analysis for students.',
+        name: 'TTR AI - Together To Refine',
+        short_name: 'TTR AI',
+        description: 'TTR AI - Your Intelligent Learning Companion. AI-powered study tools, Gurukul Path, and smart document analysis for students.',
         theme_color: '#0f0f14',
         background_color: '#0f0f14',
         display: 'standalone',
@@ -115,6 +116,7 @@ export default defineConfig({
     }
   },
   build: {
+    target: 'es2015',
     chunkSizeWarningLimit: 2500, // Raise warning threshold
     rollupOptions: {
       output: {
