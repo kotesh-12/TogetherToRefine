@@ -38,6 +38,14 @@ export const ChatInput = ({
 
     const { captureHomework, vibrate } = useNativeAgent();
 
+    const adjustInputHeight = (textarea) => {
+        if (!textarea) return;
+        textarea.style.height = 'auto';
+        const height = Math.min(textarea.scrollHeight, 150);
+        textarea.style.height = `${height}px`;
+        textarea.style.overflowY = textarea.scrollHeight > 150 ? 'auto' : 'hidden';
+    };
+
     const handleCameraClick = async () => {
         try {
             vibrate(); // Feedback
@@ -111,10 +119,8 @@ export const ChatInput = ({
                             value={input}
                             onChange={(e) => {
                                 setInput(e.target.value);
-                                // Auto-resize logic
-                                e.target.style.height = 'auto';
-                                e.target.style.height = `${Math.min(e.target.scrollHeight, 150)}px`;
-                                
+                                requestAnimationFrame(() => adjustInputHeight(e.target));
+
                                 if (e.target.value.startsWith('/')) {
                                     setShowSlashMenu(true);
                                 } else {
@@ -125,26 +131,34 @@ export const ChatInput = ({
                                 if (e.key === 'Enter' && !e.shiftKey) {
                                     e.preventDefault();
                                     handleSend(e);
-                                    // Reset height after send
-                                    setTimeout(() => {
-                                        if (inputRef.current) inputRef.current.style.height = 'auto';
-                                    }, 10);
+                                    if (inputRef.current) {
+                                        requestAnimationFrame(() => adjustInputHeight(inputRef.current));
+                                    }
                                 }
                             }}
                             placeholder={isAgentMode ? "Deploy Siddh Protocol..." : "Message TTR..."}
                             rows="1"
+                            spellCheck="false"
                             style={{
                                 width: '100%',
                                 background: 'transparent',
                                 border: 'none',
                                 color: 'var(--text-primary)',
-                                fontSize: '14px',
+                                fontSize: '15px',
                                 outline: 'none',
                                 resize: 'none',
                                 maxHeight: '150px',
-                                overflowY: 'auto',
-                                padding: '12px 0',
-                                lineHeight: '1.4'
+                                overflowY: 'hidden',
+                                padding: '8px 4px',
+                                lineHeight: '1.5',
+                                fontFamily: 'inherit',
+                                WebkitAppearance: 'none',
+                                appearance: 'none',
+                                boxSizing: 'border-box',
+                                WebkitUserSelect: 'text',
+                                userSelect: 'text',
+                                textRendering: 'optimizeLegibility',
+                                willChange: 'auto'
                             }}
                         />
                         
@@ -197,15 +211,15 @@ export const ChatInput = ({
                                 background: 'var(--accent)', 
                                 color: 'white', 
                                 border: 'none', 
-                                width: '36px', 
-                                height: '36px', 
-                                borderRadius: '10px', 
+                                width: '40px', 
+                                height: '40px', 
+                                borderRadius: '50%', 
                                 display: 'flex', 
                                 alignItems: 'center', 
                                 justifyContent: 'center', 
                                 cursor: 'pointer',
                                 transition: '0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                boxShadow: '0 4px 12px rgba(108, 99, 255, 0.3)'
+                                boxShadow: '0 4px 12px var(--accent-glow)'
                             }}
                         >
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

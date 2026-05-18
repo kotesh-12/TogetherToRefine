@@ -1861,8 +1861,8 @@ export default function TTRAIChat() {
                 setSafeStorage={setSafeStorage}
             />
 
-            {/* ── Sidebar Overlay ── */}
-            {showSidebar && <div className="chat-sidebar-overlay" onClick={() => setShowSidebar(false)} />}
+            {/* ── Sidebar Overlay (always in DOM for smooth transition) ── */}
+            <div className={`chat-sidebar-overlay ${showSidebar ? 'visible' : ''}`} onClick={() => setShowSidebar(false)} />
 
             {/* ── Offline Banner ── */}
             {isOffline && (

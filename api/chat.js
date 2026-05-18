@@ -368,7 +368,6 @@ Format your response exactly like this:
 
 export default async function handler(req, res) {
     try {
-        console.log(`[DEBUG] Request received. Method: ${req.method}`);
         const allowedOrigins = [
             'https://www.ttrai.in', 
             'https://ttrai.in', 
@@ -382,8 +381,6 @@ export default async function handler(req, res) {
         if (origin && allowedOrigins.includes(origin)) {
             res.setHeader('Access-Control-Allow-Origin', origin);
         } else if (origin) {
-            console.warn(`[CORS] Rejected origin: ${origin}`);
-            // Let's be permissive for now to debug, or return 200 for OPTIONS
         }
         
         res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -404,13 +401,11 @@ export default async function handler(req, res) {
         }
 
         const { history, message, image, mimeType, userContext, longTermMemory } = req.body || {};
-        console.log(`[DEBUG] Payload parsed. User: ${userContext?.name || 'Guest'}`);
 
         if (!message && !image) {
             return res.status(400).json({ error: 'No message or image provided' });
         }
 
-        console.log(`[DEBUG] Node Version: ${process.version}`);
         
         // Dynamic Imports for Vercel Resilience
         const [{ GoogleGenerativeAI }, { getFullnodeUrl, SuiClient }, { Ed25519Keypair }, { Transaction }] = await Promise.all([
@@ -499,7 +494,6 @@ export default async function handler(req, res) {
             const data = await response.json();
             return JSON.stringify(data.results.map(r => ({ title: r.title, content: r.content, url: r.url })));
         } catch (error) {
-            console.error("Tavily Search Error:", error);
             return "Failed to fetch search results.";
         }
     }
@@ -522,7 +516,6 @@ export default async function handler(req, res) {
             }));
             return JSON.stringify(videos);
         } catch (error) {
-            console.error("YouTube Search Error:", error);
             return "Failed to fetch YouTube results.";
         }
     }
@@ -545,14 +538,12 @@ export default async function handler(req, res) {
             const data = await response.json();
             return JSON.stringify(data.results.map(r => ({ title: r.title, content: r.content, url: r.url, type: 'academic' })));
         } catch (error) {
-            console.error("Academic Search Error:", error);
             return "Failed to fetch academic results.";
         }
     }
 
     for (const modelName of MODELS) {
         try {
-            console.log(`[DEBUG] Attempting model: ${modelName}`);
             const model = genAI.getGenerativeModel({ model: modelName, tools });
             const chat = model.startChat({
                 history: history || [],
@@ -565,22 +556,18 @@ export default async function handler(req, res) {
                 parts.push({ inlineData: { mimeType, data: image } });
             }
 
-            console.log(`[DEBUG] Sending message to Gemini...`);
             // Step 1: Initial message
             let result = await chat.sendMessage(parts);
             let response = result.response;
-            console.log(`[DEBUG] Gemini responded. Checking for tool calls...`);
             
             let firstCall = response.candidates?.[0]?.content?.parts?.find(p => p.functionCall);
 
             // --- SUI BLOCKCHAIN INTEGRATION (DHARMA TOKEN MINTING) ---
             async function triggerDharmaMint(amount, userAddress) {
-                console.log(`[DEBUG] triggerDharmaMint triggered for ${amount}`);
                 let successMessage = `[Dharma Points: +${amount}]`;
                 if (!userAddress) return successMessage;
                 
                 try {
-                    console.log(`[SUI CONTRACT MINT] Starting...`);
                     if (process.env.SUI_PRIVATE_KEY && process.env.SUI_PACKAGE_ID && process.env.SUI_TREASURY_CAP_ID) {
                         const client = new SuiClient({ url: getFullnodeUrl('testnet') });
                         const keypair = Ed25519Keypair.fromSecretKey(process.env.SUI_PRIVATE_KEY);
@@ -596,13 +583,10 @@ export default async function handler(req, res) {
                         });
                         
                         const result = await client.signAndExecuteTransaction({ signer: keypair, transaction: tx });
-                        console.log(`[SUI CONTRACT MINT] Transaction SUCCESS. Digest: ${result.digest}`);
                         successMessage += `\n\n*(Transaction Confirmed on Sui Testnet! Tx: ${result.digest})*`;
-                    } else {
-                        console.log(`[SUI CONTRACT MINT] DEV MODE: Simulated SUCCESS.`);
                     }
                 } catch (err) {
-                    console.error('[SUI MINT ERROR]', err);
+                    // ignore
                 }
                 return successMessage;
             }
@@ -610,7 +594,6 @@ export default async function handler(req, res) {
             // Step 2: Handle Tool Call
             if (firstCall) {
                 const { name, args } = firstCall.functionCall;
-                console.log(`[DEBUG] Tool Call detected: ${name}`, args);
                 let toolData = null;
                 
                 if (name === "mintDharmaToken") {
@@ -622,36 +605,29 @@ export default async function handler(req, res) {
                             response: { content: { success: true, message: `Successfully minted ${args.amount} points to ${userContext?.suiAddress}` } }
                         }
                     };
-                    console.log(`[DEBUG] Sending tool result back to Gemini (mintDharmaToken)...`);
                     const finalResult = await chat.sendMessage([toolResult]);
                     return res.status(200).json({ text: resultText + "\n\n" + finalResult.response.text(), toolCalled: name });
                     
                 } else if (name === "tavilySearch") {
-                    console.log(`[DEBUG] Executing tavilySearch for: ${args.query}`);
                     toolData = await executeSearch(args.query);
                 } else if (name === "youtubeSearch") {
-                    console.log(`[DEBUG] Executing youtubeSearch for: ${args.query}`);
                     toolData = await executeYoutubeSearch(args.query);
                 } else if (name === "academicSearch") {
-                    console.log(`[DEBUG] Executing academicSearch for: ${args.query}`);
                     toolData = await executeAcademicSearch(args.query);
                 }
 
                 if (toolData) {
-                    console.log(`[DEBUG] Tool data received. Wrapping tool response...`);
                     const toolResult = {
                         functionResponse: {
                             name: name,
                             response: { content: toolData }
                         }
                     };
-                    console.log(`[DEBUG] Sending tool data back to Gemini...`);
                     const finalResult = await chat.sendMessage([toolResult]);
                     
                     const finalOutputText = finalResult.response.text();
 
                     try {
-                        console.log(`[DEBUG] Attempting to parse toolData as JSON...`);
                         const parsedSources = JSON.parse(toolData);
                         return res.status(200).json({ 
                             text: finalOutputText,
@@ -664,24 +640,19 @@ export default async function handler(req, res) {
                 }
             }
 
-            console.log(`[DEBUG] No tool call. Returning final text response.`);
             const finalReply = response.text();
             return res.status(200).json({ text: finalReply });
         } catch (error) {
-            console.error(`[FATAL] Model ${modelName} encountered an error:`, error);
-            console.error(`[FATAL] Stack trace:`, error.stack);
             continue;
         }
     }
 
-    console.log(`[DEBUG] All models failed. Returning 500.`);
     return res.status(500).json({ 
         error: 'AI is temporarily unavailable.', 
         details: 'All models failed or timed out.' 
     });
 
     } catch (fatalError) {
-        console.error('[FATAL CRASH]', fatalError);
         return res.status(500).json({ 
             error: 'Internal Server Error', 
             details: fatalError.message,

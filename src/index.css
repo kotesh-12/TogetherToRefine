@@ -9,6 +9,40 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: auto;
+  user-select: auto;
+}
+
+input,
+textarea,
+select,
+button {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="number"],
+textarea {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  -webkit-user-select: text;
+  user-select: text;
+  font-size: 16px;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 @keyframes fadeIn {
@@ -776,34 +810,45 @@ a:hover {
 /* â”€â”€ Sidebar â”€â”€ */
 .chat-sidebar {
   width: 320px;
+  max-width: 85vw;
   height: 100vh;
   height: 100dvh;
   background: var(--bg-secondary);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* Stop global sidebar scroll */
+  overflow: hidden;
   
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              visibility 0s linear 0.35s;
   position: fixed;
   left: 0;
   top: 0;
-  z-index: 1000;
+  z-index: 1001;
   transform: translateX(-100%);
-  box-shadow: 20px 0 50px rgba(0,0,0,0.4);
+  visibility: hidden;
+  box-shadow: 8px 0 30px rgba(0, 0, 0, 0.25);
 }
-
 
 .chat-sidebar.show {
   transform: translateX(0);
+  visibility: visible;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              visibility 0s linear 0s;
 }
-
 
 .chat-sidebar-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 99;
+  background: rgba(0, 0, 0, 0);
+  z-index: 1000;
+  pointer-events: none;
+  transition: background 0.35s ease;
+}
+
+.chat-sidebar-overlay.visible {
+  background: rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
 }
 
 .chat-sidebar-header {
@@ -1349,91 +1394,129 @@ a:hover {
 .input-bar {
   display: flex;
   align-items: flex-end;
-  gap: 8px;
+  gap: 10px;
   max-width: 820px;
   margin: 0 auto;
-  background: rgba(var(--bg-secondary-rgb), 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 8px 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  background: var(--bg-card); /* Fallback was an undefined surface variable */
+  border: 1px solid var(--border); /* Thinner, more elegant border */
+  border-radius: 24px; /* Smoother pill shape like Claude/ChatGPT */
+  padding: 12px 18px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.05); /* Softer, premium shadow */
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  will-change: auto;
 }
 
 .input-bar:focus-within {
   border-color: var(--accent);
+  box-shadow: 0 6px 24px var(--accent-glow);
 }
 .input-bar textarea {
   flex: 1;
-  background: none;
+  background: transparent;
   border: none;
   color: var(--text-primary);
   font-size: 15px;
   font-family: inherit;
   resize: none;
   outline: none;
-  min-height: 24px;
-  max-height: 200px;
-  padding: 8px 0;
+  min-height: 20px;
+  max-height: 150px;
+  padding: 8px 4px;
   line-height: 1.5;
-  overflow-y: auto;
+  overflow-y: hidden;
+  box-sizing: border-box;
   word-wrap: break-word;
-
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-user-select: text;
+  user-select: text;
 }
-
 
 .input-area textarea::-webkit-scrollbar {
   width: 4px;
 }
 
+.input-area textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 .input-area textarea::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 10px;
+  background: var(--divider);
+  border-radius: 2px;
+}
+
+.input-area textarea::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 .input-bar textarea::placeholder {
   color: var(--text-muted);
+  opacity: 0.7;
 }
 
-.attach-btn {
-  background: none;
+.attach-btn,
+.action-btn,
+.icon-button {
+  background: transparent;
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 6px;
-  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
-  transition: var(--transition);
+  justify-content: center;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-.attach-btn:hover {
+.attach-btn:hover,
+.action-btn:hover,
+.icon-button:hover {
   color: var(--text-primary);
-  background: var(--bg-hover);
+  background: rgba(108, 92, 231, 0.1);
+}
+
+.attach-btn:active,
+.action-btn:active,
+.icon-button:active {
+  transform: scale(0.95);
 }
 
 .send-btn {
-  background: linear-gradient(135deg, var(--accent), var(--purple));
+  background: linear-gradient(135deg, var(--primary) 0%, #8275ff 100%);
   border: none;
   color: white;
   width: 36px;
   height: 36px;
-  border-radius: 50%;
+  border-radius: 10px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  box-shadow: 0 2px 8px rgba(108, 92, 231, 0.3);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .send-btn:hover:not(:disabled) {
-  filter: brightness(1.15);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(108, 92, 231, 0.4);
+}
+
+.send-btn:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .send-btn:disabled {
-  opacity: 0.4;
+  opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
 }
 
 .send-btn.stop {
