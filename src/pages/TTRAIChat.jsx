@@ -181,31 +181,28 @@ export default function TTRAIChat() {
     const {
         messages, setMessages,
         input, setInput,
-        loading, setLoading,
+        setLoading,
         sessions, setSessions,
         currentSessionId, setCurrentSessionId,
         showSidebar, setShowSidebar,
-        zenMode, setZenMode,
+        zenMode,
         isAgentMode, setIsAgentMode,
         nativePermissions, setNativePermissions,
         isRoadmapMode, setRoadmapMode,
         roadmapData, setRoadmapData,
-        isDevCanvasOpen, setDevCanvasOpen, setDevCanvas, updateDevCanvasData, closeDevCanvas, devCanvasData,
+        isDevCanvasOpen, setDevCanvas, updateDevCanvasData, closeDevCanvas, devCanvasData,
         isKnowledgeHubOpen, setKnowledgeHubOpen,
         incognitoMode, setIncognitoMode,
-        isFocusMode, setIsFocusMode,
         showPathModal, setShowPathModal,
         theme, setTheme,
         showThemeGallery, setShowThemeGallery,
         showHeaderActions, setShowHeaderActions,
         showSidebarExtra, setShowSidebarExtra,
-        motherTongue, setMotherTongue,
+        motherTongue,
         showLangMenu, setShowLangMenu,
         showSlashMenu, setShowSlashMenu,
-        startNewChat,
         autoCruise, setAutoCruise,
-        isLocked, setIsLocked,
-        biometricEnabled, setBiometricEnabled
+        isFocusMode, setIsFocusMode
     } = useChatStore();
 
     const [activeModule, setActiveModule] = useState(location.state?.activeModule || null);
@@ -1470,68 +1467,6 @@ export default function TTRAIChat() {
         }
     }, [user, fourWayMode, motherTongue, currentPath, incognitoMode]);
 
-    /* ── Handle Like/Dislike ── */
-    const handleFeedback = useCallback(async (msgIndex, type, msg) => {
-        setFeedback(prev => ({ ...prev, [msgIndex]: type }));
-        
-        if (type === 'liked' && msg.question) {
-            saveTrainingData(msg.question, msg.text);
-        }
-        
-        if (type === 'reported') {
-            // UX Fix 6: One-Tap Report with optional reason
-            const reason = "User reported inaccurate/biased output via Quick-Report.";
-            try {
-                await supabase.from('user_reports').insert({
-                    user_id: user?.id || null,
-                    message_id: msg.id || `msg-${msgIndex}`,
-                    reason: reason,
-                    metadata: { path: currentPath, context_turns: messages.length }
-                });
-                alert("❗ Issue logged for security audit. TTR team will review.");
-                
-                // Rectify 5: "AI-Auditing-AI" Pre-Oversight
-                const auditNote = `Self-Audit: User reported potential inaccuracy/bias. AI re-calculating logic trace for message ID: ${msg.id}`;
-                await supabase.from('system_audits').insert({
-                    type: 'SECURITY_SELF_AUDIT',
-                    severity: 'LOW',
-                    message: auditNote,
-                    metadata: { reported_msg: msg.text, confidence: msg.confidence }
-                });
-            } catch (e) {
-                alert("❗ Reported locally. Thank you for making TTR-AI safer!");
-            }
-        }
-    }, [saveTrainingData, user, currentPath, messages.length]);
-
-    const handleCopy = useCallback((text, index) => {
-        navigator.clipboard.writeText(text).then(() => {
-            setCopiedIndex(index);
-            // Signature UX 3: micro-heartbeat on copy
-            const btn = document.getElementById(`copy-btn-${index}`);
-            if (btn) btn.classList.add('copy-success-pulse');
-            setTimeout(() => {
-                setCopiedIndex(null);
-                if (btn) btn.classList.remove('copy-success-pulse');
-            }, 1000);
-        });
-    }, []);
-
-    /* ── Toggle Incognito ── */
-    const toggleIncognito = useCallback(() => {
-        setIncognitoMode(prev => {
-            const next = !prev;
-            if (next) {
-                // Entering incognito — start fresh
-                setCurrentSessionId(null);
-                setMessages([WELCOME_MSG]);
-                setInput('');
-                setFeedback({});
-            }
-            return next;
-        });
-    }, []);
-
     /* ── Export Functions ── */
     const exportChatAsPDF = async () => {
         const chatElement = document.querySelector('.messages-container');
@@ -1557,123 +1492,6 @@ export default function TTRAIChat() {
             console.error('Failed to export PDF:', error);
             alert('Failed to export chat as PDF.');
         } finally { setLoading(false); }
-    };
-
-    const exportMessageAsDoc = (msgText) => {
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        pdf.setFontSize(22);
-        pdf.setTextColor(139, 92, 246); // TTR Accent
-        pdf.text("TTR AI Premium Document", 20, 20);
-
-        pdf.setFontSize(12);
-        pdf.setTextColor(40, 40, 40);
-        const cleanText = msgText.replace(/[*~_`#]/g, '');
-        const splitText = pdf.splitTextToSize(cleanText, 170);
-
-        let y = 35;
-        for (let i = 0; i < splitText.length; i++) {
-            if (y > 280) {
-                pdf.addPage();
-                y = 20;
-            }
-            pdf.text(splitText[i], 20, y);
-            y += 7; // Line spacing
-        }
-        pdf.save(`TTR_AI_Doc_${Date.now()}.pdf`);
-    };
-
-    const exportMessageAsPPT = async (msgText) => {
-        setLoading(true);
-        try {
-            const pres = new pptxgen();
-            pres.layout = 'LAYOUT_16x9';
-            pres.author = 'TTR AI';
-
-            let slide1 = pres.addSlide();
-            slide1.background = { color: 'FFFFFF' };
-            slide1.addText('TTR AI Presentation', { x: 1, y: 1.5, w: '100%', h: 1.5, fontSize: 44, color: '000000', align: 'center', bold: true });
-
-            // Clean up the entire text before splitting to avoid markdown artifacts breaking the parser
-            let cleanMsg = msgText.replace(/\*\*/g, '').replace(/__/g, '').replace(/###/g, '').replace(/##/g, '');
-
-            // STRICT SPLITTING: Split only when "Slide [Number]:" appears, usually at the start of a block
-            // We use a regex that looks for "Slide" at the start of the string or after a newline
-            const slideRegex = /(?:^|\n)Slide\s*\d*[:\n]/gi;
-            
-            // Get all slide content blocks by splitting
-            // Using filter(b => b.length > 30) to ignore tiny fragments
-            let rawBlocks = cleanMsg.split(slideRegex).map(b => b.trim()).filter(b => b.length > 30);
-
-            // Fallback: If no "Slide:" markers found, split by double newlines but insist on large blocks
-            if (rawBlocks.length <= 1) {
-                rawBlocks = cleanMsg.split(/\n\n+/g).map(b => b.trim()).filter(b => b.length > 50);
-            }
-
-            const limit = pLimit(2); // Only allow 2 simultaneous requests
-
-            const slidePromises = rawBlocks.map((block, index) => limit(async () => {
-                let slide = pres.addSlide();
-                slide.background = { color: 'FFFFFF' };
-
-                let title = `Topic ${index + 1}`;
-                let content = '';
-                let notes = '';
-
-                let blockText = block;
-                
-                // Extract Notes first (usually at the end of the block)
-                if (blockText.toLowerCase().includes('notes:')) {
-                    const notesIndex = blockText.toLowerCase().lastIndexOf('notes:');
-                    notes = blockText.substring(notesIndex + 6).trim();
-                    blockText = blockText.substring(0, notesIndex).trim();
-                }
-
-                // Extract Content (if the AI used specific "Content:" labels)
-                if (blockText.toLowerCase().includes('content:')) {
-                    const contentIndex = blockText.toLowerCase().indexOf('content:');
-                    title = blockText.substring(0, contentIndex).trim();
-                    content = blockText.substring(contentIndex + 8).trim();
-                } else {
-                    // Title is the first line, content is the rest
-                    const lines = blockText.split('\n');
-                    title = lines[0].trim();
-                    content = lines.slice(1).join('\n').trim();
-                }
-
-                title = title.replace(/^[0-9.\-:]+\s*/, '').substring(0, 100);
-                if (!title) title = "Key Concept";
-
-                slide.addText(title, { x: 0.5, y: 0.5, w: 9.0, h: 1, fontSize: 26, bold: true, color: '000000' });
-
-                if (content) {
-                    const bulletLines = content.split('\n')
-                        .map(line => line.replace(/^[*-•]\s*/, '').trim())
-                        .filter(line => line.length > 0);
-
-                    const bulletObjects = bulletLines.map(line => {
-                        return { text: line, options: { bullet: true, color: '000000', paraSpaceAfter: 12 } };
-                    });
-
-                    if (bulletObjects.length > 0) {
-                        slide.addText(bulletObjects, { x: 0.5, y: 1.6, w: 9.0, h: 4.5, fontSize: 16, valign: 'top' });
-                    }
-                }
-
-                if (notes) {
-                    slide.addNotes(notes);
-                }
-            }));
-
-            // Wait until ALL slides have resolved
-            await Promise.all(slidePromises);
-
-            await pres.writeFile({ fileName: `TTR_AI_Enterprise_PPT_${Date.now()}.pptx` });
-        } catch (error) {
-            console.error('PPTX Generation Failed:', error);
-            alert('Failed to generate visual presentation. Formatting was too complex.');
-        } finally {
-            setLoading(false);
-        }
     };
 
     const exportChatAsExcel = () => {
@@ -1721,27 +1539,7 @@ export default function TTRAIChat() {
         }
     }, [handleFileChange]);
 
-    /* ── UG & Professional Toolkits ── */
-    const handleStudyAction = useCallback((actionType) => {
-        if (selectedDocs.length === 0 || selectedDocs.some(d => d.processing)) return;
 
-        const actionPrompts = {
-            // UG Suite
-            quiz: "Based on the uploaded document, please generate a Practice Quiz with Multiple Choice Questions (MCQs). The number of questions should dynamically depend on the depth and number of concepts provided in the document. Format the quiz clearly and provide the correct answers at the end so I can check my knowledge.",
-            summary: "Please provide a 'Flash Summary' of this document. The length and detail of this summary should dynamically depend on the document's concepts and importance (e.g. if it is a 50-page PDF with many key concepts, provide a multi-page detailed summary). Use bullet points and focus on the most important concepts a student needs to know for an upcoming exam.",
-            questions: "Analyze this document and identify the top 5 'Most Likely Exam Questions' that a professor would ask. Provide a clear, detailed answer for each question to help me prepare.",
-
-            // Professional Suite
-            email: "Draft a highly professional business email based on the contents and findings of this document. It should be ready to send to a client or executive team.",
-            report: "Extract the core business value, logic, and key data points from this document. Format this into a sharp, professional Executive Summary/Report.",
-            simplify: "Rewrite the key concepts of this document so they can be easily understood by a non-technical stakeholder or client. Use simple analogies and remove jargon."
-        };
-
-        const prompt = actionPrompts[actionType];
-
-        // Auto-send the request
-        handleSend(null, prompt);
-    }, [selectedDocs, handleSend]);
 
     const { knowledgeBase, setKnowledgeBase } = useChatStore();
 
@@ -1770,42 +1568,6 @@ export default function TTRAIChat() {
 
         handleSend(null, prompt);
     }, [highlightPopup.text, handleSend, speak, fourWayMode, motherTongue]);
-
-    /* ── Slash Menu Handlers ── */
-    const handleSlashCommand = useCallback((command) => {
-        setShowSlashMenu(false);
-        setInput('');
-
-        if (command === 'clear') {
-            setMessages([WELCOME_MSG]);
-            setCurrentSessionId(null);
-            return;
-        }
-
-        let prompt = "";
-        if (command === 'quiz') prompt = "Generate a multiple-choice quiz with 3 questions based on our most recent topic. Do not provide the answers until I respond.";
-        if (command === 'table') prompt = "Please take all the key information from your last response and format it into a comprehensive, easy-to-read comparison table.";
-        if (command === 'interview') prompt = "I want you to act like a strict job interviewer for my field. Ask me one technical interview question right now, and wait for my answer before grading it and asking the next one.";
-        if (command === 'doc') prompt = "Please generate a highly professional, textbook-quality document about the current topic. Use a clear Title, Executive Summary, structured paragraphs, and a Conclusion.";
-        if (command === 'ppt') prompt = "Please generate a highly professional, slide-by-slide presentation about the current topic. Format it STRICTLY as follows for each slide:\n\nSlide: [Slide Title]\nContent:\n- [Bullet Point 1]\n- [Bullet Point 2]\nNotes: [What the speaker should say out loud regarding this slide]\n\nDo not add extra text outside this format.";
-        if (command === 'cheatsheet') prompt = "Please generate a comprehensive, highly-structured Cheat Sheet for the current topic we are discussing. Format it with bullet points, bold keywords, and quick-reference syntax/equations, perfect for a student to review right before an exam.";
-
-        handleSend(null, prompt);
-    }, [handleSend]);
-
-    const handleKeyDown = useCallback((e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSend();
-        }
-    }, [handleSend]);
-
-    const handleStop = useCallback(() => {
-        if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
-            setLoading(false);
-        }
-    }, []);
 
     const displayName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Guest';
 
