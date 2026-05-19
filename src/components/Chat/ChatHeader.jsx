@@ -214,12 +214,6 @@ export const ChatHeader = ({
                         Context: {messages.length - 1} turns
                     </div>
                 )}
-                
-                {!user && (
-                    <button className="signin-header-btn" onClick={() => navigate('/login')}>
-                        Sign In
-                    </button>
-                )}
             </div>
         </div>
     );

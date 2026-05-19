@@ -772,7 +772,7 @@ export default function TTRAIChat() {
             text: "Siddh Protocol v2.5.1 Online. ⚡ Operational parameters established. I am ready for weaponized debugging, autonomous audits, and tactical code execution.",
             sender: 'ai'
         } : {
-            text: "Hello Seeker! 🕉️ I am your **TTR Mentor**. I'm here to guide you through your educational journey with wisdom, patience, and clarity.\n\nI can help you with exams, conceptual clarity, or just a deep dive into any subject. How shall we begin your learning today?",
+            text: "Hello Seeker! I am your **TTR Mentor**. I'm here to guide you through your educational journey with wisdom, patience, and clarity.\n\nI can help you with exams, conceptual clarity, or just a deep dive into any subject. How shall we begin your learning today?",
             sender: 'ai'
         };
 

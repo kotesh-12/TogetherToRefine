@@ -60,7 +60,7 @@ export const ChatInput = ({
 
     return (
         <div className="input-container" style={{ display: zenMode ? 'flex' : 'block' }}>
-            {/* Contextual Action Pills (Signature UX 1) */}
+            {/* Contextual Action Pills */}
             <div className="input-pills" role="list" aria-label="Suggested actions" style={{ display: zenMode ? 'none' : 'flex' }}>
                 {availablePills.map((pill) => (
                     <button 
@@ -78,7 +78,7 @@ export const ChatInput = ({
                 {selectedImage && (
                     <div className="preview-container">
                         <img src={selectedImage} alt="Preview" className="image-preview" />
-                        <button className="remove-preview" onClick={() => setSelectedImage(null)}>✕</button>
+                        <button type="button" className="remove-preview" onClick={() => setSelectedImage(null)}>✕</button>
                     </div>
                 )}
                 {selectedDocs.length > 0 && (
@@ -88,21 +88,24 @@ export const ChatInput = ({
                                 <span className="doc-icon">{doc.processing ? '⌛' : doc.icon}</span>
                                 <span className="doc-name">{doc.fileName}</span>
                                 {doc.pages && <span className="doc-pages">{doc.pages} pgs</span>}
-                                <button className="remove-doc" onClick={() => setSelectedDocs(prev => prev.filter(d => d.id !== doc.id))}>✕</button>
+                                <button type="button" className="remove-doc" onClick={() => setSelectedDocs(prev => prev.filter(d => d.id !== doc.id))}>✕</button>
                                 {doc.processing && <div className="doc-progress-bar"></div>}
                             </div>
                         ))}
                     </div>
                 )}
 
-                <div className="input-row">
-                    <button className="action-btn camera-btn" onClick={handleCameraClick} title="Scan Homework (Camera)">
-                        📷
-                    </button>
-
-                    <button className="action-btn file-btn" onClick={() => fileInputRef.current?.click()} title="Attach (Image/PDF/DOCX)">
-
-                        📎
+                <div className="input-row-standard">
+                    {/* Attach button (Left) */}
+                    <button 
+                        type="button"
+                        className="std-action-btn" 
+                        onClick={() => fileInputRef.current?.click()} 
+                        title="Attach files"
+                    >
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                        </svg>
                         <input
                             type="file"
                             ref={fileInputRef}
@@ -113,7 +116,8 @@ export const ChatInput = ({
                         />
                     </button>
 
-                    <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    {/* Textarea (Center) */}
+                    <div className="std-textarea-wrapper">
                         <textarea
                             ref={inputRef}
                             value={input}
@@ -136,30 +140,10 @@ export const ChatInput = ({
                                     }
                                 }
                             }}
-                            placeholder={isAgentMode ? "Deploy Siddh Protocol..." : "Message TTR..."}
+                            placeholder={isAgentMode ? "Ask Siddh anything..." : "Message TTR..."}
                             rows="1"
                             spellCheck="false"
-                            style={{
-                                width: '100%',
-                                background: 'transparent',
-                                border: 'none',
-                                color: 'var(--text-primary)',
-                                fontSize: '16px',
-                                outline: 'none',
-                                resize: 'none',
-                                maxHeight: '200px',
-                                overflowY: 'hidden',
-                                padding: '6px 2px',
-                                lineHeight: '1.5',
-                                fontFamily: 'inherit',
-                                WebkitAppearance: 'none',
-                                appearance: 'none',
-                                boxSizing: 'border-box',
-                                WebkitUserSelect: 'text',
-                                userSelect: 'text',
-                                textRendering: 'optimizeLegibility',
-                                willChange: 'auto'
-                            }}
+                            className="std-textarea"
                         />
                         
                         {showSlashMenu && input.startsWith('/') && (
@@ -183,11 +167,12 @@ export const ChatInput = ({
                         )}
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {/* Right side actions */}
+                    <div className="std-actions-right">
                         {fourWayMode === 'teaching' && (
                             <div className="mother-tongue-selector" style={{ position: 'relative' }}>
-                                <button className="lang-btn" onClick={() => setShowLangMenu(!showLangMenu)}>
-                                    🌐 {motherTongue}
+                                <button type="button" className="std-action-btn" onClick={() => setShowLangMenu(!showLangMenu)}>
+                                    🌐
                                 </button>
                                 {showLangMenu && (
                                     <div className="lang-dropdown animate-in-up">
@@ -200,35 +185,47 @@ export const ChatInput = ({
                                 )}
                             </div>
                         )}
-                        <button className={`action-btn mic-btn ${isListening ? 'active' : ''}`} onClick={handleMicClick} title="Voice Journey">
-                            {isListening ? '⬤' : '🎤'}
-                        </button>
-                        <MagneticSubmitButton 
-                            type="submit"
-                            loading={loading}
-                            onClick={(e) => { e?.preventDefault(); handleSend(e); }}
-                            style={{ 
-                                background: 'var(--accent)', 
-                                color: 'white', 
-                                border: 'none', 
-                                width: '40px', 
-                                height: '40px', 
-                                borderRadius: '50%', 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'center', 
-                                cursor: 'pointer',
-                                transition: '0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                boxShadow: '0 4px 12px var(--accent-glow)'
-                            }}
+
+                        <button 
+                            type="button"
+                            className={`std-action-btn mic-btn ${isListening ? 'active' : ''}`} 
+                            onClick={handleMicClick} 
+                            title="Voice input"
                         >
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
-                            </svg>
-                        </MagneticSubmitButton>
+                            {isListening ? (
+                                <span style={{ color: '#ef4444', fontSize: '18px' }}>⬤</span>
+                            ) : (
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                                    <line x1="12" y1="19" x2="12" y2="23" />
+                                    <line x1="8" y1="23" x2="16" y2="23" />
+                                </svg>
+                            )}
+                        </button>
+
+                        <button 
+                            type="submit"
+                            className={`std-send-btn ${input.trim() || selectedImage || selectedDocs.length > 0 ? 'active' : ''}`}
+                            disabled={loading || (!input.trim() && !selectedImage && selectedDocs.length === 0)}
+                            onClick={(e) => { e?.preventDefault(); handleSend(e); }}
+                            title="Send message"
+                        >
+                            {loading ? (
+                                <div className="send-spinner" />
+                            ) : (
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="12" y1="19" x2="12" y2="5" />
+                                    <polyline points="5 12 12 5 19 12" />
+                                </svg>
+                            )}
+                        </button>
                     </div>
                 </div>
             </form>
+            <div style={{ textAlign: 'center', marginTop: '8px', fontSize: '11px', color: 'var(--text-muted)', opacity: 0.8 }}>
+                TTR AI can make mistakes. Please verify important information.
+            </div>
         </div>
     );
 };

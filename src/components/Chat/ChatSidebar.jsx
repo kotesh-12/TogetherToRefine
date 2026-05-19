@@ -149,7 +149,7 @@ export const ChatSidebar = ({
                 title="Open Dharma Marketplace"
             >
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                    <span style={{ fontSize: '10px', color: '#ffd700', fontWeight: 'bold' }}>🕉️ DHARMA XP (Click to Spend)</span>
+                    <span style={{ fontSize: '10px', color: '#ffd700', fontWeight: 'bold' }}>✨ DHARMA XP (Click to Spend)</span>
                     <span style={{ fontSize: '10px', color: '#fff' }}>{dharmaXP} PTS</span>
                 </div>
                 <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px', overflow: 'hidden' }}>

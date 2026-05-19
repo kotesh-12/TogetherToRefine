@@ -105,14 +105,10 @@ export const ChatMessageList = ({
         <AnimatedMessage msg={msg}>
             {msg?.sender === 'ai' && (
                 <div className="msg-avatar ai-avatar">
-                    {isAgentMode ? (
-                        <div style={{ position: 'relative' }}>
-                            <img src={logo} alt="TTR AI" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
-                            {suiAddress && <div style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: '8px', height: '8px', background: '#38bdf8', borderRadius: '50%', border: '1px solid white' }} title="Sui Connected" />}
-                        </div>
-                    ) : (
-                        <span style={{ fontSize: '20px' }}>🕉️</span>
-                    )}
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <img src={logo} alt="TTR AI" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
+                        {isAgentMode && suiAddress && <div style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: '8px', height: '8px', background: '#38bdf8', borderRadius: '50%', border: '1px solid white' }} title="Sui Connected" />}
+                    </div>
                 </div>
             )}
 

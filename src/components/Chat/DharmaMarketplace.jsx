@@ -26,7 +26,7 @@ export const DharmaMarketplace = ({ isOpen, onClose, dharmaXP, setDharmaXP }) =>
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <h2 style={{ margin: 0, color: '#ffd700', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        🕉️ Dharma Marketplace
+                        ✨ Dharma Marketplace
                     </h2>
                     <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }}>✕</button>
                 </div>
