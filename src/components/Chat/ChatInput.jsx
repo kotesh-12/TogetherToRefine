@@ -41,9 +41,9 @@ export const ChatInput = ({
     const adjustInputHeight = (textarea) => {
         if (!textarea) return;
         textarea.style.height = 'auto';
-        const height = Math.min(textarea.scrollHeight, 150);
+        const height = Math.min(textarea.scrollHeight, 200);
         textarea.style.height = `${height}px`;
-        textarea.style.overflowY = textarea.scrollHeight > 150 ? 'auto' : 'hidden';
+        textarea.style.overflowY = textarea.scrollHeight > 200 ? 'auto' : 'hidden';
     };
 
     const handleCameraClick = async () => {
@@ -144,12 +144,12 @@ export const ChatInput = ({
                                 background: 'transparent',
                                 border: 'none',
                                 color: 'var(--text-primary)',
-                                fontSize: '15px',
+                                fontSize: '16px',
                                 outline: 'none',
                                 resize: 'none',
-                                maxHeight: '150px',
+                                maxHeight: '200px',
                                 overflowY: 'hidden',
-                                padding: '8px 4px',
+                                padding: '6px 2px',
                                 lineHeight: '1.5',
                                 fontFamily: 'inherit',
                                 WebkitAppearance: 'none',

@@ -165,12 +165,20 @@ export const ChatSidebar = ({
                                 key={s.id}
                                 className={`session-item animate-in ${currentSessionId === s.id ? 'active' : ''}`}
                                 onClick={() => loadSession(s)}
-                                style={{ animationDelay: `${idx * 0.05}s` }}
+                                style={{ animationDelay: `${idx * 0.04}s` }}
                             >
-                                <span className="session-title">{s.title || 'Untitled'}</span>
+                                <span style={{ fontSize: '15px', opacity: 0.5, flexShrink: 0 }}>💬</span>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <span className="session-title">{s.title || 'New conversation'}</span>
+                                </div>
                             </div>
                         ))}
-                        {filteredSessions.length === 0 && <p className="no-sessions">No conversations yet</p>}
+                        {filteredSessions.length === 0 && (
+                            <div className="no-sessions" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '28px', opacity: 0.3 }}>💭</span>
+                                <p style={{ margin: 0 }}>No conversations yet</p>
+                            </div>
+                        )}
                     </div>
 
                     {/* eslint-disable-next-line */}
@@ -361,28 +369,7 @@ export const ChatSidebar = ({
                                     <span>🚀</span> TTR-AI Roadmap
                                 </button>
 
-                                <div style={{ 
-                                    padding: '15px', 
-                                    background: 'rgba(255, 255, 255, 0.04)', 
-                                    borderRadius: '12px', 
-                                    border: '1px solid #333',
-                                    marginBottom: '20px'
-                                }}>
-                                    <div style={{ fontSize: '12px', fontWeight: 'bold', letterSpacing: '1px', color: '#a78bfa', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        🤖 SYSTEM INFO
-                                    </div>
-                                    <div style={{ fontSize: '11px', color: '#888', lineHeight: '1.6' }}>
-                                        <strong>Status:</strong> Active (TTR-X1 Patch)<br/>
-                                        <strong>Updates:</strong> Consistently aligned with newest TTR state.<br/>
-                                        <div style={{ marginTop: '10px', fontSize: '10px', color: '#555' }}>
-                                            • Data Augmentation (TTR-AI Core)<br/>
-                                            • Code Refinement (Algorithms)<br/>
-                                            • API Integrations (Multi-Failover)<br/>
-                                            • UI/UX Improvements (Glassmorphism)<br/>
-                                            • Policy Updates (Ethics Guard)
-                                        </div>
-                                    </div>
-                                </div>
+
                             </>
                         )}
 
