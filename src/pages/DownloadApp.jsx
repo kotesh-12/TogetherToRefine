@@ -1,21 +1,13 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePWA } from '../context/PWAContext';
 import logo from '../assets/logo.png';
 
 export default function DownloadApp() {
     const navigate = useNavigate();
-    const { installPrompt, promptInstall } = usePWA();
 
     // Check Platform
     const isAndroid = /Android/i.test(navigator.userAgent);
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-    const handleInstallClick = () => {
-        promptInstall();
-    };
-
-
 
     return (
         <div style={{
@@ -80,12 +72,12 @@ export default function DownloadApp() {
                 </h2>
 
                 <p style={{ color: '#94a3b8', fontSize: '14px', margin: '0 0 30px 0', lineHeight: '1.5' }}>
-                    Together To Refine works best as an app. Install it now for easy access.
+                    Together To Refine works best as a native app. Install it now for easy access.
                 </p>
 
                 {/* INSTALL ACTION AREA */}
                 {isAndroid ? (
-                    // 1. NATIVE ANDROID APK OPTION (Primary for Android)
+                    // 1. NATIVE ANDROID APK OPTION
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', width: '100%' }}>
                         <div style={{
                             background: '#e3f2fd', padding: '15px', borderRadius: '16px',
@@ -100,7 +92,7 @@ export default function DownloadApp() {
                                 Native Android App
                             </p>
                             <p style={{ fontSize: '13px', color: '#1565c0', margin: '0 0 12px 0' }}>
-                                Get the full experience with a real Android app.
+                                Get the full experience with our real Android app.
                             </p>
                             <a
                                 href="/TTR-AI.apk"
@@ -116,75 +108,28 @@ export default function DownloadApp() {
                             </a>
                         </div>
 
-                        <div style={{ textAlign: 'center' }}>
-                            <span style={{ fontSize: '12px', color: '#999' }}>— OR —</span>
-                        </div>
-
-                        <button
-                            onClick={handleInstallClick}
-                            style={{
-                                background: '#f1f2f6', color: '#2d3436',
-                                border: '1px solid #dfe6e9', padding: '14px', borderRadius: '12px',
-                                fontSize: '14px', fontWeight: '600', cursor: 'pointer'
-                            }}
-                        >
-                            Quick Install (PWA)
-                        </button>
-
                         <p style={{ fontSize: '11px', color: '#999', marginTop: '5px' }}>
                             *To install APK: Open the file and allow "Install from Unknown Sources" if asked.
                         </p>
                     </div>
-                ) : installPrompt ? (
-                    // 2. NATIVE PWA PROMPT (Chrome Desktop/Edge)
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        <button
-                            onClick={handleInstallClick}
-                            style={{
-                                background: 'linear-gradient(135deg, #0984e3, #6c5ce7)',
-                                color: 'white',
-                                border: 'none', padding: '16px', borderRadius: '14px',
-                                fontSize: '17px', fontWeight: 'bold', cursor: 'pointer',
-                                width: '100%', boxShadow: '0 8px 15px rgba(108, 92, 231, 0.3)',
-                                transition: 'transform 0.1s'
-                            }}
-                            className="active-btn"
-                        >
-                            Tap to Install
-                        </button>
-                        <button
-                            onClick={() => navigate(-1)}
-                            style={{
-                                background: '#f1f2f6', color: '#636e72',
-                                border: 'none', padding: '16px', borderRadius: '14px',
-                                fontSize: '16px', fontWeight: '600', cursor: 'pointer', width: '100%'
-                            }}
-                        >
-                            Not Now
-                        </button>
-                    </div>
                 ) : isIOS ? (
-                    // 3. iOS INSTRUCTIONS
+                    // 2. iOS INSTRUCTIONS
                     <div style={{ background: '#f8f9fa', padding: '20px', borderRadius: '16px', textAlign: 'left', border: '1px solid #e9ecef' }}>
                         <p style={{ margin: '0 0 15px 0', fontSize: '15px', fontWeight: '600', color: '#2d3436', lineHeight: '1.5' }}>
-                            To install on iPhone/iPad:
+                            Our iOS Native App is coming soon!
                         </p>
-                        <ol style={{ paddingLeft: '20px', margin: '0', fontSize: '14px', color: '#555', lineHeight: '1.8' }}>
-                            <li>Tap the <b>Share</b> button <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Apple_Share_icon.svg/1200px-Apple_Share_icon.svg.png" style={{ width: '14px', verticalAlign: '-2px' }} alt="" /> below.</li>
-                            <li>Scroll down and tap <b>"Add to Home Screen"</b>.</li>
-                        </ol>
-                        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '15px' }}>
-                            <span style={{ fontSize: '28px', animation: 'bounce 2s infinite', opacity: '0.8' }}>⬇️</span>
-                        </div>
+                        <p style={{ margin: '0', fontSize: '14px', color: '#555', lineHeight: '1.8' }}>
+                            In the meantime, you can continue using our full-featured web experience on Safari.
+                        </p>
                     </div>
                 ) : (
-                    // 4. DESKTOP / OTHERS
+                    // 3. DESKTOP / OTHERS
                     <div style={{ textAlign: 'left', width: '100%' }}>
                         <div style={{ background: '#f5f6fa', color: '#2d3436', padding: '15px', borderRadius: '12px', fontSize: '14px', marginBottom: '20px', lineHeight: '1.5' }}>
-                            ✅ <b>To Install:</b><br />
-                            Check your browser's menu for an <b>"Install App"</b> option.
+                            ✅ <b>Web Platform Active</b><br />
+                            You are currently using the Desktop Web version.
                             <br /><br />
-                            <span style={{ fontSize: '12px', color: '#636e72' }}>If exploring on PC, you can continue to the website.</span>
+                            <span style={{ fontSize: '12px', color: '#636e72' }}>Download the mobile app on your phone for on-the-go access.</span>
                         </div>
 
                         <button
@@ -207,11 +152,6 @@ export default function DownloadApp() {
                 @keyframes popIn {
                     0% { transform: scale(0.9); opacity: 0; }
                     100% { transform: scale(1); opacity: 1; }
-                }
-                @keyframes bounce {
-                    0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
-                    40% {transform: translateY(-10px);}
-                    60% {transform: translateY(-5px);}
                 }
                 .active-btn:active {
                     transform: scale(0.98);
