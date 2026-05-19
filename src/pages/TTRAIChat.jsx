@@ -187,6 +187,7 @@ export default function TTRAIChat() {
         showSidebar, setShowSidebar,
         zenMode,
         isAgentMode, setIsAgentMode,
+        chatMode, isNormalMode,
         nativePermissions, setNativePermissions,
         isRoadmapMode, setRoadmapMode,
         roadmapData, setRoadmapData,
@@ -768,12 +769,23 @@ export default function TTRAIChat() {
     }, [sessions, fourWayMode]);
 
     useEffect(() => {
-        const getWelcome = () => isAgentMode ? {
-            text: "Siddh Protocol v2.5.1 Online. ⚡ Operational parameters established. I am ready for weaponized debugging, autonomous audits, and tactical code execution.",
-            sender: 'ai'
-        } : {
-            text: "Hello Seeker! I am your **TTR Mentor**. I'm here to guide you through your educational journey with wisdom, patience, and clarity.\n\nI can help you with exams, conceptual clarity, or just a deep dive into any subject. How shall we begin your learning today?",
-            sender: 'ai'
+        const getWelcome = () => {
+            if (chatMode === 'siddh') {
+                return {
+                    text: "Siddh Protocol v2.5.1 Online. ⚡ Operational parameters established. I am ready for weaponized debugging, autonomous audits, and tactical code execution.",
+                    sender: 'ai'
+                };
+            } else if (chatMode === 'normal') {
+                return {
+                    text: "Hello! ✨ I am **TTR AI**, the most advanced and accurate AI assistant. I do not hallucinate, and I follow strict logical principles. How can I assist you today?",
+                    sender: 'ai'
+                };
+            } else {
+                return {
+                    text: "Hello Seeker! I am your **TTR Mentor**. I'm here to guide you through your educational journey with wisdom, patience, and clarity.\n\nI can help you with exams, conceptual clarity, or just a deep dive into any subject. How shall we begin your learning today?",
+                    sender: 'ai'
+                };
+            }
         };
 
         if (!currentSessionId) {
@@ -1056,7 +1068,14 @@ export default function TTRAIChat() {
 
             const engagementPrompt = `\n\n(ENGAGEMENT_PROTOCOL: 1. Adopt the user's communication style subtly. 2. Use 'Curiosity Scaffolding': provide high-value insights but leave an intriguing 'knowledge gap' for the user to ask about. 3. If the user mentioned Sui, prioritize 'Agentic Finance' concepts. 4. ANTI-GENERIC MANDATE: Even for simple general questions like 'what is gravity' or 'best food in India', you MUST respond in the TTR-AI way — with thought traces, numbered insights, a curiosity seed, and Dharma Points. NEVER give a plain/boring answer. Make the user feel like they just leveled up.)`;
             
-            apiMessageContent += identityGuard + engagementPrompt;
+            const normalModePrompt = `\n\n(NORMAL_MODE_PROTOCOL: You are TTR AI. You must behave like a normal, highly intelligent, and objective standard AI. However, you must heavily emphasize your brand identity: 'I am TTR AI, the best and most accurate AI available.' Emphasize that you do not hallucinate, you follow strict logical principles, and always give accurate, up-to-date, and principle-based answers.)`;
+            
+            apiMessageContent += identityGuard;
+            if (chatMode === 'normal') {
+                apiMessageContent += normalModePrompt;
+            } else {
+                apiMessageContent += engagementPrompt;
+            }
 
             const currentKnowledge = useChatStore.getState().knowledgeBase || [];
             const kbSummary = currentKnowledge.slice(-20).map(n => `- ${n.concept}: ${n.summary}`).join('\n');
@@ -1077,6 +1096,7 @@ export default function TTRAIChat() {
                     isDebugMode: shouldDebug,
                     activeModule: activeModule,
                     isAgentMode: isAgentMode,
+                    chatMode: chatMode,
                     isWarRoom: useChatStore.getState().isWarRoom,
                     isMinimal: zenMode,
                     miniMemory: miniMemory,

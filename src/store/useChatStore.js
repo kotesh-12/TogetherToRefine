@@ -8,7 +8,9 @@ const useChatStore = create((set) => ({
     messages: [],
     input: '',
     loading: false,
-    isAgentMode: localStorage.getItem('isAgentMode') === 'true',
+    chatMode: localStorage.getItem('ttr_chat_mode') || (localStorage.getItem('isAgentMode') === 'true' ? 'siddh' : 'guru'),
+    isAgentMode: localStorage.getItem('ttr_chat_mode') === 'siddh' || localStorage.getItem('isAgentMode') === 'true',
+    isNormalMode: localStorage.getItem('ttr_chat_mode') === 'normal',
     zenMode: localStorage.getItem('ttr_zen_mode') === 'true',
     isFocusMode: false,
     currentSessionId: null,
@@ -62,6 +64,14 @@ const useChatStore = create((set) => ({
 
 
     // Actions
+    setChatMode: (mode) => {
+        localStorage.setItem('ttr_chat_mode', mode);
+        set({
+            chatMode: mode,
+            isAgentMode: mode === 'siddh',
+            isNormalMode: mode === 'normal'
+        });
+    },
     setWarRoom: (active) => set({ isWarRoom: active }),
     setAutoCruise: (active) => {
         localStorage.setItem('ttr_auto_cruise', active);
@@ -89,8 +99,10 @@ const useChatStore = create((set) => ({
     }),
     
     setIsAgentMode: (isAgentMode) => {
+        const mode = isAgentMode ? 'siddh' : 'guru';
+        localStorage.setItem('ttr_chat_mode', mode);
         localStorage.setItem('isAgentMode', isAgentMode);
-        set({ isAgentMode });
+        set({ isAgentMode, chatMode: mode, isNormalMode: false });
     },
     
     setZenMode: (zenMode) => {

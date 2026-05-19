@@ -41,7 +41,9 @@ export const ChatSidebar = ({
         setShowSidebar, 
         zenMode, 
         isAgentMode, 
-        setIsAgentMode, 
+        setIsAgentMode,
+        chatMode,
+        setChatMode, 
         startNewChat,
         currentSessionId,
         sessions,
@@ -85,15 +87,16 @@ export const ChatSidebar = ({
                     boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)'
                 }}>
                     <button 
-                        onClick={() => setIsAgentMode(false)}
+                        onClick={() => setChatMode('guru')}
                         style={{ 
-                            padding: '6px 12px', 
-                            background: !isAgentMode ? 'var(--accent)' : 'transparent', 
-                            color: !isAgentMode ? 'white' : 'var(--text-secondary)', 
+                            flex: 1,
+                            padding: '6px 4px', 
+                            background: chatMode === 'guru' ? 'var(--accent)' : 'transparent', 
+                            color: chatMode === 'guru' ? 'white' : 'var(--text-secondary)', 
                             border: 'none', 
                             borderRadius: '10px', 
                             cursor: 'pointer', 
-                            fontSize: '10px', 
+                            fontSize: '9px', 
                             fontWeight: 'bold', 
                             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
                         }}
@@ -102,15 +105,34 @@ export const ChatSidebar = ({
                         🎓 GURU
                     </button>
                     <button 
-                        onClick={() => setIsAgentMode(true)}
+                        onClick={() => setChatMode('normal')}
                         style={{ 
-                            padding: '6px 12px', 
-                            background: isAgentMode ? '#3b82f6' : 'transparent', 
-                            color: isAgentMode ? 'white' : 'var(--text-secondary)', 
+                            flex: 1,
+                            padding: '6px 4px', 
+                            background: chatMode === 'normal' ? '#10b981' : 'transparent', 
+                            color: chatMode === 'normal' ? 'white' : 'var(--text-secondary)', 
                             border: 'none', 
                             borderRadius: '10px', 
                             cursor: 'pointer', 
-                            fontSize: '10px', 
+                            fontSize: '9px', 
+                            fontWeight: 'bold', 
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
+                        }}
+                        title="TTR AI (Accurate & Principle-based)"
+                    >
+                        ✨ NORMAL
+                    </button>
+                    <button 
+                        onClick={() => setChatMode('siddh')}
+                        style={{ 
+                            flex: 1,
+                            padding: '6px 4px', 
+                            background: chatMode === 'siddh' ? '#3b82f6' : 'transparent', 
+                            color: chatMode === 'siddh' ? 'white' : 'var(--text-secondary)', 
+                            border: 'none', 
+                            borderRadius: '10px', 
+                            cursor: 'pointer', 
+                            fontSize: '9px', 
                             fontWeight: 'bold', 
                             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
                         }}
