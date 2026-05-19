@@ -3618,5 +3618,37 @@ a:hover {
 body { overscroll-behavior-y: none; overscroll-behavior-x: none; }
 
 
-body { overscroll-behavior-y: none; overscroll-behavior-x: none; }
+/* ─── DESKTOP SPLIT PANE (LAPTOP VIEW) ─── */
+@media (min-width: 1024px) {
+  .chat-page {
+    display: flex;
+    flex-direction: row;
+    width: 100vw;
+    height: 100vh;
+  }
+  
+  .chat-sidebar {
+    position: relative !important;
+    transform: none !important;
+    visibility: visible !important;
+    transition: margin-left 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    box-shadow: none !important;
+    margin-left: -320px;
+    z-index: 10;
+    flex-shrink: 0;
+  }
 
+  .chat-sidebar.show {
+    margin-left: 0 !important;
+  }
+
+  .chat-sidebar-overlay {
+    display: none !important;
+  }
+
+  .chat-main {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+  }
+}
