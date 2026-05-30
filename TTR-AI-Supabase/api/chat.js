@@ -317,6 +317,7 @@ export default async function handler(req, res) {
         }
     }
 
+    let lastError = null;
     for (const modelName of MODELS) {
         try {
             const model = genAI.getGenerativeModel({ model: modelName, tools });
@@ -372,9 +373,21 @@ export default async function handler(req, res) {
             return res.status(200).json({ text: response.text() });
         } catch (error) {
             console.error(`Model ${modelName} failed: `, error.message);
+            lastError = error;
+            if (error.message.includes("API key was reported as leaked") || error.message.includes("API_KEY_INVALID") || error.message.includes("API key expired") || error.message.includes("403")) {
+                break;
+            }
             continue;
         }
     }
 
+    if (lastError && (lastError.message.includes("API key was reported as leaked") || lastError.message.includes("API_KEY_INVALID") || lastError.message.includes("API key expired") || lastError.message.includes("403"))) {
+        return res.status(401).json({ 
+            error: "System Configuration Error: Gemini API Key is invalid, expired, or has been deactivated/leaked. Please update your environment variables on Vercel/Netlify.",
+            details: lastError.message
+        });
+    }
+
     return res.status(500).json({ error: 'AI is temporarily unavailable.' });
 }
+

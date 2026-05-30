@@ -288,6 +288,12 @@ app.post('/api/chat', async (req, res) => {
         res.json({ text: result.response.text() });
     } catch (error) {
         console.error('AI Error:', error.message);
+        if (error.message.includes("API key was reported as leaked") || error.message.includes("API_KEY_INVALID") || error.message.includes("API key expired") || error.message.includes("403")) {
+            return res.status(401).json({ 
+                error: "System Configuration Error: Gemini API Key is invalid, expired, or has been deactivated/leaked. Please update your environment variables.",
+                details: error.message
+            });
+        }
         res.status(500).json({ error: 'AI is temporarily unavailable.' });
     }
 });

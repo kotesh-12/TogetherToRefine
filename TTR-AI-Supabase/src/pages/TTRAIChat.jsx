@@ -843,11 +843,8 @@ export default function TTRAIChat() {
             });
 
             if (!response.ok) {
-                if (response.status === 429) {
-                    const errData = await response.json().catch(() => ({}));
-                    throw new Error(errData.error || 'Rate limit or plan limit exceeded. Please wait or upgrade your plan.');
-                }
-                throw new Error(`Server error: ${response.status}`);
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.error || `Server error: ${response.status}`);
             }
             const result = await response.json();
             let responseText = result.response || result.text;

@@ -212,8 +212,11 @@ CRITICAL GURUKUL DIRECTIVES:
         return res.status(200).json({ text });
     } catch (e) {
         // If Key is invalid/expired, DO NOT RETRY - Fail fast
-        if (e.message.includes("API key expired") || e.message.includes("API_KEY_INVALID") || e.message.includes("403")) {
-            return res.status(401).json({ error: "Configuration Error: API Key Expired. Administrator must update Vercel Settings." });
+        if (e.message.includes("API key was reported as leaked") || e.message.includes("API_KEY_INVALID") || e.message.includes("API key expired") || e.message.includes("403")) {
+            return res.status(401).json({ 
+                error: "System Configuration Error: Gemini API Key is invalid, expired, or has been deactivated/leaked. Please update your environment variables on Vercel.",
+                details: e.message
+            });
         }
 
         // Retry with fallback model
@@ -221,8 +224,13 @@ CRITICAL GURUKUL DIRECTIVES:
             const text = await tryGenerate("gemini-2.5-flash");
             return res.status(200).json({ text });
         } catch (eFallback) {
-            // Return a safe generic error — do NOT expose internal model/API details to browser
             console.error("AI Generation Fatal Error:", eFallback.message);
+            if (eFallback.message.includes("API key was reported as leaked") || eFallback.message.includes("API_KEY_INVALID") || eFallback.message.includes("API key expired") || eFallback.message.includes("403")) {
+                return res.status(401).json({ 
+                    error: "System Configuration Error: Gemini API Key is invalid, expired, or has been deactivated/leaked. Please update your environment variables on Vercel.",
+                    details: eFallback.message
+                });
+            }
             return res.status(500).json({ error: "The AI service is temporarily unavailable. Please try again shortly." });
         }
     }

@@ -162,6 +162,7 @@ export const handler = async (event) => {
 
     const systemPrompt = getSystemPrompt(userContext);
 
+    let lastError = null;
     // Try each model until one succeeds
     for (const modelName of MODELS) {
         try {
@@ -193,8 +194,23 @@ export const handler = async (event) => {
             };
         } catch (error) {
             console.error(`Model ${modelName} failed: `, error.message);
+            lastError = error;
+            if (error.message.includes("API key was reported as leaked") || error.message.includes("API_KEY_INVALID") || error.message.includes("API key expired") || error.message.includes("403")) {
+                break;
+            }
             continue;
         }
+    }
+
+    if (lastError && (lastError.message.includes("API key was reported as leaked") || lastError.message.includes("API_KEY_INVALID") || lastError.message.includes("API key expired") || lastError.message.includes("403"))) {
+        return {
+            statusCode: 401,
+            headers,
+            body: JSON.stringify({
+                error: "System Configuration Error: Gemini API Key is invalid, expired, or has been deactivated/leaked. Please update your environment variables on Vercel/Netlify.",
+                details: lastError.message
+            }),
+        };
     }
 
     return {
@@ -203,3 +219,4 @@ export const handler = async (event) => {
         body: JSON.stringify({ error: 'AI is temporarily unavailable. Please try again.' }),
     };
 };
+
