@@ -1,7 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
-import { PWAProvider } from './context/PWAContext';
 import Login from './pages/Login';
 import TTRAIChat from './pages/TTRAIChat';
 import DownloadApp from './pages/DownloadApp';
@@ -59,13 +58,11 @@ function App() {
   }, []);
 
   return (
-    <PWAProvider>
-      <AuthProvider>
-        <Router>
-          <AppRoutes />
-        </Router>
-      </AuthProvider>
-    </PWAProvider>
+    <AuthProvider>
+      <Router>
+        <AppRoutes />
+      </Router>
+    </AuthProvider>
   );
 }
 

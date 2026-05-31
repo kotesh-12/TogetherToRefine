@@ -1,40 +1,42 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePWA } from '../context/PWAContext';
 import logo from '../assets/logo.png';
 
 export default function DownloadApp() {
     const navigate = useNavigate();
-    const { installPrompt, promptInstall } = usePWA();
 
     // Check Platform
     const isAndroid = /Android/i.test(navigator.userAgent);
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-    const handleInstallClick = () => {
-        promptInstall();
-    };
-
-
 
     return (
         <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
             background: '#0f0f14',
             color: '#ffffff',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             zIndex: 9999,
-            overflowY: 'auto',
-            padding: '60px 20px',
+            padding: '20px',
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
         }}>
             {/* BACK BUTTON (Top Left) */}
             <button
                 onClick={() => navigate(-1)}
                 style={{
-                    position: 'absolute', top: '20px', left: '20px',
-                    background: 'none', border: 'none', color: 'white', fontSize: '18px', cursor: 'pointer',
-                    zIndex: 10001, display: 'flex', alignItems: 'center', gap: '5px', fontWeight: '500'
+                    position: 'absolute', top: '24px', left: '24px',
+                    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                    color: 'white', padding: '10px 18px', borderRadius: '14px',
+                    fontSize: '14px', cursor: 'pointer', zIndex: 10001,
+                    display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '500',
+                    transition: 'all 0.3s ease', backdropFilter: 'blur(5px)'
+                }}
+                onMouseOver={(e) => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                    e.currentTarget.style.transform = 'translateX(-3px)';
+                }}
+                onMouseOut={(e) => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                    e.currentTarget.style.transform = 'translateX(0)';
                 }}
             >
                 ← Back
@@ -44,9 +46,20 @@ export default function DownloadApp() {
             <button
                 onClick={() => navigate('/')}
                 style={{
-                    position: 'absolute', top: '20px', right: '20px',
-                    background: 'none', border: 'none', color: 'white', fontSize: '30px', cursor: 'pointer',
-                    zIndex: 10001
+                    position: 'absolute', top: '24px', right: '24px',
+                    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                    color: 'white', width: '42px', height: '42px', borderRadius: '14px',
+                    fontSize: '22px', cursor: 'pointer', zIndex: 10001,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.3s ease', backdropFilter: 'blur(5px)'
+                }}
+                onMouseOver={(e) => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                    e.currentTarget.style.transform = 'scale(1.05)';
+                }}
+                onMouseOut={(e) => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                    e.currentTarget.style.transform = 'scale(1)';
                 }}
             >
                 &times;
@@ -57,163 +70,152 @@ export default function DownloadApp() {
                 background: 'rgba(255,255,255,0.03)',
                 width: '90%', maxWidth: '420px',
                 borderRadius: '32px',
-                padding: '40px 20px',
+                padding: '45px 30px',
                 textAlign: 'center',
-                boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                backdropFilter: 'blur(10px)',
-                animation: 'popIn 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28)',
+                boxShadow: '0 30px 70px rgba(0,0,0,0.5)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                backdropFilter: 'blur(20px) saturate(180%)',
+                animation: 'popIn 0.5s cubic-bezier(0.19, 1, 0.22, 1)',
                 position: 'relative'
             }}>
                 <img
                     src={logo}
                     alt="TTR-AI Logo"
                     style={{
-                        width: '90px', height: '90px', borderRadius: '22px',
-                        marginBottom: '20px', boxShadow: '0 10px 25px rgba(0,0,0,0.15)'
+                        width: '95px', height: '95px', borderRadius: '24px',
+                        marginBottom: '25px', boxShadow: '0 12px 30px rgba(0,0,0,0.3)',
+                        border: '2px solid rgba(255,255,255,0.1)'
                     }}
                 />
 
-                <h2 style={{ fontSize: '24px', margin: '0 0 10px 0', color: '#ffffff', fontWeight: '700' }}>
-                    Install App
+                <h2 style={{ fontSize: '26px', margin: '0 0 10px 0', color: '#ffffff', fontWeight: '800', letterSpacing: '-0.5px' }}>
+                    Access TTR-AI
                 </h2>
 
-                <p style={{ color: '#94a3b8', fontSize: '14px', margin: '0 0 30px 0', lineHeight: '1.5' }}>
-                    Together To Refine works best as an app. Install it now for easy access.
+                <p style={{ color: '#94a3b8', fontSize: '15px', margin: '0 0 35px 0', lineHeight: '1.6' }}>
+                    Together To Refine AI works flawlessly as a native Android App or optimized responsive Web platform.
                 </p>
 
-                {/* INSTALL ACTION AREA */}
+                {/* DYNAMIC CARD CONTENT BASED ON PLATFORM */}
                 {isAndroid ? (
-                    // 1. NATIVE ANDROID APK OPTION (Primary for Android)
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', width: '100%' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
                         <div style={{
-                            background: '#e3f2fd', padding: '15px', borderRadius: '16px',
-                            textAlign: 'left', border: '1px solid #bbdefb', position: 'relative'
+                            background: 'rgba(59, 130, 246, 0.1)',
+                            border: '1px solid rgba(59, 130, 246, 0.25)',
+                            padding: '24px 20px',
+                            borderRadius: '20px',
+                            textAlign: 'left'
                         }}>
                             <span style={{
-                                position: 'absolute', top: '10px', right: '10px',
-                                background: '#1976d2', color: 'white', fontSize: '10px',
-                                padding: '3px 8px', borderRadius: '20px', fontWeight: 'bold'
+                                background: '#3b82f6', color: 'white', fontSize: '10px',
+                                padding: '3px 9px', borderRadius: '20px', fontWeight: '800',
+                                float: 'right', letterSpacing: '0.5px'
                             }}>RECOMMENDED</span>
-                            <p style={{ margin: '0 0 5px 0', fontSize: '15px', fontWeight: 'bold', color: '#0d47a1' }}>
+                            
+                            <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '750', color: '#3b82f6' }}>
                                 Native Android App
+                            </h3>
+                            
+                            <p style={{ fontSize: '13px', color: '#94a3b8', margin: '0 0 20px 0', lineHeight: '1.5' }}>
+                                Download the dedicated Android APK file directly to your device for high-performance and instant access.
                             </p>
-                            <p style={{ fontSize: '13px', color: '#1565c0', margin: '0 0 12px 0' }}>
-                                Get the full experience with a real Android app.
-                            </p>
+
                             <a
                                 href="/TTR-AI.apk"
                                 download="TTR-AI.apk"
                                 style={{
                                     display: 'block', textAlign: 'center',
-                                    background: '#1976d2', color: 'white',
-                                    textDecoration: 'none', padding: '12px', borderRadius: '12px',
-                                    fontSize: '15px', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(25, 118, 210, 0.3)'
+                                    background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+                                    color: 'white', textDecoration: 'none',
+                                    padding: '14px', borderRadius: '14px',
+                                    fontSize: '15px', fontWeight: 'bold',
+                                    boxShadow: '0 10px 20px rgba(59, 130, 246, 0.25)',
+                                    transition: 'all 0.3s ease'
                                 }}
+                                onMouseOver={(e) => e.currentTarget.style.boxShadow = '0 12px 25px rgba(59, 130, 246, 0.4)'}
+                                onMouseOut={(e) => e.currentTarget.style.boxShadow = '0 10px 20px rgba(59, 130, 246, 0.25)'}
                             >
                                 Download APK
                             </a>
                         </div>
-
-                        <div style={{ textAlign: 'center' }}>
-                            <span style={{ fontSize: '12px', color: '#999' }}>— OR —</span>
-                        </div>
-
-                        <button
-                            onClick={handleInstallClick}
-                            style={{
-                                background: '#f1f2f6', color: '#2d3436',
-                                border: '1px solid #dfe6e9', padding: '14px', borderRadius: '12px',
-                                fontSize: '14px', fontWeight: '600', cursor: 'pointer'
-                            }}
-                        >
-                            Quick Install (PWA)
-                        </button>
-
-                        <p style={{ fontSize: '11px', color: '#999', marginTop: '5px' }}>
-                            *To install APK: Open the file and allow "Install from Unknown Sources" if asked.
-                        </p>
-                    </div>
-                ) : installPrompt ? (
-                    // 2. NATIVE PWA PROMPT (Chrome Desktop/Edge)
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        <button
-                            onClick={handleInstallClick}
-                            style={{
-                                background: 'linear-gradient(135deg, #0984e3, #6c5ce7)',
-                                color: 'white',
-                                border: 'none', padding: '16px', borderRadius: '14px',
-                                fontSize: '17px', fontWeight: 'bold', cursor: 'pointer',
-                                width: '100%', boxShadow: '0 8px 15px rgba(108, 92, 231, 0.3)',
-                                transition: 'transform 0.1s'
-                            }}
-                            className="active-btn"
-                        >
-                            Tap to Install
-                        </button>
-                        <button
-                            onClick={() => navigate(-1)}
-                            style={{
-                                background: '#f1f2f6', color: '#636e72',
-                                border: 'none', padding: '16px', borderRadius: '14px',
-                                fontSize: '16px', fontWeight: '600', cursor: 'pointer', width: '100%'
-                            }}
-                        >
-                            Not Now
-                        </button>
-                    </div>
-                ) : isIOS ? (
-                    // 3. iOS INSTRUCTIONS
-                    <div style={{ background: '#f8f9fa', padding: '20px', borderRadius: '16px', textAlign: 'left', border: '1px solid #e9ecef' }}>
-                        <p style={{ margin: '0 0 15px 0', fontSize: '15px', fontWeight: '600', color: '#2d3436', lineHeight: '1.5' }}>
-                            To install on iPhone/iPad:
-                        </p>
-                        <ol style={{ paddingLeft: '20px', margin: '0', fontSize: '14px', color: '#555', lineHeight: '1.8' }}>
-                            <li>Tap the <b>Share</b> button <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Apple_Share_icon.svg/1200px-Apple_Share_icon.svg.png" style={{ width: '14px', verticalAlign: '-2px' }} alt="" /> below.</li>
-                            <li>Scroll down and tap <b>"Add to Home Screen"</b>.</li>
-                        </ol>
-                        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '15px' }}>
-                            <span style={{ fontSize: '28px', animation: 'bounce 2s infinite', opacity: '0.8' }}>⬇️</span>
-                        </div>
                     </div>
                 ) : (
-                    // 4. DESKTOP / OTHERS
-                    <div style={{ textAlign: 'left', width: '100%' }}>
-                        <div style={{ background: '#f5f6fa', color: '#2d3436', padding: '15px', borderRadius: '12px', fontSize: '14px', marginBottom: '20px', lineHeight: '1.5' }}>
-                            ✅ <b>To Install:</b><br />
-                            Check your browser's menu for an <b>"Install App"</b> option.
-                            <br /><br />
-                            <span style={{ fontSize: '12px', color: '#636e72' }}>If exploring on PC, you can continue to the website.</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
+                        {/* IOS OR DESKTOP LANDING INFO */}
+                        <div style={{
+                            background: 'rgba(16, 185, 129, 0.08)',
+                            border: '1px solid rgba(16, 185, 129, 0.2)',
+                            padding: '24px 20px',
+                            borderRadius: '20px',
+                            textAlign: 'left'
+                        }}>
+                            <h3 style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: '750', color: '#10b981' }}>
+                                Pure Web Application
+                            </h3>
+                            <p style={{ fontSize: '13px', color: '#a7f3d0', margin: '0', lineHeight: '1.5' }}>
+                                Access the platform directly in any web browser. Our web application features native-level speed and responsive fluidity across iOS, macOS, Windows, and Linux.
+                            </p>
                         </div>
 
-                        <button
-                            onClick={() => navigate('/')}
-                            style={{
-                                background: '#1a1a1a', color: 'white',
-                                border: 'none', padding: '16px', borderRadius: '14px',
-                                fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', width: '100%'
-                            }}
-                        >
-                            Continue to Website
-                        </button>
+                        {/* Native Android APK Promo option (Even on desktop/iOS) */}
+                        <div style={{
+                            background: 'rgba(255, 255, 255, 0.02)',
+                            border: '1px solid rgba(255, 255, 255, 0.06)',
+                            padding: '16px',
+                            borderRadius: '16px',
+                            textAlign: 'left',
+                            fontSize: '13px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between'
+                        }}>
+                            <div>
+                                <span style={{ fontWeight: '600', color: '#fff' }}>Android Version Available</span>
+                                <div style={{ fontSize: '11px', color: '#888' }}>Download APK for Android devices</div>
+                            </div>
+                            <a
+                                href="/TTR-AI.apk"
+                                download="TTR-AI.apk"
+                                style={{
+                                    background: 'rgba(255,255,255,0.06)', color: '#fff',
+                                    textDecoration: 'none', padding: '8px 14px', borderRadius: '10px',
+                                    fontSize: '12px', fontWeight: '700', border: '1px solid rgba(255,255,255,0.1)'
+                                }}
+                            >
+                                Get APK
+                            </a>
+                        </div>
                     </div>
                 )}
 
+                <button
+                    onClick={() => navigate('/')}
+                    style={{
+                        marginTop: '25px',
+                        background: '#ffffff', color: '#0f0f14',
+                        border: 'none', padding: '16px', borderRadius: '16px',
+                        fontSize: '15px', fontWeight: '700', cursor: 'pointer', width: '100%',
+                        boxShadow: '0 10px 25px rgba(255,255,255,0.05)',
+                        transition: 'all 0.3s ease'
+                    }}
+                    onMouseOver={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 12px 30px rgba(255,255,255,0.1)';
+                    }}
+                    onMouseOut={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 10px 25px rgba(255,255,255,0.05)';
+                    }}
+                >
+                    Continue to Website
+                </button>
             </div>
 
             {/* STYLE FOR ANIMATION */}
             <style>{`
                 @keyframes popIn {
-                    0% { transform: scale(0.9); opacity: 0; }
+                    0% { transform: scale(0.95); opacity: 0; }
                     100% { transform: scale(1); opacity: 1; }
-                }
-                @keyframes bounce {
-                    0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
-                    40% {transform: translateY(-10px);}
-                    60% {transform: translateY(-5px);}
-                }
-                .active-btn:active {
-                    transform: scale(0.98);
                 }
             `}</style>
         </div>

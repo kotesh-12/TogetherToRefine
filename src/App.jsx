@@ -4,7 +4,6 @@ import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import { UserProvider } from './context/UserContext';
 import { ThemeProvider } from './context/ThemeContext';
 
-import { PWAProvider } from './context/PWAContext';
 import { LanguageProvider } from './context/LanguageContext';
 
 // STANDARD IMPORTS (No Lazy Loading) - Stability Fix
@@ -73,8 +72,7 @@ function App() {
       <LanguageProvider>
         <UserProvider>
           <ThemeProvider>
-            <PWAProvider>
-              <Router>
+            <Router>
                 <UpdateManager />
                 <Routes>
                   <Route path="/" element={<Login />} />
@@ -177,7 +175,6 @@ function App() {
                   </Route>
                 </Routes>
               </Router>
-            </PWAProvider>
           </ThemeProvider>
         </UserProvider>
       </LanguageProvider>

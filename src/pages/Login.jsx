@@ -41,28 +41,6 @@ export default function Login() {
     const [loading, setLoading] = useState(false);
     const [name, setName] = useState('');
     const [gender, setGender] = useState('');
-    const [installPrompt, setInstallPrompt] = useState(null);
-
-    // PWA Install Logic
-    useEffect(() => {
-        const handler = (e) => {
-            e.preventDefault();
-            setInstallPrompt(e);
-        };
-        window.addEventListener('beforeinstallprompt', handler);
-        return () => window.removeEventListener('beforeinstallprompt', handler);
-    }, []);
-
-    const handleInstallClick = () => {
-        if (!installPrompt) return;
-        installPrompt.prompt();
-        installPrompt.userChoice.then((choiceResult) => {
-            if (choiceResult.outcome === 'accepted') {
-                console.log('User accepted the A2HS prompt');
-            }
-            setInstallPrompt(null);
-        });
-    };
 
     const { user, userData, loading: userLoading } = useUser();
     const { t, language, toggleLanguage } = useLanguage();
@@ -451,15 +429,6 @@ export default function Login() {
                         {isLogin ? t('no_account') : t('have_account')}
                     </span>
                 </div>
-
-                {installPrompt && (
-                    <button
-                        onClick={handleInstallClick}
-                        className="btn btn-success pwa-install-btn"
-                    >
-                        📲 Install App
-                    </button>
-                )}
 
                 <div style={{ marginTop: '24px', textAlign: 'center', color: '#636e72', fontSize: '11px', borderTop: '1px solid #eee', paddingTop: '16px' }}>
                     <strong>We do not sell student data. Period.</strong>
