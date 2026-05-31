@@ -4,18 +4,6 @@ import './index.css'
 import App from './App.jsx'
 
 // Service Worker is now managed by UpdateManager.jsx
-// PWA Registration
-import { registerSW } from 'virtual:pwa-register';
-
-const updateSW = registerSW({
-  onNeedRefresh() {
-    console.log('New content available, auto-updating...');
-  },
-  onOfflineReady() {
-    console.log('App ready to work offline');
-  },
-});
-
 const APP_VERSION = '0.0.57'; // TOUR UID FIX
 console.log("TTR App Version:", APP_VERSION);
 
