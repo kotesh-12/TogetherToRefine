@@ -298,6 +298,63 @@ app.post('/api/chat', async (req, res) => {
     }
 });
 
+// ── Root Status Page ──
+app.get('/', (req, res) => {
+    res.send(`
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>TTR AI Server</title>
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body { 
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    background: #0f0f14; color: #fff; 
+                    display: flex; align-items: center; justify-content: center; 
+                    min-height: 100vh;
+                }
+                .card {
+                    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+                    border-radius: 24px; padding: 50px 40px; text-align: center;
+                    max-width: 420px; width: 90%;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+                    backdrop-filter: blur(20px);
+                }
+                .pulse { 
+                    display: inline-block; width: 12px; height: 12px; 
+                    background: #10b981; border-radius: 50%; margin-right: 10px;
+                    animation: pulse 2s infinite;
+                }
+                @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+                h1 { font-size: 28px; font-weight: 800; margin-bottom: 12px; letter-spacing: -0.5px; }
+                .status { color: #10b981; font-size: 15px; font-weight: 600; margin-bottom: 24px; }
+                .info { color: #94a3b8; font-size: 13px; line-height: 1.8; }
+                .info code { background: rgba(255,255,255,0.06); padding: 3px 8px; border-radius: 6px; font-size: 12px; }
+                .badge { 
+                    display: inline-block; margin-top: 20px; padding: 8px 16px; 
+                    background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.3);
+                    border-radius: 20px; font-size: 12px; color: #a78bfa; font-weight: 600;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="card">
+                <h1>🧠 TTR AI</h1>
+                <div class="status"><span class="pulse"></span>Server Online</div>
+                <div class="info">
+                    Model: <code>gemini-2.0-flash</code><br>
+                    Chat Endpoint: <code>POST /api/chat</code><br>
+                    Health Check: <code>GET /api/health</code>
+                </div>
+                <div class="badge">Together To Refine © 2026</div>
+            </div>
+        </body>
+        </html>
+    `);
+});
+
 // ── Health Check ──
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', model: 'gemini-2.0-flash' });
