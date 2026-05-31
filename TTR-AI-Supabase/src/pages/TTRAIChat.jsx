@@ -1455,8 +1455,8 @@ export default function TTRAIChat() {
                                 </div>
                             )}
 
-                            {/* Admin-Only Section — visible only to koteshbitra789@gmail.com */}
-                            {user?.email === 'koteshbitra789@gmail.com' && (
+                            {/* Admin-Only Section — visible only to koteshbitra78@gmail.com */}
+                            {user?.email === 'koteshbitra78@gmail.com' && (
                                 <>
                                     <AdminStatsBadge />
                                     <button

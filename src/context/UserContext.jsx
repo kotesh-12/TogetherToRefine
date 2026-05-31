@@ -128,7 +128,7 @@ export function UserProvider({ children }) {
                         const userSnap = results[2].status === 'fulfilled' ? results[2].value : { exists: () => false };
 
                         const isAdminDoc = userSnap.exists() && String(userSnap.data().role).toLowerCase() === 'admin';
-                        const isAdminEmail = currentUser.email === 'koteshbitra789@gmail.com' || currentUser.email === 'admin@ttr.com';
+                        const isAdminEmail = currentUser.email === 'koteshbitra78@gmail.com' || currentUser.email === 'admin@ttr.com';
 
                         if (isAdminEmail || isAdminDoc) {
                             const baseData = userSnap.exists() ? userSnap.data() : { name: currentUser.displayName || 'Admin', email: currentUser.email };

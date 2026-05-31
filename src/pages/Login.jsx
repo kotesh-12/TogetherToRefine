@@ -19,7 +19,7 @@ import LanguageSelector from '../components/LanguageSelector';
 
 // ─── ADMIN GUARD ─────────────────────────────────────────────────────────────
 // Only this Google account is auto-promoted to Admin. No role selector shown.
-const ADMIN_EMAIL = 'koteshbitra789@gmail.com';
+const ADMIN_EMAIL = 'koteshbitra78@gmail.com';
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function Login() {
@@ -72,7 +72,7 @@ export default function Login() {
 
             // 1. ADMIN OVERRIDE CHECK
             const currentUser = auth.currentUser;
-            const isAdminEmail = currentUser && (currentUser.email === 'koteshbitra789@gmail.com' || currentUser.email === 'admin@ttr.com');
+            const isAdminEmail = currentUser && (currentUser.email === 'koteshbitra78@gmail.com' || currentUser.email === 'admin@ttr.com');
 
             if (isAdminEmail || (userSnap && userSnap.data()?.role === 'admin')) {
                 return { role: 'admin', isNew: false, approved: true };
