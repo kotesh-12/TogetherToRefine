@@ -2,6 +2,11 @@ import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/ge
 
 const MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
 
+const cleanEnvVar = (val) => {
+    if (!val) return val;
+    return val.trim().replace(/\\n/g, '').replace(/\\r/g, '').replace(/"/g, '').replace(/'/g, '');
+};
+
 // ─── GURUKUL PATH HERO DATA ─────────────
 const GURUKUL_HEROES = {
     arjuna: { name: 'Arjuna', emoji: '🏹', title: 'The Focused Warrior', trait: 'Laser Focus & Mastery', aiStyle: 'Challenge the student like Dronacharya — never satisfied until the answer is perfect. Demand deep focus on one topic at a time.', quote: '"I see only the eye of the bird." — Arjuna' },
@@ -226,7 +231,7 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const API_KEY = process.env.GEMINI_API_KEY;
+    const API_KEY = cleanEnvVar(process.env.GEMINI_API_KEY);
     if (!API_KEY) {
         return res.status(500).json({ error: 'API key not configured' });
     }
@@ -311,7 +316,7 @@ export default async function handler(req, res) {
     ];
 
     async function executeSearch(query) {
-        const TAVILY_KEY = process.env.TAVILY_API_KEY;
+        const TAVILY_KEY = cleanEnvVar(process.env.TAVILY_API_KEY);
         if (!TAVILY_KEY) return "Search is currently unavailable (API Key missing).";
 
         try {
@@ -334,7 +339,7 @@ export default async function handler(req, res) {
     }
 
     async function executeYoutubeSearch(query) {
-        const YT_KEY = process.env.YOUTUBE_API_KEY;
+        const YT_KEY = cleanEnvVar(process.env.YOUTUBE_API_KEY);
         if (!YT_KEY) return "YouTube search is currently unavailable (API Key missing).";
 
         try {
@@ -357,7 +362,7 @@ export default async function handler(req, res) {
     }
 
     async function executeAcademicSearch(query) {
-        const TAVILY_KEY = process.env.TAVILY_API_KEY;
+        const TAVILY_KEY = cleanEnvVar(process.env.TAVILY_API_KEY);
         if (!TAVILY_KEY) return "Academic search is unavailable.";
         try {
             const response = await fetch('https://api.tavily.com/search', {

@@ -15,7 +15,12 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 
 // ── Gemini Setup ──
-const API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+const cleanEnvVar = (val) => {
+    if (!val) return val;
+    return val.trim().replace(/\\n/g, '').replace(/\\r/g, '').replace(/"/g, '').replace(/'/g, '');
+};
+
+const API_KEY = cleanEnvVar(process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY);
 if (!API_KEY) {
     console.error('❌ GEMINI_API_KEY (or VITE_GEMINI_API_KEY) is missing in .env');
     process.exit(1);
@@ -199,7 +204,7 @@ const tools = [
     ];
 
 async function executeSearch(query) {
-    const TAVILY_KEY = process.env.TAVILY_API_KEY;
+    const TAVILY_KEY = cleanEnvVar(process.env.TAVILY_API_KEY);
     if (!TAVILY_KEY) return "Search is currently unavailable (API Key missing).";
     try {
         const response = await fetch('https://api.tavily.com/search', {
@@ -216,7 +221,7 @@ async function executeSearch(query) {
 }
 
 async function executeYoutubeSearch(query) {
-    const YT_KEY = process.env.YOUTUBE_API_KEY;
+    const YT_KEY = cleanEnvVar(process.env.YOUTUBE_API_KEY);
     if (!YT_KEY) return "YouTube search is currently unavailable (API Key missing).";
     try {
         const response = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=5&key=${YT_KEY}`);
@@ -237,7 +242,7 @@ async function executeYoutubeSearch(query) {
     }
 
     async function executeAcademicSearch(query) {
-        const TAVILY_KEY = process.env.TAVILY_API_KEY;
+        const TAVILY_KEY = cleanEnvVar(process.env.TAVILY_API_KEY);
         if (!TAVILY_KEY) return "Academic search is unavailable.";
         try {
             const response = await fetch('https://api.tavily.com/search', {
