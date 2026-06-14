@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">TTR AI</string>
+    <string name="title_activity_main">TTR AI</string>
+    <string name="package_name">com.ttrai.app</string>
+    <string name="custom_url_scheme">com.ttrai.app</string>
+    <string name="server_client_id">676208521434-tp9scpi477tkvgnjmfpk38afgu9545u7.apps.googleusercontent.com</string>
+</resources>

@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "360106072129",
+    "project_id": "together-to-refine",
+    "storage_bucket": "together-to-refine.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:360106072129:android:2e3c6d2f1ec69e21abcec0",
+        "android_client_info": {
+          "package_name": "com.ttrai.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "360106072129-bev2949866n8vq3ciu77dk9tglhf5bbu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCMZqaAyvp28ko7Erdm_STBF_7icn9ktkI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "360106072129-bev2949866n8vq3ciu77dk9tglhf5bbu.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

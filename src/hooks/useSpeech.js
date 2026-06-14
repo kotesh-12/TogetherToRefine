@@ -4,10 +4,10 @@ export function useSpeech() {
     const [isListening, setIsListening] = useState(false);
     const [speakingText, setSpeakingText] = useState(null);
     const recognitionRef = useRef(null);
-    const utteranceRef = useRef(null);
 
     // Initial load for voices (optional fix for Chrome)
     useEffect(() => {
+        if (!('speechSynthesis' in window) || !window.speechSynthesis) return;
         const load = () => window.speechSynthesis.getVoices();
         window.speechSynthesis.onvoiceschanged = load;
         load();
@@ -15,7 +15,7 @@ export function useSpeech() {
     }, []);
 
     // Text-to-Speech (TTS)
-    const speak = (text, langCode = 'en-US') => {
+    const speak = (text, langCode = 'en-US', tone = 'default') => {
         if (!('speechSynthesis' in window) || !text) return;
 
         window.speechSynthesis.cancel(); // Clears queue
@@ -25,13 +25,10 @@ export function useSpeech() {
             return;
         }
 
-        const cleanText = text.replace(/[*#_`[\]]/g, '');
+        const cleanText = text.replace(/[*#_`[\]]/g, '').replace(/\[Dharma Points:.*?\]/g, '');
 
         // Chunking logic for Mobile stability
-        // Split by reasonable punctuation or length
         const chunks = cleanText.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [cleanText];
-
-        // Refine chunks if still too long (fallback split by simple length)
         const safeChunks = [];
         chunks.forEach(chunk => {
             if (chunk.length > 180) {
@@ -42,7 +39,6 @@ export function useSpeech() {
             }
         });
 
-        // Determine voice ONCE
         const voices = window.speechSynthesis.getVoices();
         let targetVoice = null;
         if (langCode && langCode !== 'en-US') {
@@ -54,7 +50,16 @@ export function useSpeech() {
                 || voices.find(v => v.lang.startsWith("en"));
         }
 
-        // Queue utterances
+        // Tone Profiles (Suggestion 3)
+        const profiles = {
+            arjuna: { rate: 1.1, pitch: 1.0 },
+            krishna: { rate: 0.9, pitch: 1.1 },
+            chanakya: { rate: 1.2, pitch: 0.9 },
+            default: { rate: 1.0, pitch: 1.0 }
+        };
+
+        const currentTone = profiles[tone] || profiles['default'];
+
         safeChunks.forEach((chunkText, index) => {
             const utterance = new SpeechSynthesisUtterance(chunkText);
 
@@ -63,7 +68,9 @@ export function useSpeech() {
                 utterance.lang = targetVoice.lang;
             }
 
-            // Only clear state on the very last chunk
+            utterance.rate = currentTone.rate;
+            utterance.pitch = currentTone.pitch;
+
             if (index === safeChunks.length - 1) {
                 utterance.onend = () => setSpeakingText(null);
                 utterance.onerror = () => setSpeakingText(null);
@@ -76,7 +83,7 @@ export function useSpeech() {
     };
 
     // Speech-to-Text (STT)
-    const listen = (onResult, lang = 'en-US') => {
+    const listen = (onResult, lang = 'en-US', continuous = false) => {
         if (!('webkitSpeechRecognition' in window)) {
             alert("Voice input requires Google Chrome or Edge.");
             return;
@@ -89,7 +96,7 @@ export function useSpeech() {
         }
 
         const recognition = new window.webkitSpeechRecognition();
-        recognition.continuous = false;
+        recognition.continuous = continuous;
         recognition.interimResults = true;
         recognition.lang = lang;
 

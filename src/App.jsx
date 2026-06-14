@@ -1,184 +1,98 @@
-import React from 'react';
-import './App.css';
-import { HashRouter as Router, Routes, Route } from 'react-router-dom';
-import { UserProvider } from './context/UserContext';
-import { ThemeProvider } from './context/ThemeContext';
-
-import { LanguageProvider } from './context/LanguageContext';
-
-// STANDARD IMPORTS (No Lazy Loading) - Stability Fix
+import React, { Suspense, lazy } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
 import Login from './pages/Login';
-import AccessDenied from './pages/AccessDenied';
-import Student from './pages/Student';
-import Teacher from './pages/Teacher';
-import Institution from './pages/Institution';
-import Admission from './pages/Admission';
-import Profile from './pages/Profile';
-import ProfileView from './pages/ProfileView';
-import Group from './pages/Group';
-import Allotment from './pages/Allotment';
-import Details from './pages/Details';
-import TTRAI from './pages/TTRAI';
-import WaitingList from './pages/WaitingList';
-import Attendance from './pages/Attendance';
-import GeneralFeedback from './pages/GeneralFeedback';
-import Exam from './pages/Exam';
-import Health from './pages/Health';
-import FeedbackOverview from './pages/FeedbackOverview';
-import Report from './pages/Report';
-import FourWayLearning from './pages/FourWayLearning';
-import PendingApproval from './pages/PendingApproval';
-import VideoLibrary from './pages/VideoLibrary';
-import SelectFeedbackTarget from './pages/SelectFeedbackTarget';
-import Notification from './pages/Notification';
-import Timetable from './pages/Timetable';
-import StudentPromotion from './pages/StudentPromotion';
-import FeeDetails from './pages/FeeDetails';
-import DownloadApp from './pages/DownloadApp';
-import UpidHistory from './pages/UpidHistory';
-import FacultyFeedback from './pages/FacultyFeedback';
-import AdminDashboard from './pages/AdminDashboard';
-import InstitutionDetailsAdmin from './pages/InstitutionDetailsAdmin';
-import AdminSettings from './pages/AdminSettings';
-import Onboarding from './pages/Onboarding';
-import Settings from './pages/Settings';
-import StudentFee from './pages/StudentFee';
-import InstitutionFee from './pages/InstitutionFee';
-import Announcements from './pages/Announcements';
-import GovernmentReports from './pages/GovernmentReports';
-import InspectorMode from './pages/InspectorMode';
-import EarlyWarningSystem from './pages/EarlyWarningSystem';
-import MarksManagement from './pages/MarksManagement';
-import PerformanceAnalytics from './pages/PerformanceAnalytics';
-import ParentDashboard from './pages/ParentDashboard';
-import HomeworkSystem from './pages/HomeworkSystem';
-import AttendanceAnalytics from './pages/AttendanceAnalytics';
-import TimetableGenerator from './pages/TimetableGenerator';
-import ExamSeatingPlanner from './pages/ExamSeatingPlanner';
-import ViewExamSeating from './pages/ViewExamSeating';
-import LibraryManagement from './pages/LibraryManagement';
-import MessagingSystem from './pages/MessagingSystem';
-import InspectionReadiness from './pages/InspectionReadiness';
-import UniversalScanner from './pages/UniversalScanner';
+import TTRAIChat from './pages/TTRAIChat';
+import IntelligenceHub from './pages/IntelligenceHub';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 
-import ProtectedRoute from './components/ProtectedRoute';
-import MainLayout from './components/MainLayout';
-import UpdateManager from './components/UpdateManager';
-import ErrorBoundary from './components/ErrorBoundary';
+import './index.css';
+import 'katex/dist/katex.min.css';
+
+// Lazy load for high security - stops Admin code from bundling with user code
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error: error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error('TTR-AI Error:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#0a0a0f', color: '#fff', fontFamily: 'system-ui', padding: '20px', textAlign: 'center' }}>
+          <h1 style={{ fontSize: '1.8rem', marginBottom: '1rem' }}>⚡ TTR-AI Engine Reset Required</h1>
+          <p style={{ color: '#888', marginBottom: '1.5rem' }}>Something unexpected happened. Click below to reload.</p>
+          <button onClick={() => { localStorage.clear(); sessionStorage.clear(); window.location.reload(); }} style={{ padding: '12px 32px', background: 'linear-gradient(135deg, #667eea, #764ba2)', color: '#fff', border: 'none', borderRadius: '12px', fontSize: '1rem', cursor: 'pointer', marginBottom: '20px' }}>Clear Cache & Reload</button>
+          {this.state.error && (
+            <div style={{ background: '#1a0505', color: '#ff4d4d', padding: '15px', borderRadius: '8px', border: '1px solid #ff4d4d', fontSize: '0.85rem', fontFamily: 'monospace', width: '100%', maxWidth: '500px', textAlign: 'left', overflow: 'auto', maxHeight: '250px' }}>
+              <strong style={{ color: '#ff6b6b' }}>Error:</strong> {this.state.error.message}<br/>
+              <strong style={{ color: '#ff6b6b' }}>Stack:</strong> {this.state.error.stack}
+            </div>
+          )}
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function AppRoutes() {
+  return (
+    <Routes>
+      {/* Chat is the default — no auth required */}
+      <Route path="/" element={<TTRAIChat />} />
+      <Route path="/ttr-ai" element={<TTRAIChat />} />
+      <Route path="/nexus/:sessionId" element={<TTRAIChat />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/intelligence-hub" element={<IntelligenceHub />} />
+      <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+
+
+      {/* 🚨 Hidden Admin Route 🚨 */}
+      <Route
+        path="/admin-ttrai-hq"
+        element={
+          <Suspense fallback={<div style={{ padding: '50px', color: '#8b5cf6', background: '#0f0f14', height: '100vh', textAlign: 'center' }}>Loading Restricted Area...</div>}>
+            <AdminDashboard />
+          </Suspense>
+        }
+      />
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
 
 function App() {
+  React.useEffect(() => {
+    // Secondary loader removal trigger
+    const loader = document.getElementById('root-loading');
+    if (loader) {
+        setTimeout(() => {
+            const el = document.getElementById('root-loading');
+            if (el) {
+                el.style.opacity = '0';
+                setTimeout(() => el.remove(), 500);
+            }
+        }, 1000); // Wait a bit for the first frame
+    }
+  }, []);
+
   return (
-    <ErrorBoundary>
-      <LanguageProvider>
-        <UserProvider>
-          <ThemeProvider>
-            <Router>
-                <UpdateManager />
-                <Routes>
-                  <Route path="/" element={<Login />} />
-                  <Route path="/details" element={<Details />} />
-                  <Route path="/pending-approval" element={<PendingApproval />} />
-                  <Route path="/download" element={<DownloadApp />} />
-                  <Route path="/access-denied" element={<AccessDenied />} />
-
-                  <Route element={<MainLayout />}>
-                    {/* Shared Utility Routes (Accessible to all authenticated users) */}
-                    <Route element={<ProtectedRoute allowedRoles={['student', 'teacher', 'institution', 'admin', 'parent']} />}>
-                      <Route path="/onboarding" element={<Onboarding />} />
-                      <Route path="/settings" element={<Settings />} />
-                      <Route path="/profile" element={<Profile />} />
-                      <Route path="/profile-view" element={<ProfileView />} />
-                      <Route path="/group" element={<Group />} />
-                      <Route path="/ttr-ai" element={<TTRAI />} />
-                      <Route path="/4-way-learning" element={<FourWayLearning />} />
-                      <Route path="/general-feedback" element={<GeneralFeedback />} />
-                      <Route path="/announcements" element={<Announcements />} />
-                      <Route path="/video-library" element={<VideoLibrary />} />
-                      <Route path="/notification" element={<Notification />} />
-                      <Route path="/select-feedback-target" element={<SelectFeedbackTarget />} />
-                      <Route path="/attendance" element={<Attendance />} />
-                      <Route path="/timetable" element={<Timetable />} />
-                      <Route path="/exam" element={<Exam />} />
-                      <Route path="/attendance-analytics" element={<AttendanceAnalytics />} />
-                      <Route path="/view-exam-seating" element={<ViewExamSeating />} />
-                      <Route path="/library" element={<LibraryManagement />} />
-                      <Route path="/health" element={<Health />} />
-                      <Route path="/report-harassment" element={<Report type="sexual_harassment" />} />
-                      <Route path="/report-misbehavior" element={<Report type="misbehavior" />} />
-
-                      {/* SHARED TEACHER, INSTITUTION & ADMIN TOOLS */}
-                      <Route element={<ProtectedRoute allowedRoles={['teacher', 'institution', 'admin']} />}>
-                        <Route path="/exam-seating" element={<ExamSeatingPlanner />} />
-                        <Route path="/inspection-readiness" element={<InspectionReadiness />} />
-                      </Route>
-
-                      {/* --- ROLE-SPECIFIC DASHBOARDS --- */}
-
-                      {/* ADMIN ONLY */}
-                      <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-                        <Route path="/admin" element={<AdminDashboard />} />
-                        <Route path="/admin/institution/:id" element={<InstitutionDetailsAdmin />} />
-                        <Route path="/admin/settings" element={<AdminSettings />} />
-                      </Route>
-
-                      {/* SHARED TEACHER & STUDENT */}
-                      <Route element={<ProtectedRoute allowedRoles={['teacher', 'student', 'institution']} />}>
-                        <Route path="/marks" element={<MarksManagement />} />
-                        <Route path="/homework" element={<HomeworkSystem />} />
-                      </Route>
-
-                      {/* SHARED TEACHER & INSTITUTION TOOLS */}
-                      {/* (Moved to top-level for better access) */}
-
-                      {/* TEACHER ONLY */}
-                      <Route element={<ProtectedRoute allowedRoles={['teacher']} />}>
-                        <Route path="/teacher" element={<Teacher />} />
-                        <Route path="/feedback-overview" element={<FeedbackOverview />} />
-                        <Route path="/timetable-generator" element={<TimetableGenerator />} />
-                        <Route path="/gov-reports" element={<GovernmentReports />} />
-                        <Route path="/inspector-mode" element={<InspectorMode />} />
-                        <Route path="/dropout-predictor" element={<EarlyWarningSystem />} />
-                        <Route path="/early-warning" element={<EarlyWarningSystem />} />
-                        <Route path="/universal-scanner" element={<UniversalScanner />} />
-                      </Route>
-
-                      {/* STUDENT ONLY */}
-                      <Route element={<ProtectedRoute allowedRoles={['student']} />}>
-                        <Route path="/student" element={<Student />} />
-                        <Route path="/fees/student" element={<StudentFee />} />
-                        <Route path="/upid-history" element={<UpidHistory />} />
-                      </Route>
-
-                      {/* INSTITUTION ONLY */}
-                      <Route element={<ProtectedRoute allowedRoles={['institution']} />}>
-                        <Route path="/institution" element={<Institution />} />
-                        <Route path="/admission" element={<Admission />} />
-                        <Route path="/waiting-list" element={<WaitingList />} />
-                        <Route path="/allotment" element={<Allotment />} />
-                        <Route path="/faculty-feedback" element={<FacultyFeedback />} />
-                        <Route path="/fees/institution" element={<InstitutionFee />} />
-                        <Route path="/fee-details/:feeId" element={<FeeDetails />} />
-                        <Route path="/student-promotion" element={<StudentPromotion />} />
-                      </Route>
-
-                      {/* PARENT ONLY */}
-                      <Route element={<ProtectedRoute allowedRoles={['parent']} />}>
-                        <Route path="/parent" element={<ParentDashboard />} />
-                      </Route>
-                    </Route>
-                  </Route>
-
-                  {/* Standalone Pages (Outside MainLayout) */}
-                  <Route element={<ProtectedRoute allowedRoles={['student', 'teacher', 'institution', 'admin', 'parent']} />}>
-                    <Route path="/messages" element={<MessagingSystem />} />
-                    <Route path="/analytics" element={<PerformanceAnalytics />} />
-                  </Route>
-                </Routes>
-              </Router>
-          </ThemeProvider>
-        </UserProvider>
-      </LanguageProvider>
-    </ErrorBoundary >
+    <AuthProvider>
+      <ErrorBoundary>
+        <Router>
+          <AppRoutes />
+        </Router>
+      </ErrorBoundary>
+    </AuthProvider>
   );
 }
 

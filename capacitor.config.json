@@ -1,0 +1,18 @@
+{
+  "appId": "com.ttrai.app",
+  "appName": "TTR AI",
+  "webDir": "dist",
+  "server": {
+    "allowNavigation": ["www.ttrai.in", "ttrai.in", "*.supabase.co"]
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    },
+    "GoogleAuth": {
+      "scopes": ["profile", "email"],
+      "serverClientId": "676208521434-tp9scpi477tkvgnjmfpk38afgu9545u7.apps.googleusercontent.com",
+      "forceCodeForRefreshToken": true
+    }
+  }
+}

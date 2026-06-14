@@ -1,441 +1,262 @@
 import React, { useState, useEffect } from 'react';
-import { useUser } from '../context/UserContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useLanguage } from '../context/LanguageContext';
-import {
-    createUserWithEmailAndPassword,
-    signInWithEmailAndPassword,
-    GoogleAuthProvider,
-    signInWithPopup,
-    signInWithRedirect,
-    getRedirectResult
-} from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { useAuth } from '../hooks/useAuth';
+import anime from 'animejs/lib/anime.es.js';
 import logo from '../assets/logo.png';
-import LanguageSelector from '../components/LanguageSelector';
-
-
-
-// ─── ADMIN GUARD ─────────────────────────────────────────────────────────────
-// Only this Google account is auto-promoted to Admin. No role selector shown.
-const ADMIN_EMAIL = 'koteshbitra78@gmail.com';
-// ─────────────────────────────────────────────────────────────────────────────
 
 export default function Login() {
-    const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
-    // -------------------------------------------------------------------------
-    // 1. ALL HOOK DECLARATIONS (Must be at top, unconditional)
-    // -------------------------------------------------------------------------
-    const [configError, setConfigError] = useState(window.FIREBASE_CONFIG_ERROR || null);
-    
-    // Correctly use searchParams from react-router-dom (handles hashes too)
     const isLogin = searchParams.get('mode') !== 'signup';
-
+    
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
-    const [role, setRole] = useState('student');
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
     const [name, setName] = useState('');
-    const [gender, setGender] = useState('');
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const { user, userData, loading: userLoading } = useUser();
-    const { t, language, toggleLanguage } = useLanguage();
+    const { user, signIn, signUp, signInWithGoogle } = useAuth();
+    const navigate = useNavigate();
 
-    // Helper functions (safe to be here)
-    const toggleMode = (e) => {
-        if (e) e.preventDefault();
-        const nextMode = !isLogin;
-        setSearchParams(prev => {
-            if (nextMode) prev.delete('mode');
-            else prev.set('mode', 'signup');
-            return prev;
+    const [particles] = useState(() => 
+        [...Array(20)].map(() => ({
+            left: `${Math.random() * 100}%`,
+            animationDelay: `${Math.random() * 15}s`,
+            animationDuration: `${15 + Math.random() * 20}s`,
+            width: `${2 + Math.random() * 4}px`,
+            height: `${2 + Math.random() * 4}px`
+        }))
+    );
+
+    // Unified redirection logic
+    useEffect(() => {
+        if (user && !success) {
+            navigate('/', { replace: true });
+        }
+    }, [user, navigate, success]);
+
+    // Setup Anime.js animation for the logo
+    useEffect(() => {
+        anime({
+            targets: '.login-brand .brand-icon img',
+            translateY: [-20, 0],
+            opacity: [0, 1],
+            scale: [0.8, 1],
+            duration: 1500,
+            easing: 'easeOutElastic(1, .5)',
+            delay: 200
         });
-        setError('');
-    };
 
-    const checkUserExists = async (uid) => {
-        try {
-            const safeGet = async (col, id) => {
-                try {
-                    const s = await getDoc(doc(db, col, id));
-                    return s.exists() ? s : null;
-                } catch (e) {
-                    return null;
-                }
-            };
+        anime({
+            targets: '.login-brand .brand-title',
+            translateY: [20, 0],
+            opacity: [0, 1],
+            duration: 1200,
+            easing: 'easeOutExpo',
+            delay: 400
+        });
 
-            const userSnap = await safeGet("users", uid);
-
-            // 1. ADMIN OVERRIDE CHECK
-            const currentUser = auth.currentUser;
-            const isAdminEmail = currentUser && (currentUser.email === 'koteshbitra78@gmail.com' || currentUser.email === 'admin@ttr.com');
-
-            if (isAdminEmail || (userSnap && userSnap.data()?.role === 'admin')) {
-                return { role: 'admin', isNew: false, approved: true };
-            }
-
-            // 2. INSTITUTION CHECK
-            const instSnap = await safeGet("institutions", uid);
-            if (instSnap) {
-                const data = instSnap.data();
-                return { role: (data.role || 'institution').toLowerCase(), isNew: false, approved: true };
-            }
-
-            const teachSnap = await safeGet("teachers", uid);
-            if (teachSnap) {
-                const data = teachSnap.data();
-                return { role: (data.role || 'teacher').toLowerCase(), isNew: !data.profileCompleted, approved: data.approved };
-            }
-
-            if (userSnap) {
-                const data = userSnap.data();
-                if (data.role !== 'admin') {
-                    const normalizedRole = (data.role || 'student').toLowerCase();
-                    return { role: normalizedRole, isNew: !data.profileCompleted, approved: data.approved };
-                }
-            }
-
-            return { role: null, isNew: true };
-        } catch (e) {
-            console.error("Error checking user existence:", e);
-            throw e;
-        }
-    };
-
-    const redirectToRolePage = (role) => {
-        const r = (role || '').toLowerCase();
-        switch (r) {
-            case 'student': navigate('/student', { replace: true }); break;
-            case 'teacher': navigate('/teacher', { replace: true }); break;
-            case 'institution': navigate('/institution', { replace: true }); break;
-            case 'admin': navigate('/admin', { replace: true }); break;
-            case 'parent': navigate('/parent', { replace: true }); break;
-            default: navigate('/admission', { replace: true });
-        }
-    };
-
-    // -------------------------------------------------------------------------
-    // 2. USE EFFECTS (Unconditional)
-    // -------------------------------------------------------------------------
-
-    useEffect(() => {
-        // Sole source of navigation after auth
-        if (userLoading) return;
-        if (!user) {
-            setLoading(false); 
-            return;
-        }
-
-        if (userData && userData.role) {
-            const isApproved = userData.approved === true;
-            if (isApproved) {
-                const isStudentIncomplete = userData.role === 'student' && (!userData.class || !userData.institutionId);
-                const isTeacherIncomplete = userData.role === 'teacher' && (!userData.subject || !userData.institutionId);
-                const isInstitutionIncomplete = userData.role === 'institution' && (!userData.schoolName);
-
-                if (!userData.profileCompleted || isStudentIncomplete || isTeacherIncomplete || isInstitutionIncomplete) {
-                    navigate('/details', { replace: true, state: { role: userData.role } });
-                    return;
-                }
-            }
-
-            if (!isApproved) {
-                if (!userData.profileCompleted) navigate('/details', { replace: true, state: { role: userData.role } });
-                else navigate('/pending-approval', { replace: true });
-            } else if (!userData.onboardingCompleted) {
-                navigate('/onboarding', { replace: true });
-            } else {
-                redirectToRolePage(userData.role);
-            }
-        } else if (!userLoading) {
-            // New user detection
-            navigate('/details', { replace: true, state: { role: role } });
-        }
-    }, [user, userData, userLoading, navigate, role]);
-
-    // Effect 2: Config Error Check
-    useEffect(() => {
-        if (window.FIREBASE_CONFIG_ERROR) {
-            setConfigError(window.FIREBASE_CONFIG_ERROR);
-        }
+        anime({
+            targets: '.login-brand .brand-subtitle',
+            opacity: [0, 1],
+            duration: 1000,
+            easing: 'linear',
+            delay: 800
+        });
     }, []);
 
-    // Effect 3: Redirect Result Handler
-    useEffect(() => {
-        let isMounted = true;
-        const checkRedirect = async () => {
-            if (!auth) return;
-            try {
-                const result = await getRedirectResult(auth);
-                if (result && isMounted) {
-                    setLoading(true);
-                }
-            } catch (err) {
-                console.error("Redirect Login Failed:", err);
-                if (isMounted) {
-                    let msg = err.message;
-                    if (err.code === 'auth/unauthorized-domain') {
-                        msg = `DOMAIN ERROR: ${window.location.hostname} is not whitelisted in Firebase Console.`;
-                        alert(msg);
-                    }
-                    setError(msg);
-                    setLoading(false);
-                }
-            }
-        };
-        checkRedirect();
-        return () => { isMounted = false; };
-    }, [navigate]);
-
-    // -------------------------------------------------------------------------
-    // 3. HANDLERS
-    // -------------------------------------------------------------------------
     const handleAuth = async (e) => {
         e.preventDefault();
         setError('');
-
-        if (isLogin) {
-            if (!email || !password) {
-                setError('All fields are required!');
-                return;
-            }
-        } else {
-            if (!email || !password || !role || !name) {
-                setError('Please fill in all required fields.');
-                return;
-            }
-            if (role !== 'institution' && role !== 'admin' && role !== 'parent' && !gender) {
-                setError('Gender is required.');
-                return;
-            }
-        }
-
-        // Password Strength Validation (VULN-011)
-        if (!isLogin) {
-            if (password.length < 8) {
-                setError('Password must be at least 8 characters long.');
-                return;
-            }
-            if (!/[A-Z]/.test(password)) {
-                setError('Password must contain at least one uppercase letter.');
-                return;
-            }
-            if (!/[0-9]/.test(password)) {
-                setError('Password must contain at least one number.');
-                return;
-            }
-        }
-
+        setSuccess('');
         setLoading(true);
+
+        const cleanEmail = email.trim();
+        const cleanName = name.trim();
 
         try {
             if (isLogin) {
-                await signInWithEmailAndPassword(auth, email, password);
+                if (!cleanEmail || !password) {
+                    setError('All fields are required!');
+                    setLoading(false);
+                    return;
+                }
+                const result = await signIn(cleanEmail, password);
+                if (result.user) {
+                    setSuccess('Login Successful! Diverting to chat...');
+                    setTimeout(() => navigate('/', { replace: true }), 800);
+                }
             } else {
-                if (!auth.currentUser) {
-                    await createUserWithEmailAndPassword(auth, email, password);
+                if (!cleanEmail || !password || !cleanName) {
+                    setError('Please fill in all required fields.');
+                    setLoading(false);
+                    return;
+                }
+                if (password.length < 6) {
+                    setError('Password must be at least 6 characters.');
+                    setLoading(false);
+                    return;
+                }
+                const result = await signUp(cleanEmail, password, cleanName);
+                if (result.user && !result.session) {
+                    setSuccess('Account created! Please check your email to confirm your account.');
+                    setSearchParams({ mode: 'login' }); 
+                    setLoading(false);
+                    return;
+                } else if (result.user) {
+                    setSuccess('Account created! Welcome to TTRAI.');
+                    setTimeout(() => navigate('/', { replace: true }), 1500);
                 }
             }
         } catch (err) {
-            console.error(err);
-            setError(err.message.replace('Firebase: ', ''));
+            console.error("Auth Error:", err);
+            const msg = err.message || '';
+            if (msg.includes('rate limit')) {
+                setError('Sign-up is currently busy (rate limit). Please try "Continue with Google" or try again in a few minutes.');
+            } else if (msg.includes('Invalid login credentials')) {
+                setError('Invalid email or password. If you just signed up, please check your inbox (and spam) to confirm your email address first!');
+            } else {
+                setError(msg || 'Authentication failed.');
+            }
         } finally {
             setLoading(false);
         }
     };
 
-    const handleGoogleSignIn = async () => {
+    const handleGoogle = async () => {
         setLoading(true);
         setError('');
-        const provider = new GoogleAuthProvider();
-        provider.addScope('profile');
-        provider.addScope('email');
-        provider.setCustomParameters({ prompt: 'select_account' });
-
         try {
-            await signInWithPopup(auth, provider);
+            await signInWithGoogle();
         } catch (err) {
-            console.error("Popup Error:", err);
-            if (['auth/popup-blocked', 'auth/cancelled-popup-request', 'auth/popup-closed-by-user'].includes(err.code)) {
-                console.log("Popup blocked/closed. Trying Redirect...");
-                try {
-                    await signInWithRedirect(auth, provider);
-                } catch (redirErr) {
-                    setError("Redirect Failed: " + redirErr.message);
-                    setLoading(false);
-                }
-            } else if (err.code === 'auth/unauthorized-domain') {
-                const msg = `SETUP ERROR: Domain '${window.location.hostname}' is not authorized in Firebase.`;
-                setError(msg);
-                alert(msg);
-                setLoading(false);
-            } else {
-                setError("Login Error: " + err.message);
-                setLoading(false);
-            }
+            setError(err.message || 'Google sign-in failed.');
+            setLoading(false);
         }
     };
 
-    // -------------------------------------------------------------------------
-    // 4. CONDITIONAL RENDERS (Must be at the very end)
-    // -------------------------------------------------------------------------
-
-    if (configError) {
-        return (
-            <div className="login-container">
-                <div className="card login-card" style={{ textAlign: 'center', borderTop: '5px solid red' }}>
-                    <h2 style={{ color: '#d63031' }}>⚠️ Configuration Error</h2>
-                    <p>The application could not start because some environment variables are missing.</p>
-                    <div style={{ background: '#ffeaa7', padding: '10px', borderRadius: '5px', margin: '20px 0', textAlign: 'left', fontSize: '12px', overflow: 'auto' }}>
-                        <strong>Missing Keys / Error:</strong>
-                        <pre>{JSON.stringify(configError, null, 2)}</pre>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    if (userLoading || user) {
-        return (
-            <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px' }}>
-                <div className="spinner" style={{ width: '40px', height: '40px', borderRadius: '50%', border: '4px solid #f3f3f3', borderTop: '4px solid #3498db', animation: 'spin 1s linear infinite' }}></div>
-                <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-                <p>{user ? "Redirecting..." : "Verifying Session..."}</p>
-            </div>
-        );
-    }
-
-    if (!auth) return <div className="login-container"><div className="card">Error: Firebase Auth not initialized.</div></div>;
-
     return (
-        <div className="auth-page-wrapper">
-            <div className="auth-card card shadow-lg">
-                <div className="auth-header">
-                    <LanguageSelector />
+        <div className="login-page">
+            {/* Animated background particles */}
+            <div className="bg-particles">
+                {particles.map((style, i) => (
+                    <div key={i} className="particle" style={style} />
+                ))}
+            </div>
+
+            <div className="login-container">
+                {/* Back Button */}
+                <button onClick={() => navigate('/')} className="back-btn" aria-label="Go Back">
+                    <span className="back-arrow">←</span> Back to Chat
+                </button>
+
+                {/* Logo / Brand */}
+                <div className="login-brand">
+                    <div className="brand-icon">
+                        <img src={logo} alt="TTR" className="logo" style={{ height: '40px', width: 'auto', objectFit: 'contain' }} />
+                    </div>
+                    <h1 className="brand-title">TTRAI</h1>
+                    <p className="brand-subtitle">Your Intelligent Learning Companion</p>
                 </div>
 
-                <div className="auth-logo-section">
-                    <img src={logo} alt="Together To Refine" className="auth-logo" />
-                </div>
+                {/* Auth Card */}
+                <div className="login-card">
+                    <div className="card-header">
+                        <h2>{isLogin ? 'Welcome Back' : 'Create Account'}</h2>
+                        <p>{isLogin ? 'Sign in to continue your conversation' : 'Join TTRAI today'}</p>
+                    </div>
 
-                <h2 className="auth-title">{isLogin ? t('login') : t('signup')}</h2>
-                {error && <div className="error-banner">{error}</div>}
-
-                <form onSubmit={handleAuth} className="auth-form">
-                    {!isLogin && (
-                        <div className="form-group">
-                            <label className="form-label">Role</label>
-                            <select
-                                className="input-field"
-                                value={role}
-                                onChange={(e) => setRole(e.target.value)}
-                                required
-                            >
-                                <option value="" disabled>Select Role</option>
-                                <option value="student">Student</option>
-                                <option value="teacher">Teacher</option>
-                                <option value="institution">Institution</option>
-                                <option value="parent">Parent</option>
-                            </select>
+                    {error && (
+                        <div className="error-banner">
+                            <span className="error-icon">⚠️</span>
+                            <span>{error}</span>
                         </div>
                     )}
 
-                    {!isLogin && (
-                        <>
-                            <input
-                                type="text"
-                                className="input-field"
-                                placeholder={role === 'institution' ? "Institution Name" : "Your Name"}
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                autoComplete="off"
-                                autoCorrect="off"
-                                spellCheck="false"
-                                required
-                            />
-
-                            {role !== 'institution' && role !== 'admin' && role !== 'parent' && (
-                                <select
-                                    className="input-field"
-                                    value={gender}
-                                    onChange={(e) => setGender(e.target.value)}
-                                    required
-                                >
-                                    <option value="" disabled>Select Gender</option>
-                                    <option value="Male">Male</option>
-                                    <option value="Female">Female</option>
-                                    <option value="Other">Other</option>
-                                </select>
-                            )}
-                        </>
+                    {success && (
+                        <div className="success-banner" style={{ background: 'rgba(52, 211, 153, 0.1)', color: '#34d399', padding: '12px', borderRadius: '8px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', border: '1px solid rgba(52, 211, 153, 0.2)' }}>
+                            <span className="success-icon">✅</span>
+                            <span>{success}</span>
+                        </div>
                     )}
 
-                    <input
-                        type="email"
-                        className="input-field"
-                        placeholder={t('email_placeholder')}
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        autoComplete="off"
-                        autoCorrect="off"
-                        required
-                    />
+                    <form onSubmit={handleAuth} className="auth-form">
+                        {!isLogin && (
+                            <div className="input-group">
+                                <label htmlFor="name">Full Name</label>
+                                <input
+                                    id="name"
+                                    type="text"
+                                    placeholder="Your name"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    autoComplete="name"
+                                    required
+                                />
+                            </div>
+                        )}
 
-                    <div className="password-wrapper">
-                        <input
-                            type={showPassword ? "text" : "password"}
-                            className="input-field"
-                            placeholder={t('password_placeholder')}
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            autoComplete="new-password"
-                            required
-                        />
-                        <button
-                            type="button"
-                            className="password-toggle"
-                            onClick={() => setShowPassword(!showPassword)}
-                        >
-                            {showPassword ? "🙈" : "👁️"}
+                        <div className="input-group">
+                            <label htmlFor="email">Email</label>
+                            <input
+                                id="email"
+                                type="email"
+                                placeholder="you@example.com"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                autoComplete="email"
+                                required
+                            />
+                        </div>
+
+                        <div className="input-group">
+                            <label htmlFor="password">Password</label>
+                            <input
+                                id="password"
+                                type="password"
+                                placeholder="••••••••"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                autoComplete={isLogin ? 'current-password' : 'new-password'}
+                                required
+                            />
+                        </div>
+
+                        <button type="submit" className="btn-primary" disabled={loading}>
+                            {loading ? (
+                                <span className="btn-loader"></span>
+                            ) : (
+                                isLogin ? 'Sign In' : 'Create Account'
+                            )}
                         </button>
+                    </form>
+                    <div className="divider">
+                        <span>or</span>
                     </div>
 
-                    <button type="submit" className="btn btn-primary full-width" disabled={loading}>
-                        {loading ? <div className="spinner-sm" /> : (isLogin ? t('login') : t('signup'))}
+                    <button onClick={handleGoogle} className="btn-google" disabled={loading}>
+                        <svg width="20" height="20" viewBox="0 0 24 24">
+                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
+                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                        </svg>
+                        Continue with Google
                     </button>
-                </form>
 
-                <div className="auth-divider">
-                    <div className="divider-line" />
-                    <span className="divider-text">OR</span>
-                    <div className="divider-line" />
+
+                    <div className="toggle-mode">
+                        <span>{isLogin ? "Don't have an account?" : 'Already have an account?'}</span>
+                        <button onClick={() => { 
+                            setSearchParams({ mode: isLogin ? 'signup' : 'login' });
+                            setError(''); 
+                        }}>
+                            {isLogin ? 'Sign Up' : 'Sign In'}
+                        </button>
+                    </div>
                 </div>
 
-                <button
-                    type="button"
-                    className="btn btn-outline full-width google-btn"
-                    onClick={handleGoogleSignIn}
-                    disabled={loading}
-                >
-                    Log in with Google
-                </button>
-
-                <div className="auth-footer">
-                    <span onClick={toggleMode} className="auth-toggle-link" style={{ cursor: 'pointer', color: 'var(--primary)', fontWeight: '600' }}>
-                        {isLogin ? t('no_account') : t('have_account')}
-                    </span>
-                </div>
-
-                <div style={{ marginTop: '24px', textAlign: 'center', color: '#636e72', fontSize: '11px', borderTop: '1px solid #eee', paddingTop: '16px' }}>
-                    <strong>We do not sell student data. Period.</strong>
-                    <br />
-                    TTR follows the strict Anonymizer Privacy Protocol. Your personal interactions learning with the AI are totally private and never used against you.
-                </div>
+                <p className="login-footer">Powered by Together To Refine</p>
             </div>
-        </div >
+        </div>
     );
 }
