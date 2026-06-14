@@ -29,7 +29,7 @@ if (!API_KEY) {
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 // Try models in order of preference
-const MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
+const MODELS = ['gemini-1.5-flash', 'gemini-2.0-flash'];
 let currentModelName = MODELS[0];
 // let model = genAI.getGenerativeModel({ model: currentModelName });
 
